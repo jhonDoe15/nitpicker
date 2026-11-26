@@ -1,0 +1,46 @@
+  <rule name="PeekSkippedByCount" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This peek or block-bodied map ends in count(), and since Java 9 count() does not run the pipeline when it can compute the size from the source (a List or Set, an array, Stream.of, IntStream.range) and no stage changes the size. The side effect inside it, such as a send, a save or a log call, silently never runs, although it did on Java 8. Run the effect where it belongs and count separately: recipients.forEach(mailer::send) and then recipients.size(). An exception fits a peek that is only a debug aid whose result does not matter.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $stages := ('map', 'peek', 'sorted', 'boxed', 'mapToObj', 'mapToInt', 'mapToLong', 'mapToDouble', 'stream', 'of',
+                'asLongStream', 'asDoubleStream', 'range', 'rangeClosed', 'sequential', 'unordered', 'onClose'),
+    $down := function($n, $self) {
+      if ($n/self::MethodCall[pmd-java:typeIs('java.util.stream.BaseStream')])
+      then ($n, $self($n/*[1], $self)) else ()
+    },
+    $up := function($n, $self) {
+      let $p := $n/parent::MethodCall[*[1] is $n]
+      return if (exists($p)) then ($p, $self($p, $self)) else ()
+    },
+    $sized := function($root) {
+      $root/self::MethodCall[
+        (@MethodName = 'stream'
+           and *[1][some $t in ('java.util.List', 'java.util.HashSet', 'java.util.LinkedHashSet', 'java.util.TreeSet')
+                    satisfies pmd-java:typeIs($t)])
+        or (@MethodName = 'stream' and *[1][pmd-java:typeIsExactly('java.util.Arrays')])
+        or (@MethodName = 'of' and *[1][pmd-java:typeIsExactly('java.util.stream.Stream')])
+        or (@MethodName = ('range', 'rangeClosed')
+              and *[1][pmd-java:typeIsExactly('java.util.stream.IntStream')
+                       or pmd-java:typeIsExactly('java.util.stream.LongStream')])]
+    },
+    $logOnly := function($arg) {
+      exists($arg/descendant-or-self::MethodCall)
+        and (every $c in $arg/descendant-or-self::MethodCall satisfies
+               exists($c/*[1][pmd-java:typeIs('org.slf4j.Logger') or pmd-java:typeIs('java.util.logging.Logger')
+                              or pmd-java:typeIs('org.apache.logging.log4j.Logger')]))
+    }
+return
+//MethodCall[pmd-java:typeIs('java.util.stream.BaseStream')]
+  [@MethodName = 'peek' or (@MethodName = 'map' and ArgumentList/LambdaExpression/Block//ExpressionStatement[MethodCall])]
+  [let $u := $up(., $up),
+       $d := $down(., $down),
+       $top := $u[last()]
+   return exists($top) and $sized($d[last()]) and $top/@MethodName = 'count' and $top/ArgumentList/@Size = 0
+     and (every $s in ($u[position() < last()], $d) satisfies $s/@MethodName = $stages)]
+  /ArgumentList/*[1][not($logOnly(.))]
+]]></value>
+      </property>
+    </properties>
+  </rule>

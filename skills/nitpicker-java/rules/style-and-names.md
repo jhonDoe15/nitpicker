@@ -25,6 +25,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   Wait for a task that uses a resource inside its try block, after starting it and not under an `if` or loop
   (`get()`/`join()`, `awaitTermination`, `take()`, a latch `await()`, or declare the executor as a later
   resource); `pmd/TaskOutlivesTryResource` reports a task that can outlive the close.
+- A local, parameter or field never takes the name of a field the class inherits from a project superclass
+  and still uses (`pmd/HiddenInheritedField`): `int size = by * 2; return size + this.size;` makes one short
+  name mean two things. Name the local after its own role (`doubled`, `processorName`); constructor and setter
+  parameters assigned to the field keep the field's name.
 - Boolean logic in its shortest exact form: `return a == b;`, not an `if` that returns `true` or
   `false`; `ready` and `!ready`, not `ready == true`; `c || x` and `c && x`, not a ternary with a
   `true` or `false` branch; `a != b`, not `!(a == b)`; one `if (a && b)`, not an `if` alone inside

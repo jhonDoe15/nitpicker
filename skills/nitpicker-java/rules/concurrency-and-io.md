@@ -116,6 +116,27 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A concurrent map is not checked and then used again for the same key (`containsKey` then `put` or `get`,
   `get(k) == null` then `put`): use `computeIfAbsent`, `putIfAbsent`, `getOrDefault`, or read once into a local
   (`pmd/ConcurrentMapCheckThenAct`).
+- An atomic field is updated with one atomic call (`incrementAndGet`, `updateAndGet`, `accumulateAndGet`), and a
+  check then act on an atomic flag is `if (flag.compareAndSet(false, true))`, never `x.set(f(x.get()))` or
+  `if (!flag.get()) { flag.set(true); ... }` (`pmd/AtomicGetThenSet`).
+- Parallel streams: a `parallelStream()` lambda never adds to or puts into a plain `ArrayList`, `HashMap`,
+  `HashSet` or `StringBuilder` created outside it: it races and loses elements. Build the result with
+  `collect(Collectors.toList())`, `toList()` or `Collectors.toMap`, or use a concurrent collection
+  (`pmd/ParallelStreamSharedMutation`).
+- Thread pools: never create a fixed pool (`Executors.newFixedThreadPool`) in a local variable and drop it: its
+  threads outlive the method and leak on every call. Share one pool (a field or an injected bean), or shut the local one down with
+  try-with-resources or `shutdown()` in `finally` (`pmd/LocalExecutorNeverShutDown`).
+- Futures: never start and wait in the same step: `map(id -> supplyAsync(...)).map(CompletableFuture::join)`
+  and `supplyAsync(...).join()` run one task at a time. Collect the futures with `toList()` first, then join
+  them in a second pipeline (`pmd/FutureJoinedWhereStarted`).
+- Clear every `ThreadLocal` value and `MDC` key a servlet filter sets: call `remove()` or `MDC.remove(key)` in a
+  `finally` around `chain.doFilter`, or use `MDC.putCloseable`, because pooled server threads carry the value into
+  the next request (`pmd/RequestThreadLocalNotCleared`).
+- Wrap the body of a task given to `scheduleAtFixedRate` or `scheduleWithFixedDelay` in a try that catches and logs
+  `RuntimeException`, because one failed database or remote call otherwise cancels every later run without a log
+  line (`pmd/ScheduledTaskStopsOnFailure`).
+- A constant regex used in a loop or a stream lambda is compiled once, in a `private static final Pattern`, not
+  by `matches`, `replaceAll` or `replaceFirst` on each element (`pmd/RegexCompiledInLoop`).
 - A `static` field or a singleton bean's field does not hold a `SimpleDateFormat`, `DecimalFormat`, `Calendar`,
   `Matcher`, `Cipher`, `Mac`, `BeanWrapper` or retry back-off: use `DateTimeFormatter`, a `Pattern` constant with
   `pattern.matcher(text)` per call, a per-call instance or a `ThreadLocal` (`pmd/SharedStatefulHelperField`).
