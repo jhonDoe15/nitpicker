@@ -23,6 +23,7 @@ import { rule as ruleNoBooleanFlagParameter } from '../rules/flags/no-boolean-fl
 import { rule as ruleNoBranchInCompositionRoot } from '../rules/boundaries/no-branch-in-composition-root.mts';
 import { rule as ruleNoBtoaOnRuntimeText } from '../rules/encoding/no-btoa-on-runtime-text.mts';
 import { rule as ruleNoBufferedGrowingOutput } from '../rules/processes/output/no-buffered-growing-output.mts';
+import { rule as ruleNoCacheAfterGuardFallback } from '../rules/recursion/guards/no-cache-after-guard-fallback.mts';
 import { rule as ruleNoCacheWriteInTransaction } from '../rules/transactions/cache-writes/no-cache-write-in-transaction.mts';
 import { rule as ruleNoCachedRejection } from '../rules/lifecycles/memo/no-cached-rejection.mts';
 import { rule as ruleNoCaseMismatchedLookup } from '../rules/lookups/no-case-mismatched-lookup.mts';
@@ -43,6 +44,7 @@ import { rule as ruleNoCostlyCollectionForm } from '../rules/collections/costly-
 import { rule as ruleNoDataloaderBatchMismatch } from '../rules/dataloaders/no-dataloader-batch-mismatch.mts';
 import { rule as ruleNoDecidedCondition } from '../rules/decided/no-decided-condition.mts';
 import { rule as ruleNoDefaultExport } from '../rules/syntax/no-default-export.mts';
+import { rule as ruleNoDepthOnlyWorklist } from '../rules/worklists/no-depth-only-worklist.mts';
 import { rule as ruleNoDevDependencyInProduction } from '../rules/dependencies/no-dev-dependency-in-production.mts';
 import { rule as ruleNoDirectoryPassingExistenceCheck } from '../rules/urls/files/no-directory-passing-existence-check.mts';
 import { rule as ruleNoDisabledTlsVerification } from '../rules/security/tls/no-disabled-tls-verification.mts';
@@ -96,8 +98,6 @@ import { rule as ruleNoLoopInvariantCopy } from '../rules/repeated-work/copies/n
 import { rule as ruleNoLossyJsonStringify } from '../rules/json-values/no-lossy-json-stringify.mts';
 import { rule as ruleNoLossyUtf8Decode } from '../rules/decoding/no-lossy-utf8-decode.mts';
 import { rule as ruleNoMagicNumbers } from '../rules/wrapped/no-magic-numbers.mts';
-import { rule as ruleNoMalformedQueryText } from '../rules/query-text/no-malformed-query-text.mts';
-import { rule as ruleNoManagedResourceConstructionOutsideCompositionRoots } from '../rules/boundaries/no-managed-resource-construction-outside-composition-roots.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -125,6 +125,7 @@ export const partRules = {
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
   'no-btoa-on-runtime-text': ruleNoBtoaOnRuntimeText,
   'no-buffered-growing-output': ruleNoBufferedGrowingOutput,
+  'no-cache-after-guard-fallback': ruleNoCacheAfterGuardFallback,
   'no-cache-write-in-transaction': ruleNoCacheWriteInTransaction,
   'no-cached-rejection': ruleNoCachedRejection,
   'no-case-mismatched-lookup': ruleNoCaseMismatchedLookup,
@@ -145,6 +146,7 @@ export const partRules = {
   'no-dataloader-batch-mismatch': ruleNoDataloaderBatchMismatch,
   'no-decided-condition': ruleNoDecidedCondition,
   'no-default-export': ruleNoDefaultExport,
+  'no-depth-only-worklist': ruleNoDepthOnlyWorklist,
   'no-dev-dependency-in-production': ruleNoDevDependencyInProduction,
   'no-directory-passing-existence-check': ruleNoDirectoryPassingExistenceCheck,
   'no-disabled-tls-verification': ruleNoDisabledTlsVerification,
@@ -198,7 +200,4 @@ export const partRules = {
   'no-lossy-json-stringify': ruleNoLossyJsonStringify,
   'no-lossy-utf8-decode': ruleNoLossyUtf8Decode,
   'no-magic-numbers': ruleNoMagicNumbers,
-  'no-malformed-query-text': ruleNoMalformedQueryText,
-  'no-managed-resource-construction-outside-composition-roots':
-    ruleNoManagedResourceConstructionOutsideCompositionRoots,
 };

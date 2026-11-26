@@ -1,3 +1,7 @@
+import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mts';
+import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mts';
+import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mts';
+import { rule as ruleNoUnencodedUrlPart } from '../rules/urls/construction/no-unencoded-url-part.mts';
 import { rule as ruleNoUnescapedCssSelector } from '../rules/selectors/no-unescaped-css-selector.mts';
 import { rule as ruleNoUnescapedFilterValue } from '../rules/patterns/filters/no-unescaped-filter-value.mts';
 import { rule as ruleNoUnescapedHtmlInterpolation } from '../rules/patterns/html/no-unescaped-html-interpolation.mts';
@@ -7,6 +11,7 @@ import { rule as ruleNoUnguardedCyclicRecursion } from '../rules/recursion/no-un
 import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-unguarded-deleted-items.mts';
 import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
 import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/no-unguarded-option-list.mts';
+import { rule as ruleNoUnguardedRecursionEntry } from '../rules/recursion/guards/no-unguarded-recursion-entry.mts';
 import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/registry/no-unguarded-registry-delete.mts';
 import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
@@ -95,6 +100,10 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
+  'no-uncollected-tests': ruleNoUncollectedTests,
+  'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
+  'no-unencoded-url-part': ruleNoUnencodedUrlPart,
   'no-unescaped-css-selector': ruleNoUnescapedCssSelector,
   'no-unescaped-filter-value': ruleNoUnescapedFilterValue,
   'no-unescaped-html-interpolation': ruleNoUnescapedHtmlInterpolation,
@@ -104,6 +113,7 @@ export const partRules = {
   'no-unguarded-deleted-items': ruleNoUnguardedDeletedItems,
   'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
   'no-unguarded-option-list': ruleNoUnguardedOptionList,
+  'no-unguarded-recursion-entry': ruleNoUnguardedRecursionEntry,
   'no-unguarded-registry-delete': ruleNoUnguardedRegistryDelete,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,

@@ -312,6 +312,46 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="CacheAfterGuardFallback" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This method stores its answer in a cache although a recursion guard in the same method refuses turns that come back to a value already in progress (if (!inProgress.add(node)) return UNKNOWN). A deeper turn may have returned that fallback, so the stored answer may be partial, and what the cache holds then depends on which caller asked first. Do not store an answer that a refused turn fed into, or store it marked as partial and compute it again when asked from outside the cycle.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $qualifier := function($call) {
+      $call/*[1][self::VariableAccess or self::FieldAccess]/@Name
+    },
+    $firstArg := function($call) {
+      $call/ArgumentList/*[1]/descendant-or-self::VariableAccess[1]/@Name
+    }
+return
+//MethodDeclaration[Block]
+  [not(.//(VariableId | VariableAccess | FieldAccess)
+         [matches(@Name, 'partial|incomplete|provisional|truncated|cutShort', 'i')])]
+  [let $name := string(@Name),
+       $class := ancestor::ClassBody[1],
+       $direct := Block//MethodCall[*[1][self::ArgumentList or self::ThisExpression]]/@MethodName
+   return $direct = $name
+     or exists($class/MethodDeclaration[@Name = $direct][@Name != $name]
+                 /Block//MethodCall[@MethodName = $name][*[1][self::ArgumentList or self::ThisExpression]])]
+  /(let $params := FormalParameters/FormalParameter/VariableId/@Name
+    return Block//IfStatement
+      [*[2][descendant-or-self::ReturnStatement]]
+      /(let $branch := .,
+            $checks := *[1]/descendant-or-self::MethodCall
+                         [(@MethodName = 'add' and parent::UnaryExpression[@Operator = '!'])
+                          or @MethodName = ('contains', 'containsKey')]
+                         [$firstArg(.) = $params]
+        return for $check in $checks
+          return ancestor::MethodDeclaration[1]/Block//MethodCall
+            [@MethodName = ('put', 'putIfAbsent')]
+            [. >> $branch][not(ancestor::IfStatement[. is $branch])]
+            [$firstArg(.) = $firstArg($check)]
+            [not($qualifier(.) = $qualifier($check))])[1])
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="CachedEntityFieldNotSerializable" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This mapped field of a second-level cached entity (@Cacheable or Hibernate @Cache) holds a project type that is not Serializable (or a collection of them). A cache that serializes entries (Ehcache with off-heap or disk tiers, a distributed cache) throws NotSerializableException on the write, or skips the entry, while tests with an in-memory cache pass. Make the type implement Serializable (public abstract class Attribute implements Serializable), mark the field @Transient or transient, or cache the entity with a JSON serializer. An exception fits a cache that keeps entries by reference.">
     <priority>3</priority>
@@ -1275,6 +1315,46 @@ let $keyCalls := ('get', 'put', 'containsKey', 'remove', 'getOrDefault', 'putIfA
     }
 return //MethodCall[@MethodName = $keyCalls][*[1][pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Set')]]
   [let $key := ArgumentList/*[1] return $joined($key)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="DepthOnlyWorklist" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This worklist loop is bounded only by a depth limit and remembers nothing it has expanded. A depth limit bounds how long one path is, not how many paths there are: when items share children (a graph, not a tree), each item is expanded once per path that reaches it, so the work grows as the fan-out to the power of the depth and can run out of memory. Keep a Set of the items already expanded and skip an item that is in it (if (!expanded.add(item)) continue).">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $takes := ('poll', 'pop', 'removeFirst', 'removeLast', 'pollFirst', 'pollLast', 'remove'),
+    $appends := ('add', 'push', 'offer', 'addLast', 'addFirst', 'offerLast', 'offerFirst', 'addAll'),
+    $nesting := ('ForeachStatement', 'ForStatement', 'WhileStatement', 'DoStatement', 'LambdaExpression'),
+    $depthName := 'depth|level|hops|distance'
+return
+//WhileStatement
+  [let $loop := .,
+       $work := (.//MethodCall[@MethodName = $takes][ArgumentList/@Size = 0]
+                   /*[1][self::VariableAccess or self::FieldAccess]/@Name)[1],
+       $adds := .//MethodCall[@MethodName = $appends][*[1][self::VariableAccess or self::FieldAccess][@Name = $work]]
+   return exists($work)
+     and (count($adds) > 1
+          or exists($adds[@MethodName = 'addAll'])
+          or (some $add in $adds satisfies
+                exists($add/ancestor::*[local-name() = $nesting][. >> $loop])))
+     and exists(.//InfixExpression[@Operator = ('<', '<=', '>', '>=')]
+                  [*[self::VariableAccess][matches(@Name, $depthName, 'i')]
+                     [@Name = $loop//LocalVariableDeclaration/VariableDeclarator/VariableId/@Name]
+                   or *[self::FieldAccess][matches(@Name, $depthName, 'i')]
+                   or *[self::MethodCall][matches(@MethodName, $depthName, 'i')]])
+     and not(.//MethodCall[@MethodName = ('contains', 'containsKey', 'putIfAbsent', 'computeIfAbsent')]
+                [not(*[1][self::VariableAccess or self::FieldAccess][@Name = $work])])
+     and not(.//MethodCall[@MethodName = ('add', 'put')]
+                [*[1][pmd-java:typeIs('java.util.Set') or pmd-java:typeIs('java.util.Map')]]
+                [not(*[1][self::VariableAccess or self::FieldAccess][@Name = $work])])
+     and not(.//AssignmentExpression[*[1][self::FieldAccess]][*[2][self::BooleanLiteral][@True = true()]])
+     and not($adds//MethodCall[@MethodName = ('getChildren', 'getChildNodes', 'children', 'getChild')]
+             | $adds/ancestor::ForeachStatement[. >> $loop]/*[2]
+                 /descendant-or-self::MethodCall[@MethodName = ('getChildren', 'getChildNodes', 'children')]
+             | $adds//FieldAccess[@Name = 'children'])]
 ]]></value>
       </property>
     </properties>
@@ -3377,6 +3457,41 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="OperandDepthRecursion" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This method calls itself on both operands of its parameter (getLeft() and getRight()), so the call stack grows with the length of an operand chain. Generated code (a string of thousands of + operands, a long else-if ladder, a builder chain) nests far deeper than hand-written tests, and the walk ends in a StackOverflowError that no caller catches. Walk the left-leaning chain in a loop and recurse only into the right operand, use an explicit Deque, or pass a depth and throw an ordinary exception past a limit.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $operand := function($e, $p, $name) {
+      let $inner := ($e/self::CastExpression/*[last()], $e)[1]
+      return exists($inner/self::MethodCall[@MethodName = $name][ArgumentList/@Size = 0]
+                      [*[1][self::VariableAccess[@Name = $p]]]
+                    | $inner/self::FieldAccess[@Name = $name][*[1][self::VariableAccess[@Name = $p]]])
+    },
+    $lefts := ('getLeft', 'getLeftOperand', 'left', 'getLhs', 'lhs'),
+    $rights := ('getRight', 'getRightOperand', 'right', 'getRhs', 'rhs'),
+    $context := 'operator|binary|infix|operand'
+return
+//MethodDeclaration[Block]
+  [not(FormalParameters/FormalParameter/VariableId[matches(@Name, 'depth|level|limit|remaining|budget', 'i')])]
+  [let $params := FormalParameters/FormalParameter/VariableId/@Name
+   return not(.//InfixExpression[@Operator = ('<', '<=', '>', '>=')][*[self::VariableAccess][@Name = $params]])]
+  [.//(MethodCall/@MethodName | ClassType/@SimpleName | VariableAccess/@Name | FieldAccess/@Name | StringLiteral/@Image)
+     [matches(., $context, 'i')]]
+  /(let $m := ., $name := @Name, $arity := count(FormalParameters/FormalParameter)
+    return (for $p in FormalParameters/FormalParameter/VariableId/@Name,
+                $index in 1 to count($lefts)
+            return
+              let $self := $m/Block//MethodCall[@MethodName = $name][ArgumentList/@Size = $arity]
+                             [*[1][self::ArgumentList or self::ThisExpression]]
+              return if (exists($self[ArgumentList/*[$operand(., $p, $rights[$index])]]))
+                     then ($self[ArgumentList/*[$operand(., $p, $lefts[$index])]])[1]
+                     else ())[1])
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="OppositeBoundAssigned" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This variable is named for one end of a pair (max, afterPath, nextIndex) but is assigned from the accessor of the opposite end (getMin(), getBeforePath(), getPreviousIndex()). A neighbouring line was copied and only one side of it was edited, so the wrong bound flows into the rest of the method and the code still compiles. Assign from the accessor that matches the name (int max = range.getMax();), or rename the variable if the opposite end is what it holds. An exception fits a name that mentions both ends.">
     <priority>3</priority>
@@ -4354,6 +4469,57 @@ return //ClassBody/FieldDeclaration
       and (if (empty($uses)) then not(pmd-java:modifiers() = 'private')
            else ((some $u in $uses satisfies not($guarded($u)))
                  and not(every $u in $uses satisfies $readOnly($u))))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="ShrinkingWorklistJoin" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This worklist pass joins the output of each block into the stored input of its successor (input.get(next).addAll(out)), but the transfer removes facts from a copy of the state depending on the facts it holds (removeIf, retainAll, clear, or remove and removeAll of values taken from the state). A join never takes back what an earlier pass sent along the same edge, so the successor keeps an old, stronger fact after the loop comes round with a weaker one, and the pass reports results that are not true. Store the last output per edge and recompute the input of a block from all of them whenever one changes, or make the transfer only add facts.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $takes := ('poll', 'pop', 'removeFirst', 'removeLast', 'pollFirst', 'pollLast', 'remove'),
+    $appends := ('add', 'push', 'offer', 'addLast', 'addFirst', 'offerLast', 'offerFirst'),
+    $names := function($e) {
+      $e/descendant-or-self::*[self::VariableAccess or self::FieldAccess]/@Name
+    },
+    $stateOf := function($e, $key) {
+      $e/self::MethodCall[@MethodName = 'get'][ArgumentList/*[1][self::VariableAccess[@Name = $key]]]
+        /*[1][self::VariableAccess or self::FieldAccess]/@Name
+    },
+    $removes := function($scope, $sources) {
+      let $copies := $scope//LocalVariableDeclaration/VariableDeclarator[$names(*[2]) = $sources]/VariableId/@Name,
+          $facts := ($copies, $sources)
+      return exists($scope//MethodCall[*[1][self::VariableAccess][@Name = $copies]]
+                      [@MethodName = ('removeIf', 'retainAll', 'clear')
+                       or (@MethodName = ('remove', 'removeAll') and $names(ArgumentList/*[1]) = $facts)])
+    }
+return
+//WhileStatement
+  /(let $loop := .,
+        $class := ancestor::ClassBody[1],
+        $work := (.//MethodCall[@MethodName = $takes][ArgumentList/@Size = 0]
+                    /*[1][self::VariableAccess or self::FieldAccess]/@Name)[1]
+    return .//IfStatement
+      /(let $key := *[position() > 1]//MethodCall[@MethodName = $appends]
+                      [*[1][self::VariableAccess or self::FieldAccess][@Name = $work]]
+                      /ArgumentList/*[1][self::VariableAccess]/@Name
+        return *[1]/descendant-or-self::MethodCall
+          [matches(@MethodName, '^(join|merge|union|meet|widen|addAll)', 'i')]
+          [let $state := (for $part in (*[1], ArgumentList/*), $k in $key return $stateOf($part, $k))[1]
+           return exists($state)
+             and ($removes($loop/*[last()], $state)
+                  or (some $call in $loop//MethodCall
+                                      [*[1][self::ArgumentList or self::ThisExpression or self::TypeExpression]]
+                      satisfies
+                        (some $method in $class/MethodDeclaration[@Name = $call/@MethodName]
+                                           [count(FormalParameters/FormalParameter) = $call/ArgumentList/@Size]
+                         satisfies $removes($method/Block,
+                           ($state, for $i in 1 to count($method/FormalParameters/FormalParameter)
+                                    return if ($names($call/ArgumentList/*[$i]) = $state)
+                                           then $method/FormalParameters/FormalParameter[$i]/VariableId/@Name
+                                           else ())))))]))
 ]]></value>
       </property>
     </properties>
@@ -5356,6 +5522,59 @@ return //(MethodCall | ConstructorCall)[$fresh(., $fresh)]
       </property>
     </properties>
   </rule>
+  <rule name="UnguardedCyclicRecursion" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This method calls itself with a value reached from its parameter through a reference that can lead back (dependencies, references, a cause chain, interfaces), and nothing remembers what it has visited. A cycle ends in a StackOverflowError, and a node shared by two paths (a diamond of interfaces, a shared dependency) is walked once per path, so the cost grows exponentially with depth. Pass a Set of visited values and return when the value is already in it (if (!visited.add(task)) return), or stop at a depth limit.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $guardName := 'depth|level|seen|visited|visiting|stack|memo|cache|limit|remaining|budget|ttl',
+    $getters := ('getCause', 'getCauses', 'getParents', 'getReferences', 'getDependencies', 'getDependents',
+                 'getDeps', 'getImporters', 'getImports', 'getEdges', 'getLinks', 'getNeighbors', 'getNeighbours',
+                 'getSupertypes', 'getSuperTypes', 'getInterfaces', 'getBases', 'getBaseTypes', 'getSuppressed'),
+    $fields := ('cause', 'causes', 'parents', 'references', 'dependencies', 'dependents', 'deps', 'importers',
+                'imports', 'edges', 'links', 'neighbors', 'supertypes', 'bases', 'baseTypes'),
+    $step := function($e, $p) {
+      exists($e/descendant-or-self::MethodCall[@MethodName = $getters][*[1][self::VariableAccess[@Name = $p]]]
+             | $e/descendant-or-self::FieldAccess[@Name = $fields][*[1][self::VariableAccess[@Name = $p]]])
+    },
+    $reached := function($arg, $p, $m) {
+      let $inner := ($arg/self::CastExpression/*[last()], $arg)[1]
+      return exists($inner/self::MethodCall[@MethodName = 'getCause'][*[1][self::VariableAccess[@Name = $p]]]
+                    | $inner/self::FieldAccess[@Name = 'cause'][*[1][self::VariableAccess[@Name = $p]]])
+        or (some $v in $inner/self::VariableAccess/@Name satisfies
+              exists($m//ForeachStatement[LocalVariableDeclaration/VariableDeclarator/VariableId/@Name = $v]
+                                         [$step(*[2], $p)]
+                     | $m//LambdaExpression[LambdaParameterList/LambdaParameter/VariableId/@Name = $v]
+                         [$step(ancestor::MethodCall[1], $p)]
+                     | $m//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $v][$step(*[2], $p)]))
+    },
+    $treeTypes := ('com.github.javaparser.ast.Node', 'org.w3c.dom.Node', 'com.fasterxml.jackson.databind.JsonNode',
+                   'com.google.gson.JsonElement', 'java.io.File', 'java.nio.file.Path', 'com.sun.source.tree.Tree',
+                   'javax.lang.model.element.Element', 'org.eclipse.jdt.core.dom.ASTNode')
+return
+//MethodDeclaration[Block]
+  [not(.//VariableId[matches(@Name, $guardName, 'i')])]
+  [let $locals := .//LocalVariableDeclaration/VariableDeclarator/VariableId/@Name
+   return not(.//(VariableAccess | FieldAccess)
+                [matches(@Name, $guardName, 'i')
+                 or ((pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map'))
+                     and not(@Name = $locals))])]
+  /(let $m := ., $name := @Name, $arity := count(FormalParameters/FormalParameter)
+    return (for $param in FormalParameters/FormalParameter
+                [not(some $t in $treeTypes satisfies VariableId[pmd-java:typeIs($t)])]
+            return
+              let $p := $param/VariableId/@Name,
+                  $index := count($param/preceding-sibling::FormalParameter) + 1
+              return ($m/Block//MethodCall[@MethodName = $name][ArgumentList/@Size = $arity]
+                        [*[1][self::ArgumentList or self::ThisExpression]]
+                        [$reached(ArgumentList/*[$index], $p, $m)]
+                        [not(ArgumentList/*[$index][pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Map')])
+                         or $param/VariableId[pmd-java:typeIs('java.lang.Iterable')]])[1])[1])
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="UnguardedOptionList" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This option of a process the method starts takes its value from a list that a filter or a directory listing in this method can leave empty, and nothing checks its size. With an empty list the tool gets an empty value (--dir &quot;&quot;), and most tools then fall back to their default (the working directory, every file) or reject the run. Check the list first (if (dirs.isEmpty()) return) and skip the option, or the run, when it is empty.">
     <priority>3</priority>
@@ -5388,6 +5607,49 @@ return
      and count($m//VariableAccess[@Name = $name]) = 1
      and exists($m//(ConstructorCall[pmd-java:typeIs('java.lang.ProcessBuilder')]
                      | MethodCall[@MethodName = 'exec'][*[1][pmd-java:typeIs('java.lang.Runtime')]]))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="UnguardedRecursionEntry" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This method enters the same recursion as a sibling method of the class (both call a method that calls them back), but only the sibling checks a re-entry guard (a visited set, an in-progress map, a turn counter or a memo) before going on. A turn that comes in through this method is never refused, so nested input makes each turn redo the whole recursion and the work grows exponentially. Check the same guard here, or route this entry point through the guarded sibling.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//ClassBody
+  /(let $body := .,
+        $methods := MethodDeclaration[Block],
+        $names := MethodDeclaration/@Name,
+        $guards := FieldDeclaration/VariableDeclarator/VariableId
+                     [pmd-java:typeIs('java.util.Set') or pmd-java:typeIs('java.util.Map')]/@Name,
+        $calls := function($n) {
+          distinct-values($body/MethodDeclaration[@Name = $n]/Block//MethodCall
+                            [*[1][self::ArgumentList or self::ThisExpression]]/@MethodName[. = $names])
+        },
+        $guardsOf := function($m) {
+          $m/Block//MethodCall
+            [@MethodName = ('add', 'contains', 'containsKey', 'put', 'get', 'remove', 'computeIfAbsent',
+                            'putIfAbsent', 'merge', 'getOrDefault')]
+            [ArgumentList/*[1]/descendant-or-self::VariableAccess[1]/@Name
+               = $m/FormalParameters/FormalParameter/VariableId/@Name]
+            /*[1][self::VariableAccess or self::FieldAccess][@Name = $guards]/@Name
+        }
+    return
+      let $reach := function($n) {
+            let $direct := $calls($n)
+            return distinct-values(($direct, for $x in $direct return $calls($x)))
+          },
+          $sentries := $methods[exists($guardsOf(.))]
+      return $methods
+        [let $node := .,
+             $entry := string(@Name),
+             $out := $calls($entry)
+         return some $a in $sentries[@Name != $entry] satisfies
+           not($node//(VariableAccess | FieldAccess)[@Name = $guardsOf($a)])
+           and not($out = string($a/@Name))
+           and (some $s in $calls(string($a/@Name))[. = $out][. != string($a/@Name)][. != $entry] satisfies
+                  ($reach($s) = string($a/@Name)) and ($reach($s) = $entry))])
 ]]></value>
       </property>
     </properties>
