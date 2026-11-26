@@ -224,6 +224,8 @@ pub struct Field {
     pub is_private: bool,
     /// Annotated with `@org.mockito.Mock` and no explicit `answer`.
     pub mock: bool,
+    /// Full names of the annotations on the field.
+    pub annotations: Vec<String>,
     pub flags: u32,
 }
 

@@ -16,4 +16,26 @@ public abstract class ImmutableList<E> extends ImmutableCollection<E> implements
   public static <E> ImmutableList<E> copyOf(java.util.Collection<? extends E> elements) {
     return null;
   }
+
+  public static <E> Builder<E> builder() {
+    return new Builder<>();
+  }
+
+  public static <E> java.util.stream.Collector<E, ?, ImmutableList<E>> toImmutableList() {
+    return null;
+  }
+
+  public static class Builder<E> {
+    public Builder<E> add(E element) {
+      return this;
+    }
+
+    public Builder<E> addAll(Iterable<? extends E> elements) {
+      return this;
+    }
+
+    public ImmutableList<E> build() {
+      return null;
+    }
+  }
 }

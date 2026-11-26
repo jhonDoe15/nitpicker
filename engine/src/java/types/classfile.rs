@@ -209,6 +209,8 @@ struct Attributes<'a> {
     /// Positions of the type parameters with `@ImmutableTypeParameter`.
     strict: Vec<u8>,
     annotations: Vec<&'a [u8]>,
+    /// Constant pool index of the value of `optional` on `@Inject`.
+    optional: Option<u16>,
     parameter_annotations: Vec<Vec<&'a [u8]>>,
     targets: Option<u16>,
     annotated_parameters: usize,
@@ -412,6 +414,18 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                     for _ in 0..reader.u2()? {
                         reader.skip(2)?;
                         enum_names(reader, utf8, &mut found.incompatible)?;
+                    }
+                }
+                if kind == b"Lcom/google/inject/Inject;" {
+                    reader.at = begin + 2;
+                    for _ in 0..reader.u2()? {
+                        let key = utf8(reader.u2()?);
+                        if key == Some(b"optional") && reader.data.get(reader.at) == Some(&b'Z') {
+                            reader.skip(1)?;
+                            found.optional = Some(reader.u2()?);
+                        } else {
+                            skip_element(reader)?;
+                        }
                     }
                 }
                 if kind == b"Lorg/mockito/Mock;" {
@@ -760,7 +774,11 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
             let kind = Signature { text: descriptor, at: 0, written_bounds: Vec::new() }.kind()?;
             let generic = signature.and_then(|text| Signature { text, at: 0, written_bounds: Vec::new() }.kind()).unwrap_or_else(|| kind.clone());
             field_marks.push((fields.len(), marks, descriptor));
-            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, number, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, mock: found.mock, flags: member_flags(flags, &found) | if flags & 0x0040 != 0 { flag::VOLATILE } else { 0 } | if flags & 0x4000 != 0 { flag::ENUM } else { 0 } });
+            let mut annotations: Vec<String> = found.annotations.iter().filter_map(|kind| annotation_name(kind)).collect();
+            if found.optional.is_some_and(|index| matches!(pool.get(index as usize), Some(Constant::Int(value)) if *value != 0)) {
+                annotations.push("com.google.inject.Inject#optional".to_string());
+            }
+            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, number, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, mock: found.mock, annotations, flags: member_flags(flags, &found) | if flags & 0x0040 != 0 { flag::VOLATILE } else { 0 } | if flags & 0x4000 != 0 { flag::ENUM } else { 0 } });
         }
     }
     let mut methods = Vec::new();

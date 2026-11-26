@@ -12,10 +12,15 @@ use std::collections::HashMap;
 use tree_sitter::Node;
 
 /// A constant expression: `key` tells two of them apart, `shown` is how Error Prone prints it.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Ce {
     pub key: String,
     pub shown: String,
+    /// Reads a variable that is not static, `this` included: what Error Prone's visitor sees as an identifier.
+    pub ident: bool,
+    /// The method this stands for a call of, and the key of its receiver.
+    pub method: Option<String>,
+    pub receiver: Option<String>,
 }
 
 const STATIC_CLASSES: [&str; 29] = [
@@ -61,7 +66,7 @@ impl<'c, 'a, 't> Constants<'c, 'a, 't> {
         match node.kind() {
             "binary_expression" if super::shape::folded_strings(node) => {
                 let value = context.resolver.constant_string(node)?;
-                Some(Ce { key: format!("S:{value}"), shown: value })
+                Some(Ce { key: format!("S:{value}"), shown: value, ..Default::default() })
             }
             "binary_expression" => {
                 let operator = node.child_by_field_name("operator").map(|operator| context.text(operator))?;
@@ -71,9 +76,9 @@ impl<'c, 'a, 't> Constants<'c, 'a, 't> {
                 let left = self.expression(node.child_by_field_name("left")?)?;
                 let right = self.expression(node.child_by_field_name("right")?)?;
                 let (first, second) = if left.key <= right.key { (&left, &right) } else { (&right, &left) };
-                Some(Ce { key: format!("E({},{})", first.key, second.key), shown: format!("{} equals {}", left.shown, right.shown) })
+                Some(Ce { key: format!("E({},{})", first.key, second.key), shown: format!("{} equals {}", left.shown, right.shown), ident: left.ident || right.ident, ..Default::default() })
             }
-            "this" => Some(Ce { key: "this".to_string(), shown: "this".to_string() }),
+            "this" => Some(Ce { key: "this".to_string(), shown: "this".to_string(), ident: true, ..Default::default() }),
             "identifier" => self.identifier(node),
             "field_access" => self.field(node),
             "method_invocation" => self.invocation(node),
@@ -91,21 +96,22 @@ impl<'c, 'a, 't> Constants<'c, 'a, 't> {
                 if matches!(holder.kind(), "field_declaration" | "constant_declaration") {
                     let class = enclosing_type(context.file, context.resolver.scope, declarator)?;
                     let fixed = holder.kind() == "constant_declaration" || has_modifier(holder, "final");
-                    return fixed.then(|| Ce { key: format!("f:{class}.{name}"), shown: name });
+                    let ident = holder.kind() != "constant_declaration" && !has_modifier(holder, "static");
+                    return fixed.then(|| Ce { key: format!("f:{class}.{name}"), shown: name, ident, ..Default::default() });
                 }
                 let final_local = has_modifier(holder, "final") || self.effectively_final(declarator, node, holder.kind() == "local_variable_declaration" && declarator.child_by_field_name("value").is_none());
-                final_local.then(|| Ce { key: format!("v{}", declarator.start_byte()), shown: name })
+                final_local.then(|| Ce { key: format!("v{}", declarator.start_byte()), shown: name, ident: true, ..Default::default() })
             }
             Some(Named::Other(declaration)) => {
                 if declaration.kind() == "enum_constant" {
                     let class = enclosing_type(context.file, context.resolver.scope, declaration)?;
-                    return Some(Ce { key: format!("f:{class}.{name}"), shown: name });
+                    return Some(Ce { key: format!("f:{class}.{name}"), shown: name, ..Default::default() });
                 }
                 let final_one = has_modifier(declaration, "final") || self.effectively_final(declaration, node, false);
-                final_one.then(|| Ce { key: format!("v{}", declaration.start_byte()), shown: name })
+                final_one.then(|| Ce { key: format!("v{}", declaration.start_byte()), shown: name, ident: true, ..Default::default() })
             }
             None => match context.resolver.binding(node, &name)? {
-                Binding::Field(_, info, field) => (field.flags & flag::FINAL != 0).then(|| Ce { key: format!("f:{}.{name}", info.name), shown: name }),
+                Binding::Field(_, info, field) => (field.flags & flag::FINAL != 0).then(|| Ce { key: format!("f:{}.{name}", info.name), shown: name, ident: field.flags & flag::STATIC == 0, ..Default::default() }),
                 Binding::Local(_) => None,
             },
         }
@@ -151,7 +157,7 @@ impl<'c, 'a, 't> Constants<'c, 'a, 't> {
         match context.resolver.receiver(object)? {
             Receiver::Static(owner) => {
                 let (info, found) = context.resolver.index.field(&owner, &field)?;
-                (found.flags & flag::FINAL != 0).then(|| Ce { key: format!("f:{}.{field}", info.name), shown: field })
+                (found.flags & flag::FINAL != 0).then(|| Ce { key: format!("f:{}.{field}", info.name), shown: field, ..Default::default() })
             }
             Receiver::Value(kind) => {
                 let receiver = self.expression(object)?;
@@ -166,7 +172,7 @@ impl<'c, 'a, 't> Constants<'c, 'a, 't> {
                     }
                     _ => return None,
                 };
-                Some(Ce { key: format!("{key}@{}", receiver.key), shown: format!("{}.{field}", receiver.shown) })
+                Some(Ce { key: format!("{key}@{}", receiver.key), shown: format!("{}.{field}", receiver.shown), ident: true, ..Default::default() })
             }
         }
     }
@@ -195,7 +201,8 @@ impl<'c, 'a, 't> Constants<'c, 'a, 't> {
         let owner = if method.is_static { format!("{}.", resolved.declaring.rsplit('.').next().unwrap_or_default()) } else { String::new() };
         let shown_arguments: Vec<&str> = arguments.iter().map(|argument| argument.shown.as_str()).collect();
         let shown = format!("{}{owner}{}({})", receiver.as_ref().map_or(String::new(), |receiver| format!("{}.", receiver.shown)), method.name, shown_arguments.join(", "));
-        Some(Ce { key, shown })
+        let ident = receiver.as_ref().is_some_and(|receiver| receiver.ident) || arguments.iter().any(|argument| argument.ident);
+        Some(Ce { key, shown, ident, method: Some(method.name.clone()), receiver: receiver.as_ref().map(|receiver| receiver.key.clone()) })
     }
 
     fn immutable_type(&self, kind: Option<Type>) -> bool {
@@ -270,7 +277,7 @@ fn negative_literal(context: &Context, node: Node) -> Option<Ce> {
         return None;
     }
     let long = text.ends_with(['l', 'L']);
-    Some(Ce { key: format!("{}:-{digits}", if long { "J" } else { "I" }), shown: format!("-{digits}") })
+    Some(Ce { key: format!("{}:-{digits}", if long { "J" } else { "I" }), shown: format!("-{digits}"), ..Default::default() })
 }
 
 fn literal(context: &Context, node: Node) -> Option<Ce> {
@@ -291,5 +298,5 @@ fn literal(context: &Context, node: Node) -> Option<Ce> {
         kind if kind.ends_with("_literal") => (format!("L:{text}"), text.to_string()),
         _ => return None,
     };
-    Some(Ce { key, shown })
+    Some(Ce { key, shown, ..Default::default() })
 }
