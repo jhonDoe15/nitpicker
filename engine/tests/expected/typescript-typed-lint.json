@@ -401,5 +401,284 @@
   1,
   1,
   ""
+ ],
+ [
+  "src/promises/detached.ts",
+  "nitpicker/no-unhandled-void-promise",
+  10,
+  3,
+  "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`.",
+  10,
+  20
+ ],
+ [
+  "src/promises/detached.ts",
+  "nitpicker/no-unhandled-void-promise",
+  11,
+  3,
+  "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`.",
+  11,
+  25
+ ],
+ [
+  "src/promises/detached.ts",
+  "nitpicker/no-unhandled-void-promise",
+  12,
+  3,
+  "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`.",
+  12,
+  38
+ ],
+ [
+  "src/promises/detached.ts",
+  "nitpicker/no-unhandled-void-promise",
+  13,
+  3,
+  "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`.",
+  13,
+  19
+ ],
+ [
+  "src/promises/detached.ts",
+  "nitpicker/no-unhandled-void-promise",
+  14,
+  3,
+  "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`.",
+  14,
+  11
+ ],
+ [
+  "src/promises/detached.ts",
+  "nitpicker/no-unhandled-void-promise",
+  16,
+  3,
+  "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`.",
+  18,
+  7
+ ],
+ [
+  "src/spreads/keys.ts",
+  "nitpicker/no-shadowed-spread-key",
+  11,
+  12,
+  "`id` is written before a spread whose type can carry `id`, so the spread value replaces this one. Write the spread first (`{ ...data, id }`).",
+  11,
+  14
+ ],
+ [
+  "src/spreads/keys.ts",
+  "nitpicker/no-shadowed-spread-key",
+  15,
+  34,
+  "`mode` is set after a spread of caller options whose type allows `mode`, so the caller value is ignored. Put the default before the spread, or use `options.mode ?? value`.",
+  15,
+  50
+ ],
+ [
+  "src/spreads/keys.ts",
+  "nitpicker/no-shadowed-spread-key",
+  19,
+  24,
+  "`retries` is set after a spread of caller options whose type allows `retries`, so the caller value is ignored. Put the default before the spread, or use `options.retries ?? value`.",
+  19,
+  34
+ ],
+ [
+  "src/spreads/keys.ts",
+  "nitpicker/no-shadowed-spread-key",
+  23,
+  24,
+  "`mode` is set after a spread of caller options whose type allows `mode`, so the caller value is ignored. Put the default before the spread, or use `options.mode ?? value`.",
+  23,
+  36
+ ],
+ [
+  "src/spreads/lists.ts",
+  "nitpicker/no-parameter-mutation",
+  2,
+  3,
+  "`target.push` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  2,
+  24
+ ],
+ [
+  "src/spreads/lists.ts",
+  "nitpicker/no-array-spread-arguments",
+  2,
+  15,
+  "Spreading a list into `push`, `unshift`, `splice`, `Math.max`, `Math.min` or `String.fromCharCode` passes each item as an argument, and the call throws `RangeError: Maximum call stack size exceeded` once the list reaches about 125,000 items. Append with a loop (`for (const item of items) target.push(item)`), use `concat`, or compare item by item for a largest or smallest value. An exception fits only when the list is always short.",
+  2,
+  23
+ ],
+ [
+  "src/spreads/lists.ts",
+  "nitpicker/no-array-spread-arguments",
+  3,
+  19,
+  "Spreading a list into `push`, `unshift`, `splice`, `Math.max`, `Math.min` or `String.fromCharCode` passes each item as an argument, and the call throws `RangeError: Maximum call stack size exceeded` once the list reaches about 125,000 items. Append with a loop (`for (const item of items) target.push(item)`), use `concat`, or compare item by item for a largest or smallest value. An exception fits only when the list is always short.",
+  3,
+  26
+ ],
+ [
+  "src/spreads/lists.ts",
+  "nitpicker/no-array-spread-arguments",
+  4,
+  24,
+  "Spreading a list into `push`, `unshift`, `splice`, `Math.max`, `Math.min` or `String.fromCharCode` passes each item as an argument, and the call throws `RangeError: Maximum call stack size exceeded` once the list reaches about 125,000 items. Append with a loop (`for (const item of items) target.push(item)`), use `concat`, or compare item by item for a largest or smallest value. An exception fits only when the list is always short.",
+  4,
+  32
+ ],
+ [
+  "src/spreads/lists.ts",
+  "nitpicker/no-array-spread-arguments",
+  8,
+  19,
+  "Spreading a list into `push`, `unshift`, `splice`, `Math.max`, `Math.min` or `String.fromCharCode` passes each item as an argument, and the call throws `RangeError: Maximum call stack size exceeded` once the list reaches about 125,000 items. Append with a loop (`for (const item of items) target.push(item)`), use `concat`, or compare item by item for a largest or smallest value. An exception fits only when the list is always short.",
+  8,
+  28
+ ],
+ [
+  "src/spreads/lists.ts",
+  "nitpicker/no-array-spread-arguments",
+  13,
+  30,
+  "Spreading a list into `push`, `unshift`, `splice`, `Math.max`, `Math.min` or `String.fromCharCode` passes each item as an argument, and the call throws `RangeError: Maximum call stack size exceeded` once the list reaches about 125,000 items. Append with a loop (`for (const item of items) target.push(item)`), use `concat`, or compare item by item for a largest or smallest value. An exception fits only when the list is always short.",
+  13,
+  39
+ ],
+ [
+  "src/spreads/lists.ts",
+  "nitpicker/no-array-spread-arguments",
+  13,
+  52,
+  "Spreading a list into `push`, `unshift`, `splice`, `Math.max`, `Math.min` or `String.fromCharCode` passes each item as an argument, and the call throws `RangeError: Maximum call stack size exceeded` once the list reaches about 125,000 items. Append with a loop (`for (const item of items) target.push(item)`), use `concat`, or compare item by item for a largest or smallest value. An exception fits only when the list is always short.",
+  13,
+  60
+ ],
+ [
+  "src/spreads/lists.ts",
+  "nitpicker/no-array-spread-arguments",
+  13,
+  73,
+  "Spreading a list into `push`, `unshift`, `splice`, `Math.max`, `Math.min` or `String.fromCharCode` passes each item as an argument, and the call throws `RangeError: Maximum call stack size exceeded` once the list reaches about 125,000 items. Append with a loop (`for (const item of items) target.push(item)`), use `concat`, or compare item by item for a largest or smallest value. An exception fits only when the list is always short.",
+  13,
+  81
+ ],
+ [
+  "src/delegation/methods.ts",
+  "nitpicker/no-dropped-delegate-result",
+  25,
+  5,
+  "`update` delegates to `queries.update` but drops its result; return it.",
+  25,
+  23
+ ],
+ [
+  "src/delegation/methods.ts",
+  "nitpicker/no-dropped-delegate-result",
+  37,
+  5,
+  "`load` delegates to `queries.load` but drops its result; return it.",
+  37,
+  20
+ ],
+ [
+  "src/delegation/methods.ts",
+  "nitpicker/no-dropped-delegate-result",
+  45,
+  5,
+  "`either` delegates to `queries.either` but drops its result; return it.",
+  45,
+  22
+ ],
+ [
+  "src/delegation/methods.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  57,
+  5,
+  "domain/ code does not mutate values, and Map.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  57,
+  19
+ ],
+ [
+  "src/delegation/methods.ts",
+  "nitpicker/no-dropped-delegate-result",
+  73,
+  5,
+  "`loadAll` delegates to `unions.loadAll` but drops its result; return it.",
+  73,
+  28
+ ],
+ [
+  "src/delegation/methods.ts",
+  "nitpicker/no-dropped-delegate-result",
+  93,
+  5,
+  "`update` delegates to `queries.update` but drops its result; return it.",
+  93,
+  22
+ ],
+ [
+  "src/forwarding/aliases.ts",
+  "nitpicker/no-forwarding-method-alias",
+  15,
+  3,
+  "`total` only forwards its parameters to `sum` and has the same parameter and return types. Call `sum` directly and delete `total`.",
+  15,
+  8
+ ],
+ [
+  "src/forwarding/aliases.ts",
+  "nitpicker/no-forwarding-method-alias",
+  21,
+  3,
+  "`size` only forwards its parameters to `count` and has the same parameter and return types. Rename `count` to `size` and delete the alias.",
+  21,
+  7
+ ],
+ [
+  "src/forwarding/aliases.ts",
+  "nitpicker/no-forwarding-wrapper",
+  35,
+  8,
+  "`loadUser` only forwards its parameters to `fetchUser` and has the same parameter and return types. Delete it and export `fetchUser` in its place with `export { fetchUser as loadUser }`, or call `fetchUser` directly.",
+  37,
+  2
+ ],
+ [
+  "src/forwarding/aliases.ts",
+  "nitpicker/no-forwarding-wrapper",
+  39,
+  14,
+  "`loadWith` only forwards its parameters to `fetchWith` and has the same parameter and return types. Delete it and export `fetchWith` in its place with `export { fetchWith as loadWith }`, or call `fetchWith` directly.",
+  39,
+  77
+ ],
+ [
+  "src/forwarding/aliases.ts",
+  "nitpicker/no-forwarding-wrapper",
+  41,
+  7,
+  "`loadLocal` only forwards its parameters to `loadRemote` and has the same parameter and return types. Call `loadRemote` directly where `loadLocal` is used and delete the wrapper.",
+  41,
+  61
+ ],
+ [
+  "src/forwarding/aliases.ts",
+  "nitpicker/no-forwarding-wrapper",
+  43,
+  8,
+  "`loadAsync` only forwards its parameters to `loadLocal` and has the same parameter and return types. Delete it and export `loadLocal` in its place with `export { loadLocal as loadAsync }`, or call `loadLocal` directly.",
+  45,
+  2
+ ],
+ [
+  "src/edges/globals.ts",
+  "nitpicker/no-forwarding-method-alias",
+  18,
+  3,
+  "`2` only forwards its parameters to `total` and has the same parameter and return types. Call `total` directly and delete `2`.",
+  18,
+  5
  ]
 ]
