@@ -119,17 +119,21 @@ function skippedFinding(
   ];
   const why =
     failedNames.length > 0
-      ? `a module they depend on failed (${failedNames.join(', ')})`
-      : `a module they depend on failed. Maven: ${causes.join('\n') || 'see the Maven output'}`;
-  const count = names.length === 1 ? '1 module' : `${String(names.length)} modules`;
+      ? `failed (${failedNames.join(', ')})`
+      : `failed. Maven: ${causes.join('\n') || 'see the Maven output'}`;
+  const one = names.length === 1;
+  const skippedBecause = one
+    ? 'It was skipped because a module it depends on'
+    : 'They were skipped because a module they depend on';
+  const count = one ? '1 module' : `${String(names.length)} modules`;
   return {
     tool: 'maven',
     rule: MODULE_BUILD_FAILED_RULE,
     path: '.',
     identity: `${MODULE_BUILD_FAILED_RULE}:dependents`,
     message:
-      `Maven did not build ${count} (${listed(names)}), so their checks did not run; the other modules were ` +
-      `checked. They were skipped because ${why}`,
+      `Maven did not build ${count} (${listed(names)}), so ${one ? 'its' : 'their'} checks did not run; the other ` +
+      `modules were checked. ${skippedBecause} ${why}`,
     classification: 'tool-error',
   };
 }

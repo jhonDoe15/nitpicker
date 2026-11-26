@@ -97,8 +97,8 @@ describe('a Maven reactor where one module fails', () => {
         path: '.',
         identity: `${MODULE_BUILD_FAILED_RULE}:dependents`,
         message:
-          'Maven did not build 1 module (app), so their checks did not run; the other modules were checked. ' +
-          'They were skipped because a module they depend on failed (ui)',
+          'Maven did not build 1 module (app), so its checks did not run; the other modules were checked. ' +
+          'It was skipped because a module it depends on failed (ui)',
         classification: 'tool-error',
       },
     ]);
