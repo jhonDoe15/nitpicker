@@ -184,6 +184,45 @@ describe('spotbugsResultOf', () => {
     ).toStrictEqual(['p.K', 'p.K.clone()']);
   });
 
+  it('places a finding on the file of the class it names first', () => {
+    const result = spotbugsResultOf({
+      file: '/src/p/Sub.java',
+      rule: 'EQ_DOESNT_OVERRIDE_EQUALS',
+      line: 1,
+      message: '',
+      symbol: 'function:q.Base.equals(Object)',
+      priority: 2,
+      arguments: ['p.Sub', 'q.Base.equals(Object)'],
+    });
+
+    expect(result.locations[0].physicalLocation.artifactLocation.uri).toBe('p/Sub.java');
+    expect(result.locations[0].logicalLocations).toStrictEqual([
+      {
+        name: 'q.Base.equals(Object)',
+        kind: 'function',
+        fullyQualifiedName: 'q.Base.equals(Object)',
+      },
+    ]);
+  });
+
+  it('leaves out the region of a finding without a line', () => {
+    const result = spotbugsResultOf({
+      file: '/src/p/A.java',
+      rule: 'SE_BAD_FIELD',
+      line: 0,
+      message: '',
+      symbol: 'member:p.A.t',
+      priority: 1,
+      arguments: ['p.A', 't'],
+    });
+
+    expect(result.level).toBe('warning');
+    expect(result.locations[0].physicalLocation).toStrictEqual({
+      artifactLocation: { uri: 'p/A.java' },
+    });
+    expect(result.locations[0].logicalLocations[0].name).toBe('A.t');
+  });
+
   it('refuses a message it cannot read', () => {
     expect(() => resultOf('EI_EXPOSE_REP', 'something else')).toThrow(/cannot read/u);
     expect(() => resultOf('OTHER_PATTERN', 'x')).toThrow(/OTHER_PATTERN/u);
