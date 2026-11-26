@@ -13,6 +13,13 @@ mod strong_time;
 mod references;
 mod reflection;
 mod buffers;
+mod call_match;
+mod argsel;
+mod argsel_algo;
+mod argsel_heuristics;
+mod argsel_types;
+mod casts;
+mod catching;
 mod ignorable;
 mod collections;
 mod built_collections;
@@ -335,6 +342,13 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["MissingCasesInEnumSwitch"], switches::missing_cases_in_enum_switch),
     (&["EqualsIncompatibleType"], equalsincompat::equals_incompatible_type),
     (&["ClassInitializationDeadlock"], deadlock::class_initialization_deadlock),
+    (&["CatchAndPrintStackTrace"], catching::catch_and_print_stack_trace),
+    (&["InterruptedInCatchBlock"], catching::interrupted_in_catch_block),
+    (&["LabelledBreakTarget"], catching::labelled_break_target),
+    (&["Finalize"], catching::finalize),
+    (&["ArgumentSelectionDefectChecker"], argsel::argument_selection_defect),
+    (&["FloatCast"], casts::float_cast),
+    (&["UnsafeReflectiveConstructionCast"], casts::unsafe_reflective_construction_cast),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would

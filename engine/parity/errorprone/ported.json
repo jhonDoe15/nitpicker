@@ -130,5 +130,12 @@
  "MissingCasesInEnumSwitch",
  "BoxingComparator",
  "OverrideThrowableToString",
- "EqualsIncompatibleType"
+ "EqualsIncompatibleType",
+ "Finalize",
+ "CatchAndPrintStackTrace",
+ "UnsafeReflectiveConstructionCast",
+ "InterruptedInCatchBlock",
+ "FloatCast",
+ "LabelledBreakTarget",
+ "ArgumentSelectionDefectChecker"
 ]
