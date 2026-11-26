@@ -174,6 +174,17 @@ mod duration_units;
 mod class_names;
 mod constructor_chain;
 mod auto_value_order;
+mod annotation_args;
+mod annotation_defects;
+mod java_quote;
+mod junit_runners;
+mod misc12;
+mod optional_checks;
+mod period_checks;
+mod proto_checks;
+mod random_checks;
+mod self_checks;
+mod symbol_key;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -531,6 +542,26 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["DoNotMock"], do_not_mock::do_not_mock),
     (&["CheckNotNullMultipleTimes"], constructor_chain::check_not_null_multiple_times),
     (&["AutoValueConstructorOrderChecker"], auto_value_order::auto_value_constructor_order),
+    (&["OptionalMapUnusedValue"], optional_checks::optional_map_unused_value),
+    (&["OptionalOfRedundantMethod"], optional_checks::optional_of_redundant_method),
+    (&["OverlappingQualifierAndScopeAnnotation"], annotation_defects::overlapping_qualifier_and_scope_annotation),
+    (&["ParametersButNotParameterized"], junit_runners::parameters_but_not_parameterized),
+    (&["PeriodFrom"], period_checks::period_from),
+    (&["PeriodGetTemporalUnit"], period_checks::period_get_temporal_unit),
+    (&["PrivateSecurityContractProtoAccess"], proto_checks::private_security_contract_proto_access),
+    (&["ProtoStringFieldReferenceEquality"], proto_checks::proto_string_field_reference_equality),
+    (&["ProtocolBufferOrdinal"], proto_checks::protocol_buffer_ordinal),
+    (&["ProvidesMethodOutsideOfModule"], annotation_defects::provides_method_outside_of_module),
+    (&["RandomCast"], random_checks::random_cast),
+    (&["RandomModInteger"], random_checks::random_mod_integer),
+    (&["RecordAccessorInCompactConstructor"], misc12::record_accessor_in_compact_constructor),
+    (&["SelfComparison"], self_checks::self_comparison),
+    (&["SelfEquals"], self_checks::self_equals),
+    (&["ShouldHaveEvenArgs"], misc12::should_have_even_args),
+    (&["StringBuilderInitWithChar"], random_checks::string_builder_init_with_char),
+    (&["SuppressWarningsDeprecated"], annotation_defects::suppress_warnings_deprecated),
+    (&["TestExceptionChecker"], junit_runners::test_exception_checker),
+    (&["TestParametersNotInitialized"], junit_runners::test_parameters_not_initialized),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
@@ -550,6 +581,7 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["AlreadyChecked"], already_checked::already_checked),
     (&["JUnit4TestsNotRunWithinEnclosed"], junit_tests::junit4_tests_not_run_within_enclosed),
     (&["ClassName"], class_names::class_name),
+    (&["PackageInfo"], misc12::package_info),
 ];
 
 pub struct ErrorProne;

@@ -264,5 +264,27 @@
  "DurationTemporalUnit",
  "DurationToLongTimeUnit",
  "EqualsNaN",
- "EqualsReference"
+ "EqualsReference",
+
+ "OptionalMapUnusedValue",
+ "OptionalOfRedundantMethod",
+ "OverlappingQualifierAndScopeAnnotation",
+ "PackageInfo",
+ "ParametersButNotParameterized",
+ "PeriodFrom",
+ "PeriodGetTemporalUnit",
+ "PrivateSecurityContractProtoAccess",
+ "ProtoStringFieldReferenceEquality",
+ "ProtocolBufferOrdinal",
+ "ProvidesMethodOutsideOfModule",
+ "RandomCast",
+ "RandomModInteger",
+ "RecordAccessorInCompactConstructor",
+ "SelfComparison",
+ "SelfEquals",
+ "ShouldHaveEvenArgs",
+ "StringBuilderInitWithChar",
+ "SuppressWarningsDeprecated",
+ "TestExceptionChecker",
+ "TestParametersNotInitialized"
 ]
