@@ -321,6 +321,10 @@ pub struct ClassInfo {
     pub null_nicknames: Vec<String>,
     /// For an annotation type read from source: the modifiers its `@IncompatibleModifiers` lists, as constant names.
     pub incompatible: Vec<String>,
+    /// Full names of the annotations on the class itself, with `.` before a member class.
+    pub class_annotations: Vec<String>,
+    /// The reason a `@DoNotMock` on the class gives: its value, or the annotation's default.
+    pub do_not_mock: Option<String>,
 }
 
 const SETTER_STARTS: &[&str] =

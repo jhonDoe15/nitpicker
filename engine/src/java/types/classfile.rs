@@ -215,6 +215,8 @@ struct Attributes<'a> {
     starts: bool,
     /// Carries type annotations, which this reader takes no nullness from.
     typed: bool,
+    /// `@DoNotMock` on the class: the constant pool index of its value, when it has one.
+    do_not_mock: Option<Option<u16>>,
 }
 
 fn starter(descriptor: &[u8]) -> bool {
@@ -402,6 +404,9 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                         reader.skip(2)?;
                         enum_names(reader, utf8, &mut found.incompatible)?;
                     }
+                }
+                if kind == b"Lcom/google/errorprone/annotations/DoNotMock;" {
+                    found.do_not_mock = Some(text);
                 }
                 found.deprecated |= kind == b"Ljava/lang/Deprecated;";
                 found.marks |= annotation_name(kind).map_or(0, |name| flag::of_annotation(&name));
@@ -822,5 +827,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         setter_like,
         null_nicknames,
         incompatible: found.incompatible.iter().map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
+        class_annotations: found.annotations.iter().filter_map(|kind| annotation_name(kind)).collect(),
+        do_not_mock: found.do_not_mock.map(|text| text.and_then(utf8).map_or_else(|| "Create a real instance instead".to_string(), |text| String::from_utf8_lossy(text).into_owned())),
     })
 }

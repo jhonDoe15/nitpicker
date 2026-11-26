@@ -165,6 +165,15 @@ mod collection_self;
 mod source_defects;
 mod nullable_outer;
 mod cirv_classes;
+mod array_calls;
+mod do_not_mock;
+mod binary_misc;
+mod null_branch;
+mod async_nulls;
+mod duration_units;
+mod class_names;
+mod constructor_chain;
+mod auto_value_order;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -498,6 +507,30 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["NonCanonicalStaticImport"], source_defects::non_canonical_static_import),
     (&["NullableOnContainingClass"], nullable_outer::nullable_on_containing_class),
     (&["NoCanIgnoreReturnValueOnClasses"], cirv_classes::no_can_ignore_return_value_on_classes),
+    (&["ArrayEquals"], array_calls::array_equals),
+    (&["ArraysAsListPrimitiveArray"], array_calls::arrays_as_list_primitive_array),
+    (&["CollectionToArraySafeParameter"], array_calls::collection_to_array_safe_parameter),
+    (&["BadShiftAmount"], binary_misc::bad_shift_amount),
+    (&["ComparingThisWithNull"], binary_misc::comparing_this_with_null),
+    (&["EqualsNaN"], binary_misc::equals_nan),
+    (&["DiscardedPostfixExpression"], binary_misc::discarded_postfix_expression),
+    (&["DeadThread"], binary_misc::dead_thread),
+    (&["EqualsReference"], binary_misc::equals_reference),
+    (&["DereferenceWithNullBranch"], null_branch::dereference_with_null_branch),
+    (&["AsyncFunctionReturnsNull"], async_nulls::async_function_returns_null),
+    (&["AsyncCallableReturnsNull"], async_nulls::async_callable_returns_null),
+    (&["DaggerProvidesNull"], async_nulls::dagger_provides_null),
+    (&["DangerousLiteralNull"], async_nulls::dangerous_literal_null),
+    (&["DurationFrom"], duration_units::duration_from),
+    (&["DurationGetTemporalUnit"], duration_units::duration_get_temporal_unit),
+    (&["DurationTemporalUnit"], duration_units::duration_temporal_unit),
+    (&["DurationToLongTimeUnit"], duration_units::duration_to_long_time_unit),
+    (&["ComparableType"], class_names::comparable_type),
+    (&["AutoFactoryAtInject"], class_names::auto_factory_at_inject),
+    (&["ChainingConstructorIgnoresParameter"], constructor_chain::chaining_constructor_ignores_parameter),
+    (&["DoNotMock"], do_not_mock::do_not_mock),
+    (&["CheckNotNullMultipleTimes"], constructor_chain::check_not_null_multiple_times),
+    (&["AutoValueConstructorOrderChecker"], auto_value_order::auto_value_constructor_order),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
@@ -516,6 +549,7 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["UnusedNestedClass"], unused_nested::unused_nested_class),
     (&["AlreadyChecked"], already_checked::already_checked),
     (&["JUnit4TestsNotRunWithinEnclosed"], junit_tests::junit4_tests_not_run_within_enclosed),
+    (&["ClassName"], class_names::class_name),
 ];
 
 pub struct ErrorProne;

@@ -97,6 +97,9 @@ fn call(context: &Context, node: Node) {
     }
     let index = context.resolver.index;
     let Some(declaring) = index.get(&resolved.declaring) else { return };
+    if constructor && declaring.is_interface {
+        return;
+    }
     let boxed_void = |kind: &Type| kind.name() == "java.lang.Void";
     let nothing = !constructor && (boxed_void(&method.returns) || (method.generic_returns.mentions_variable() && context.resolver.type_of(node).is_some_and(|kind| boxed_void(&kind))));
     if nothing || !expected(index, declaring, method) || mocking(context, node) || exception_testing(context, node) {

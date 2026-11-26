@@ -693,6 +693,7 @@ impl<'a> Resolver<'a> {
             })
             .collect();
         let (container_of, immutable_parameters) = self.immutable_marks(declaration);
+        let (class_annotations, do_not_mock) = self.class_marks(declaration);
         ClassInfo {
             name,
             superclass: parent.as_ref().map(Type::name),
@@ -717,6 +718,8 @@ impl<'a> Resolver<'a> {
             setter_like: false,
             null_nicknames: Vec::new(),
             incompatible: if kind == "annotation_type_declaration" { self.incompatible_modifiers(declaration) } else { Vec::new() },
+            class_annotations,
+            do_not_mock,
         }
     }
 
@@ -747,6 +750,34 @@ impl<'a> Resolver<'a> {
             }
         }
         found
+    }
+
+    /// The full names of the annotations on a class declaration, and the reason its `@DoNotMock` gives.
+    fn class_marks(&self, declaration: Node) -> (Vec<String>, Option<String>) {
+        let holder = super::super::helpers::modifiers(declaration);
+        let marks = holder.map(children).unwrap_or_default().into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation"));
+        let mut names = Vec::new();
+        let mut reason = None;
+        for mark in marks {
+            let Some(written) = mark.child_by_field_name("name") else { continue };
+            let text = self.file.text_of(written);
+            let full = self.class_name(declaration, text).unwrap_or_else(|| text.to_string());
+            if full == "com.google.errorprone.annotations.DoNotMock" {
+                let literal = |node: Node| self.file.text_of(node).trim_matches('"').to_string();
+                let value = mark.child_by_field_name("arguments").and_then(|list| {
+                    children(list).into_iter().find_map(|part| match part.kind() {
+                        "string_literal" => Some(literal(part)),
+                        "element_value_pair" if part.child_by_field_name("key").is_some_and(|key| self.file.text_of(key) == "value") => {
+                            part.child_by_field_name("value").filter(|value| value.kind() == "string_literal").map(literal)
+                        }
+                        _ => None,
+                    })
+                });
+                reason = Some(value.unwrap_or_else(|| "Create a real instance instead".to_string()));
+            }
+            names.push(full);
+        }
+        (names, reason)
     }
 
     /// What `containerOf` of the class's `@Immutable` names, and the type parameters with `@ImmutableTypeParameter`.
