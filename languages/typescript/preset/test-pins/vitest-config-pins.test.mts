@@ -285,6 +285,27 @@ describe('the vitest config nitpicker runs tests with', () => {
     expect(result?.code).toHaveLength(code.length);
   });
 
+  it('keeps hint text inside strings and strips the real hints next to them', async () => {
+    const config = await resolvedConfig({});
+    const [strip] = config.plugins;
+    const code = [
+      'const hints = [\'// c8 ignore next\', "/* v8 ignore next */"]; // v8 ignore next',
+      'const text = `a /* istanbul ignore next */ b // c8 ignore next`;',
+      "/* it's */ run(); // istanbul ignore next",
+      'const quote = "\\" // v8 ignore next";',
+    ].join('\n');
+
+    const result = strip?.transform(code, '/project/src/a.test.ts');
+
+    expect(result?.code.split('\n').map((line) => line.trimEnd())).toEqual([
+      'const hints = [\'// c8 ignore next\', "/* v8 ignore next */"];',
+      'const text = `a /* istanbul ignore next */ b // c8 ignore next`;',
+      "/* it's */ run();",
+      'const quote = "\\" // v8 ignore next";',
+    ]);
+    expect(result?.code).toHaveLength(code.length);
+  });
+
   it('leaves code without hints and dependencies alone', async () => {
     const config = await resolvedConfig({});
     const [strip] = config.plugins;

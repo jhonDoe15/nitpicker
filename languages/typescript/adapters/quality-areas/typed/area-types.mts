@@ -16,6 +16,7 @@ export type QualityAreaOptions = {
   readonly baselineMovesFile: string | undefined;
   readonly mutationScope: readonly string[] | undefined;
   readonly keepCoverageReport?: string | undefined;
+  readonly preparedTestResults?: string | undefined;
   readonly environment: Readonly<Record<string, string | undefined>>;
 };
 

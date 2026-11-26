@@ -75,7 +75,7 @@
     "languages/typescript/preset/test-runtime/fixtures/**",
     "engine/tests/fixtures/**"
   ],
-  "disable": ["coverage", "crap", "mutation"],
+  "disable": ["mutation", "test-console"],
   "exceptions": [
     {
       "rule": "nitpicker/no-process-access-outside-composition-root",

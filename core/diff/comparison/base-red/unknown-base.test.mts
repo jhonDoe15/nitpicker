@@ -172,6 +172,16 @@ describe('redBaseAnalyzers', () => {
     );
   });
 
+  it('treats base tests that were not run like failing ones', () => {
+    const notRun = { ...testsFailed, rule: 'tests-not-run-on-base', path: '.' };
+    const baseRun = run({ reports: { coverage: [notRun], ruff: [lint] } });
+    const headRun = run({ reports: { coverage: [], ruff: [] } });
+
+    expect(redBaseAnalyzers({ names, baseRun, headRun })).toEqual(
+      new Map([['coverage', [notRun]]]),
+    );
+  });
+
   it.each<[string, RunSpec]>([
     ['the head tests fail too', { reports: { coverage: [testsFailed] } }],
     [
