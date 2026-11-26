@@ -12,4 +12,12 @@ public final class Iterables {
   public static <T> Iterable<T> concat(Iterable<? extends T> first, Iterable<? extends T> second) {
     return null;
   }
+
+  public static <T> boolean any(Iterable<T> iterable, java.util.function.Predicate<? super T> predicate) {
+    return false;
+  }
+
+  public static <T> com.google.common.base.Optional<T> tryFind(Iterable<T> iterable, java.util.function.Predicate<? super T> predicate) {
+    return null;
+  }
 }

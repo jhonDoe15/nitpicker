@@ -626,7 +626,7 @@ impl<'a> Resolver<'a> {
             .filter(|parameter| matches!(parameter.kind(), "formal_parameter" | "spread_parameter"))
             .map(|parameter| self.annotation_names(parameter))
             .collect();
-        super::model::Detail { access, annotations: self.annotation_names(member), parameter_annotations, marked: String::new(), nullable_types: Vec::new() }
+        super::model::Detail { access, annotations: self.annotation_names(member), parameter_annotations, guards: self.guard_exprs(member), marked: String::new(), nullable_types: Vec::new() }
     }
 
     /// Whether a declaration carries `@CheckForNull` (JSR-305 or SpotBugs) or an annotation that is itself annotated with it.
@@ -780,6 +780,8 @@ impl<'a> Resolver<'a> {
             incompatible: if kind == "annotation_type_declaration" { self.incompatible_modifiers(declaration) } else { Vec::new() },
             class_annotations,
             do_not_mock,
+            outer_instance: None,
+            hidden: Vec::new(),
         }
     }
 
@@ -1084,6 +1086,8 @@ impl<'a> Resolver<'a> {
                             is_private: has(member, "private"),
                             mock: self.plain_mock(member),
                             annotations: self.field_annotations(member),
+                            guards: self.guard_exprs(member),
+                            folded: (info.is_interface || has(member, "final")).then(|| declarator.field("value")).flatten().and_then(|value| self.fold(value)),
                             flags: bits(member) | if info.is_interface { super::model::flag::STATIC | super::model::flag::FINAL } else { 0 },
                         });
                     }
@@ -1102,6 +1106,8 @@ impl<'a> Resolver<'a> {
                             is_private: false,
                             mock: false,
                             annotations: Vec::new(),
+                            guards: self.guard_exprs(member),
+                            folded: None,
                             flags: super::model::flag::PUBLIC | super::model::flag::STATIC | super::model::flag::FINAL | super::model::flag::ENUM,
                         });
                     }
@@ -1197,10 +1203,11 @@ impl<'a> Resolver<'a> {
                 };
                 let name = self.file.text_of(name).to_string();
                 let generic = element(true).unwrap_or(kind.clone());
-                info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, number: None, fixed: None, strict: false, is_private: true, mock: false, annotations: Vec::new(), flags: super::model::flag::FINAL | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL) });
+                info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, number: None, fixed: None, strict: false, is_private: true, mock: false, annotations: Vec::new(), guards: self.guard_exprs(component), folded: None, flags: super::model::flag::FINAL | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL) });
                 info.record_components.get_or_insert_with(Vec::new).push(generic.clone());
                 let accessor = plain(&name, Vec::new(), kind.erased());
-                info.methods.push(Method { generic_returns: generic, flags: accessor.flags | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL), ..accessor });
+                let detail = super::model::Detail { guards: self.guard_exprs(component), ..accessor.detail.clone() };
+                info.methods.push(Method { detail, generic_returns: generic, flags: accessor.flags | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL), ..accessor });
             }
         }
     }

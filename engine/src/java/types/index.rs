@@ -31,6 +31,8 @@ pub struct TypeIndex {
     checked: std::sync::RwLock<HashMap<String, bool>>,
     /// Per method name and number of parameters: the source classes that declare such an instance method.
     declaring: OnceLock<HashMap<(String, usize), Vec<String>>>,
+    /// The names of the fields and methods that carry `@GuardedBy`.
+    guarded: OnceLock<HashSet<String>>,
     settled: bool,
     /// The classes of the source files that the class path holds too.
     compiled: HashSet<String>,
@@ -98,6 +100,10 @@ fn folder_classes(path: &Path) -> Vec<(String, Origin)> {
 }
 
 fn read(origin: &Origin) -> Option<ClassInfo> {
+    classfile::parse(&read_bytes(origin)?)
+}
+
+fn read_bytes(origin: &Origin) -> Option<Vec<u8>> {
     let bytes = match origin {
         Origin::File(path) => std::fs::read(path).ok()?,
         Origin::Archive(archive, position) => {
@@ -108,7 +114,17 @@ fn read(origin: &Origin) -> Option<ClassInfo> {
             bytes
         }
     };
-    classfile::parse(&bytes)
+    Some(bytes)
+}
+
+/// Whether a class file may hold a `@GuardedBy` annotation of one of the kinds Error Prone reads.
+fn mentions_guard(bytes: &[u8]) -> bool {
+    bytes.windows(10).any(|window| window == b"GuardedBy;")
+}
+
+/// Packages of the JDK itself, which holds no such annotation: not worth reading.
+fn jdk_class(name: &str) -> bool {
+    ["java.", "jdk.", "sun.", "com.sun.", "javax.swing.", "javax.xml.", "org.w3c.", "org.xml."].iter().any(|prefix| name.starts_with(prefix))
 }
 
 fn anonymous(name: &str) -> bool {
@@ -541,6 +557,39 @@ impl TypeIndex {
             }
         }
         found
+    }
+
+    /// The names of the fields and methods, in the sources and on the class path, that carry `@GuardedBy`. Read once:
+    /// the class files that mention the annotation are the only ones parsed.
+    pub fn guarded_names(&self) -> &HashSet<String> {
+        self.guarded.get_or_init(|| {
+            let mut found = HashSet::new();
+            if !super::guards::GUARDED_BY.iter().any(|name| self.has(name)) {
+                return found;
+            }
+            let add = |class: &ClassInfo, found: &mut HashSet<String>| {
+                found.extend(class.fields.iter().filter(|field| !field.guards.is_empty()).map(|field| field.name.clone()));
+                found.extend(class.methods.iter().filter(|method| !method.detail.guards.is_empty()).map(|method| method.name.clone()));
+            };
+            let later: Vec<(&String, &Origin)> = self
+                .classes
+                .iter()
+                .filter_map(|(name, slot)| match slot {
+                    Slot::Ready(class) => {
+                        add(class, &mut found);
+                        None
+                    }
+                    Slot::Later(origin, _) => (!jdk_class(name)).then_some((name, origin)),
+                })
+                .collect();
+            let names: Vec<&String> = later.par_iter().filter(|(_, origin)| read_bytes(origin).is_some_and(|bytes| mentions_guard(&bytes))).map(|(name, _)| *name).collect();
+            for name in names {
+                if let Some(class) = self.get(name) {
+                    add(class, &mut found);
+                }
+            }
+            found
+        })
     }
 
     /// Whether every supertype up to the roots is known, so a negative subtype answer can be trusted.

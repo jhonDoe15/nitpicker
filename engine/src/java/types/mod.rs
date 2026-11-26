@@ -1,5 +1,6 @@
 pub mod classfile;
 pub mod expr;
+pub mod guards;
 pub mod index;
 pub mod model;
 pub mod project;
