@@ -205,6 +205,17 @@ mod descriptor_mixup;
 mod builder_defaults;
 mod android_injection;
 mod terminating_call;
+mod owners;
+mod size_join;
+mod null_varargs;
+mod boxed_lock;
+mod self_assertion;
+mod proto_builders;
+mod proto_build_ignored;
+mod inject_codegen;
+mod source_text;
+mod annotation_misuse;
+mod tree_to_string;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -595,6 +606,7 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["RandomCast"], random_checks::random_cast),
     (&["RandomModInteger"], random_checks::random_mod_integer),
     (&["RecordAccessorInCompactConstructor"], misc12::record_accessor_in_compact_constructor),
+    (&["SelfAssertion"], self_assertion::self_assertion),
     (&["SelfComparison"], self_checks::self_comparison),
     (&["SelfEquals"], self_checks::self_equals),
     (&["ShouldHaveEvenArgs"], misc12::should_have_even_args),
@@ -624,6 +636,20 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["InvalidTimeZoneID"], time_constants::invalid_time_zone_id),
     (&["InvalidZoneId"], time_constants::invalid_zone_id),
     (&["InvalidJavaTimeConstant"], time_constants::invalid_java_time_constant),
+    (&["StringJoin"], size_join::string_join),
+    (&["SizeGreaterThanOrEqualsZero"], size_join::size_greater_than_or_equals_zero),
+    (&["ThrowIfUncheckedKnownChecked"], size_join::throw_if_unchecked_known_checked),
+    (&["PreconditionsInvalidPlaceholder"], size_join::preconditions_invalid_placeholder),
+    (&["NullNeedsCastForVarargs"], null_varargs::null_needs_cast_for_varargs),
+    (&["LockOnBoxedPrimitive"], boxed_lock::lock_on_boxed_primitive),
+    (&["ProtoTruthMixedDescriptors"], proto_builders::proto_truth_mixed_descriptors),
+    (&["SetUnrecognized"], proto_builders::set_unrecognized),
+    (&["RedundantSetterCall"], proto_builders::redundant_setter_call),
+    (&["ProtoBuilderReturnValueIgnored"], proto_build_ignored::proto_builder_return_value_ignored),
+    (&["OverridesJavaxInjectableMethod"], inject_codegen::overrides_javax_injectable_method),
+    (&["RefersToDaggerCodegen"], inject_codegen::refers_to_dagger_codegen),
+    (&["MisleadingEscapedSpace"], source_text::misleading_escaped_space),
+    (&["CompatibleWithAnnotationMisuse"], annotation_misuse::compatible_with_misuse),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
@@ -645,6 +671,8 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["ClassName"], class_names::class_name),
     (&["PackageInfo"], misc12::package_info),
     (&["UnicodeDirectionalityCharacters"], stmt_defects::unicode_directionality_characters),
+    (&["UnicodeInCode"], source_text::unicode_in_code),
+    (&["TreeToString"], tree_to_string::tree_to_string),
 ];
 
 pub struct ErrorProne;

@@ -230,7 +230,7 @@ pub fn lenient_format_string_validation(context: &Context, call: Node) {
     }
     let message = format!("Expected {expected} positional arguments, but saw {actual}. Note that lenient format strings only support %s placeholders.");
     let numeric = string.replace("%d", "%s");
-    let literal = argument.kind() == "string_literal";
+    let literal = super::shape::folded_strings(argument);
     let mut fixes = Vec::new();
     if occurrences(&numeric, "%s") == actual && literal {
         fixes.push(Fix::replace(argument.start_byte(), argument.end_byte(), format!("\"{}\"", escape_java_chars(&numeric))));

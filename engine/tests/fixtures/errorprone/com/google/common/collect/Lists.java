@@ -19,4 +19,8 @@ public final class Lists {
     public static <E> LinkedList<E> newLinkedList(Iterable<? extends E> elements) {
         return new LinkedList<E>();
     }
+
+    public static <E> ArrayList<E> newArrayList(E... elements) {
+        return new ArrayList<E>();
+    }
 }

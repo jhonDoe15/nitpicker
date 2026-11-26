@@ -10,4 +10,12 @@ public class Subject {
   public StandardSubjectBuilder check(String format, Object... args) {
     return null;
   }
+
+  public void isNotSameInstanceAs(Object other) {}
+
+  public void isAnyOf(Object first, Object second, Object... rest) {}
+
+  public void isNoneOf(Object first, Object second, Object... rest) {}
+
+  public void isSameInstanceAs(Object other) {}
 }

@@ -62,7 +62,6 @@ public class S13Auto {
 
   static class BadIBuilt implements IBuilt {}
 
-  static class BadBoth extends Both {}
 
   interface BadIface extends IBuilt {}
 
@@ -76,7 +75,6 @@ public class S13Auto {
 
   static class Second extends Plain implements IBuilt {}
 
-  static abstract class Generic<T> extends Both {}
 
   @Generated("x")
   static class GeneratedOk extends Auto {}

@@ -1,4 +1,4 @@
 package junit.framework;
 
-public abstract class TestCase {
+public abstract class TestCase extends Assert {
 }

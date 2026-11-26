@@ -265,7 +265,6 @@
  "DurationToLongTimeUnit",
  "EqualsNaN",
  "EqualsReference",
-
  "OptionalMapUnusedValue",
  "OptionalOfRedundantMethod",
  "OverlappingQualifierAndScopeAnnotation",
@@ -327,5 +326,22 @@
  "MissingTestCall",
  "MixedDescriptors",
  "PeriodTimeMath",
- "StreamToString"
+ "StreamToString",
+ "CompatibleWithAnnotationMisuse",
+ "LockOnBoxedPrimitive",
+ "MisleadingEscapedSpace",
+ "NullNeedsCastForVarargs",
+ "OverridesJavaxInjectableMethod",
+ "PreconditionsInvalidPlaceholder",
+ "ProtoBuilderReturnValueIgnored",
+ "ProtoTruthMixedDescriptors",
+ "RedundantSetterCall",
+ "RefersToDaggerCodegen",
+ "SelfAssertion",
+ "SetUnrecognized",
+ "SizeGreaterThanOrEqualsZero",
+ "StringJoin",
+ "ThrowIfUncheckedKnownChecked",
+ "TreeToString",
+ "UnicodeInCode"
 ]
