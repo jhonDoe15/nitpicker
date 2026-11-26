@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import type TypeScript from 'typescript';
 import path from 'node:path';
 import {
@@ -6,6 +6,7 @@ import {
   removeSnapshotDependencies,
 } from '../typed/static-checks.mts';
 import {
+  type Layout,
   layoutTransformFor,
   readHeadPolicy,
   readLayout,
@@ -18,17 +19,29 @@ import {
 } from '../../preset/test-runner/vocabulary/runner-types.mts';
 import type { StaticCheckOptions } from './arguments.mts';
 import { type Finding, isProjectFile, projectFile, hash, policyFile } from './shared.mts';
-import { type LinkedPolicyFile, linkPolicyFile } from '../typed/tooling.mts';
+import {
+  type LinkedPolicyFile,
+  linkPolicyFile,
+  trackTemporaryPath,
+  untrackTemporaryPath,
+} from '../typed/tooling.mts';
 import { diagnosticMessages } from '../typecheck/compiler-hints.mts';
 import {
   enclosingSymbol,
-  preEmitDiagnostics,
+  preEmitResult,
   projectTypeScript,
 } from '../typecheck/typescript-program.mts';
 import { withAssetImportHint } from '../typecheck/asset-import-hint.mts';
-import { contextOnlyFiles } from '../typecheck/context-only/context-only-files.mts';
+import {
+  type ProgramFileLists,
+  contextOnlyFiles,
+  contextOnlyOf,
+  contextRoots,
+} from '../typecheck/context-only/context-only-files.mts';
 
 export { contextOnlyFiles } from '../typecheck/context-only/context-only-files.mts';
+
+const SCOPED_CONFIG = '.nitpicker-diff-typecheck-scoped.json';
 
 type TypeScriptDiagnostics = {
   readonly diagnostics: readonly TypeScript.Diagnostic[];
@@ -47,15 +60,36 @@ type DiagnosticFilter = {
 };
 
 function diagnosticFilter(
-  targetPath: string,
+  contextOnly: ReadonlySet<string>,
   projectRoot: string,
-  ts: typeof TypeScript,
+  layout: DiagnosticFilter['layout'],
 ): DiagnosticFilter {
-  const layout = readLayout();
-  const contextOnly = contextOnlyFiles(targetPath, projectRoot, { layout, ts });
   const runner = policyTestRunner(readHeadPolicy(), projectRoot);
   const untyped = missingRunnerTypes(runner, projectRoot) !== undefined;
   return { layout, contextOnly, projectRoot, runner, untyped };
+}
+
+function scopedConfig(
+  targetPath: string,
+  roots: readonly string[] | undefined,
+): { readonly path: string; readonly remove: () => void } | undefined {
+  if (roots === undefined) {
+    return undefined;
+  }
+  const scopedPath = path.join(path.dirname(targetPath), SCOPED_CONFIG);
+  writeFileSync(
+    scopedPath,
+    JSON.stringify({ extends: `./${path.basename(targetPath)}`, files: roots }),
+    { flag: 'wx' },
+  );
+  trackTemporaryPath(scopedPath);
+  return {
+    path: scopedPath,
+    remove: () => {
+      untrackTemporaryPath(scopedPath);
+      rmSync(scopedPath, { force: true });
+    },
+  };
 }
 
 export function isReportedDiagnostic(
@@ -76,6 +110,59 @@ export function isReportedDiagnostic(
   return !(filter.layout.isExcluded(file) || filter.contextOnly.has(file) || untypedGlobal);
 }
 
+type TypecheckRun = {
+  readonly options: StaticCheckOptions;
+  readonly ts: typeof TypeScript;
+  readonly native: string | undefined;
+  readonly targetPath: string;
+  readonly configRelativePath: string | undefined;
+};
+
+type ContextOnlyRequest = {
+  readonly roots: readonly string[] | undefined;
+  readonly files: ProgramFileLists | undefined;
+  readonly targetPath: string;
+  readonly projectRoot: string;
+  readonly layout: Layout;
+  readonly ts: typeof TypeScript;
+};
+
+function contextOnlyFor(request: ContextOnlyRequest): ReadonlySet<string> {
+  const { roots, files, targetPath, projectRoot, layout, ts } = request;
+  if (roots === undefined) {
+    return new Set();
+  }
+  return files === undefined
+    ? contextOnlyFiles(targetPath, projectRoot, { layout, ts })
+    : contextOnlyOf(projectRoot, files);
+}
+
+async function reportedDiagnostics(run: TypecheckRun): Promise<TypeScript.Diagnostic[]> {
+  const { options, ts, native, targetPath, configRelativePath } = run;
+  const { projectRoot } = options;
+  const layout = readLayout();
+  const roots = contextRoots(targetPath, projectRoot, layout);
+  const scoped = scopedConfig(targetPath, roots);
+  try {
+    const { diagnostics, files } = await preEmitResult({
+      ts,
+      engine: typecheckEngine(),
+      configPath: targetPath,
+      configName: configRelativePath,
+      projectRoot,
+      projectNative: native,
+      scopedConfigPath: scoped?.path,
+    });
+    const contextOnly = contextOnlyFor({ roots, files, targetPath, projectRoot, layout, ts });
+    const filter = diagnosticFilter(contextOnly, projectRoot, layout);
+    return diagnostics
+      .map((diagnostic) => withProjectConfigFile(diagnostic, targetPath, options))
+      .filter((diagnostic) => isReportedDiagnostic(diagnostic, filter));
+  } finally {
+    scoped?.remove();
+  }
+}
+
 export async function runTypecheck(options: StaticCheckOptions): Promise<Finding[]> {
   const { ts, native } = projectTypeScript(options.liveProjectRoot);
   const preparedDependencies = prepareSnapshotDependencies(options);
@@ -85,20 +172,16 @@ export async function runTypecheck(options: StaticCheckOptions): Promise<Finding
     const { targetPath } = installedConfig;
     const configRelativePath =
       extendedProjectConfig(targetPath, options.projectRoot) ?? options.configRelativePath;
-    const diagnostics = await preEmitDiagnostics({
+    const diagnostics = await reportedDiagnostics({
+      options,
       ts,
-      engine: typecheckEngine(),
-      configPath: targetPath,
-      configName: configRelativePath,
-      projectRoot: options.projectRoot,
-      projectNative: native,
+      native,
+      targetPath,
+      configRelativePath,
     });
-    const filter = diagnosticFilter(targetPath, options.projectRoot, ts);
     return normalizeTypeScriptDiagnostics({
       ts,
-      diagnostics: diagnostics
-        .map((diagnostic) => withProjectConfigFile(diagnostic, targetPath, options))
-        .filter((diagnostic) => isReportedDiagnostic(diagnostic, filter)),
+      diagnostics,
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
       configRelativePath,

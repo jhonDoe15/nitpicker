@@ -22,7 +22,13 @@ impl Sources {
     }
 
     pub fn is_production(&self, session: &Session, path: &str) -> bool {
-        !is_declaration_file(path) && session.relative(path).is_some_and(|relative| !self.tests.is_match(relative))
+        self.is_production_under(&session.root, path)
+    }
+
+    /// Whether a file is production code of the folder `root`: inside it, not a declaration, test or fixture.
+    pub fn is_production_under(&self, root: &str, path: &str) -> bool {
+        let relative = path.strip_prefix(root.trim_end_matches('/')).and_then(|rest| rest.strip_prefix('/'));
+        !is_declaration_file(path) && relative.is_some_and(|relative| !self.tests.is_match(relative))
     }
 }
 

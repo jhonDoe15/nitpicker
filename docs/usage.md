@@ -4293,11 +4293,16 @@ To run the policy on ESLint itself, set the engine:
 ### Type check engine
 
 The `typescript-typecheck` analyzer type checks with TypeScript 7, the native compiler, which is
-much faster than TypeScript 5 and 6. nitpicker installs and pins TypeScript 7 itself. A run uses
-the project's own `typescript` package instead, as before, when the config uses an option
-TypeScript 7 removed or no longer knows (such as `baseUrl`, `moduleResolution: "node"` or
-`target: "ES5"`), or when TypeScript 7's compiler is not installed for the platform. The report does
-not say which engine a run used; set the engine to choose one.
+much faster than TypeScript 5 and 6. nitpicker installs and pins TypeScript 7 itself. When the
+config uses an option TypeScript 7 removed, the check runs with the closest setting TypeScript 7
+has, as the type-aware lint rules do: `baseUrl` becomes `paths` entries relative to it plus a `"*"`
+entry for bare imports, `target: "ES5"` becomes `ES2015`, and `moduleResolution: "node"` or
+`"classic"`, `esModuleInterop: false`, `allowSyntheticDefaultImports: false`, `alwaysStrict: false`
+and `downlevelIteration` are unset, so TypeScript 7's defaults apply. A run uses the project's own
+`typescript` package instead, as before, when the config sets an option TypeScript 7 cannot express
+(`module` `AMD`, `UMD` or `System`, `outFile`) or no longer knows, or when TypeScript 7's compiler is
+not installed for the platform. The report does not say which engine a run used; set the engine to
+choose one.
 
 Projects on TypeScript 7 (the native compiler) are supported. TypeScript 7's npm package has no
 JavaScript API, which nitpicker's analyzers and typescript-eslint read source files with, so on such
@@ -4323,6 +4328,12 @@ Findings match the project's own TypeScript, with the same messages, positions a
 - A few messages are worded differently, such as "No overload matches this call" details and
   paths in `/// <reference path>` errors, and an unbuilt project reference is read from its
   sources instead of being reported as not built.
+- TypeScript 7 lists the members of a union or an object type in another order in some messages.
+- On a config with an option TypeScript 7 removed, the replacement settings resolve some imports
+  differently: a workspace package whose `types` or `main` points at a build output that does not
+  exist yet is not found (TS2307) where `moduleResolution: "node"` fell back to the package's
+  `index.ts`, and files outside the config's folder that TypeScript 7 now type checks are reported
+  as outside `rootDir` (TS6059).
 
 Switching engines therefore shows those findings as new once. Paths inside messages are relative
 to the project, so they are the same on both sides of the comparison.

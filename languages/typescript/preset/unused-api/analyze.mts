@@ -3,7 +3,8 @@ import path from 'node:path';
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../adapters/typed/typescript-program.mts';
 import type { Finding } from '../../../../shared/values/findings.mts';
-import { engineRegistry } from './engine/engine-registry.mts';
+import { engineRegistryPart } from './engine/engine-registry.mts';
+import { type TypedPlan, engineAnswer, runTypedPlan } from './engine/typed-plans.mts';
 import { registryData } from './engine/registry-data.mts';
 import { type ProgramRequest, createProjectProgram } from './program.mts';
 import {
@@ -53,17 +54,19 @@ function nodeRegistry(request: ProgramRequest & { layout: AnalysisLayout }, reac
   return { registry: registryData(registry), owned: context.owned };
 }
 
-export function analyzeUnusedApi({
-  projectRoot,
-  configPath,
-  analyzerName,
-  environment = process.env,
-}: {
+type Request = {
   projectRoot: string;
   configPath: string;
   analyzerName: string;
-  environment?: NodeJS.ProcessEnv;
-}): Finding[] {
+  environment: NodeJS.ProcessEnv;
+};
+
+export function unusedApiPlan({
+  projectRoot,
+  configPath,
+  analyzerName,
+  environment,
+}: Request): TypedPlan<Finding[]> {
   const { exceptions, react: reactPolicy } = readHeadPolicy(environment);
   const layout = readLayout(environment);
   const reactEnabled = reactPolicy.enabled;
@@ -73,14 +76,25 @@ export function analyzeUnusedApi({
       projectRoot,
       react: typeof reactEnabled === 'boolean' ? { enabled: reactEnabled } : {},
     });
-  if (!hasCheckableDeclarations({ projectRoot, layout, react })) return [];
+  if (!hasCheckableDeclarations({ projectRoot, layout, react })) {
+    return { finish: () => [] };
+  }
   const packagesInfo = loadPackages(projectRoot, layout);
   const request = { projectRoot, configPath, packagesInfo, layout };
-  const { registry, owned } =
-    engineRegistry({ ...request, react, environment }) ?? nodeRegistry(request, react);
-  return registryDataFindings(registry, {
-    owned,
-    analyzerName,
-    isExcepted: exceptionMatcher(exceptions),
-  });
+  const engine = engineRegistryPart({ ...request, react, environment });
+  return {
+    part: engine?.part,
+    finish(result) {
+      const { registry, owned } = engineAnswer(engine, result) ?? nodeRegistry(request, react);
+      return registryDataFindings(registry, {
+        owned,
+        analyzerName,
+        isExcepted: exceptionMatcher(exceptions),
+      });
+    },
+  };
+}
+
+export function analyzeUnusedApi(request: Request): Finding[] {
+  return runTypedPlan(unusedApiPlan(request), request.environment);
 }

@@ -182,3 +182,23 @@ describe('the type check preserves the project global type context', () => {
     },
   );
 });
+
+describe('context-only files under a symlinked project root', () => {
+  it('reads the compiler real paths as files of the project', async () => {
+    const { contextOnlyOf } = await import('./context-only-files.mts');
+    const base = realpathSync(mkdtempSync(path.join(tmpdir(), 'context-only-link-')));
+    const real = path.join(base, 'real');
+    mkdirSync(real);
+    const linked = path.join(base, 'linked');
+    symlinkSync(real, linked, 'dir');
+    try {
+      const found = contextOnlyOf(linked, {
+        complete: [path.join(real, 'src/a.ts'), path.join(real, 'web/b.ts')],
+        scoped: [path.join(real, 'src/a.ts')],
+      });
+      expect([...found]).toStrictEqual(['web/b.ts']);
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+});

@@ -4,7 +4,7 @@ import {
   createAnalyzerRunnerProject,
   removeAnalyzerRunnerProject,
 } from './test-support/analyzer-runner-project.mts';
-import { runTestOnlyExports, runUnusedApi } from './unused-api.mts';
+import { runTestOnlyExports } from './unused-api.mts';
 
 let directory: string;
 let options: QualityAreaOptions;
@@ -23,19 +23,6 @@ afterEach(() => {
 });
 
 describe('the unused API runners', () => {
-  it('turns a failed analysis into a tool error instead of failing the analyzer', async () => {
-    expect(await runUnusedApi(options)).toEqual([
-      {
-        tool: 'structure',
-        rule: 'unused-api',
-        path: '.',
-        identity: 'unused-api',
-        message: 'unused-api could not run: no program',
-        classification: 'tool-error',
-      },
-    ]);
-  });
-
   it('turns a failed knip run without tests into a tool error', () => {
     const runs = {
       config: { entry: [], project: [] },

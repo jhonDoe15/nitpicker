@@ -8,10 +8,17 @@ import { packageHasJavaScriptApi } from '../../typescript-api/api-redirect.mts';
 import { chainOf, isTypeScriptApi, parentOf, typescriptApi } from '../typed/typescript-program.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { configFailure, isNonFatalConfigCode, nativeDiagnostics } from './native-diagnostics.mts';
+import { withTypescript7Options } from './removed-options/typescript7-config.mts';
+import type { ProgramFiles } from './native-api.mts';
 
 type ProjectTypeScript = { readonly ts: typeof TypeScript; readonly native?: string };
 
 type Diagnostics = readonly TypeScript.Diagnostic[];
+
+export type PreEmitResult = {
+  readonly diagnostics: Diagnostics;
+  readonly files?: ProgramFiles | undefined;
+};
 
 export type PreEmitRequest = {
   readonly ts: typeof TypeScript;
@@ -20,6 +27,7 @@ export type PreEmitRequest = {
   readonly configName: string | undefined;
   readonly projectRoot: string;
   readonly projectNative: string | undefined;
+  readonly scopedConfigPath?: string | undefined;
 };
 
 const NO_INPUTS_CODE = 18003;
@@ -50,6 +58,10 @@ export function loadTypeScript(projectRoot: string = PACKAGE_ROOT): typeof TypeS
 }
 
 export async function preEmitDiagnostics(options: PreEmitRequest): Promise<Diagnostics> {
+  return (await preEmitResult(options)).diagnostics;
+}
+
+export async function preEmitResult(options: PreEmitRequest): Promise<PreEmitResult> {
   try {
     return await engineDiagnostics(options);
   } catch (error) {
@@ -69,16 +81,23 @@ async function engineDiagnostics({
   configPath,
   projectRoot,
   projectNative,
-}: PreEmitRequest): Promise<Diagnostics> {
+  scopedConfigPath,
+}: PreEmitRequest): Promise<PreEmitResult> {
   if (engine === 'native') {
-    const native = await nativeDiagnostics({
-      ts,
-      configPath,
-      projectRoot,
-      engineHint: projectNative === undefined,
-    });
+    function bundled(): ReturnType<typeof nativeDiagnostics> {
+      return nativeDiagnostics({
+        ts,
+        configPath,
+        projectRoot,
+        engineHint: projectNative === undefined,
+        scopedConfigPath,
+      });
+    }
+    const native = await (projectNative === undefined
+      ? withTypescript7Options(configPath, bundled)
+      : bundled());
     if (native.unsupported !== true) {
-      return native.diagnostics;
+      return native;
     }
   }
   if (projectNative !== undefined) {
@@ -88,10 +107,11 @@ async function engineDiagnostics({
       projectRoot,
       apiRoot: projectNative,
       engineHint: false,
+      scopedConfigPath,
     });
-    return own.diagnostics ?? [];
+    return { diagnostics: own.diagnostics ?? [], files: own.files };
   }
-  return projectDiagnostics(ts, configPath, projectRoot);
+  return { diagnostics: projectDiagnostics(ts, configPath, projectRoot) };
 }
 
 function projectDiagnostics(

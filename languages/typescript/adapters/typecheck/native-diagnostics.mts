@@ -11,7 +11,9 @@ import {
   type NativeApi,
   type NativeDiagnostic,
   type NativeOutcome,
+  type NativeProgram,
   type NativeRequest,
+  type ProgramFiles,
   apiConstructorOf,
 } from './native-api.mts';
 import { appendAll } from '../../../../shared/lists/lists.mts';
@@ -47,6 +49,7 @@ export async function nativeDiagnostics({
   apiRoot,
   engineHint,
   entry = apiEntry(),
+  scopedConfigPath,
 }: NativeRequest): Promise<NativeOutcome> {
   const own = apiRoot !== undefined;
   const { api, startError } = await startedApi({ projectRoot, apiRoot, entry });
@@ -58,7 +61,7 @@ export async function nativeDiagnostics({
   }
   let collected: Collected;
   try {
-    collected = await collectedDiagnostics(api, configPath);
+    collected = await collectedDiagnostics(api, configPath, scopedConfigPath);
   } catch (error) {
     const hint = own || !engineHint ? '' : `\n${ENGINE_HINT}`;
     throw troubleshootingError(
@@ -102,7 +105,26 @@ async function startedApi({
   }
 }
 
-async function collectedDiagnostics(api: NativeApi, configPath: string): Promise<Collected> {
+async function programFiles(
+  api: NativeApi,
+  program: NativeProgram,
+  scopedConfigPath: string,
+): Promise<ProgramFiles | undefined> {
+  const complete = await program.getSourceFileNames();
+  const snapshot = await api.updateSnapshot({ openProjects: [scopedConfigPath] });
+  const scoped = snapshot
+    .getProjects()
+    .find(({ configFileName }) => path.resolve(configFileName) === path.resolve(scopedConfigPath));
+  return scoped === undefined
+    ? undefined
+    : { complete, scoped: await scoped.program.getSourceFileNames() };
+}
+
+async function collectedDiagnostics(
+  api: NativeApi,
+  configPath: string,
+  scopedConfigPath: string | undefined,
+): Promise<Collected> {
   const snapshot = await api.updateSnapshot({ openProjects: [configPath] });
   const [project] = snapshot.getProjects();
   if (project === undefined) {
@@ -125,7 +147,9 @@ async function collectedDiagnostics(api: NativeApi, configPath: string): Promise
   for (const request of requests) {
     appendAll(diagnostics, await request());
   }
-  return { hasRootFiles: project.rootFiles.length > 0, configErrors, diagnostics };
+  const files =
+    scopedConfigPath === undefined ? undefined : await programFiles(api, program, scopedConfigPath);
+  return { hasRootFiles: project.rootFiles.length > 0, configErrors, diagnostics, files };
 }
 
 function withoutRootConfigLocation(
@@ -146,20 +170,20 @@ function withoutConfigLocation(diagnostic: NativeDiagnostic): NativeDiagnostic {
 
 function settledDiagnostics(
   ts: typeof TypeScript,
-  { hasRootFiles, configErrors, diagnostics }: Collected,
+  { hasRootFiles, configErrors, diagnostics, files }: Collected,
 ): NativeOutcome {
   if (!hasRootFiles && configErrors.every(({ code }) => code === NO_INPUTS_CODE)) {
-    return { diagnostics: [] };
+    return { diagnostics: [], files };
   }
   if (configErrors.length > 0 || diagnostics.some(({ code }) => REMOVED_OPTION_CODES.has(code))) {
     return { unsupported: true };
   }
-  return shapedDiagnostics(ts, diagnostics);
+  return { ...shapedDiagnostics(ts, diagnostics), files };
 }
 
 function ownDiagnostics(
   ts: typeof TypeScript,
-  { hasRootFiles, configErrors, diagnostics }: Collected,
+  { hasRootFiles, configErrors, diagnostics, files }: Collected,
 ): NativeOutcome {
   const fatalErrors = configErrors.filter(
     ({ code }) => code !== NO_INPUTS_CODE && !isNonFatalConfigCode(code),
@@ -168,7 +192,7 @@ function ownDiagnostics(
     throw configFailure(fatalErrors.map(({ text }) => text).join('\n'));
   }
   const reported = configErrors.filter(({ code }) => code !== NO_INPUTS_CODE);
-  return shapedDiagnostics(ts, hasRootFiles ? diagnostics : [], reported);
+  return { ...shapedDiagnostics(ts, hasRootFiles ? diagnostics : [], reported), files };
 }
 
 export function isNonFatalConfigCode(code: number): boolean {
@@ -183,7 +207,7 @@ function shapedDiagnostics(
   ts: typeof TypeScript,
   diagnostics: readonly NativeDiagnostic[],
   configErrors: readonly NativeDiagnostic[] = [],
-): NativeOutcome {
+): { readonly diagnostics: readonly TypeScript.Diagnostic[] } {
   const sourceFileOf = sourceFileReader(ts, { withPath: true });
   const configFileOf = sourceFileReader(ts, { withPath: false });
   return {

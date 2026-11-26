@@ -73,6 +73,26 @@ fn checks_match_the_node_checks_on_the_fixture_projects() {
 }
 
 #[test]
+fn contracts_come_only_from_the_own_root_when_one_is_given() {
+    let Some(compiler) = compiler() else { return };
+    let project = fixtures().join("workspace");
+    let input = std::env::temp_dir().join(format!("nitpicker-engine-own-root-{}.json", std::process::id()));
+    let own_root = project.join("src/app").to_string_lossy().replace('\\', "/");
+    std::fs::write(&input, serde_json::json!({ "ownRoot": own_root }).to_string()).expect("input");
+    let narrowed = engine(&compiler, &project.join("tsconfig.json"), "public-contracts", &["--input", &format!("public-contracts={}", input.display())]);
+    let whole = engine(&compiler, &project.join("tsconfig.json"), "public-contracts", &[]);
+    let _ = std::fs::remove_file(&input);
+    let methods = |output: &Output| {
+        assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+        let report: serde_json::Value = serde_json::from_slice(&output.stdout).expect("report");
+        let rows = report["checks"]["public-contracts"]["findings"].as_array().expect("findings").clone();
+        rows.iter().map(|row| format!("{}.{}", row["contract"].as_str().expect("contract"), row["method"].as_str().expect("method"))).collect::<Vec<_>>()
+    };
+    assert_eq!(methods(&narrowed), ["Repository.save"]);
+    assert_eq!(methods(&whole), ["Audit.log", "Audit.trace", "Repository.save", "Sink.flush"]);
+}
+
+#[test]
 fn a_missing_compiler_means_types_are_unavailable() {
     let output = engine(Path::new("/nonexistent/tsc"), &fixtures().join("contracts/tsconfig.json"), "public-contracts", &[]);
     assert_eq!(output.status.code(), Some(TYPES_UNAVAILABLE));
