@@ -156,7 +156,48 @@ fn written_names<'f>(file: &'f SourceFile, list: Option<Node>) -> Vec<&'f str> {
         .collect()
 }
 
+/// What a resolver has worked out about a file, kept to hand to the next resolver of the same file.
+#[derive(Default)]
+pub struct Memory {
+    cache: HashMap<usize, Option<Type>>,
+    loose: HashMap<usize, Option<Type>>,
+    written: HashMap<(usize, bool), Option<Type>>,
+    simples: HashMap<(usize, String), Option<String>>,
+    locals: HashMap<usize, std::rc::Rc<Vec<(String, usize, u32, u32)>>>,
+    patterns: HashMap<usize, std::rc::Rc<Vec<(usize, String, Option<Type>)>>>,
+    calls: HashMap<usize, Option<std::rc::Rc<super::expr::Call>>>,
+    mapping: HashMap<usize, u8>,
+}
+
 impl<'a> Resolver<'a> {
+    /// A resolver that starts from what an earlier resolver of the same file and tree worked out.
+    pub fn remembering(index: &'a TypeIndex, file: &'a SourceFile, scope: &'a FileScope, memory: Memory) -> Resolver<'a> {
+        let resolver = Resolver::new(index, file, scope);
+        *resolver.cache.borrow_mut() = memory.cache;
+        *resolver.loose.borrow_mut() = memory.loose;
+        *resolver.written.borrow_mut() = memory.written;
+        *resolver.simples.borrow_mut() = memory.simples;
+        *resolver.locals.borrow_mut() = memory.locals;
+        *resolver.patterns.borrow_mut() = memory.patterns;
+        *resolver.calls.borrow_mut() = memory.calls;
+        *resolver.mapping.borrow_mut() = memory.mapping;
+        resolver
+    }
+
+    /// What this resolver worked out, for the next resolver of the same file and tree.
+    pub fn memory(self) -> Memory {
+        Memory {
+            cache: self.cache.into_inner(),
+            loose: self.loose.into_inner(),
+            written: self.written.into_inner(),
+            simples: self.simples.into_inner(),
+            locals: self.locals.into_inner(),
+            patterns: self.patterns.into_inner(),
+            calls: self.calls.into_inner(),
+            mapping: self.mapping.into_inner(),
+        }
+    }
+
     pub fn new(index: &'a TypeIndex, file: &'a SourceFile, scope: &'a FileScope) -> Resolver<'a> {
         Resolver { index, file, scope, cache: RefCell::new(HashMap::new()), depth: Cell::new(0), busy: RefCell::new(std::collections::HashSet::new()), skipped: Cell::new(0), work: Cell::new(0), resolving: RefCell::new(HashMap::new()), symbolic: false, bounded: false, loose: RefCell::new(HashMap::new()), written: RefCell::new(HashMap::new()), locals: RefCell::new(HashMap::new()), mapping: RefCell::new(HashMap::new()), patterns: RefCell::new(HashMap::new()), calls: RefCell::new(HashMap::new()), simples: RefCell::new(HashMap::new()) }
     }

@@ -1,7 +1,7 @@
 //! What each step of a body does to the values it works with: dereferences, stores, tests, and calls that can
 //! change the fields of the object the method runs on.
 use super::super::Context;
-use super::marks;
+use super::{jdk, marks};
 use super::paths::{Finder, strip};
 use crate::engine::source::{children, named_children, parent};
 use crate::java::flow::cfg::{self, Cfg, Exit};
@@ -34,6 +34,51 @@ pub enum Effect<'a> {
     Asserted,
 }
 
+/// How much a body is worked out for.
+#[derive(Clone, Copy, PartialEq)]
+pub enum Mode {
+    /// For the parameters it dereferences: what callees dereference is worked out, not what they return.
+    Dereferences,
+    /// For what it returns: everything about callees is worked out.
+    Returns,
+    /// For reporting: whether a callee never returns null is worked out only when the body tests for null.
+    Report,
+}
+
+/// Whether something in a body can be null where it is dereferenced: a `null`, a test for null, a result or a
+/// field taken as possibly null. Bodies without any are not worked out.
+pub fn may_hold_null<'c, 'a>(shared: &Shared<'c, 'a>, class: &'c str, body: Node<'a>) -> bool {
+    let context = shared.context;
+    let mut finder = Finder::new(context, class);
+    let mut found = false;
+    crate::engine::source::walk(body, |node| {
+        if found {
+            return;
+        }
+        found = match node.kind() {
+            "null_literal" => true,
+            "method_invocation" => {
+                let named = node.child_by_field_name("name").map(|name| context.text(name));
+                matches!(named, Some("isNull" | "nonNull")) || context.resolver.resolve_call(node).is_some_and(|call| shared.marked(&call))
+            }
+            "identifier" | "field_access" => finder.of(node).is_some_and(|path| finder.all[path].checked),
+            _ => false,
+        };
+    });
+    found
+}
+
+/// A call that hands values to a method that may dereference them, waiting until the body is read.
+pub struct Handed<'a> {
+    block: usize,
+    position: usize,
+    /// Where the dereferences go among the effects of the step.
+    index: usize,
+    call: Call,
+    step: Node<'a>,
+    at: Node<'a>,
+}
+
 /// A branch on whether a path is null.
 pub struct Test {
     pub path: usize,
@@ -46,6 +91,8 @@ pub struct Test {
 pub struct Shared<'c, 'a> {
     pub context: &'c Context<'a>,
     summaries: RefCell<HashMap<usize, u64>>,
+    /// Summaries worked out without meeting a method still being worked out: the same whatever asked for them.
+    pub settled: RefCell<Vec<(Call, u64)>>,
     /// Summaries that may say too little, kept while the outermost method is worked out so that each body is
     /// built once for it; kept for good once `MOST` bodies were built.
     passing: RefCell<HashMap<usize, u64>>,
@@ -56,6 +103,8 @@ pub struct Shared<'c, 'a> {
     built: Cell<u32>,
     marked: RefCell<HashMap<(String, String, String), bool>>,
     overridden: RefCell<HashMap<(String, String, usize), bool>>,
+    never_null: RefCell<HashMap<usize, bool>>,
+    proving: RefCell<Vec<usize>>,
 }
 
 /// How deep calls are followed, and after how many bodies worked out for one class summaries that may say too
@@ -78,13 +127,22 @@ impl<'c, 'a> Shared<'c, 'a> {
         Shared {
             context,
             summaries: RefCell::default(),
+            settled: RefCell::default(),
             passing: RefCell::default(),
             running: RefCell::default(),
             cut: Cell::new(false),
             built: Cell::new(0),
             marked: RefCell::default(),
             overridden: RefCell::default(),
+            never_null: RefCell::default(),
+            proving: RefCell::default(),
         }
+    }
+
+    /// Starts the next class: the count of bodies worked out and the summaries that may say too little are per class.
+    pub fn next_class(&self) {
+        self.built.set(0);
+        self.passing.borrow_mut().clear();
     }
 
     fn key(call: &Call) -> (String, String, usize) {
@@ -92,12 +150,13 @@ impl<'c, 'a> Shared<'c, 'a> {
     }
 
     /// Whether the call's result is taken as possibly null.
-    fn marked(&self, call: &Call) -> bool {
-        let key = (call.declaring.clone(), call.method.name.clone(), format!("{:?}", call.method.parameters));
+    pub fn marked(&self, call: &Call) -> bool {
+        let key = (call.receiver.name(), format!("{}.{}", call.declaring, call.method.name), format!("{:?}", call.method.parameters));
         if let Some(known) = self.marked.borrow().get(&key) {
             return *known;
         }
-        let found = marks::method(self.context.resolver.index, &call.declaring, &call.method);
+        let index = self.context.resolver.index;
+        let found = marks::method(index, &call.declaring, &call.method) || jdk::returns_null(index, call);
         self.marked.borrow_mut().insert(key, found);
         found
     }
@@ -126,13 +185,44 @@ impl<'c, 'a> Shared<'c, 'a> {
         })
     }
 
+    /// Whether the called method never returns null: a JDK method SpotBugs knows so, or a method of this file
+    /// that no class of the run overrides and whose every `return` hands back a value known not to be null.
+    pub fn never_null(&self, call: &Call) -> bool {
+        let index = self.context.resolver.index;
+        let Some(class) = self.context.classes.get(&call.declaring) else {
+            return self.context.elsewhere.never_null(self.context.project, call).unwrap_or_else(|| jdk::never_null(index, call));
+        };
+        let Some(declaration) = self.declaration(*class, &call.method) else { return false };
+        if let Some(known) = self.never_null.borrow().get(&declaration.id()) {
+            return *known;
+        }
+        if self.proving.borrow().contains(&declaration.id()) || self.proving.borrow().len() >= DEEPEST {
+            return false;
+        }
+        let final_class = index.get(&call.declaring).is_some_and(|info| info.flags & flag::FINAL != 0);
+        let fixed = call.method.is_static || call.method.is_private || call.method.flags & flag::FINAL != 0 || final_class;
+        let Some(body) = declaration.child_by_field_name("body").filter(|_| fixed || !self.overridden(call)) else { return false };
+        self.proving.borrow_mut().push(declaration.id());
+        let unit = Unit::build(self, &call.declaring, body, declaration.child_by_field_name("parameters"), Mode::Returns);
+        let (starts, ends) = super::must::run(&unit);
+        let mut flow = super::forward::Flow::new(&unit, &starts, &ends);
+        flow.run();
+        let found = flow.never_null(body);
+        self.proving.borrow_mut().pop();
+        self.never_null.borrow_mut().insert(declaration.id(), found);
+        found
+    }
+
     /// A bit per parameter the called method dereferences on every path that leaves it normally. Only for
     /// methods of this file that no class of the run overrides.
     pub fn summary(&self, call: &Call) -> u64 {
+        let Some(class) = self.context.classes.get(&call.declaring) else {
+            let elsewhere = self.context.elsewhere.dereferences(self.context.project, call);
+            return elsewhere.unwrap_or_else(|| jdk::dereferenced(self.context.resolver.index, call));
+        };
         if call.method.varargs {
             return 0;
         }
-        let Some(class) = self.context.classes.get(&call.declaring) else { return 0 };
         let Some(declaration) = self.declaration(*class, &call.method) else { return 0 };
         if let Some(known) = self.summaries.borrow().get(&declaration.id()) {
             return *known;
@@ -155,7 +245,7 @@ impl<'c, 'a> Shared<'c, 'a> {
         let before = self.cut.replace(false);
         let mut bits = 0;
         if let Some(body) = declaration.child_by_field_name("body").filter(|_| fixed || !self.overridden(call)) {
-            let unit = Unit::build(self, &call.declaring, body, declaration.child_by_field_name("parameters"));
+            let unit = Unit::build(self, &call.declaring, body, declaration.child_by_field_name("parameters"), Mode::Dereferences);
             let (entry, _) = super::must::run(&unit);
             for (position, path) in unit.parameters.iter().enumerate().take(64) {
                 if super::must::has(&entry[0], *path) {
@@ -165,6 +255,9 @@ impl<'c, 'a> Shared<'c, 'a> {
         }
         self.running.borrow_mut().pop();
         let cut = self.cut.get();
+        if !cut {
+            self.settled.borrow_mut().push((call.clone(), bits));
+        }
         if !cut || deep == 0 {
             self.summaries.borrow_mut().insert(declaration.id(), bits);
         } else {
@@ -179,6 +272,7 @@ impl<'c, 'a> Shared<'c, 'a> {
 }
 
 pub struct Unit<'c, 'a> {
+    body: Node<'a>,
     pub finder: Finder<'c, 'a>,
     pub cfg: Cfg<'a>,
     /// Per block, per step.
@@ -186,6 +280,8 @@ pub struct Unit<'c, 'a> {
     pub tests: Vec<Option<Test>>,
     /// The calls whose result is taken as possibly null.
     pub nullable_calls: HashSet<usize>,
+    /// The calls whose result is known not to be null.
+    pub nonnull_calls: HashSet<usize>,
     /// The path each identifier or field access reads.
     pub reads: HashMap<usize, usize>,
     pub parameters: Vec<usize>,
@@ -195,15 +291,17 @@ pub struct Unit<'c, 'a> {
 }
 
 impl<'c, 'a> Unit<'c, 'a> {
-    pub fn build(shared: &Shared<'c, 'a>, class: &'c str, body: Node<'a>, parameters: Option<Node<'a>>) -> Self {
+    pub fn build(shared: &Shared<'c, 'a>, class: &'c str, body: Node<'a>, parameters: Option<Node<'a>>, mode: Mode) -> Self {
         let context = shared.context;
         let cfg = cfg::build_with(context.file, body, &|_| false, true);
         let mut unit = Unit {
+            body,
             finder: Finder::new(context, class),
             cfg,
             effects: Vec::new(),
             tests: Vec::new(),
             nullable_calls: HashSet::new(),
+            nonnull_calls: HashSet::new(),
             reads: HashMap::new(),
             parameters: Vec::new(),
             of_this: Vec::new(),
@@ -218,9 +316,18 @@ impl<'c, 'a> Unit<'c, 'a> {
                 unit.parameters.push(path);
             }
         }
+        let mut called = Vec::new();
+        let mut waiting = Vec::new();
         for block in 0..unit.cfg.blocks.len() {
             let steps = unit.cfg.blocks[block].steps.clone();
-            let found = steps.into_iter().map(|step| unit.step(shared, step)).collect();
+            let mut found = Vec::new();
+            for (position, step) in steps.into_iter().enumerate() {
+                let noted = waiting.len();
+                found.push(unit.step(shared, step, &mut called, &mut waiting));
+                for handed in &mut waiting[noted..] {
+                    (handed.block, handed.position) = (block, position);
+                }
+            }
             unit.effects.push(found);
             let test = match &unit.cfg.blocks[block].exit {
                 Exit::Branch(test, holds, fails) if !unit.materialized(*holds, *fails) => Some(*test),
@@ -228,6 +335,12 @@ impl<'c, 'a> Unit<'c, 'a> {
             };
             let test = test.and_then(|test| unit.test(test));
             unit.tests.push(test);
+        }
+        unit.settle(shared, mode, waiting);
+        if matches!(mode, Mode::Returns | Mode::Report) {
+            let reaching = unit.reaching(mode);
+            let called = called.into_iter().filter(|(step, _)| reaching.contains(step));
+            unit.nonnull_calls = called.filter(|(_, call)| shared.never_null(call)).map(|(step, _)| step).collect();
         }
         let paths = &unit.finder.all;
         unit.of_this = (0..paths.len()).filter(|path| paths[*path].of_this).collect();
@@ -320,16 +433,155 @@ impl<'c, 'a> Unit<'c, 'a> {
         Effect::Deref { of, path: self.finder.of(of), at, how }
     }
 
-    fn passed(&mut self, shared: &Shared<'c, 'a>, call: &Call, step: Node<'a>, at: Node<'a>, found: &mut Vec<Effect<'a>>) {
-        let bits = shared.summary(call);
-        for (position, argument) in arguments(step).into_iter().enumerate().take(64) {
-            if bits & (1 << position) != 0 {
-                found.push(self.deref(argument, at, How::Parameter));
+    /// Notes a call whose callee may dereference what it is handed; what it dereferences is worked out once the
+    /// whole body is read, and only for calls handed a value that matters.
+    fn passed(&mut self, call: &Call, step: Node<'a>, at: Node<'a>, found: &[Effect<'a>], waiting: &mut Vec<Handed<'a>>) {
+        waiting.push(Handed { block: 0, position: 0, index: found.len(), call: call.clone(), step, at });
+    }
+
+    /// Whether an argument can hold a value that matters: one that may be null, or, for the dereferences of a
+    /// body's parameters, one that came from a parameter.
+    fn matters(&mut self, argument: Node<'a>, wanted: &HashSet<usize>, nulls: bool) -> bool {
+        if self.finder.of(argument).is_some_and(|path| wanted.contains(&path)) {
+            return true;
+        }
+        if !nulls {
+            return false;
+        }
+        let mut found = false;
+        crate::engine::source::walk(argument, |node| {
+            found |= node.kind() == "null_literal" || self.nullable_calls.contains(&node.id());
+        });
+        found || self.reads_any(argument, wanted)
+    }
+
+    fn reads_any(&self, node: Node<'a>, wanted: &HashSet<usize>) -> bool {
+        let mut found = false;
+        crate::engine::source::walk(node, |part| found |= self.reads.get(&part.id()).is_some_and(|path| wanted.contains(path)));
+        found
+    }
+
+    /// The paths whose value matters: for reporting, those that may hold null (fields taken as possibly null,
+    /// paths tested for null, and what is stored from `null`, a possibly null result or such a path); for the
+    /// dereferences of a body's parameters, the parameters and what is stored from them.
+    fn wanted(&self, mode: Mode) -> HashSet<usize> {
+        let mut wanted: HashSet<usize> = match mode {
+            Mode::Dereferences => self.parameters.iter().copied().collect(),
+            _ => {
+                let mut start: HashSet<usize> = (0..self.finder.all.len()).filter(|path| self.finder.all[*path].checked).collect();
+                start.extend(self.tests.iter().flatten().map(|test| test.path));
+                start
+            }
+        };
+        let nulls = mode != Mode::Dereferences;
+        let mut grown = true;
+        while grown {
+            grown = false;
+            for effect in self.effects.iter().flatten().flatten() {
+                let Effect::Assign { to, from, sources } = effect else { continue };
+                if wanted.contains(to) {
+                    continue;
+                }
+                let mut hit = sources.iter().any(|source| wanted.contains(source));
+                if let Some(from) = from.filter(|_| nulls && !hit) {
+                    crate::engine::source::walk(from, |node| hit |= node.kind() == "null_literal" || self.nullable_calls.contains(&node.id()));
+                }
+                if hit {
+                    wanted.insert(*to);
+                    grown = true;
+                }
+            }
+        }
+        wanted
+    }
+
+    /// Works out what the noted callees dereference, for the calls handed a value that matters.
+    fn settle(&mut self, shared: &Shared<'c, 'a>, mode: Mode, waiting: Vec<Handed<'a>>) {
+        let wanted = self.wanted(mode);
+        let nulls = mode != Mode::Dereferences;
+        for handed in waiting.into_iter().rev() {
+            let listed = arguments(handed.step);
+            let any = mode == Mode::Returns || listed.iter().any(|argument| self.matters(*argument, &wanted, nulls));
+            if !any {
+                continue;
+            }
+            let bits = shared.summary(&handed.call);
+            let mut inserted = Vec::new();
+            for (position, argument) in listed.into_iter().enumerate().take(64) {
+                if bits & (1 << position) != 0 {
+                    inserted.push(self.deref(argument, handed.at, How::Parameter));
+                }
+            }
+            let effects = &mut self.effects[handed.block][handed.position];
+            for (offset, effect) in inserted.into_iter().enumerate() {
+                effects.insert(handed.index + offset, effect);
             }
         }
     }
 
-    fn step(&mut self, shared: &Shared<'c, 'a>, step: Node<'a>) -> Vec<Effect<'a>> {
+    /// The expressions whose value an expression is: both arms of `?:`, the value of an assignment.
+    fn heads(node: Node<'a>, found: &mut Vec<Node<'a>>) {
+        let node = strip(node);
+        match node.kind() {
+            "ternary_expression" => {
+                for arm in ["consequence", "alternative"] {
+                    if let Some(arm) = node.child_by_field_name(arm) {
+                        Self::heads(arm, found);
+                    }
+                }
+            }
+            "assignment_expression" => match node.child_by_field_name("right") {
+                Some(right) => Self::heads(right, found),
+                None => found.push(node),
+            },
+            _ => found.push(node),
+        }
+    }
+
+    /// The calls whose result can reach what matters: for reporting, a test for null; for what a body returns,
+    /// a `return`. Only for these is it worked out whether the callee never returns null.
+    fn reaching(&mut self, mode: Mode) -> HashSet<usize> {
+        let mut heads = Vec::new();
+        if mode == Mode::Returns {
+            let mut pending = vec![self.body];
+            while let Some(node) = pending.pop() {
+                for part in children(node) {
+                    match part.kind() {
+                        "lambda_expression" | "class_body" => {}
+                        "return_statement" => {
+                            let value = children(part).into_iter().find(|inner| inner.is_named() && !inner.kind().ends_with("comment"));
+                            value.into_iter().for_each(|value| Self::heads(value, &mut heads));
+                        }
+                        _ => pending.push(part),
+                    }
+                }
+            }
+        }
+        let mut wanted: HashSet<usize> = heads.iter().filter_map(|head| self.finder.of(*head)).collect();
+        wanted.extend(self.tests.iter().flatten().filter(|test| test.null_holds.is_some()).map(|test| test.path));
+        let mut reaching: HashSet<usize> = heads.iter().filter(|head| head.kind() == "method_invocation").map(|head| head.id()).collect();
+        let mut grown = true;
+        while grown {
+            grown = false;
+            for effect in self.effects.iter().flatten().flatten() {
+                let Effect::Assign { to, from: Some(from), sources } = effect else { continue };
+                if !wanted.contains(to) {
+                    continue;
+                }
+                for source in sources {
+                    grown |= wanted.insert(*source);
+                }
+                let mut found = Vec::new();
+                Self::heads(*from, &mut found);
+                for head in found.into_iter().filter(|head| head.kind() == "method_invocation") {
+                    grown |= reaching.insert(head.id());
+                }
+            }
+        }
+        reaching
+    }
+
+    fn step(&mut self, shared: &Shared<'c, 'a>, step: Node<'a>, called: &mut Vec<(usize, Call)>, waiting: &mut Vec<Handed<'a>>) -> Vec<Effect<'a>> {
         let resolver = self.finder.context.resolver;
         let mut found = Vec::new();
         let hands_this = |listed: &[Node]| listed.iter().any(|argument| strip(*argument).kind() == "this");
@@ -347,10 +599,12 @@ impl<'c, 'a> Unit<'c, 'a> {
                     if call.declaring == "java.util.Objects" && call.method.name == "requireNonNull" {
                         found.extend(listed.first().and_then(|first| self.finder.of(*first)).map(Effect::Checked));
                     } else {
-                        self.passed(shared, call, step, name, &mut found);
+                        self.passed(call, step, name, &found, waiting);
                     }
                     if shared.marked(call) {
                         self.nullable_calls.insert(step.id());
+                    } else {
+                        called.push((step.id(), call.clone()));
                     }
                 }
                 let on_this = match object {
@@ -363,7 +617,7 @@ impl<'c, 'a> Unit<'c, 'a> {
             }
             "object_creation_expression" => {
                 if let Some((call, _)) = resolver.call_formals(step) {
-                    self.passed(shared, &call, step, step, &mut found);
+                    self.passed(&call, step, step, &found, waiting);
                 }
                 if hands_this(&arguments(step)) {
                     found.push(Effect::Invalidate);
