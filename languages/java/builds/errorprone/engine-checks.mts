@@ -19,9 +19,11 @@ export const TEST_SENSITIVE: readonly string[] = [
   'InterruptedExceptionSwallowed',
   'Interruption',
   'NarrowCalculation',
+  'ProtoBuilderReturnValueIgnored',
   'ReturnValueIgnored',
   'StaticAssignmentOfThrowable',
   'ThrowSpecificExceptions',
+  'UseCorrectAssertInTests',
 ];
 const MODULE_PATH = '--module-path';
 const CHECK_LEVEL = /^-Xep:(\w+)(?::(\w+))?$/u;
