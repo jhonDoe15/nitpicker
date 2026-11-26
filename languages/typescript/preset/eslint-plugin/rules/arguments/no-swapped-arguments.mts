@@ -3,6 +3,7 @@ import type TypeScript from 'typescript';
 import { typedScopeOf } from '../promises/cannot-reject.mts';
 import { ts } from '../typed/typescript-views.mts';
 import { findSwaps } from './swapped-names.mts';
+import { isProjectFile } from '../analysis/mutation/caller-objects.mts';
 
 type Docs = { readonly requiresTypeChecking: boolean };
 type MessageIds = 'swappedArguments';
@@ -32,11 +33,7 @@ function givenNames(call: CallLike): (string | undefined)[] {
 }
 
 function isProjectSource(program: TypeScript.Program, file: TypeScript.SourceFile): boolean {
-  return !(
-    file.isDeclarationFile ||
-    program.isSourceFileFromExternalLibrary(file) ||
-    program.isSourceFileDefaultLibrary(file)
-  );
+  return !file.isDeclarationFile && isProjectFile(program, file);
 }
 
 type Callee = {

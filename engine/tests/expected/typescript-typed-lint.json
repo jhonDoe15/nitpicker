@@ -315,6 +315,87 @@
   10
  ],
  [
+  "src/defaults/fallbacks.ts",
+  "nitpicker/no-falsy-default",
+  4,
+  10,
+  "`limit` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`.",
+  4,
+  15
+ ],
+ [
+  "src/defaults/fallbacks.ts",
+  "nitpicker/no-falsy-default",
+  8,
+  10,
+  "`name` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`.",
+  8,
+  14
+ ],
+ [
+  "src/defaults/fallbacks.ts",
+  "nitpicker/no-falsy-default",
+  13,
+  5,
+  "`options.limit` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`.",
+  13,
+  18
+ ],
+ [
+  "src/defaults/fallbacks.ts",
+  "nitpicker/no-falsy-default",
+  14,
+  5,
+  "`options.enabled` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`.",
+  14,
+  20
+ ],
+ [
+  "src/defaults/fallbacks.ts",
+  "nitpicker/no-falsy-default",
+  16,
+  5,
+  "`options.ratio` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`.",
+  16,
+  18
+ ],
+ [
+  "src/defaults/fallbacks.ts",
+  "nitpicker/no-falsy-default",
+  30,
+  35,
+  "`count` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`.",
+  30,
+  40
+ ],
+ [
+  "src/arguments/calls.ts",
+  "nitpicker/no-swapped-arguments",
+  16,
+  12,
+  "`target` is passed as `source` and `source` as `target`; did you swap them? Pass the arguments in the order of the parameters.",
+  16,
+  54
+ ],
+ [
+  "src/arguments/calls.ts",
+  "nitpicker/no-swapped-arguments",
+  22,
+  5,
+  "`target` is passed as `source` and `source` as `target`; did you swap them? Pass the arguments in the order of the parameters.",
+  22,
+  37
+ ],
+ [
+  "src/arguments/calls.ts",
+  "nitpicker/no-swapped-arguments",
+  25,
+  5,
+  "`target` is passed as `source` and `source` as `target`; did you swap them? Pass the arguments in the order of the parameters.",
+  25,
+  31
+ ],
+ [
   "outside.ts",
   "!types",
   1,

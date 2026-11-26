@@ -6,11 +6,17 @@ pub mod offsets;
 pub mod types;
 
 use super::Rule;
+use super::arguments;
+use super::defaults;
 use super::domain;
 use super::signatures;
 
 pub const TYPED: &[(&str, Rule)] =
-    &[("no-mutating-method-in-domain", domain::no_mutating_method_in_domain::check), ("no-parameter-mutation", signatures::no_parameter_mutation::check)];
+    &[
+    ("no-falsy-default", defaults::no_falsy_default::check),
+    ("no-mutating-method-in-domain", domain::no_mutating_method_in_domain::check), ("no-parameter-mutation", signatures::no_parameter_mutation::check),
+    ("no-swapped-arguments", arguments::no_swapped_arguments::check),
+];
 
 pub fn is_typed(name: &str) -> bool {
     TYPED.iter().any(|(typed, _)| *typed == name)
