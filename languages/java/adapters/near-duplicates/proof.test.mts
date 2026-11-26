@@ -213,12 +213,12 @@ describe('JVM copies proved equal by the solver', () => {
         {
           units: ['sizeLabel(int,int)', 'sizeSwapped(int,int)'],
           subject: 'outcome 1',
-          counterexample: '(limit * 2) = -2, count = -1, limit = -1',
+          counterexample: '(limit * 2) = -1, count = -1, limit = -2',
         },
         {
           units: ['sizeName(int,int)', 'sizeSwapped(int,int)'],
           subject: 'outcome 1',
-          counterexample: '(max * 2) = -2, amount = -1, max = -1',
+          counterexample: '(max * 2) = -1, amount = -1, max = -2',
         },
       ],
     });
