@@ -1,6 +1,10 @@
 //! Ports of PMD's best practices rules written in Java.
-mod calls;
+pub(super) mod calls;
 mod declarations;
+mod instantiation;
+mod resources;
+
+pub use resources::test_class_without_test_cases;
 
 use super::Port;
 
@@ -14,6 +18,9 @@ pub fn port(class: &str) -> Option<Port> {
         "UseCollectionIsEmptyRule" => calls::use_collection_is_empty,
         "CheckResultSetRule" => calls::check_result_set,
         "UseEnumCollectionsRule" => calls::use_enum_collections,
+        "PrimitiveWrapperInstantiationRule" => instantiation::primitive_wrapper_instantiation,
+        "LiteralsFirstInComparisonsRule" => calls::literals_first_in_comparisons,
+        "UseTryWithResourcesRule" => resources::use_try_with_resources,
         _ => return None,
     })
 }

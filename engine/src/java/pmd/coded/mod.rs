@@ -1,6 +1,8 @@
 //! PMD rules that PMD writes in Java rather than XPath, ported to run on the PMD-shaped tree. A rule list names a
 //! port by the PMD class of the rule; the findings go through the same suppressions as the XPath rules.
 mod bestpractices;
+mod constants;
+mod design;
 pub mod ctx;
 mod errorprone;
 mod frameworks;
@@ -20,18 +22,24 @@ pub fn port(class: &str) -> Option<Port> {
     match category {
         "bestpractices" => bestpractices::port(name),
         "errorprone" => errorprone::port(name),
-        "performance" | "security" | "design" | "codestyle" | "multithreading" => performance::port(name),
+        "performance" | "security" => performance::port(name),
+        "design" | "codestyle" | "multithreading" => design::port(name),
         _ => None,
     }
 }
 
 pub fn hit(node: u32) -> ctx::Hit {
-    ctx::Hit { node, args: Vec::new() }
+    ctx::Hit { node, args: Vec::new(), message: None }
 }
 
 pub fn hit_with(node: u32, args: &[&str]) -> ctx::Hit {
     ctx::Hit {
         node,
         args: args.iter().map(|arg| arg.to_string()).collect(),
+        message: None,
     }
+}
+
+pub fn hit_saying(node: u32, message: String) -> ctx::Hit {
+    ctx::Hit { node, args: Vec::new(), message: Some(message) }
 }

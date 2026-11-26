@@ -17,7 +17,7 @@ use Constant::{Bool, Char, Double, Float, Int, Long};
 /// Integer division by zero, which makes PMD give up the rule for the rest of the file.
 pub struct Thrown;
 
-type Folded = Result<Option<Constant>, Thrown>;
+pub type Folded = Result<Option<Constant>, Thrown>;
 
 impl Constant {
     pub fn is_zero(self) -> bool {
@@ -186,7 +186,7 @@ fn compare(operator: &str, left: Constant, right: Constant) -> Option<Constant> 
     }))
 }
 
-fn infix(operator: &str, left: Constant, right: Constant) -> Folded {
+pub(in crate::java::pmd::coded) fn infix(operator: &str, left: Constant, right: Constant) -> Folded {
     Ok(match operator {
         "||" | "&&" => match (left, right) {
             (Bool(a), Bool(b)) => Some(Bool(if operator == "||" { a || b } else { a && b })),
@@ -199,7 +199,7 @@ fn infix(operator: &str, left: Constant, right: Constant) -> Folded {
     })
 }
 
-fn cast(kind: &str, value: Constant) -> Option<Constant> {
+pub(in crate::java::pmd::coded) fn cast(kind: &str, value: Constant) -> Option<Constant> {
     let value = value.promoted()?;
     Some(match kind {
         "char" => Char(value.int() as u16),
@@ -213,7 +213,7 @@ fn cast(kind: &str, value: Constant) -> Option<Constant> {
     })
 }
 
-fn unary(operator: &str, value: Constant) -> Option<Constant> {
+pub(in crate::java::pmd::coded) fn unary(operator: &str, value: Constant) -> Option<Constant> {
     if operator == "!" {
         return match value {
             Bool(value) => Some(Bool(!value)),
@@ -232,7 +232,7 @@ fn unary(operator: &str, value: Constant) -> Option<Constant> {
     })
 }
 
-fn literal(ctx: &Ctx, id: u32) -> Option<Constant> {
+pub(in crate::java::pmd::coded) fn literal(ctx: &Ctx, id: u32) -> Option<Constant> {
     let whole = |name| match ctx.attribute(id, name) {
         Some(Value::Whole(value)) => Some(value),
         _ => None,

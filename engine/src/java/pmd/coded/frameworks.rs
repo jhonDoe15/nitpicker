@@ -11,6 +11,30 @@ const JUNIT5_TESTS: &[&str] = &[
 ];
 
 impl Ctx<'_, '_, '_> {
+    pub fn is_expression(&self, id: u32) -> bool {
+        super::message::EXPRESSIONS.contains(&self.name(id))
+    }
+
+    /// PMD's `JavaAstUtils.getTopLevelExpr`.
+    pub fn top_level_expression(&self, expression: u32) -> u32 {
+        let mut top = expression;
+        while let Some(parent) = self.parent(top) {
+            let argument_list = self.is(parent, "ArgumentList")
+                && self.parent(parent).is_some_and(|call| self.is_expression(call));
+            if !self.is_expression(parent) && !argument_list {
+                break;
+            }
+            top = parent;
+        }
+        top
+    }
+
+    /// The formal parameter types of the method or constructor a call resolves to.
+    pub fn formals(&self, call: u32) -> Option<Vec<Type>> {
+        let source = self.tree.nodes[call as usize].source?;
+        self.machine.resolver.call_formals(source).map(|(_, formals)| formals)
+    }
+
     /// PMD's `isAnnotationPresent`: an annotation of the declaration is of the type or a subtype.
     pub fn annotation_present(&self, owner: u32, name: &str) -> bool {
         self.annotations(owner)
