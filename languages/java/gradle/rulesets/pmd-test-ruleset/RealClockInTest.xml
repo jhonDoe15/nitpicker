@@ -11,9 +11,14 @@ let $timeTypes := ('Instant', 'LocalDate', 'LocalDateTime', 'LocalTime', 'ZonedD
       $call[@MethodName = ('isBefore', 'isAfter', 'compareTo')
             or *[1][pmd-java:typeIs('java.time.Duration') or pmd-java:typeIs('java.time.temporal.TemporalUnit')
                     or pmd-java:typeIs('java.time.temporal.Temporal')]] },
+    $converts := function($n) {
+      exists($n/self::ArgumentList[@Size = 1]/parent::MethodCall[@MethodName = ('toNanos', 'toMicros', 'toMillis', 'toSeconds',
+                                                                                    'toMinutes', 'toHours', 'toDays')]
+               [*[1][pmd-java:typeIs('java.util.concurrent.TimeUnit')]]) },
     $top := function($n) {
       $n/ancestor-or-self::*[not((parent::MethodCall[not(@MethodName = $measures)] and not(preceding-sibling::*))
-                                 or parent::InfixExpression[@Operator = '+'])][1] },
+                                 or parent::InfixExpression[@Operator = '+']
+                                 or $converts(.) or $converts(parent::*))][1] },
     $inCondition := function($n) {
       some $a in $n/ancestor-or-self::* satisfies
         ($a/parent::WhileStatement and $a is $a/../*[1])

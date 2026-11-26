@@ -1,3 +1,5 @@
+import { rule as ruleNoManyToManyCascadeRemove } from '../rules/persistence/no-many-to-many-cascade-remove.mts';
+import { rule as ruleNoMismatchedPreconditionMessage } from '../rules/preconditions/no-mismatched-precondition-message.mts';
 import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
 import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
 import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
@@ -96,10 +98,10 @@ import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefine
 import { rule as ruleNoUnencodedUrlPart } from '../rules/urls/construction/no-unencoded-url-part.mts';
 import { rule as ruleNoUnescapedCssSelector } from '../rules/selectors/no-unescaped-css-selector.mts';
 import { rule as ruleNoUnescapedFilterValue } from '../rules/patterns/filters/no-unescaped-filter-value.mts';
-import { rule as ruleNoUnescapedHtmlInterpolation } from '../rules/patterns/html/no-unescaped-html-interpolation.mts';
-import { rule as ruleNoUnescapedPatternTranslation } from '../rules/patterns/no-unescaped-pattern-translation.mts';
 
 export const partRules = {
+  'no-many-to-many-cascade-remove': ruleNoManyToManyCascadeRemove,
+  'no-mismatched-precondition-message': ruleNoMismatchedPreconditionMessage,
   'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
   'no-module-level-let': ruleNoModuleLevelLet,
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
@@ -198,6 +200,4 @@ export const partRules = {
   'no-unencoded-url-part': ruleNoUnencodedUrlPart,
   'no-unescaped-css-selector': ruleNoUnescapedCssSelector,
   'no-unescaped-filter-value': ruleNoUnescapedFilterValue,
-  'no-unescaped-html-interpolation': ruleNoUnescapedHtmlInterpolation,
-  'no-unescaped-pattern-translation': ruleNoUnescapedPatternTranslation,
 };

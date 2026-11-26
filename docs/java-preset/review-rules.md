@@ -338,7 +338,8 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   subtraction of another time (`System.currentTimeMillis() - start`, not `- 60_000`), an argument of `Duration.between`
   or `ChronoUnit.X.between`, a receiver or argument of `isBefore`, `isAfter` or `compareTo`, or of `until` on a time,
   a loop condition, and a local that is only used in those places (a start time, or a deadline such as
-  `Instant.now().plusSeconds(5)`). Every other read counts: the rule does not follow the value into an assertion or
+  `Instant.now().plusSeconds(5)`). A start time converted inline with `TimeUnit` (`toNanos`, `toMicros`, `toMillis`,
+  `toSeconds`, `toMinutes`, `toHours`, `toDays`) and then subtracted or compared counts as measuring too. Every other read counts: the rule does not follow the value into an assertion or
   the subject, so a timestamp the test only stores is reported too; pass a fixed `Instant` there. `UUID.randomUUID()`
   for an id that no assertion compares is allowed, and `SecureRandom` is left alone (keys and salts are meant to
   change). `NetworkInTest` skips calls on a mock (a field with `@Mock`, `@MockBean`, `@MockitoBean`, `@Spy`, a local
