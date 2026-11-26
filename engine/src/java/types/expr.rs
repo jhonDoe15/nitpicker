@@ -513,8 +513,74 @@ impl<'a> Resolver<'a> {
                     _ => None,
                 }
             }
+            "ternary_expression" => {
+                let holds = self.constant_boolean(expression.field("condition")?)?;
+                let consequence = self.constant_string(expression.field("consequence")?)?;
+                let alternative = self.constant_string(expression.field("alternative")?)?;
+                Some(if holds { consequence } else { alternative })
+            }
             _ => None,
         }
+    }
+
+    /// The value of a constant `boolean` expression made of literals, constant fields and the boolean operators.
+    fn constant_boolean(&self, expression: Node) -> Option<bool> {
+        let expression = unwrap(expression);
+        let read = |field: &Field| (field.kind == Type::Primitive("boolean")).then(|| field.constant.as_deref().map(|value| value == "true")).flatten();
+        match expression.kind() {
+            "true" => Some(true),
+            "false" => Some(false),
+            "unary_expression" if self.file.text_of(expression.field("operator")?) == "!" => {
+                self.constant_boolean(expression.field("operand")?).map(|value| !value)
+            }
+            "binary_expression" => {
+                let operator = self.file.text_of(expression.field("operator")?);
+                let left = self.constant_boolean(expression.field("left")?)?;
+                let right = self.constant_boolean(expression.field("right")?)?;
+                match operator {
+                    "&&" | "&" => Some(left && right),
+                    "||" | "|" => Some(left || right),
+                    "^" | "!=" => Some(left != right),
+                    "==" => Some(left == right),
+                    _ => None,
+                }
+            }
+            "identifier" => match self.binding(expression, self.file.text_of(expression))? {
+                Binding::Field(_, _, field) => read(field),
+                Binding::Local(_) => None,
+            },
+            "field_access" => {
+                let name = self.file.text_of(expression.field("field")?);
+                match self.receiver(expression.field("object")?)? {
+                    Receiver::Static(owner) | Receiver::Value(Type::Class(owner, _)) => read(self.index.field(&owner, name)?.1),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+
+    /// The `String` constants of final fields of a class that read other constants or choose between constants:
+    /// the values `members` could not see while the classes they read were still being filled in.
+    pub fn later_constants(&self, declaration: Node, info: &ClassInfo) -> Vec<(String, String)> {
+        let Some(body) = declaration.field("body") else { return Vec::new() };
+        let mut members = children(body);
+        members.extend(children(body).into_iter().filter(|child| child.kind() == "enum_body_declarations").flat_map(children));
+        let mut found = Vec::new();
+        for member in members.into_iter().filter(|member| matches!(member.kind(), "field_declaration" | "constant_declaration")) {
+            if !(info.is_interface || super::super::helpers::has_modifier(member, "final")) {
+                continue;
+            }
+            for declarator in super::super::helpers::declarators(member) {
+                let (Some(name), Some(value)) = (declarator.field("name"), declarator.field("value")) else { continue };
+                let name = self.file.text_of(name);
+                let open = info.fields.iter().any(|field| field.name == name && field.constant.is_none() && field.kind.name() == "java.lang.String");
+                if let Some(constant) = open.then(|| self.constant_string(value)).flatten() {
+                    found.push((name.to_string(), constant));
+                }
+            }
+        }
+        found
     }
 
     pub fn pattern_variable(&self, usage: Node, name: &str) -> Option<Type> {

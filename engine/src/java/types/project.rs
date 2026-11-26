@@ -103,6 +103,32 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>, 
             index.put(info);
         }
     }
+    // A constant read from another constant is known once that one is: each round settles one more step.
+    for _ in 0..8 {
+        let later: Vec<(String, Vec<(String, String)>)> = files
+            .par_iter()
+            .zip(&scopes)
+            .zip(&declared)
+            .flat_map_iter(|((file, scope), declarations)| {
+                let resolver = Resolver::new(&index, file, scope);
+                declarations
+                    .iter()
+                    .filter_map(|(node, name)| Some((name.clone(), resolver.later_constants(*node, index.get(name)?))))
+                    .filter(|(_, found)| !found.is_empty())
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        if later.is_empty() {
+            break;
+        }
+        for (name, found) in later {
+            let Some(mut info) = index.get(&name).cloned() else { continue };
+            for (field, value) in found {
+                info.fields.iter_mut().filter(|known| known.name == field).for_each(|known| known.constant = Some(value.clone()));
+            }
+            index.put(info);
+        }
+    }
     for (file, scope) in files.iter().zip(&scopes) {
         let declaration = crate::engine::source::children(file.tree.root_node()).into_iter().find(|part| part.kind() == "package_declaration");
         if let Some(declaration) = declaration.filter(|_| file.path.ends_with("package-info.java")) {
