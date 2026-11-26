@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../git/test-support/git-repository.mts';
 import { writeFiles } from '../../git/test-support/fixture-files.mts';
@@ -173,5 +176,25 @@ describe('analyzer budgets scaled with project size', () => {
     expect(
       memoryEstimateMegabytes({ memoryScale: { ...memoryScale, holdsProgram: () => false } }, root),
     ).toBe(650);
+  });
+
+  it('counts the files of a package with its code at the root when git lists none', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-root-layout-'));
+    try {
+      writeFiles(root, {
+        'index.tsx': '',
+        'components/button.tsx': '',
+        'views/page.ts': '',
+        'node_modules/lib/index.ts': '',
+        '.cache/old.ts': '',
+        'package.json': '{}',
+      });
+
+      expect(projectFileCount(root, ['ts', 'tsx'])).toBe(3);
+      expect(projectModuleCount(root, ['package.json'])).toBe(1);
+      expect(preparedAllowance(analyzer({}), root)).toBe(2 * MINUTE_MS);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

@@ -15,8 +15,8 @@ export { existingRoots, DEPENDENCY_PATH_PATTERN } from './layout/code-files/proj
 import {
   escapeRegExp as untypedEscapeRegExp,
   globMatcher,
-  globToRegExpSource,
 } from '../../../shared/paths/glob.mts';
+import { excludePatternOf } from './layout/exclude/exclude-pattern.mts';
 import type {
   ClassifierInput,
   ExcludedGlobs,
@@ -173,10 +173,7 @@ function excludedGlobsFor(layout: LayoutOptions, exclude: readonly string[]): Ex
       ...exclude,
     ],
     hiddenGlobs,
-    excludePattern:
-      hiddenGlobs.length === 0
-        ? undefined
-        : hiddenGlobs.map((glob) => globToRegExpSource(glob)).join('|'),
+    excludePattern: excludePatternOf(hiddenGlobs),
   };
 }
 
