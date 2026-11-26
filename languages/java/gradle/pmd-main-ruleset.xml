@@ -951,33 +951,6 @@ return (
       </property>
     </properties>
   </rule>
-  <rule name="ConstantLookupInLoop" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This reflective lookup finds the same class, method, field or constructor on every pass of this loop or callback: its arguments are constants and nothing in the loop changes what it finds. Look it up once before the loop (or in a static final field) and reuse the result.">
-    <priority>3</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-let $bodies := (//ForeachStatement/*[last()] | //ForStatement/*[last()] | //WhileStatement/*[last()] | //DoStatement/*[1]
-      | //LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining',
-          'map', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch', 'mapToObj', 'mapToInt', 'mapToLong')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
-          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]/*[last()]),
-    $calls := $bodies//MethodCall
-      [ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
-          or self::LambdaExpression][1]
-        [not(self::LambdaExpression) or exists(*[last()] intersect $bodies)]
-        [not(self::ForeachStatement/*[2][self::MethodCall[@MethodName = ('of', 'asList')] or self::ArrayAllocation])]]
-return
-$calls[@MethodName = ('getMethod', 'getDeclaredMethod', 'getField', 'getDeclaredField', 'getConstructor',
-    'getDeclaredConstructor')]
-  [*[1][self::ClassLiteral]]
-  [empty(ArgumentList/*[not(self::StringLiteral or self::ClassLiteral)])]
-|
-$calls[@MethodName = 'forName'][*[1][self::TypeExpression][pmd-java:typeIs('java.lang.Class')]]
-  [ArgumentList/@Size = 1][ArgumentList/*[1][self::StringLiteral]]
-]]></value>
-      </property>
-    </properties>
-  </rule>
   <rule name="ConstructorLeaksResourceOnFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This constructor stores a new thread pool, timer or open file or connection in a field and then runs code that can throw. When that code throws, the caller never receives the object and cannot close it, so the threads or the handle leak (a non-daemon pool also keeps the JVM alive). Create the resource last, or put the rest of the constructor in try/catch that releases it and rethrows (catch (RuntimeException | Error e) then pool.shutdownNow() and throw e), or build the object in a factory method that owns the cleanup. An exception fits only when the resource is released by a caller that is guaranteed to run.">
     <priority>3</priority>
@@ -1458,37 +1431,6 @@ return
    return $holder[self::ReturnStatement or self::LambdaExpression or self::VariableDeclarator]
      or $holder[self::AssignmentExpression][not(*[1] intersect $self/ancestor-or-self::*)]]
 | //SwitchStatement[$booleanSwitch(.)]
-]]></value>
-      </property>
-    </properties>
-  </rule>
-  <rule name="FilteredPositionalPairing" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This list is filtered before it is paired by index with another list that was not filtered the same way, so after the first dropped entry the positions no longer line up. Pair first and filter the pairs, or keep a placeholder for the dropped entries.">
-    <priority>3</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-let $filtered := function($name, $scope) {
-      exists($scope//VariableDeclarator[VariableId/@Name = $name]/*[2]/descendant-or-self::MethodCall[@MethodName = 'filter']
-          [*[1]/descendant-or-self::MethodCall[@MethodName = ('stream', 'parallelStream')]]
-        | $scope//MethodCall[@MethodName = 'removeIf'][*[1][self::VariableAccess][@Name = $name]])
-    }
-return
-//ForStatement[ForInit//VariableId]
-  [let $index := ForInit//VariableId/@Name
-   return count(distinct-values(*[last()]//MethodCall[@MethodName = 'get'][ArgumentList/@Size = 1]
-     [ArgumentList/*[1][self::VariableAccess][@Name = $index]]/*[1][self::VariableAccess]/@Name)) > 1]
-  /*[last()]//MethodCall[@MethodName = 'get'][ArgumentList/@Size = 1]
-    [ArgumentList/*[1][self::VariableAccess][@Name = ancestor::ForStatement[1]/ForInit//VariableId/@Name]]
-    [let $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][1],
-         $index := ArgumentList/*[1]/@Name,
-         $loop := ancestor::ForStatement[ForInit//VariableId/@Name = $index][1],
-         $name := *[1][self::VariableAccess]/@Name,
-         $others := distinct-values($loop/*[last()]//MethodCall[@MethodName = 'get'][ArgumentList/@Size = 1]
-           [ArgumentList/*[1][self::VariableAccess][@Name = $index]]/*[1][self::VariableAccess]/@Name[. != $name])
-     return exists($name) and $filtered($name, $scope)
-       and (some $other in $others satisfies not($filtered($other, $scope)
-         or exists($scope//VariableDeclarator[VariableId/@Name = $other]/*[2]//VariableAccess[@Name = $name])))]
 ]]></value>
       </property>
     </properties>
@@ -2834,71 +2776,6 @@ return //MethodCall[@MethodName = $levels][ArgumentList/@Size >= 2]
       </property>
     </properties>
   </rule>
-  <rule name="LoopInvariantCopy" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This stores a new full copy of a collection or array on every pass of this loop or callback, although the copied value does not change in it, so memory grows with the number of passes times its size. Share one read-only value (List.copyOf made once before the loop, an unmodifiable view) or copy once before the loop. The cost only matters when both the loop and the copied value can be large.">
-    <priority>3</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-let $iterations := ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'flatMap', 'peek', 'mapToObj'),
-    $copies := ('ArrayList', 'LinkedList', 'HashMap', 'LinkedHashMap', 'TreeMap', 'HashSet', 'LinkedHashSet', 'TreeSet',
-      'ArrayDeque', 'CopyOnWriteArrayList'),
-    $changes := ('add', 'addAll', 'put', 'putAll', 'remove', 'removeIf', 'removeAll', 'retainAll', 'clear', 'set', 'sort',
-      'replaceAll', 'compute', 'computeIfAbsent', 'computeIfPresent', 'merge', 'offer', 'push', 'poll', 'pop', 'addFirst',
-      'addLast', 'putIfAbsent'),
-    $source := function($copy) {
-      ($copy/self::ConstructorCall[ClassType/@SimpleName = $copies][ArgumentList/@Size = 1]/ArgumentList/*[1]
-          [pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]
-      | $copy/self::MethodCall[@MethodName = 'copyOf'][ArgumentList/@Size = 1]
-          [*[1][self::TypeExpression][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]
-          /ArgumentList/*[1]
-      | $copy/self::MethodCall[@MethodName = 'copyOf'][ArgumentList/@Size = 2]
-          [*[1][self::TypeExpression][pmd-java:typeIs('java.util.Arrays')]]
-          [ArgumentList/*[2][self::FieldAccess][@Name = 'length']/*[1]/@Name = ArgumentList/*[1]/@Name]
-          /ArgumentList/*[1]
-      | $copy/self::MethodCall[@MethodName = 'clone'][ArgumentList/@Size = 0]
-          [*[1][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]/*[1])
-        [self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression]]]
-    },
-    $stored := function($copy) {
-      exists($copy/parent::ArgumentList/parent::ConstructorCall[not(ClassType/@SimpleName = $copies)]
-        | $copy/parent::ArgumentList/parent::MethodCall[@MethodName = ('add', 'put', 'offer', 'push', 'addFirst',
-            'addLast', 'putIfAbsent', 'of', 'entry')]
-        | $copy/parent::AssignmentExpression[*[2] is $copy][*[1][self::FieldAccess or self::ArrayAccess]]
-        | $copy/parent::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('map', 'mapToObj')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
-          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]
-        | $copy/parent::ReturnStatement[ancestor::LambdaExpression[1][parent::ArgumentList/parent::MethodCall
-            [@MethodName = ('map', 'mapToObj')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
-          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]])
-    },
-    $small := function($pass) {
-      exists($pass/self::ForeachStatement/*[2][self::MethodCall[@MethodName = ('of', 'asList')] or self::ArrayAllocation])
-        or exists($pass/self::ForStatement/*[2][self::InfixExpression]/*[2][self::NumericLiteral])
-    }
-return
-//(ConstructorCall | MethodCall)[$stored(.)]
-  [let $copy := ., $from := $source(.),
-       $name := $from/@Name,
-       $pass := ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
-         or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
-          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]][1],
-       $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
-       $declared := ($scope//VariableDeclarator[VariableId/@Name = $name]
-         | ancestor::ClassBody[1]/FieldDeclaration/VariableDeclarator[VariableId/@Name = $name])[1]
-   return exists($from) and exists($pass) and not($small($pass))
-     and empty($pass//VariableId[@Name = $name])
-     and empty($pass//AssignmentExpression[*[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess][@Name = $name]])
-     and empty($pass//MethodCall[@MethodName = $changes][*[1][self::VariableAccess or self::FieldAccess][@Name = $name]])
-     and empty($pass//UnaryExpression[@Operator = ('++', '--')]//*[@Name = $name])
-     and empty($pass//ArgumentList/*[self::VariableAccess or self::FieldAccess][@Name = $name][not(../.. is $copy)])
-     and not(empty($scope//VariableDeclarator[VariableId/@Name = $name] | $scope//FormalParameter[VariableId/@Name = $name])
-       and exists($pass//MethodCall[empty(*[1][not(self::ArgumentList)]) or *[1][self::ThisExpression]]))
-     and empty($declared/*[2][self::ArrayInitializer or self::ArrayAllocation[ArrayInitializer]
-       or self::MethodCall[@MethodName = ('of', 'asList')]])]
-]]></value>
-      </property>
-    </properties>
-  </rule>
   <rule name="LoopUpdateAwayFromExit" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This for loop moves its index away from its own exit condition: the condition keeps holding while the update runs the other way (i >= 0 with i++, i &lt; n with i--, i &lt;= 0 with i--), so the loop never ends and fails with an IndexOutOfBoundsException or runs until the index overflows. Count in the direction the condition tests: for (int i = list.size() - 1; i >= 0; i--) and for (int i = 0; i &lt; n; i++). Right code is not reported: a loop that leaves through break, return or throw on another condition, a loop that assigns the index in its body, and a byte, short or char index that wraps on purpose.">
     <priority>3</priority>
@@ -3592,38 +3469,6 @@ return
       </property>
     </properties>
   </rule>
-  <rule name="ReadAllBeforePass" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Every input is read into this list before the one pass over it, so all of them sit in memory at once and peak memory grows with the number of inputs. Read and handle one input at a time (read, handle and drop each in one loop), use a bounded pool for parallel reads, or keep only what the pass needs from each input.">
-    <priority>3</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-let $reader := function($node) {
-      exists($node/descendant-or-self::*[self::MethodCall or self::MethodReference]
-        [@MethodName = ('readString', 'readAllBytes', 'readAllLines')][*[1][pmd-java:typeIs('java.nio.file.Files')]]
-      | $node/descendant-or-self::*[self::MethodCall or self::MethodReference]
-        [@MethodName = ('readValue', 'readTree')][*[1][pmd-java:typeIs('com.fasterxml.jackson.databind.ObjectMapper')]])
-    }
-return
-//LocalVariableDeclaration[count(VariableDeclarator) = 1]
-  [let $name := VariableDeclarator/VariableId/@Name,
-       $init := VariableDeclarator/*[2],
-       $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][1],
-       $uses := $method//VariableAccess[@Name = $name],
-       $passes := $uses[parent::ForeachStatement][. is ../*[2]],
-       $adds := $uses[parent::MethodCall[@MethodName = 'add'][ArgumentList/@Size = 1][$reader(ArgumentList)]]
-         [ancestor::ForeachStatement or ancestor::ForStatement or ancestor::WhileStatement]
-   return count($passes) = 1 and empty($passes/ancestor::LocalVariableDeclaration)
-     and (($init[self::ConstructorCall][pmd-java:typeIs('java.util.Collection')][ArgumentList/@Size = 0]
-           and exists($adds) and count($uses) = count($adds) + 1
-           and empty($adds[not(. << $passes)]))
-       or ($init[self::MethodCall][@MethodName = ('toList', 'collect')]
-           [*[1][self::MethodCall][@MethodName = 'map'][$reader(ArgumentList)]]
-           and count($uses) = 1))]
-]]></value>
-      </property>
-    </properties>
-  </rule>
   <rule name="ReceiverPassedAsArgument" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="A call passes its own receiver as an argument (defaults.putAll(defaults), node.setPeer(node)). Another variable of the same type is in scope, so the author most likely typed the wrong name: the call is then a no-op or corrupts the object, and the intended argument is never used. Pass the variable that was meant (defaults.putAll(transientVariables)). An exception fits a method that really takes the object it is called on, such as a self-registration or a self-comparison in a contract test.">
     <priority>3</priority>
@@ -3797,94 +3642,6 @@ return //MethodCall[@MethodName = ('isPresent', 'isEmpty')][ArgumentList/@Size =
       </property>
     </properties>
   </rule>
-  <rule name="RepeatedCall" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This call runs again with the same arguments: once to test the result and once more to use it, or twice in one expression of a recursive method, with nothing in between that could change the answer. Keep the first result in a local and use that (var found = resolve(key); if (found.isPresent()) ...).">
-    <priority>3</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-let $verbs := '^_*(accept|acquire|add|advance|append|apply|call|clear|close|consume|create|dec|decrement|delete|dequeue|eat|emit|enqueue|exec|expect|fetch|generate|inc|increment|insert|lex|match|next|now|open|poll|pop|post|push|put|random|read|release|remove|reset|run|save|scan|send|set|shift|skip|splice|start|stop|take|test|unshift|update|uuid|write)([A-Z_$0-9]|$)',
-    $settled := function($node) {
-      empty($node/descendant-or-self::*[self::MethodCall or self::ConstructorCall or self::AssignmentExpression
-        or self::UnaryExpression[@Operator = ('++', '--')] or self::LambdaExpression or self::MethodReference])
-    },
-    $costly := function($call) {
-      $call/ArgumentList/@Size > 0
-        and matches($call/@MethodName, '^(resolve|find|lookup|search|locate|compute|calculate|derive|infer|evaluate|analy[sz]e|collect|query|render|normalize|canonicali[sz]e|digest|describe|typeOf)([A-Z_0-9]|$)')
-        and $settled($call/ArgumentList) and $settled($call/*[1][not(self::ArgumentList)])
-    },
-    $key := function($node) {
-      string-join(for $part in $node/descendant-or-self::*
-        return concat(local-name($part), ':', string($part/@Name), string($part/@MethodName), string($part/@Image),
-          string($part/@Operator), string($part/@SimpleName), string($part/@True), string($part/@ConstValue)), ' ')
-    },
-    $after := function($test) {
-      $test/ancestor::IfStatement[exists(*[1]/descendant-or-self::* intersect $test)]/*[2]
-          /(self::Block/*[1] | self::*[not(self::Block)])
-      | $test/ancestor::ConditionalExpression[exists(*[1]/descendant-or-self::* intersect $test)]/(*[2] | *[3])
-      | $test/ancestor::InfixExpression[@Operator = ('&&', '||')][exists(*[1]/descendant-or-self::* intersect $test)]/*[2]
-    },
-    $branch := function($call) {
-      $call/ancestor-or-self::*[parent::ConditionalExpression or self::SwitchArrowBranch or self::SwitchFallthroughBranch
-        or parent::InfixExpression[@Operator = ('&&', '||')]][1]
-    },
-    $tested := //MethodCall[$costly(.)]
-      [parent::MethodCall[@MethodName = ('isPresent', 'isEmpty')][ArgumentList/@Size = 0]
-       or parent::InfixExpression[@Operator = ('==', '!=')][NullLiteral]]
-return
-(for $first in $tested
- return let $wanted := $key($first)
-   return $after($first/parent::*)/descendant-or-self::MethodCall[$key(.) = $wanted])
-|
-//MethodDeclaration[not(.//AssignmentExpression[*[1][self::FieldAccess]])][not(matches(@Name, $verbs))]
-  [let $own := @Name return count(.//MethodCall[@MethodName = $own]) > 1]
-  //MethodCall[@MethodName = ancestor::MethodDeclaration[1]/@Name]
-    [empty(*[1][not(self::ArgumentList) and not(self::ThisExpression)])]
-    [ArgumentList/@Size > 0][$settled(ArgumentList)]
-    [empty(ArgumentList/*[self::VariableAccess or self::FieldAccess or self::ThisExpression])]
-    [ArgumentList/@Size = count(ancestor::MethodDeclaration[1]/FormalParameters/FormalParameter)]
-    [let $call := ., $wanted := $key(.), $arm := $branch(.), $statement := ancestor::*[self::ExpressionStatement
-        or self::ReturnStatement or self::LocalVariableDeclaration][1]
-     return exists($statement//MethodCall[. << $call][$key(.) = $wanted]
-       [let $other := $branch(.) return (empty($arm) and empty($other)) or $arm is $other])]
-]]></value>
-      </property>
-    </properties>
-  </rule>
-  <rule name="RepeatedKeyedScan" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This scans the collection looked up by the key of the current element with a test that reads nothing of the element, so every element with the same key repeats the same scan. Work the answer out once per key (before the loop, or kept in a Map by key) and read it here.">
-    <priority>3</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-let $iterations := ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch',
-      'mapToObj', 'mapToInt', 'mapToLong'),
-    $lookup := function($node, $element) {
-      exists($node/self::MethodCall[@MethodName = ('get', 'getOrDefault')][*[1][pmd-java:typeIs('java.util.Map')]]
-        [ArgumentList/*[1]/descendant-or-self::VariableAccess[@Name = $element]])
-    }
-return
-//MethodCall[@MethodName = ('anyMatch', 'allMatch', 'noneMatch', 'filter')][ArgumentList/@Size = 1]
-  [*[1][self::MethodCall][@MethodName = ('stream', 'parallelStream')][ArgumentList/@Size = 0]]
-  [let $pass := ancestor::*[self::ForeachStatement
-         or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
-          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]][1],
-       $element := ($pass/self::ForeachStatement/LocalVariableDeclaration//VariableId
-         | $pass/self::LambdaExpression/LambdaParameterList//VariableId)/@Name,
-       $source := *[1]/*[1],
-       $test := ArgumentList/*[1]
-   return count($element) = 1
-     and ($lookup($source, $element)
-       or exists($source[self::VariableAccess]
-         [let $name := @Name
-          return exists($pass//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name]
-            [*[2][$lookup(., $element)]])]))
-     and (exists($test[self::LambdaExpression][empty(.//VariableAccess[@Name = $element])])
-       or exists($test[self::MethodReference][not(*[1][self::VariableAccess][@Name = $element])]))]
-]]></value>
-      </property>
-    </properties>
-  </rule>
   <rule name="ReplaceWithWrongLiteralKind" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="String.replace takes plain text and replaceAll and replaceFirst take a regex, and this call mixes them up. replace(&quot;\\s+&quot;, &quot;&quot;) looks for the three characters \s+ and removes nothing; replaceAll(&quot;.tmp&quot;, &quot;&quot;) treats the dot as any character; replaceAll(&quot;?&quot;, value) throws PatternSyntaxException; and a File.separator or a backslash or dollar sign in the replacement is read as an escape or a group reference, which breaks on Windows. Use replaceAll for a regex (path.replaceAll(&quot;\\s+&quot;, &quot;&quot;)), replace for text (sql.replace(&quot;?&quot;, value), file.replace(&quot;.tmp&quot;, &quot;&quot;)), and Matcher.quoteReplacement(File.separator) for a replacement. An exception fits text that really contains the escape characters.">
     <priority>3</priority>
@@ -3920,57 +3677,6 @@ return (
     [$separator(ArgumentList/*[2])]
     /ArgumentList/*[2]
 )
-]]></value>
-      </property>
-    </properties>
-  </rule>
-  <rule name="ReplacingCollectionMerge" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This merges maps whose values are collections into one target from more than one source by replacing the whole collection of a key that an earlier source may already have filled, so the values of a key seen twice are lost and the result depends on the order of the sources. Merge the values instead: target.computeIfAbsent(key, k -> new HashSet()).addAll(values), or target.merge(key, values, combine).">
-    <priority>3</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-let $iterations := ('forEach', 'forEachOrdered', 'map', 'flatMap', 'peek', 'mapToObj'),
-    $passes := function($node) {
-      $node/ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
-        or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
-          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]]
-    },
-    $collectionValued := function($target, $outer) {
-      let $name := $target/@Name,
-          $scope := $target/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][last()],
-          $declarations := ($scope//LocalVariableDeclaration[VariableDeclarator/VariableId/@Name = $name]
-            | $scope//FormalParameter[VariableId/@Name = $name]
-            | $target/ancestor::ClassBody[1]/FieldDeclaration[VariableDeclarator/VariableId/@Name = $name])
-            [empty(ancestor::* intersect $outer)]
-      return exists($declarations[1]/ClassType[pmd-java:typeIs('java.util.Map')]/TypeArguments/*[2]
-        [pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')])
-    }
-return
-//MethodCall[@MethodName = 'putAll'][ArgumentList/@Size = 1][*[1][self::VariableAccess or self::FieldAccess]]
-  [let $outer := $passes(.)[last()],
-       $elements := ($outer/self::ForeachStatement/LocalVariableDeclaration | $outer/self::LambdaExpression/LambdaParameterList)
-         //VariableId/@Name
-   return exists($outer) and $collectionValued(*[1], $outer)
-     and (exists(ArgumentList/*[1][self::VariableAccess][@Name = $elements])
-       or exists($outer/self::LambdaExpression/parent::ArgumentList/parent::MethodCall
-         /*[1]/descendant-or-self::MethodCall[@MethodName = ('parallelStream', 'parallel')]))]
-|
-//MethodCall[@MethodName = 'put'][ArgumentList/@Size = 2][*[1][self::VariableAccess or self::FieldAccess]]
-  [let $value := ArgumentList/*[2],
-       $entryLoop := ancestor::ForeachStatement[*[2][self::MethodCall][@MethodName = 'entrySet']]
-         [LocalVariableDeclaration//VariableId/@Name = $value[self::MethodCall][@MethodName = 'getValue']
-           /*[1][self::VariableAccess]/@Name][1],
-       $entryLambda := ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = 'forEach']
-           [*[1][pmd-java:typeIs('java.util.Map')]]]
-         [LambdaParameterList/*[2]//VariableId/@Name = $value[self::VariableAccess]/@Name][1],
-       $inner := ($entryLoop | $entryLambda)[1],
-       $outer := $passes($inner)[last()],
-       $target := *[1]/@Name
-   return exists($inner) and exists($outer) and $collectionValued(*[1], $outer)
-     and exists(ArgumentList/*[1][self::VariableAccess or self::MethodCall[@MethodName = 'getKey'][ArgumentList/@Size = 0]])
-     and empty(ancestor::IfStatement[ancestor::* intersect $inner]/*[1]//MethodCall
-       [@MethodName = ('containsKey', 'get', 'isEmpty')][*[1][self::VariableAccess or self::FieldAccess][@Name = $target]])]
 ]]></value>
       </property>
     </properties>
@@ -4348,37 +4054,6 @@ return (
       </property>
     </properties>
   </rule>
-  <rule name="SortedRangeScan" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This loop walks a sorted set or map from the start only to find the first element between a lower and an upper bound, which costs one step per element below the range. Ask the sorted collection for the range instead: subSet(low, true, high, true), tailSet(low) or ceiling(low) on a NavigableSet, subMap or ceilingKey on a NavigableMap, all logarithmic.">
-    <priority>3</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-let $isElement := function($node, $element) {
-      exists($node/self::VariableAccess[@Name = $element]
-        | $node/self::MethodCall[@MethodName = 'getKey'][ArgumentList/@Size = 0][*[1][self::VariableAccess][@Name = $element]])
-    },
-    $side := function($test, $element) {
-      if ($test/self::InfixExpression[@Operator = ('<', '<=', '>', '>=')][$isElement(*[1], $element)])
-      then (if ($test/@Operator = ('>', '>=')) then 'low' else 'high')
-      else if ($test/self::InfixExpression[@Operator = ('<', '<=', '>', '>=')][$isElement(*[2], $element)])
-      then (if ($test/@Operator = ('<', '<=')) then 'low' else 'high')
-      else 'none'
-    }
-return
-//ForeachStatement
-  [*[2][pmd-java:typeIs('java.util.SortedSet')]
-   or *[2][self::MethodCall][@MethodName = ('keySet', 'navigableKeySet', 'entrySet')][ArgumentList/@Size = 0]
-     [*[1][pmd-java:typeIs('java.util.SortedMap')]]]
-  [let $element := LocalVariableDeclaration//VariableId/@Name,
-       $body := *[3]/(self::Block[count(*) = 1]/* | self::IfStatement)
-   return exists($body[self::IfStatement][count(*) = 2]
-     [*[1][self::InfixExpression][@Operator = '&&'][count(*) = 2][let $sides := (for $test in * return $side($test, $element)) return $sides = 'low' and $sides = 'high']]
-     [*[2]/descendant-or-self::*[self::ReturnStatement or self::BreakStatement]])]
-]]></value>
-      </property>
-    </properties>
-  </rule>
   <rule name="SortForExtreme" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This stream is sorted only to take its first or last element, which costs a full sort. Take it in one pass with min(comparator) or max(comparator) on the stream, or Collections.min and Collections.max on a collection. An exception fits only for a stream that always stays a handful of items.">
     <priority>3</priority>
@@ -4430,45 +4105,6 @@ return //MethodCall[@MethodName = 'findFirst'][ArgumentList/@Size = 0][exists($s
        and $call/ArgumentList/@Size = count($parameters)
        and (every $i in 1 to count($parameters)
             satisfies $call/ArgumentList/*[$i][self::VariableAccess]/@Name = $parameters[$i])]
-]]></value>
-      </property>
-    </properties>
-  </rule>
-  <rule name="StatPerListedEntry" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This asks the file system about every entry of a directory listing, one system call per entry, to learn something the listing could have handed over with it. Walk with Files.find(dir, depth, (path, attributes) -> attributes.isRegularFile()) or Files.walkFileTree, which pass the attributes of each entry along.">
-    <priority>3</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-let $listing := function($node) {
-      exists($node/self::MethodCall[@MethodName = ('list', 'walk', 'newDirectoryStream')]
-          [*[1][self::TypeExpression][pmd-java:typeIs('java.nio.file.Files')]]
-        | $node/self::MethodCall[@MethodName = 'listFiles'][*[1][pmd-java:typeIs('java.io.File')]])
-    },
-    $source := function($node) {
-      exists($node/descendant-or-self::MethodCall[$listing(.)]
-        | $node/descendant-or-self::VariableAccess[@Name = ancestor::*[self::MethodDeclaration
-            or self::ConstructorDeclaration or self::Initializer][1]//VariableDeclarator[*[2][$listing(.)]]/VariableId/@Name])
-    },
-    $pathStats := ('isDirectory', 'isRegularFile', 'isSymbolicLink', 'size', 'getLastModifiedTime'),
-    $fileStats := ('isDirectory', 'isFile', 'length', 'lastModified'),
-    $steps := ('forEach', 'forEachOrdered', 'filter', 'map', 'flatMap', 'peek', 'anyMatch', 'allMatch', 'noneMatch',
-      'mapToLong', 'mapToInt', 'sorted', 'collect'),
-    $stat := function($call, $entry) {
-      exists($call[@MethodName = $pathStats][*[1][self::TypeExpression][pmd-java:typeIs('java.nio.file.Files')]]
-          [ArgumentList/*[1][self::VariableAccess][@Name = $entry]]
-        | $call[@MethodName = $fileStats][ArgumentList/@Size = 0]
-          [*[1][self::VariableAccess][@Name = $entry][pmd-java:typeIs('java.io.File')]
-           or *[1][self::MethodCall][@MethodName = 'toFile'][*[1][self::VariableAccess][@Name = $entry]]])
-    }
-return
-//ForeachStatement[$source(*[2])]
-  /*[3]//MethodCall[$stat(., ancestor::ForeachStatement[1]/LocalVariableDeclaration//VariableId/@Name)]
-|
-//MethodCall[@MethodName = $steps][$source(*[1])]/ArgumentList
-  /(LambdaExpression//MethodCall[$stat(., ancestor::LambdaExpression[last()]/LambdaParameterList//VariableId/@Name)]
-    | MethodReference[@MethodName = $pathStats][*[1][self::TypeExpression][pmd-java:typeIs('java.nio.file.Files')]]
-    | MethodReference[@MethodName = $fileStats][*[1][self::TypeExpression][pmd-java:typeIs('java.io.File')]])
 ]]></value>
       </property>
     </properties>
@@ -4597,34 +4233,6 @@ return
      )
      and not($bounded(*[1], $locals)) and not($bounded(*[2], $locals))
 ]
-]]></value>
-      </property>
-    </properties>
-  </rule>
-  <rule name="SubtreeSearchPerAncestor" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This loop climbs from a node towards the root and searches the children or the whole subtree of every level, so one lookup costs depth times width, and near the root that is the whole document or tree. Check the kind of the level first and search only the levels that can answer (closest(selector) for a Jsoup element), or keep the answer per level.">
-    <priority>3</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-let $up := ('getParent', 'getParentNode', 'parent', 'getParentElement', 'getEnclosingElement'),
-    $searches := ('getElementsByTagName', 'getElementsByTagNameNS', 'getElementsByClassName', 'querySelector',
-      'querySelectorAll', 'select', 'selectFirst', 'getElementsByTag', 'getElementsByClass', 'getElementsByAttribute',
-      'getAllElements', 'findAll', 'findFirst', 'findDescendant', 'findDescendants', 'descendants', 'getDescendants')
-return
-//MethodCall[@MethodName = $searches]
-  [empty(ancestor::ReturnStatement)]
-  [empty(ancestor::*[parent::Block][1]/following-sibling::*[self::BreakStatement or self::ReturnStatement])]
-  [let $name := *[1][self::VariableAccess]/@Name
-   return exists($name) and exists(ancestor::*[self::WhileStatement or self::DoStatement or self::ForStatement]
-     [let $climbers := .//AssignmentExpression[@Operator = '=']
-         [*[2]/(self::MethodCall | self::CastExpression/MethodCall)[@MethodName = $up][ArgumentList/@Size = 0]
-           /*[1][self::VariableAccess]/@Name = *[1][self::VariableAccess]/@Name]
-         /*[1]/@Name,
-          $aliases := (.//VariableDeclarator[*[2]/(self::VariableAccess | self::CastExpression/VariableAccess)/@Name = $climbers]
-            | .//InfixExpression[@Operator = 'instanceof'][*[1][self::VariableAccess]/@Name = $climbers]//VariableId
-              /parent::*)/descendant-or-self::VariableId/@Name
-      return $name = ($climbers, $aliases)])]
 ]]></value>
       </property>
     </properties>
@@ -5998,6 +5606,455 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="FilteredPositionalPairing" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This list is filtered before it is paired by index with another list that was not filtered the same way, so after the first dropped entry the positions no longer line up. Pair first and filter the pairs, or keep a placeholder for the dropped entries.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $filtered := function($name, $scope) {
+      exists($scope//VariableDeclarator[VariableId/@Name = $name]/*[2]/descendant-or-self::MethodCall[@MethodName = 'filter']
+          [*[1]/descendant-or-self::MethodCall[@MethodName = ('stream', 'parallelStream')]]
+        | $scope//MethodCall[@MethodName = 'removeIf'][*[1][self::VariableAccess][@Name = $name]])
+    }
+return
+//ForStatement[ForInit//VariableId]
+  [let $index := ForInit//VariableId/@Name
+   return count(distinct-values(*[last()]//MethodCall[@MethodName = 'get'][ArgumentList/@Size = 1]
+     [ArgumentList/*[1][self::VariableAccess][@Name = $index]]/*[1][self::VariableAccess]/@Name)) > 1]
+  /*[last()]//MethodCall[@MethodName = 'get'][ArgumentList/@Size = 1]
+    [ArgumentList/*[1][self::VariableAccess][@Name = ancestor::ForStatement[1]/ForInit//VariableId/@Name]]
+    [let $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][1],
+         $index := ArgumentList/*[1]/@Name,
+         $loop := ancestor::ForStatement[ForInit//VariableId/@Name = $index][1],
+         $name := *[1][self::VariableAccess]/@Name,
+         $others := distinct-values($loop/*[last()]//MethodCall[@MethodName = 'get'][ArgumentList/@Size = 1]
+           [ArgumentList/*[1][self::VariableAccess][@Name = $index]]/*[1][self::VariableAccess]/@Name[. != $name])
+     return exists($name) and $filtered($name, $scope)
+       and (some $other in $others satisfies not($filtered($other, $scope)
+         or exists($scope//VariableDeclarator[VariableId/@Name = $other]/*[2]//VariableAccess[@Name = $name])))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="LoopInvariantCopy" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This stores a new full copy of a collection or array on every pass of this loop or callback, although the copied value does not change in it, so memory grows with the number of passes times its size. Share one read-only value (List.copyOf made once before the loop, an unmodifiable view) or copy once before the loop. The cost only matters when both the loop and the copied value can be large.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $iterations := ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'flatMap', 'peek', 'mapToObj'),
+    $copies := ('ArrayList', 'LinkedList', 'HashMap', 'LinkedHashMap', 'TreeMap', 'HashSet', 'LinkedHashSet', 'TreeSet',
+      'ArrayDeque', 'CopyOnWriteArrayList'),
+    $changes := ('add', 'addAll', 'put', 'putAll', 'remove', 'removeIf', 'removeAll', 'retainAll', 'clear', 'set', 'sort',
+      'replaceAll', 'compute', 'computeIfAbsent', 'computeIfPresent', 'merge', 'offer', 'push', 'poll', 'pop', 'addFirst',
+      'addLast', 'putIfAbsent'),
+    $source := function($copy) {
+      ($copy/self::ConstructorCall[ClassType/@SimpleName = $copies][ArgumentList/@Size = 1]/ArgumentList/*[1]
+          [pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]
+      | $copy/self::MethodCall[@MethodName = 'copyOf'][ArgumentList/@Size = 1]
+          [*[1][self::TypeExpression][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]
+          /ArgumentList/*[1]
+      | $copy/self::MethodCall[@MethodName = 'copyOf'][ArgumentList/@Size = 2]
+          [*[1][self::TypeExpression][pmd-java:typeIs('java.util.Arrays')]]
+          [ArgumentList/*[2][self::FieldAccess][@Name = 'length']/*[1]/@Name = ArgumentList/*[1]/@Name]
+          /ArgumentList/*[1]
+      | $copy/self::MethodCall[@MethodName = 'clone'][ArgumentList/@Size = 0]
+          [*[1][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]/*[1])
+        [self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression]]]
+    },
+    $stored := function($copy) {
+      exists($copy/parent::ArgumentList/parent::ConstructorCall[not(ClassType/@SimpleName = $copies)]
+        | $copy/parent::ArgumentList/parent::MethodCall[@MethodName = ('add', 'put', 'offer', 'push', 'addFirst',
+            'addLast', 'putIfAbsent', 'of', 'entry')]
+        | $copy/parent::AssignmentExpression[*[2] is $copy][*[1][self::FieldAccess or self::ArrayAccess]]
+        | $copy/parent::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('map', 'mapToObj')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]
+        | $copy/parent::ReturnStatement[ancestor::LambdaExpression[1][parent::ArgumentList/parent::MethodCall
+            [@MethodName = ('map', 'mapToObj')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]])
+    },
+    $small := function($pass) {
+      exists($pass/self::ForeachStatement/*[2][self::MethodCall[@MethodName = ('of', 'asList')] or self::ArrayAllocation])
+        or exists($pass/self::ForStatement/*[2][self::InfixExpression]/*[2][self::NumericLiteral])
+    }
+return
+//(ConstructorCall | MethodCall)[$stored(.)]
+  [let $copy := ., $from := $source(.),
+       $name := $from/@Name,
+       $pass := ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
+         or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]][1],
+       $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
+       $declared := ($scope//VariableDeclarator[VariableId/@Name = $name]
+         | ancestor::ClassBody[1]/FieldDeclaration/VariableDeclarator[VariableId/@Name = $name])[1]
+   return exists($from) and exists($pass) and not($small($pass))
+     and empty($pass//VariableId[@Name = $name])
+     and empty($pass//AssignmentExpression[*[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess][@Name = $name]])
+     and empty($pass//MethodCall[@MethodName = $changes][*[1][self::VariableAccess or self::FieldAccess][@Name = $name]])
+     and empty($pass//UnaryExpression[@Operator = ('++', '--')]//*[@Name = $name])
+     and empty($pass//ArgumentList/*[self::VariableAccess or self::FieldAccess][@Name = $name][not(../.. is $copy)])
+     and not(empty($scope//VariableDeclarator[VariableId/@Name = $name] | $scope//FormalParameter[VariableId/@Name = $name])
+       and exists($pass//MethodCall[empty(*[1][not(self::ArgumentList)]) or *[1][self::ThisExpression]]))
+     and empty($declared/*[2][self::ArrayInitializer or self::ArrayAllocation[ArrayInitializer]
+       or self::MethodCall[@MethodName = ('of', 'asList')]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="RepeatedKeyedScan" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This scans the collection looked up by the key of the current element with a test that reads nothing of the element, so every element with the same key repeats the same scan. Work the answer out once per key (before the loop, or kept in a Map by key) and read it here.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $iterations := ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch',
+      'mapToObj', 'mapToInt', 'mapToLong'),
+    $lookup := function($node, $element) {
+      exists($node/self::MethodCall[@MethodName = ('get', 'getOrDefault')][*[1][pmd-java:typeIs('java.util.Map')]]
+        [ArgumentList/*[1]/descendant-or-self::VariableAccess[@Name = $element]])
+    }
+return
+//MethodCall[@MethodName = ('anyMatch', 'allMatch', 'noneMatch', 'filter')][ArgumentList/@Size = 1]
+  [*[1][self::MethodCall][@MethodName = ('stream', 'parallelStream')][ArgumentList/@Size = 0]]
+  [let $pass := ancestor::*[self::ForeachStatement
+         or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]][1],
+       $element := ($pass/self::ForeachStatement/LocalVariableDeclaration//VariableId
+         | $pass/self::LambdaExpression/LambdaParameterList//VariableId)/@Name,
+       $source := *[1]/*[1],
+       $test := ArgumentList/*[1]
+   return count($element) = 1
+     and ($lookup($source, $element)
+       or exists($source[self::VariableAccess]
+         [let $name := @Name
+          return exists($pass//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name]
+            [*[2][$lookup(., $element)]])]))
+     and (exists($test[self::LambdaExpression][empty(.//VariableAccess[@Name = $element])])
+       or exists($test[self::MethodReference][not(*[1][self::VariableAccess][@Name = $element])]))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="ReplacingCollectionMerge" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This merges maps whose values are collections into one target from more than one source by replacing the whole collection of a key that an earlier source may already have filled, so the values of a key seen twice are lost and the result depends on the order of the sources. Merge the values instead: target.computeIfAbsent(key, k -> new HashSet()).addAll(values), or target.merge(key, values, combine).">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $iterations := ('forEach', 'forEachOrdered', 'map', 'flatMap', 'peek', 'mapToObj'),
+    $passes := function($node) {
+      $node/ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
+        or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]]
+    },
+    $collectionValued := function($target, $outer) {
+      let $name := $target/@Name,
+          $scope := $target/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][last()],
+          $declarations := ($scope//LocalVariableDeclaration[VariableDeclarator/VariableId/@Name = $name]
+            | $scope//FormalParameter[VariableId/@Name = $name]
+            | $target/ancestor::ClassBody[1]/FieldDeclaration[VariableDeclarator/VariableId/@Name = $name])
+            [empty(ancestor::* intersect $outer)]
+      return exists($declarations[1]/ClassType[pmd-java:typeIs('java.util.Map')]/TypeArguments/*[2]
+        [pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')])
+    }
+return
+//MethodCall[@MethodName = 'putAll'][ArgumentList/@Size = 1][*[1][self::VariableAccess or self::FieldAccess]]
+  [let $outer := $passes(.)[last()],
+       $elements := ($outer/self::ForeachStatement/LocalVariableDeclaration | $outer/self::LambdaExpression/LambdaParameterList)
+         //VariableId/@Name
+   return exists($outer) and $collectionValued(*[1], $outer)
+     and (exists(ArgumentList/*[1][self::VariableAccess][@Name = $elements])
+       or exists($outer/self::LambdaExpression/parent::ArgumentList/parent::MethodCall
+         /*[1]/descendant-or-self::MethodCall[@MethodName = ('parallelStream', 'parallel')]))]
+|
+//MethodCall[@MethodName = 'put'][ArgumentList/@Size = 2][*[1][self::VariableAccess or self::FieldAccess]]
+  [let $value := ArgumentList/*[2],
+       $entryLoop := ancestor::ForeachStatement[*[2][self::MethodCall][@MethodName = 'entrySet']]
+         [LocalVariableDeclaration//VariableId/@Name = $value[self::MethodCall][@MethodName = 'getValue']
+           /*[1][self::VariableAccess]/@Name][1],
+       $entryLambda := ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = 'forEach']
+           [*[1][pmd-java:typeIs('java.util.Map')]]]
+         [LambdaParameterList/*[2]//VariableId/@Name = $value[self::VariableAccess]/@Name][1],
+       $inner := ($entryLoop | $entryLambda)[1],
+       $outer := $passes($inner)[last()],
+       $target := *[1]/@Name
+   return exists($inner) and exists($outer) and $collectionValued(*[1], $outer)
+     and exists(ArgumentList/*[1][self::VariableAccess or self::MethodCall[@MethodName = 'getKey'][ArgumentList/@Size = 0]])
+     and empty(ancestor::IfStatement[ancestor::* intersect $inner]/*[1]//MethodCall
+       [@MethodName = ('containsKey', 'get', 'isEmpty')][*[1][self::VariableAccess or self::FieldAccess][@Name = $target]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="SortedRangeScan" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This loop walks a sorted set or map from the start only to find the first element between a lower and an upper bound, which costs one step per element below the range. Ask the sorted collection for the range instead: subSet(low, true, high, true), tailSet(low) or ceiling(low) on a NavigableSet, subMap or ceilingKey on a NavigableMap, all logarithmic.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $isElement := function($node, $element) {
+      exists($node/self::VariableAccess[@Name = $element]
+        | $node/self::MethodCall[@MethodName = 'getKey'][ArgumentList/@Size = 0][*[1][self::VariableAccess][@Name = $element]])
+    },
+    $side := function($test, $element) {
+      if ($test/self::InfixExpression[@Operator = ('<', '<=', '>', '>=')][$isElement(*[1], $element)])
+      then (if ($test/@Operator = ('>', '>=')) then 'low' else 'high')
+      else if ($test/self::InfixExpression[@Operator = ('<', '<=', '>', '>=')][$isElement(*[2], $element)])
+      then (if ($test/@Operator = ('<', '<=')) then 'low' else 'high')
+      else 'none'
+    }
+return
+//ForeachStatement
+  [*[2][pmd-java:typeIs('java.util.SortedSet')]
+   or *[2][self::MethodCall][@MethodName = ('keySet', 'navigableKeySet', 'entrySet')][ArgumentList/@Size = 0]
+     [*[1][pmd-java:typeIs('java.util.SortedMap')]]]
+  [let $element := LocalVariableDeclaration//VariableId/@Name,
+       $body := *[3]/(self::Block[count(*) = 1]/* | self::IfStatement)
+   return exists($body[self::IfStatement][count(*) = 2]
+     [*[1][self::InfixExpression][@Operator = '&&'][count(*) = 2][let $sides := (for $test in * return $side($test, $element)) return $sides = 'low' and $sides = 'high']]
+     [*[2]/descendant-or-self::*[self::ReturnStatement or self::BreakStatement]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="StatPerListedEntry" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This asks the file system about every entry of a directory listing, one system call per entry, to learn something the listing could have handed over with it. Walk with Files.find(dir, depth, (path, attributes) -> attributes.isRegularFile()) or Files.walkFileTree, which pass the attributes of each entry along.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $listing := function($node) {
+      exists($node/self::MethodCall[@MethodName = ('list', 'walk', 'newDirectoryStream')]
+          [*[1][self::TypeExpression][pmd-java:typeIs('java.nio.file.Files')]]
+        | $node/self::MethodCall[@MethodName = 'listFiles'][*[1][pmd-java:typeIs('java.io.File')]])
+    },
+    $source := function($node) {
+      exists($node/descendant-or-self::MethodCall[$listing(.)]
+        | $node/descendant-or-self::VariableAccess[@Name = ancestor::*[self::MethodDeclaration
+            or self::ConstructorDeclaration or self::Initializer][1]//VariableDeclarator[*[2][$listing(.)]]/VariableId/@Name])
+    },
+    $pathStats := ('isDirectory', 'isRegularFile', 'isSymbolicLink', 'size', 'getLastModifiedTime'),
+    $fileStats := ('isDirectory', 'isFile', 'length', 'lastModified'),
+    $steps := ('forEach', 'forEachOrdered', 'filter', 'map', 'flatMap', 'peek', 'anyMatch', 'allMatch', 'noneMatch',
+      'mapToLong', 'mapToInt', 'sorted', 'collect'),
+    $stat := function($call, $entry) {
+      exists($call[@MethodName = $pathStats][*[1][self::TypeExpression][pmd-java:typeIs('java.nio.file.Files')]]
+          [ArgumentList/*[1][self::VariableAccess][@Name = $entry]]
+        | $call[@MethodName = $fileStats][ArgumentList/@Size = 0]
+          [*[1][self::VariableAccess][@Name = $entry][pmd-java:typeIs('java.io.File')]
+           or *[1][self::MethodCall][@MethodName = 'toFile'][*[1][self::VariableAccess][@Name = $entry]]])
+    }
+return
+//ForeachStatement[$source(*[2])]
+  /*[3]//MethodCall[$stat(., ancestor::ForeachStatement[1]/LocalVariableDeclaration//VariableId/@Name)]
+|
+//MethodCall[@MethodName = $steps][$source(*[1])]/ArgumentList
+  /(LambdaExpression//MethodCall[$stat(., ancestor::LambdaExpression[last()]/LambdaParameterList//VariableId/@Name)]
+    | MethodReference[@MethodName = $pathStats][*[1][self::TypeExpression][pmd-java:typeIs('java.nio.file.Files')]]
+    | MethodReference[@MethodName = $fileStats][*[1][self::TypeExpression][pmd-java:typeIs('java.io.File')]])
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="ConstantLookupInLoop" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This reflective lookup finds the same class, method, field or constructor on every pass of this loop or callback: its arguments are constants and nothing in the loop changes what it finds. Look it up once before the loop (or in a static final field) and reuse the result.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $bodies := (//ForeachStatement/*[last()] | //ForStatement/*[last()] | //WhileStatement/*[last()] | //DoStatement/*[1]
+      | //LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining',
+          'map', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch', 'mapToObj', 'mapToInt', 'mapToLong')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]/*[last()]),
+    $calls := $bodies//MethodCall
+      [ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
+          or self::LambdaExpression][1]
+        [not(self::LambdaExpression) or exists(*[last()] intersect $bodies)]
+        [not(self::ForeachStatement/*[2][self::MethodCall[@MethodName = ('of', 'asList')] or self::ArrayAllocation])]]
+return
+$calls[@MethodName = ('getMethod', 'getDeclaredMethod', 'getField', 'getDeclaredField', 'getConstructor',
+    'getDeclaredConstructor')]
+  [*[1][self::ClassLiteral]]
+  [empty(ArgumentList/*[not(self::StringLiteral or self::ClassLiteral)])]
+|
+$calls[@MethodName = 'forName'][*[1][self::TypeExpression][pmd-java:typeIs('java.lang.Class')]]
+  [ArgumentList/@Size = 1][ArgumentList/*[1][self::StringLiteral]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="ReadAllBeforePass" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Every input is read into this list before the one pass over it, so all of them sit in memory at once and peak memory grows with the number of inputs. Read and handle one input at a time (read, handle and drop each in one loop), use a bounded pool for parallel reads, or keep only what the pass needs from each input.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $reader := function($node) {
+      exists($node/descendant-or-self::*[self::MethodCall or self::MethodReference]
+        [@MethodName = ('readString', 'readAllBytes', 'readAllLines')][*[1][pmd-java:typeIs('java.nio.file.Files')]]
+      | $node/descendant-or-self::*[self::MethodCall or self::MethodReference]
+        [@MethodName = ('readValue', 'readTree')][*[1][pmd-java:typeIs('com.fasterxml.jackson.databind.ObjectMapper')]])
+    }
+return
+//LocalVariableDeclaration[count(VariableDeclarator) = 1]
+  [let $name := VariableDeclarator/VariableId/@Name,
+       $init := VariableDeclarator/*[2],
+       $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][1],
+       $uses := $method//VariableAccess[@Name = $name],
+       $passes := $uses[parent::ForeachStatement][. is ../*[2]],
+       $adds := $uses[parent::MethodCall[@MethodName = 'add'][ArgumentList/@Size = 1][$reader(ArgumentList)]]
+         [ancestor::ForeachStatement or ancestor::ForStatement or ancestor::WhileStatement]
+   return count($passes) = 1 and empty($passes/ancestor::LocalVariableDeclaration)
+     and (($init[self::ConstructorCall][pmd-java:typeIs('java.util.Collection')][ArgumentList/@Size = 0]
+           and exists($adds) and count($uses) = count($adds) + 1
+           and empty($adds[not(. << $passes)]))
+       or ($init[self::MethodCall][@MethodName = ('toList', 'collect')]
+           [*[1][self::MethodCall][@MethodName = 'map'][$reader(ArgumentList)]]
+           and count($uses) = 1))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="RepeatedCall" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This call runs again with the same arguments: once to test the result and once more to use it, or twice in one expression of a recursive method, with nothing in between that could change the answer. Keep the first result in a local and use that (var found = resolve(key); if (found.isPresent()) ...).">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $verbs := '^_*(accept|acquire|add|advance|append|apply|call|clear|close|consume|create|dec|decrement|delete|dequeue|eat|emit|enqueue|exec|expect|fetch|generate|inc|increment|insert|lex|match|next|now|open|poll|pop|post|push|put|random|read|release|remove|reset|run|save|scan|send|set|shift|skip|splice|start|stop|take|test|unshift|update|uuid|write)([A-Z_$0-9]|$)',
+    $settled := function($node) {
+      empty($node/descendant-or-self::*[self::MethodCall or self::ConstructorCall or self::AssignmentExpression
+        or self::UnaryExpression[@Operator = ('++', '--')] or self::LambdaExpression or self::MethodReference])
+    },
+    $costly := function($call) {
+      $call/ArgumentList/@Size > 0
+        and matches($call/@MethodName, '^(resolve|find|lookup|search|locate|compute|calculate|derive|infer|evaluate|analy[sz]e|collect|query|render|normalize|canonicali[sz]e|digest|describe|typeOf)([A-Z_0-9]|$)')
+        and $settled($call/ArgumentList) and $settled($call/*[1][not(self::ArgumentList)])
+    },
+    $key := function($node) {
+      string-join(for $part in $node/descendant-or-self::*
+        return concat(local-name($part), ':', string($part/@Name), string($part/@MethodName), string($part/@Image),
+          string($part/@Operator), string($part/@SimpleName), string($part/@True), string($part/@ConstValue)), ' ')
+    },
+    $after := function($test) {
+      $test/ancestor::IfStatement[exists(*[1]/descendant-or-self::* intersect $test)]/*[2]
+          /(self::Block/*[1] | self::*[not(self::Block)])
+      | $test/ancestor::ConditionalExpression[exists(*[1]/descendant-or-self::* intersect $test)]/(*[2] | *[3])
+      | $test/ancestor::InfixExpression[@Operator = ('&&', '||')][exists(*[1]/descendant-or-self::* intersect $test)]/*[2]
+    },
+    $branch := function($call) {
+      $call/ancestor-or-self::*[parent::ConditionalExpression or self::SwitchArrowBranch or self::SwitchFallthroughBranch
+        or parent::InfixExpression[@Operator = ('&&', '||')]][1]
+    },
+    $tested := //MethodCall[$costly(.)]
+      [parent::MethodCall[@MethodName = ('isPresent', 'isEmpty')][ArgumentList/@Size = 0]
+       or parent::InfixExpression[@Operator = ('==', '!=')][NullLiteral]]
+return
+(for $first in $tested
+ return let $wanted := $key($first)
+   return $after($first/parent::*)/descendant-or-self::MethodCall[$key(.) = $wanted])
+|
+//MethodDeclaration[not(.//AssignmentExpression[*[1][self::FieldAccess]])][not(matches(@Name, $verbs))]
+  [let $own := @Name return count(.//MethodCall[@MethodName = $own]) > 1]
+  //MethodCall[@MethodName = ancestor::MethodDeclaration[1]/@Name]
+    [empty(*[1][not(self::ArgumentList) and not(self::ThisExpression)])]
+    [ArgumentList/@Size > 0][$settled(ArgumentList)]
+    [empty(ArgumentList/*[self::VariableAccess or self::FieldAccess or self::ThisExpression])]
+    [ArgumentList/@Size = count(ancestor::MethodDeclaration[1]/FormalParameters/FormalParameter)]
+    [let $call := ., $wanted := $key(.), $arm := $branch(.), $statement := ancestor::*[self::ExpressionStatement
+        or self::ReturnStatement or self::LocalVariableDeclaration][1]
+     return exists($statement//MethodCall[. << $call][$key(.) = $wanted]
+       [let $other := $branch(.) return (empty($arm) and empty($other)) or $arm is $other])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="SubtreeSearchPerAncestor" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This loop climbs from a node towards the root and searches the children or the whole subtree of every level, so one lookup costs depth times width, and near the root that is the whole document or tree. Check the kind of the level first and search only the levels that can answer (closest(selector) for a Jsoup element), or keep the answer per level.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $up := ('getParent', 'getParentNode', 'parent', 'getParentElement', 'getEnclosingElement'),
+    $searches := ('getElementsByTagName', 'getElementsByTagNameNS', 'getElementsByClassName', 'querySelector',
+      'querySelectorAll', 'select', 'selectFirst', 'getElementsByTag', 'getElementsByClass', 'getElementsByAttribute',
+      'getAllElements', 'findAll', 'findFirst', 'findDescendant', 'findDescendants', 'descendants', 'getDescendants')
+return
+//MethodCall[@MethodName = $searches]
+  [empty(ancestor::ReturnStatement)]
+  [empty(ancestor::*[parent::Block][1]/following-sibling::*[self::BreakStatement or self::ReturnStatement])]
+  [let $name := *[1][self::VariableAccess]/@Name
+   return exists($name) and exists(ancestor::*[self::WhileStatement or self::DoStatement or self::ForStatement]
+     [let $climbers := .//AssignmentExpression[@Operator = '=']
+         [*[2]/(self::MethodCall | self::CastExpression/MethodCall)[@MethodName = $up][ArgumentList/@Size = 0]
+           /*[1][self::VariableAccess]/@Name = *[1][self::VariableAccess]/@Name]
+         /*[1]/@Name,
+          $aliases := (.//VariableDeclarator[*[2]/(self::VariableAccess | self::CastExpression/VariableAccess)/@Name = $climbers]
+            | .//InfixExpression[@Operator = 'instanceof'][*[1][self::VariableAccess]/@Name = $climbers]//VariableId
+              /parent::*)/descendant-or-self::VariableId/@Name
+      return $name = ($climbers, $aliases)])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="WorkBeforeEarlyExit" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This local is worked out before the early exit on the next line, which leaves without reading it, so every pass that takes the exit pays for the call and throws the result away. Move the declaration below the exit; keep it here only if its exception must be raised on that path too.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $verbs := '^_*(accept|acquire|add|advance|append|apply|call|clear|close|consume|create|dec|decrement|delete|dequeue|eat|emit|enqueue|exec|expect|fetch|generate|inc|increment|insert|lex|match|next|now|open|poll|pop|post|push|put|random|read|release|remove|reset|run|save|scan|send|set|shift|skip|splice|start|stop|take|test|unshift|update|uuid|write|check|require|validate|assert|ensure|verify|invoke|parse|decode|deserialize|load|lock|await|wait|sleep)([A-Z_$0-9]|$)',
+    $settled := function($node) {
+      empty($node/descendant-or-self::*[self::MethodCall or self::ConstructorCall or self::AssignmentExpression
+        or self::UnaryExpression[@Operator = ('++', '--')] or self::LambdaExpression or self::MethodReference])
+    },
+    $costly := function($call) {
+      $call/ArgumentList/@Size > 0
+        and matches($call/@MethodName, '^(resolve|find|lookup|search|locate|compute|calculate|derive|infer|evaluate|analy[sz]e|collect|query|render|normalize|canonicali[sz]e|digest|describe|typeOf)([A-Z_0-9]|$)')
+        and $settled($call/ArgumentList) and $settled($call/*[1][not(self::ArgumentList)])
+    },
+    $inMemory := function($init) {
+      (exists($init/self::MethodCall[@MethodName = ('toList', 'collect', 'count', 'anyMatch', 'allMatch', 'noneMatch',
+          'toArray', 'sum', 'max', 'min', 'reduce')][*[1]/descendant-or-self::MethodCall[@MethodName = ('stream', 'parallelStream')]])
+        or exists($init/self::ConstructorCall[ClassType/@SimpleName = ('ArrayList', 'HashMap', 'HashSet', 'LinkedHashMap',
+          'LinkedHashSet', 'TreeMap', 'TreeSet')][ArgumentList/@Size = 1]
+          [ArgumentList/*[1][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]])
+        or exists($init/self::MethodCall[@MethodName = 'copyOf'][ArgumentList/@Size = 1]
+          [*[1][self::TypeExpression][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]))
+      and empty($init//MethodCall[matches(@MethodName, $verbs)] | $init//AssignmentExpression
+        | $init//UnaryExpression[@Operator = ('++', '--')])
+    },
+    $cheapTest := function($test) {
+      empty($test/descendant-or-self::*[self::ConstructorCall or self::AssignmentExpression
+        or self::UnaryExpression[@Operator = ('++', '--')] or self::LambdaExpression or self::MethodReference
+        or self::MethodCall[matches(@MethodName, $verbs)]])
+    },
+    $repeated := function($node) {
+      let $scope := $node/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][1]
+      return exists($node/ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement]
+          [ancestor::* intersect $scope])
+        or exists($scope[self::LambdaExpression][parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach',
+          'forEachOrdered', 'forEachRemaining', 'map', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch',
+          'mapToObj', 'mapToInt', 'mapToLong')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]])
+        or exists($scope[self::MethodDeclaration][matches(@Name, '^visit')])
+    }
+return
+//LocalVariableDeclaration[parent::Block][count(VariableDeclarator) = 1]
+  [let $name := VariableDeclarator/VariableId/@Name, $init := VariableDeclarator/*[2],
+       $looping := $repeated(.)
+   return ($inMemory($init) or ($looping and exists($init[self::MethodCall][$costly(.)]))) and exists(following-sibling::*[1][self::IfStatement][count(*) = 2]
+     [*[2]/(self::Block/*[last()] | self::*[not(self::Block)])
+       [self::BreakStatement or self::ContinueStatement or self::ReturnStatement or self::ThrowStatement]]
+     [empty(.//VariableAccess[@Name = $name])]
+     [empty(*[1]/descendant-or-self::InfixExpression[@Operator = ('==', '!=')][NullLiteral]/VariableAccess
+       [@Name = $init/descendant-or-self::VariableAccess/@Name])]
+     [$settled(*[1]) or ($cheapTest(*[1]) and $looping)])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="CredentialLiteral" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Read it from the environment or a secrets manager: this string looks like a credential (access key, token, private key, or a password in a URL).">
     <description>A string literal shaped like an access key, a token, a private key or a URL with a password.</description>
@@ -6352,61 +6409,4 @@ return (
     </properties>
   </rule>
   <!-- Built by npm run gen:rules from languages/java/gradle/rulesets/pmd-main-ruleset/: edit the rule files there. -->
-  <rule name="WorkBeforeEarlyExit" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This local is worked out before the early exit on the next line, which leaves without reading it, so every pass that takes the exit pays for the call and throws the result away. Move the declaration below the exit; keep it here only if its exception must be raised on that path too.">
-    <priority>3</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-let $verbs := '^_*(accept|acquire|add|advance|append|apply|call|clear|close|consume|create|dec|decrement|delete|dequeue|eat|emit|enqueue|exec|expect|fetch|generate|inc|increment|insert|lex|match|next|now|open|poll|pop|post|push|put|random|read|release|remove|reset|run|save|scan|send|set|shift|skip|splice|start|stop|take|test|unshift|update|uuid|write|check|require|validate|assert|ensure|verify|invoke|parse|decode|deserialize|load|lock|await|wait|sleep)([A-Z_$0-9]|$)',
-    $settled := function($node) {
-      empty($node/descendant-or-self::*[self::MethodCall or self::ConstructorCall or self::AssignmentExpression
-        or self::UnaryExpression[@Operator = ('++', '--')] or self::LambdaExpression or self::MethodReference])
-    },
-    $costly := function($call) {
-      $call/ArgumentList/@Size > 0
-        and matches($call/@MethodName, '^(resolve|find|lookup|search|locate|compute|calculate|derive|infer|evaluate|analy[sz]e|collect|query|render|normalize|canonicali[sz]e|digest|describe|typeOf)([A-Z_0-9]|$)')
-        and $settled($call/ArgumentList) and $settled($call/*[1][not(self::ArgumentList)])
-    },
-    $inMemory := function($init) {
-      (exists($init/self::MethodCall[@MethodName = ('toList', 'collect', 'count', 'anyMatch', 'allMatch', 'noneMatch',
-          'toArray', 'sum', 'max', 'min', 'reduce')][*[1]/descendant-or-self::MethodCall[@MethodName = ('stream', 'parallelStream')]])
-        or exists($init/self::ConstructorCall[ClassType/@SimpleName = ('ArrayList', 'HashMap', 'HashSet', 'LinkedHashMap',
-          'LinkedHashSet', 'TreeMap', 'TreeSet')][ArgumentList/@Size = 1]
-          [ArgumentList/*[1][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]])
-        or exists($init/self::MethodCall[@MethodName = 'copyOf'][ArgumentList/@Size = 1]
-          [*[1][self::TypeExpression][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]))
-      and empty($init//MethodCall[matches(@MethodName, $verbs)] | $init//AssignmentExpression
-        | $init//UnaryExpression[@Operator = ('++', '--')])
-    },
-    $cheapTest := function($test) {
-      empty($test/descendant-or-self::*[self::ConstructorCall or self::AssignmentExpression
-        or self::UnaryExpression[@Operator = ('++', '--')] or self::LambdaExpression or self::MethodReference
-        or self::MethodCall[matches(@MethodName, $verbs)]])
-    },
-    $repeated := function($node) {
-      let $scope := $node/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][1]
-      return exists($node/ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement]
-          [ancestor::* intersect $scope])
-        or exists($scope[self::LambdaExpression][parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach',
-          'forEachOrdered', 'forEachRemaining', 'map', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch',
-          'mapToObj', 'mapToInt', 'mapToLong')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
-          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]])
-        or exists($scope[self::MethodDeclaration][matches(@Name, '^visit')])
-    }
-return
-//LocalVariableDeclaration[parent::Block][count(VariableDeclarator) = 1]
-  [let $name := VariableDeclarator/VariableId/@Name, $init := VariableDeclarator/*[2],
-       $looping := $repeated(.)
-   return ($inMemory($init) or ($looping and exists($init[self::MethodCall][$costly(.)]))) and exists(following-sibling::*[1][self::IfStatement][count(*) = 2]
-     [*[2]/(self::Block/*[last()] | self::*[not(self::Block)])
-       [self::BreakStatement or self::ContinueStatement or self::ReturnStatement or self::ThrowStatement]]
-     [empty(.//VariableAccess[@Name = $name])]
-     [empty(*[1]/descendant-or-self::InfixExpression[@Operator = ('==', '!=')][NullLiteral]/VariableAccess
-       [@Name = $init/descendant-or-self::VariableAccess/@Name])]
-     [$settled(*[1]) or ($cheapTest(*[1]) and $looping)])]
-]]></value>
-      </property>
-    </properties>
-  </rule>
 </ruleset>
