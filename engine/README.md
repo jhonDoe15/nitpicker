@@ -536,6 +536,26 @@ What was measured (fixtures `tests/fixtures/spotbugs/stmt_*`):
 Not done: `REC_CATCH_EXCEPTION` needs the checked exceptions each `try` block can throw and the rule for its
 priority (most findings are low priority and hidden at `-medium`); it is left for a later batch (#2262).
 
+### Lombok
+
+SpotBugs skips the members Lombok writes, because Lombok marks them with `@lombok.Generated` (unless a
+`lombok.config` sets `lombok.addLombokGeneratedAnnotation = false`). The engine reads source and does not see
+them either, so only what Lombok changes in hand-written code matters (`tests/fixtures/spotbugs/lombok`):
+
+- A constructor parameter marked with Lombok's `@NonNull` makes the constructor start with a null check that
+  throws: `CT_CONSTRUCTOR_THROW` on the line of the parameter, after a `this(...)` call that already throws.
+- A `@SneakyThrows` constructor lets nothing out of its body; field initializers still count.
+- A class without a hand-written constructor whose constructors Lombok writes (`@Data`, `@Value`, `@Builder`,
+  `@AllArgsConstructor`, `@NoArgsConstructor`, `@RequiredArgsConstructor`, `@SuperBuilder`) has no constructor
+  SpotBugs reports.
+- An annotation is Lombok's when its name is imported from `lombok` or `lombok.experimental`, one by one or with
+  `*`; a single-type import of the same name from another package wins over `import lombok.*`. A varargs parameter
+  marked `@NonNull` is checked like any other.
+
+Not rebuilt: the types of the getters Lombok writes and of `lombok.val`, which the lock and map-iterator patterns
+need (`synchronized (other.getLock())`, `for (val key : map.keySet())`). Real runs leave those three patterns to
+SpotBugs on modules that run Lombok.
+
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in

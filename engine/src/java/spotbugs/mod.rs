@@ -8,6 +8,7 @@ mod handlers;
 mod held;
 mod flow;
 mod known;
+mod lombok;
 mod mutable;
 mod names;
 mod nulls;

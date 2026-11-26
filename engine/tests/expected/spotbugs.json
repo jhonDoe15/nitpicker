@@ -1080,5 +1080,18 @@
 ["held/p/T6.java", "EI_EXPOSE_REP2", 11, "new p.T6(Map) may expose internal representation by storing an externally mutable object into T6.raw"],
 ["held/p/T6.java", "EI_EXPOSE_REP", 19, "p.T6.get() may expose internal representation by returning T6.raw"],
 ["held/p/T8.java", "EI_EXPOSE_REP2", 11, "new p.T8(Map) may expose internal representation by storing an externally mutable object into T8.raw"],
-["held/p/T8.java", "EI_EXPOSE_REP2", 15, "p.T8.copy() may expose internal representation by storing an externally mutable object into T8.other"]
+["held/p/T8.java", "EI_EXPOSE_REP2", 15, "p.T8.copy() may expose internal representation by storing an externally mutable object into T8.other"],
+["lombok/p/LmAcme.java", "CT_CONSTRUCTOR_THROW", 7, "Exception thrown in class p.LmAcme$Q at new p.LmAcme$Q() will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
+["lombok/p/LmVar.java", "CT_CONSTRUCTOR_THROW", 5, "Exception thrown in class p.LmVar at new p.LmVar(String[]) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
+["lombok/p/Cl.java", "CT_CONSTRUCTOR_THROW", 11, "Exception thrown in class p.Cl at new p.Cl(InputStream) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
+["lombok/p/N1.java", "CT_CONSTRUCTOR_THROW", 11, "Exception thrown in class p.N1 at new p.N1(String, String) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
+["lombok/p/N1.java", "CT_CONSTRUCTOR_THROW", 17, "Exception thrown in class p.N1 at new p.N1(String) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
+["lombok/p/N2.java", "CT_CONSTRUCTOR_THROW", 6, "Exception thrown in class p.N2 at new p.N2() will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
+["lombok/p/N2.java", "CT_CONSTRUCTOR_THROW", 6, "Exception thrown in class p.N2 at new p.N2(int) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
+["lombok/p/N4.java", "CT_CONSTRUCTOR_THROW", 7, "Exception thrown in class p.N4 at new p.N4(String) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
+["lombok/p/N6.java", "CT_CONSTRUCTOR_THROW", 8, "Exception thrown in class p.N6 at new p.N6(String) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
+["lombok/p/N7.java", "CT_CONSTRUCTOR_THROW", 7, "Exception thrown in class p.N7 at new p.N7(String) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
+["lombok/p/N9.java", "CT_CONSTRUCTOR_THROW", 15, "Exception thrown in class p.N9 at new p.N9(String) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
+["lombok/p/N9.java", "CT_CONSTRUCTOR_THROW", 22, "Exception thrown in class p.N9 at new p.N9(int, String) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
+["lombok/p/Nn.java", "CT_CONSTRUCTOR_THROW", 8, "Exception thrown in class p.Nn at new p.Nn(String) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."]
 ]
