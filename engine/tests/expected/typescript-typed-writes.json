@@ -1,0 +1,2594 @@
+[
+ [
+  "d01/src/case-0008.ts",
+  "nitpicker/no-dual-write",
+  2,
+  77,
+  "This publishes `send()` in the same function that writes `orderRepository.save()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  2,
+  91
+ ],
+ [
+  "d01/src/case-0009.ts",
+  "nitpicker/no-dual-write",
+  3,
+  7,
+  "This publishes `send()` in the same function that writes `orderRepository.save()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  3,
+  18
+ ],
+ [
+  "d01/src/case-0010.ts",
+  "nitpicker/no-dual-write",
+  2,
+  77,
+  "This publishes `send()` in the same function that writes `orderRepository.save()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  2,
+  88
+ ],
+ [
+  "d02/src/case-0022.ts",
+  "nitpicker/no-dual-write",
+  4,
+  135,
+  "This publishes `producer.send()` in the same function that writes `prisma.order.update()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  4,
+  180
+ ],
+ [
+  "d02/src/case-0023.ts",
+  "nitpicker/no-dual-write",
+  4,
+  92,
+  "This publishes `producer.send()` in the same function that writes `prisma.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  4,
+  137
+ ],
+ [
+  "d02/src/case-0024.ts",
+  "nitpicker/no-dual-write",
+  4,
+  68,
+  "This publishes `publish()`, which calls `producer.send()` in the same function that writes `saveOrder()`, which calls `prisma.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  4,
+  79
+ ],
+ [
+  "d02/src/case-0025.ts",
+  "nitpicker/no-dual-write",
+  4,
+  130,
+  "This publishes `producer.send()` in the same function that writes `tx.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  4,
+  175
+ ],
+ [
+  "d02/src/case-0026.ts",
+  "nitpicker/no-dual-write",
+  4,
+  137,
+  "This publishes `producer.send()` after the transaction that writes `saveOrder()`, which calls `prisma.order.create()` commits: a rolled-back change is no longer published, but a crash between the commit and the publish loses the message. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost message is acceptable.",
+  4,
+  182
+ ],
+ [
+  "d02/src/case-0027.ts",
+  "nitpicker/no-dual-write",
+  4,
+  134,
+  "This publishes `producer.send()` after the transaction that writes `tx.order.create()` commits: a rolled-back change is no longer published, but a crash between the commit and the publish loses the message. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost message is acceptable.",
+  4,
+  179
+ ],
+ [
+  "d02/src/case-0028.ts",
+  "nitpicker/no-dual-write",
+  4,
+  134,
+  "This publishes `producer.send()` in the same function that writes `prisma.order.update()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  4,
+  179
+ ],
+ [
+  "d02/src/case-0029.ts",
+  "nitpicker/no-dual-write",
+  4,
+  198,
+  "This publishes `producer.send()` in the same function that writes `prisma.order.update()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  4,
+  247
+ ],
+ [
+  "d02/src/case-0030.ts",
+  "nitpicker/no-dual-write",
+  4,
+  69,
+  "This publishes `publish()`, which calls `producer.send()` in the same function that writes `saveOrder()`, which calls `prisma.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  4,
+  80
+ ],
+ [
+  "d03/src/case-0006.ts",
+  "nitpicker/no-dual-write",
+  7,
+  108,
+  "This publishes `producer.send()` in the same function that writes `mark()`, which calls `prisma.order.update()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  154
+ ],
+ [
+  "d03/src/case-0007.ts",
+  "nitpicker/no-dual-write",
+  7,
+  255,
+  "This publishes `producer.send()` in the same function that writes `prisma.order.update()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  304
+ ],
+ [
+  "d03/src/case-0015.ts",
+  "nitpicker/no-dual-write",
+  7,
+  166,
+  "This publishes `producer.send()` in the same function that writes `prisma.order.update()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  215
+ ],
+ [
+  "d03/src/case-0016.ts",
+  "nitpicker/no-dual-write",
+  7,
+  198,
+  "This publishes `producer.send()` in the same function that writes `prisma.order.update()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  247
+ ],
+ [
+  "d03/src/case-0017.ts",
+  "nitpicker/no-dual-write",
+  7,
+  134,
+  "This publishes `producer.send()` in the same function that writes `prisma.order.update()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  183
+ ],
+ [
+  "d03/src/case-0018.ts",
+  "nitpicker/no-dual-write",
+  7,
+  108,
+  "This publishes `producer.send()` in the same function that writes `prisma.order.update()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  154
+ ],
+ [
+  "d03/src/case-0019.ts",
+  "nitpicker/no-dual-write",
+  7,
+  169,
+  "This publishes `producer.send()` in the same function that writes `prisma.order.update()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  215
+ ],
+ [
+  "d03/src/case-0020.ts",
+  "nitpicker/no-dual-write",
+  7,
+  104,
+  "This publishes `producer.send()` in the same function that writes `prisma.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  150
+ ],
+ [
+  "d03/src/case-0021.ts",
+  "nitpicker/no-dual-write",
+  7,
+  68,
+  "This publishes `producer.send()` in the same function that writes `saveOrder()`, which calls `prisma.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  113
+ ],
+ [
+  "d03/src/case-0022.ts",
+  "nitpicker/no-dual-write",
+  7,
+  98,
+  "This publishes `producer.send()` in the same function that writes `prisma.$executeRaw()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  143
+ ],
+ [
+  "d03/src/case-0023.ts",
+  "nitpicker/no-dual-write",
+  7,
+  47,
+  "This publishes `producer.send()` in the same function that writes `prisma.$executeRaw()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  92
+ ],
+ [
+  "d03/src/case-0024.ts",
+  "nitpicker/no-dual-write",
+  7,
+  118,
+  "This publishes `producer.send()` in the same function that writes `prisma.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  163
+ ],
+ [
+  "d03/src/case-0025.ts",
+  "nitpicker/no-dual-write",
+  7,
+  112,
+  "This publishes `producer.send()` in the same function that writes `prisma.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  159
+ ],
+ [
+  "d03/src/case-0026.ts",
+  "nitpicker/no-dual-write",
+  7,
+  122,
+  "This publishes `producer.send()` in the same function that writes `prisma.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  167
+ ],
+ [
+  "d03/src/case-0027.ts",
+  "nitpicker/no-dual-write",
+  7,
+  92,
+  "This publishes `producer.send()` in the same function that writes `prisma.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  137
+ ],
+ [
+  "d03/src/case-0028.ts",
+  "nitpicker/no-dual-write",
+  7,
+  134,
+  "This publishes `producer.send()` in the same function that writes `prisma.order.update()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  183
+ ],
+ [
+  "d03/src/case-0029.ts",
+  "nitpicker/no-dual-write",
+  7,
+  179,
+  "This publishes `producer.send()` in the same function that writes `tx.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  224
+ ],
+ [
+  "d03/src/case-0030.ts",
+  "nitpicker/no-dual-write",
+  7,
+  134,
+  "This publishes `producer.send()` in the same function that writes `tx.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  179
+ ],
+ [
+  "d03/src/case-0031.ts",
+  "nitpicker/no-dual-write",
+  7,
+  138,
+  "This publishes `producer.send()` in the same function that writes `tx.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  183
+ ],
+ [
+  "d03/src/case-0032.ts",
+  "nitpicker/no-dual-write",
+  7,
+  128,
+  "This publishes `producer.send()` in the same function that writes `tx.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  173
+ ],
+ [
+  "d03/src/case-0033.ts",
+  "nitpicker/no-dual-write",
+  7,
+  127,
+  "This publishes `producer.send()` after the transaction that writes `saveOrder()`, which calls `prisma.order.create()` commits: a rolled-back change is no longer published, but a crash between the commit and the publish loses the message. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost message is acceptable.",
+  7,
+  172
+ ],
+ [
+  "d03/src/case-0034.ts",
+  "nitpicker/no-dual-write",
+  7,
+  109,
+  "This publishes `producer.send()` in the same function that writes `saveOrder()`, which calls `prisma.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  154
+ ],
+ [
+  "d03/src/case-0035.ts",
+  "nitpicker/no-dual-write",
+  7,
+  133,
+  "This publishes `producer.send()` after the transaction that writes `saveOrder()`, which calls `prisma.order.create()` commits: a rolled-back change is no longer published, but a crash between the commit and the publish loses the message. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost message is acceptable.",
+  7,
+  178
+ ],
+ [
+  "d03/src/case-0036.ts",
+  "nitpicker/no-dual-write",
+  7,
+  100,
+  "This publishes `producer.send()` in the same function that writes `saveOrder()`, which calls `prisma.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  145
+ ],
+ [
+  "d03/src/case-0037.ts",
+  "nitpicker/no-dual-write",
+  7,
+  130,
+  "This publishes `producer.send()` after the transaction that writes `saveOrder()`, which calls `prisma.order.create()` commits: a rolled-back change is no longer published, but a crash between the commit and the publish loses the message. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost message is acceptable.",
+  7,
+  175
+ ],
+ [
+  "d03/src/case-0038.ts",
+  "nitpicker/no-dual-write",
+  7,
+  136,
+  "This publishes `producer.send()` after the transaction that writes `saveOrder()`, which calls `prisma.order.create()` commits: a rolled-back change is no longer published, but a crash between the commit and the publish loses the message. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost message is acceptable.",
+  7,
+  181
+ ],
+ [
+  "d03/src/case-0039.ts",
+  "nitpicker/no-dual-write",
+  7,
+  100,
+  "This publishes `producer.send()` after the transaction that writes `saveOrder()`, which calls `prisma.order.create()` commits: a rolled-back change is no longer published, but a crash between the commit and the publish loses the message. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost message is acceptable.",
+  7,
+  145
+ ],
+ [
+  "d03/src/case-0040.ts",
+  "nitpicker/no-dual-write",
+  7,
+  103,
+  "This publishes `publish()`, which calls `producer.send()` in the same function that writes `saveOrder()`, which calls `prisma.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  114
+ ],
+ [
+  "d03/src/case-0041.ts",
+  "nitpicker/no-dual-write",
+  7,
+  75,
+  "This publishes `producer.send()` in the same function that writes `saveOrder()`, which calls `prisma.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  120
+ ],
+ [
+  "d03/src/case-0041.ts",
+  "nitpicker/no-dual-write",
+  8,
+  73,
+  "This publishes `publish()`, which calls `producer.send()` in the same function that writes `saveOrder()`, which calls `prisma.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  8,
+  84
+ ],
+ [
+  "d03/src/case-0042.ts",
+  "nitpicker/no-dual-write",
+  7,
+  76,
+  "This publishes `publish()`, which calls `producer.send()` in the same function that writes `saveOrder()`, which calls `prisma.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  87
+ ],
+ [
+  "d03/src/case-0043.ts",
+  "nitpicker/no-dual-write",
+  8,
+  7,
+  "This publishes `publish()`, which calls `producer.send()` in the same function that writes `saveOrder()`, which calls `prisma.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  8,
+  19
+ ],
+ [
+  "d03/src/case-0044.ts",
+  "nitpicker/no-dual-write",
+  7,
+  74,
+  "This publishes `publish()`, which calls `producer.send()` in the same function that writes `saveOrder()`, which calls `prisma.order.create()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  85
+ ],
+ [
+  "d03/src/case-0045.ts",
+  "nitpicker/no-dual-write",
+  7,
+  134,
+  "This publishes `producer.send()` in the same function that writes `prisma.order.update()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  183
+ ],
+ [
+  "d03/src/case-0046.ts",
+  "nitpicker/no-dual-write",
+  7,
+  222,
+  "This publishes `inner()`, which calls `producer.send()` in the same function that writes `prisma.order.update()`: if the write rolls back after the publish, consumers act on a change that never happened, and if the write commits and the process stops before the publish, the message is lost. Write the message to an outbox table in the same transaction and let a relay publish it (or use change data capture or a database-backed queue); a relay loop that reads rows from the database, publishes each and then updates that row is fine. An exception fits only when a lost or phantom message is acceptable.",
+  7,
+  229
+ ],
+ [
+  "j01/src/case-0013.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  54,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  185
+ ],
+ [
+  "j01/src/case-0014.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  54,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  164
+ ],
+ [
+  "j01/src/case-0015.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  51,
+  "This loop in the @Interval awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  161
+ ],
+ [
+  "j01/src/case-0016.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  50,
+  "This loop in the @Timeout awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  160
+ ],
+ [
+  "j01/src/case-0017.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  58,
+  "This loop in the @Process awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  168
+ ],
+ [
+  "j01/src/case-0018.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  70,
+  "This loop in the queue processor `process` awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  180
+ ],
+ [
+  "j01/src/case-0019.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  51,
+  "This loop in the queue processor `process` awaits `fetch()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  127
+ ],
+ [
+  "j01/src/case-0020.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  37,
+  "This loop in the queue worker awaits `fetch()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  102
+ ],
+ [
+  "j01/src/case-0021.ts",
+  "nitpicker/no-unisolated-job-loop",
+  3,
+  40,
+  "This loop in the Agenda job awaits `workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  3,
+  135
+ ],
+ [
+  "j01/src/case-0022.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  42,
+  "This loop in the node-cron task awaits `workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  133
+ ],
+ [
+  "j01/src/case-0023.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  54,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  189
+ ],
+ [
+  "j01/src/case-0024.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  60,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  156
+ ],
+ [
+  "j01/src/case-0025.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  54,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  183
+ ],
+ [
+  "j02/src/case-0028.ts",
+  "nitpicker/no-unisolated-job-loop",
+  3,
+  66,
+  "This loop in the @Cron awaits `syncWorkspace()`, which calls `prisma.order.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  3,
+  116
+ ],
+ [
+  "j03/src/case-0002.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  151
+ ],
+ [
+  "j03/src/case-0018.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  61,
+  "This loop in the queue processor `process` awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  133
+ ],
+ [
+  "j03/src/case-0020.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  34,
+  "This loop in the queue worker awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  106
+ ],
+ [
+  "j03/src/case-0029.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  149
+ ],
+ [
+  "j03/src/case-0030.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  162
+ ],
+ [
+  "j03/src/case-0031.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  151
+ ],
+ [
+  "j03/src/case-0032.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  154
+ ],
+ [
+  "j03/src/case-0033.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  133
+ ],
+ [
+  "j03/src/case-0034.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  135
+ ],
+ [
+  "j03/src/case-0035.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  169
+ ],
+ [
+  "j03/src/case-0036.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  202
+ ],
+ [
+  "j03/src/case-0037.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  215
+ ],
+ [
+  "j03/src/case-0038.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  133
+ ],
+ [
+  "j03/src/case-0039.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  126
+ ],
+ [
+  "j03/src/case-0040.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  119
+ ],
+ [
+  "j03/src/case-0041.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  127
+ ],
+ [
+  "j03/src/case-0042.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  119
+ ],
+ [
+  "j03/src/case-0043.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  119
+ ],
+ [
+  "j03/src/case-0044.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `fetch()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  89
+ ],
+ [
+  "j03/src/case-0045.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `fetch()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  138
+ ],
+ [
+  "j03/src/case-0046.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `fetch()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  100
+ ],
+ [
+  "j03/src/case-0047.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `fetch()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  89
+ ],
+ [
+  "j03/src/case-0048.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `fetch()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  87
+ ],
+ [
+  "j03/src/case-0049.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `fetch()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  93
+ ],
+ [
+  "j03/src/case-0050.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `fetch()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  91
+ ],
+ [
+  "j03/src/case-0051.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `fetch()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  108
+ ],
+ [
+  "j03/src/case-0053.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  71,
+  "This loop in the @Cron awaits `fetch()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  110
+ ],
+ [
+  "j03/src/case-0056.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `fetch()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  100
+ ],
+ [
+  "j03/src/case-0057.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  46,
+  "This loop in the @Cron awaits `fetch()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  85
+ ],
+ [
+  "j03/src/case-0057.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  86,
+  "This loop in the @Cron awaits `fetch()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  125
+ ],
+ [
+  "j03/src/case-0058.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  54,
+  "This loop in the @Process awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  126
+ ],
+ [
+  "j03/src/case-0059.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  54,
+  "This loop in the @Process awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  126
+ ],
+ [
+  "j03/src/case-0059.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  160,
+  "This loop in the @Process awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  232
+ ],
+ [
+  "j03/src/case-0060.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  47,
+  "This loop in the queue processor `process` awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  119
+ ],
+ [
+  "j03/src/case-0061.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  42,
+  "This loop in the queue processor `process` awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  114
+ ],
+ [
+  "j03/src/case-0062.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  47,
+  "This loop in the queue processor `process` awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  119
+ ],
+ [
+  "j03/src/case-0063.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  50,
+  "This loop in the queue processor `process` awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  122
+ ],
+ [
+  "j03/src/case-0064.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  58,
+  "This loop in the queue processor `process` awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  130
+ ],
+ [
+  "j03/src/case-0065.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  55,
+  "This loop in the queue processor `process` awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  127
+ ],
+ [
+  "j03/src/case-0066.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  38,
+  "This loop in the @Process awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  110
+ ],
+ [
+  "j03/src/case-0069.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  33,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  105
+ ],
+ [
+  "j03/src/case-0070.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  39,
+  "This loop in the @Timeout awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  111
+ ],
+ [
+  "j03/src/case-0071.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  45,
+  "This loop in the @Cron awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  117
+ ],
+ [
+  "j03/src/case-0072.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  34,
+  "This loop in the queue worker awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  106
+ ],
+ [
+  "j03/src/case-0073.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  34,
+  "This loop in the queue worker awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  106
+ ],
+ [
+  "j03/src/case-0074.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  40,
+  "This loop in the queue worker awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  112
+ ],
+ [
+  "j03/src/case-0075.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  34,
+  "This loop in the queue worker awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  106
+ ],
+ [
+  "j03/src/case-0076.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  34,
+  "This loop in the queue worker awaits `fetch()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  79
+ ],
+ [
+  "j03/src/case-0077.ts",
+  "nitpicker/no-unisolated-job-loop",
+  3,
+  29,
+  "This loop in the Agenda job awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  3,
+  101
+ ],
+ [
+  "j03/src/case-0079.ts",
+  "nitpicker/no-unisolated-job-loop",
+  3,
+  29,
+  "This loop in the Agenda job awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  3,
+  101
+ ],
+ [
+  "j03/src/case-0079.ts",
+  "nitpicker/no-unisolated-job-loop",
+  4,
+  29,
+  "This loop in the Agenda job awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  4,
+  101
+ ],
+ [
+  "j03/src/case-0080.ts",
+  "nitpicker/no-unisolated-job-loop",
+  3,
+  33,
+  "This loop in the Agenda job awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  3,
+  105
+ ],
+ [
+  "j03/src/case-0081.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  42,
+  "This loop in the node-cron task awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  114
+ ],
+ [
+  "j03/src/case-0082.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  42,
+  "This loop in the node-cron task awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  114
+ ],
+ [
+  "j03/src/case-0084.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  42,
+  "This loop in the node-cron task awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  114
+ ],
+ [
+  "j03/src/case-0085.ts",
+  "nitpicker/no-unisolated-job-loop",
+  2,
+  48,
+  "This loop in the node-cron task awaits `this.workspaceRepository.update()` for each item with no per-item `try`/`catch` or `.catch(...)`, so the first item that throws skips every item after it until the next run, and an item that keeps failing blocks the rest for good. Catch and record the failure per item (`try { ... } catch (error) { logger.error(...) }` or `.catch((error) => logger.error(error))`), enqueue one job per item, or use `Promise.allSettled` and report the failures. An exception fits only when the whole run must fail so that it is retried.",
+  2,
+  120
+ ],
+ [
+  "r01/src/case-0009.ts",
+  "nitpicker/no-retry-without-idempotency",
+  2,
+  20,
+  "This retries `db.query()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  2,
+  73
+ ],
+ [
+  "r01/src/case-0010.ts",
+  "nitpicker/no-retry-without-idempotency",
+  2,
+  33,
+  "This retries `db.query()` inside `retry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  2,
+  86
+ ],
+ [
+  "r01/src/case-0011.ts",
+  "nitpicker/no-retry-without-idempotency",
+  2,
+  21,
+  "This retries `db.query()` inside `backOff()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  2,
+  74
+ ],
+ [
+  "r01/src/case-0012.ts",
+  "nitpicker/no-retry-without-idempotency",
+  2,
+  58,
+  "This retries `db.query()` inside `retry().execute()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  2,
+  111
+ ],
+ [
+  "r01/src/case-0013.ts",
+  "nitpicker/no-retry-without-idempotency",
+  3,
+  28,
+  "This retries `db.query()` inside `policy.execute()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  3,
+  81
+ ],
+ [
+  "r01/src/case-0014.ts",
+  "nitpicker/no-retry-without-idempotency",
+  2,
+  20,
+  "This retries `db.query()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  2,
+  73
+ ],
+ [
+  "r01/src/case-0015.ts",
+  "nitpicker/no-retry-without-idempotency",
+  2,
+  21,
+  "This retries `db.query()` inside `backOff()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  2,
+  74
+ ],
+ [
+  "r01/src/case-0016.ts",
+  "nitpicker/no-retry-without-idempotency",
+  2,
+  20,
+  "This retries `db.query()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  2,
+  73
+ ],
+ [
+  "r01/src/case-0017.ts",
+  "nitpicker/no-retry-without-idempotency",
+  3,
+  20,
+  "This retries `db.query()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  3,
+  40
+ ],
+ [
+  "r01/src/case-0018.ts",
+  "nitpicker/no-retry-without-idempotency",
+  2,
+  20,
+  "This retries `db.query()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  2,
+  91
+ ],
+ [
+  "r01/src/case-0019.ts",
+  "nitpicker/no-retry-without-idempotency",
+  1,
+  47,
+  "This retries `db.query()` inside a retry loop: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  1,
+  100
+ ],
+ [
+  "r01/src/case-0020.ts",
+  "nitpicker/no-retry-without-idempotency",
+  1,
+  62,
+  "This retries `db.query()` inside a retry loop: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  1,
+  115
+ ],
+ [
+  "r01/src/case-0021.ts",
+  "nitpicker/no-retry-without-idempotency",
+  1,
+  43,
+  "This retries `db.query()` inside a retry loop: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  1,
+  96
+ ],
+ [
+  "r02/src/case-0030.ts",
+  "nitpicker/no-retry-without-idempotency",
+  10,
+  74,
+  "This retries `stripe.customers.create()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  10,
+  112
+ ],
+ [
+  "r02/src/case-0031.ts",
+  "nitpicker/no-retry-without-idempotency",
+  10,
+  74,
+  "This retries `queue.add()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  10,
+  100
+ ],
+ [
+  "r02/src/case-0032.ts",
+  "nitpicker/no-retry-without-idempotency",
+  10,
+  74,
+  "This retries `sqs.send()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  10,
+  142
+ ],
+ [
+  "r02/src/case-0033.ts",
+  "nitpicker/no-retry-without-idempotency",
+  10,
+  74,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  10,
+  87
+ ],
+ [
+  "r02/src/case-0034.ts",
+  "nitpicker/no-retry-without-idempotency",
+  10,
+  51,
+  "This retries `sender.send()`, which calls `producer.send()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  10,
+  83
+ ],
+ [
+  "r02/src/case-0035.cjs",
+  "nitpicker/no-retry-without-idempotency",
+  3,
+  62,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  3,
+  75
+ ],
+ [
+  "r02/src/case-0036.ts",
+  "nitpicker/no-retry-without-idempotency",
+  6,
+  83,
+  "This retries `pool.query()` inside `wrap().execute()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  6,
+  138
+ ],
+ [
+  "r02/src/case-0037.ts",
+  "nitpicker/no-retry-without-idempotency",
+  6,
+  68,
+  "This retries `pool.query()` inside `policy.execute()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  6,
+  123
+ ],
+ [
+  "r02/src/case-0038.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  60,
+  "This retries `pool.query()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  82
+ ],
+ [
+  "r02/src/case-0039.ts",
+  "nitpicker/no-retry-without-idempotency",
+  4,
+  60,
+  "This retries `pool.query()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  4,
+  133
+ ],
+ [
+  "r02/src/case-0040.ts",
+  "nitpicker/no-retry-without-idempotency",
+  10,
+  37,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  10,
+  54
+ ],
+ [
+  "r03/src/case-0001.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  90,
+  "This retries `new Sender().send()`, which calls `producer.send()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  115
+ ],
+ [
+  "r03/src/case-0002.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  90,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  118
+ ],
+ [
+  "r03/src/case-0003.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  127,
+  "This retries `s.send()`, which calls `producer.send()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  137
+ ],
+ [
+  "r03/src/case-0004.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  123,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  136
+ ],
+ [
+  "r03/src/case-0005.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  110,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  123
+ ],
+ [
+  "r03/src/case-0009.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  107,
+  "This retries `sendOrder()`, which calls `producer.send()` inside a retry loop: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  120
+ ],
+ [
+  "r03/src/case-0015.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  101,
+  "This retries `sendOrder()`, which calls `producer.send()` inside a retry loop: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  114
+ ],
+ [
+  "r03/src/case-0016.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  126,
+  "This retries `sendOrder()`, which calls `producer.send()` inside a retry loop: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  139
+ ],
+ [
+  "r03/src/case-0017.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  124,
+  "This retries `sendOrder()`, which calls `producer.send()` inside a retry loop: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  137
+ ],
+ [
+  "r03/src/case-0019.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  126,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `p2.execute()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  139
+ ],
+ [
+  "r03/src/case-0020.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  111,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `policy.execute()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  124
+ ],
+ [
+  "r03/src/case-0021.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  127,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `retry().execute()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  140
+ ],
+ [
+  "r03/src/case-0022.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  157,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `own.execute()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  170
+ ],
+ [
+  "r03/src/case-0025.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  131,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  143
+ ],
+ [
+  "r03/src/case-0027.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  103,
+  "This retries `send()`, which calls `producer.send()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  124
+ ],
+ [
+  "r03/src/case-0028.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  103,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  116
+ ],
+ [
+  "r03/src/case-0029.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  110,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  123
+ ],
+ [
+  "r03/src/case-0030.ts",
+  "nitpicker/no-retry-without-idempotency",
+  5,
+  123,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  5,
+  136
+ ],
+ [
+  "r04/src/case-0001.ts",
+  "nitpicker/no-retry-without-idempotency",
+  3,
+  61,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `retryIt()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  3,
+  74
+ ],
+ [
+  "r04/src/case-0002.ts",
+  "nitpicker/no-retry-without-idempotency",
+  3,
+  56,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `ar()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  3,
+  69
+ ],
+ [
+  "r04/src/case-0004.ts",
+  "nitpicker/no-retry-without-idempotency",
+  3,
+  57,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `pr2()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  3,
+  70
+ ],
+ [
+  "r04/src/case-0005.ts",
+  "nitpicker/no-retry-without-idempotency",
+  3,
+  57,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `pr3()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  3,
+  70
+ ],
+ [
+  "r04/src/case-0007.ts",
+  "nitpicker/no-retry-without-idempotency",
+  3,
+  60,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  3,
+  73
+ ],
+ [
+  "r04/src/case-0008.ts",
+  "nitpicker/no-retry-without-idempotency",
+  3,
+  60,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `pRetry()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  3,
+  73
+ ],
+ [
+  "r04/src/case-0009.ts",
+  "nitpicker/no-retry-without-idempotency",
+  3,
+  83,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `make().execute()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  3,
+  96
+ ],
+ [
+  "r04/src/case-0010.ts",
+  "nitpicker/no-retry-without-idempotency",
+  4,
+  65,
+  "This retries `sendOrder()`, which calls `producer.send()` inside `pol.execute()`: when a timeout hits after the server accepted the write, the retry runs it twice. Give the write a stable idempotency key derived from the request (Stripe `{ idempotencyKey }`), a provider deduplication id (SQS or SNS FIFO `MessageDeduplicationId`, BullMQ `jobId`), an upsert (`ON CONFLICT`), or retry only the read. An exception fits only when running the write twice is harmless.",
+  4,
+  78
+ ],
+ [
+  "s01/src/case-0019.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  5,
+  20,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  5,
+  41
+ ],
+ [
+  "s01/src/case-0020.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  120,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  133
+ ],
+ [
+  "s01/src/case-0021.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  76,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  97
+ ],
+ [
+  "s01/src/case-0022.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  110,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  131
+ ],
+ [
+  "s01/src/case-0023.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  76,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  118
+ ],
+ [
+  "s01/src/case-0024.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  76,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  112
+ ],
+ [
+  "s01/src/case-0025.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  120,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  141
+ ],
+ [
+  "s01/src/case-0026.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  198,
+  "This retry after an optimistic-lock conflict saves `loaded`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  220
+ ],
+ [
+  "s01/src/case-0027.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  84,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  105
+ ],
+ [
+  "s01/src/case-0028.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  145,
+  "This retry after an optimistic-lock conflict saves `fresh` as it was re-read, without re-applying the change: the update is lost. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  166
+ ],
+ [
+  "s01/src/case-0029.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  169,
+  "This retry after an optimistic-lock conflict saves `fresh` as it was re-read, without re-applying the change: the update is lost. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  190
+ ],
+ [
+  "s01/src/case-0030.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  6,
+  74,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  6,
+  95
+ ],
+ [
+  "s02/src/case-0032.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  163
+ ],
+ [
+  "s02/src/case-0033.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  162,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  183
+ ],
+ [
+  "s02/src/case-0034.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  155,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  176
+ ],
+ [
+  "s02/src/case-0035.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  170
+ ],
+ [
+  "s02/src/case-0036.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  186
+ ],
+ [
+  "s02/src/case-0040.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  177
+ ],
+ [
+  "s02/src/case-0041.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  170
+ ],
+ [
+  "s02/src/case-0042.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  170
+ ],
+ [
+  "s02/src/case-0043.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  164
+ ],
+ [
+  "s02/src/case-0044.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  164
+ ],
+ [
+  "s02/src/case-0045.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  182
+ ],
+ [
+  "s02/src/case-0046.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  168
+ ],
+ [
+  "s02/src/case-0047.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  174
+ ],
+ [
+  "s02/src/case-0048.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  159
+ ],
+ [
+  "s02/src/case-0049.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  171
+ ],
+ [
+  "s02/src/case-0050.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  174
+ ],
+ [
+  "s02/src/case-0051.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  167
+ ],
+ [
+  "s02/src/case-0052.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  156
+ ],
+ [
+  "s02/src/case-0053.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  156
+ ],
+ [
+  "s02/src/case-0054.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  156
+ ],
+ [
+  "s02/src/case-0055.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  159
+ ],
+ [
+  "s02/src/case-0056.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  162
+ ],
+ [
+  "s02/src/case-0057.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  163
+ ],
+ [
+  "s02/src/case-0058.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  165
+ ],
+ [
+  "s02/src/case-0059.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  162
+ ],
+ [
+  "s02/src/case-0060.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  159
+ ],
+ [
+  "s02/src/case-0061.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  178
+ ],
+ [
+  "s02/src/case-0062.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  178,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  191
+ ],
+ [
+  "s02/src/case-0063.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  192,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  211
+ ],
+ [
+  "s02/src/case-0064.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  198,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  217
+ ],
+ [
+  "s02/src/case-0065.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  194,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  213
+ ],
+ [
+  "s02/src/case-0066.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  193,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  212
+ ],
+ [
+  "s02/src/case-0067.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  195,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  214
+ ],
+ [
+  "s02/src/case-0069.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  200,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  219
+ ],
+ [
+  "s02/src/case-0070.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  186,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  205
+ ],
+ [
+  "s02/src/case-0071.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  196,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  215
+ ],
+ [
+  "s02/src/case-0072.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  196,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  215
+ ],
+ [
+  "s02/src/case-0074.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  156,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  177
+ ],
+ [
+  "s02/src/case-0074.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  185,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  206
+ ],
+ [
+  "s02/src/case-0075.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  156,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  177
+ ],
+ [
+  "s02/src/case-0075.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  210,
+  "This retry after an optimistic-lock conflict saves `next`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  230
+ ],
+ [
+  "s02/src/case-0076.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  185,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  206
+ ],
+ [
+  "s02/src/case-0078.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  201,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  222
+ ],
+ [
+  "s02/src/case-0079.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  187,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  208
+ ],
+ [
+  "s02/src/case-0080.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  171,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  192
+ ],
+ [
+  "s02/src/case-0081.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  187,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  208
+ ],
+ [
+  "s02/src/case-0082.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  174,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  195
+ ],
+ [
+  "s02/src/case-0084.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  178,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  199
+ ],
+ [
+  "s02/src/case-0085.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  174,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  195
+ ],
+ [
+  "s02/src/case-0086.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  169,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  190
+ ],
+ [
+  "s02/src/case-0087.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  167,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  188
+ ],
+ [
+  "s02/src/case-0089.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  166
+ ],
+ [
+  "s02/src/case-0090.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  170
+ ],
+ [
+  "s02/src/case-0091.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `id`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  170
+ ],
+ [
+  "s02/src/case-0092.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  236,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  257
+ ],
+ [
+  "s02/src/case-0098.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  191,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  212
+ ],
+ [
+  "s02/src/case-0099.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  163
+ ],
+ [
+  "s02/src/case-0100.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  211,
+  "This retry after an optimistic-lock conflict saves `fresh` as it was re-read, without re-applying the change: the update is lost. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  232
+ ],
+ [
+  "s02/src/case-0102.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  199,
+  "This retry after an optimistic-lock conflict saves `fresh` as it was re-read, without re-applying the change: the update is lost. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  220
+ ],
+ [
+  "s02/src/case-0103.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  208,
+  "This retry after an optimistic-lock conflict saves `fresh` as it was re-read, without re-applying the change: the update is lost. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  229
+ ],
+ [
+  "s02/src/case-0105.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  200,
+  "This retry after an optimistic-lock conflict saves `fresh` as it was re-read, without re-applying the change: the update is lost. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  224
+ ],
+ [
+  "s02/src/case-0110.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  203,
+  "This retry after an optimistic-lock conflict saves `fresh` as it was re-read, without re-applying the change: the update is lost. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  224
+ ],
+ [
+  "s02/src/case-0111.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  217,
+  "This retry after an optimistic-lock conflict saves `fresh` as it was re-read, without re-applying the change: the update is lost. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  238
+ ],
+ [
+  "s02/src/case-0112.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  207,
+  "This retry after an optimistic-lock conflict saves `fresh` as it was re-read, without re-applying the change: the update is lost. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  228
+ ],
+ [
+  "s02/src/case-0114.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  209,
+  "This retry after an optimistic-lock conflict saves `fresh` as it was re-read, without re-applying the change: the update is lost. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  230
+ ],
+ [
+  "s02/src/case-0117.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  186,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  207
+ ],
+ [
+  "s02/src/case-0118.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  186,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  214
+ ],
+ [
+  "s02/src/case-0119.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  186,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  207
+ ],
+ [
+  "s02/src/case-0119.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  215,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  236
+ ],
+ [
+  "s02/src/case-0121.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  140,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  161
+ ],
+ [
+  "s02/src/case-0122.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  160,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  181
+ ],
+ [
+  "s02/src/case-0123.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  160,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  181
+ ],
+ [
+  "s02/src/case-0124.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  146,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  167
+ ],
+ [
+  "s02/src/case-0126.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  204,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  225
+ ],
+ [
+  "s02/src/case-0127.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  235,
+  "This retry after an optimistic-lock conflict saves `fresh` as it was re-read, without re-applying the change: the update is lost. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  256
+ ],
+ [
+  "s02/src/case-0130.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  213,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  234
+ ],
+ [
+  "s02/src/case-0130.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  213,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  234
+ ],
+ [
+  "s02/src/case-0131.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  213,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  234
+ ],
+ [
+  "s02/src/case-0131.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  213,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  234
+ ],
+ [
+  "s02/src/case-0132.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  172,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  193
+ ],
+ [
+  "s02/src/case-0133.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  187,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  208
+ ],
+ [
+  "s02/src/case-0133.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  187,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  208
+ ],
+ [
+  "s02/src/case-0134.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  188,
+  "This retry after an optimistic-lock conflict saves `item`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  208
+ ],
+ [
+  "s02/src/case-0135.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  188,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  209
+ ],
+ [
+  "s02/src/case-0136.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  163
+ ],
+ [
+  "s02/src/case-0136.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  266,
+  "This retry after an optimistic-lock conflict saves `next`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  286
+ ],
+ [
+  "s02/src/case-0137.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  163
+ ],
+ [
+  "s02/src/case-0138.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  142,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  163
+ ],
+ [
+  "s02/src/case-0139.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  157,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  178
+ ],
+ [
+  "s02/src/case-0140.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  148,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  169
+ ],
+ [
+  "s02/src/case-0141.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  156,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  177
+ ],
+ [
+  "s02/src/case-0153.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  3,
+  66,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  3,
+  87
+ ],
+ [
+  "s02/src/case-0154.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  3,
+  66,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  3,
+  87
+ ],
+ [
+  "s02/src/case-0155.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  3,
+  66,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  3,
+  87
+ ],
+ [
+  "s02/src/case-0156.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  3,
+  66,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  3,
+  87
+ ],
+ [
+  "s02/src/case-0157.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  3,
+  66,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  3,
+  87
+ ],
+ [
+  "s02/src/case-0158.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  3,
+  66,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  3,
+  87
+ ],
+ [
+  "s02/src/case-0159.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  3,
+  66,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  3,
+  87
+ ],
+ [
+  "s02/src/case-0160.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  3,
+  66,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  3,
+  87
+ ],
+ [
+  "s02/src/case-0161.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  3,
+  66,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  3,
+  87
+ ],
+ [
+  "s02/src/case-0162.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  3,
+  66,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  3,
+  87
+ ],
+ [
+  "s02/src/case-0163.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  3,
+  66,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  3,
+  87
+ ],
+ [
+  "s02/src/case-0164.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  3,
+  70,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  3,
+  91
+ ],
+ [
+  "s02/src/case-0165.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  74,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  95
+ ],
+ [
+  "s02/src/case-0167.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  3,
+  150,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  3,
+  171
+ ],
+ [
+  "s02/src/case-0169.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  74,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  95
+ ],
+ [
+  "s02/src/case-0170.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  74,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  95
+ ],
+ [
+  "s02/src/case-0173.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  4,
+  67,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  4,
+  88
+ ],
+ [
+  "s03/src/case-0003.ts",
+  "nitpicker/no-stale-retry-after-conflict",
+  5,
+  158,
+  "This retry after an optimistic-lock conflict saves `order`, which was loaded before the retried scope and carries the old version: every attempt fails the same way. Retry the whole read-modify-write: re-read the row by id and re-apply the change inside the retried scope (`retry(async () => { const row = await repo.findOneByOrFail({ id }); row.status = next; return repo.save(row); })`). An exception fits only when the retry is not meant for a version conflict.",
+  5,
+  179
+ ]
+]

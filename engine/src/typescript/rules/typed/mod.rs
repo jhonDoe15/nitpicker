@@ -9,6 +9,7 @@ pub mod offsets;
 pub mod presence;
 pub mod questions;
 pub mod regex;
+pub mod retries;
 pub mod streams;
 pub mod time;
 pub mod types;
@@ -24,10 +25,12 @@ use super::contracts as contract_rules;
 use super::defaults;
 use super::delegation;
 use super::domain;
+use super::dual_writes;
 use super::empty_lists;
 use super::entity_versions;
 use super::forwarding;
 use super::handlers;
+use super::jobs;
 use super::held_scopes;
 use super::number_input;
 use super::patterns;
@@ -35,9 +38,11 @@ use super::presence as presence_rules;
 use super::promises;
 use super::signatures;
 use super::spreads;
+use super::stale_retries;
 use super::time_zones;
 use super::union_members;
 use super::unknown_types;
+use super::writes;
 
 pub const TYPED: &[(&str, Rule)] =
     &[
@@ -60,6 +65,10 @@ pub const TYPED: &[(&str, Rule)] =
     ("no-mutating-method-in-domain", domain::no_mutating_method_in_domain::check), ("no-parameter-mutation", signatures::no_parameter_mutation::check),
     ("no-remote-call-in-transaction", held_scopes::remote_in_scope::no_remote_call_in_transaction),
     ("no-remote-call-under-lock", held_scopes::remote_in_scope::no_remote_call_under_lock),
+    ("no-retry-without-idempotency", writes::no_retry_without_idempotency::no_retry_without_idempotency),
+    ("no-dual-write", dual_writes::no_dual_write::no_dual_write),
+    ("no-stale-retry-after-conflict", stale_retries::no_stale_retry_after_conflict::no_stale_retry_after_conflict),
+    ("no-unisolated-job-loop", jobs::no_unisolated_job_loop::no_unisolated_job_loop),
     ("no-shadowed-spread-key", spreads::no_shadowed_spread_key::check),
     ("no-string-as-regex", patterns::no_string_as_regex::check),
     ("no-swapped-arguments", arguments::no_swapped_arguments::check),
