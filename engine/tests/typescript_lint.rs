@@ -92,3 +92,40 @@ fn react_test_rules_report_what_the_eslint_rules_report() {
     let found: Vec<Row> = serde_json::from_slice(&output.stdout).expect("json");
     assert_eq!(sorted(found), rows(&root.join("expected").join("typescript-react-tests.json")));
 }
+
+const REDECLARED: [(&str, &str, bool); 8] = [
+    ("function.ts", "export function run(a: string) { function a() {} return a; }", false),
+    ("rest.ts", "export function run(...a: string[]) { function a() {} return a; }", false),
+    ("pattern.ts", "export function run({ a }: { a: string }) { async function a() {} return a; }", false),
+    ("arrow.ts", "export const run = (a: string) => { function* a() {} return a; };", false),
+    ("class.ts", "export function run(a: string) { class a {} return a; }", true),
+    ("lexical.ts", "export function run(a: string) { let a = 1; return a; }", true),
+    ("block.ts", "export function run(a: string) { { var a: unknown; function a() {} } return a; }", true),
+    ("parameters.ts", "export function run(a: string, a: string) { return a; }", true),
+];
+
+#[test]
+fn only_a_function_declaration_may_redeclare_a_parameter() {
+    let directory = std::env::temp_dir().join(format!("nitpicker-engine-redeclared-{}", std::process::id()));
+    std::fs::create_dir_all(&directory).expect("directory");
+    let lines: Vec<String> = REDECLARED
+        .iter()
+        .map(|(name, text, _)| {
+            std::fs::write(directory.join(name), text).expect("file");
+            format!("{}\t{name}", directory.join(name).display())
+        })
+        .collect();
+    let list = directory.join("list.tsv");
+    std::fs::write(&list, lines.join("\n")).expect("list");
+    let output = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine")).args(["typescript-lint", "--files"]).arg(&list).output().expect("engine runs");
+    let _ = std::fs::remove_dir_all(&directory);
+    assert!(output.status.success());
+    let found: Vec<Row> = serde_json::from_slice(&output.stdout).expect("json");
+    let unparsed: Vec<&str> = REDECLARED.iter().filter(|(_, _, refused)| *refused).map(|(name, _, _)| *name).collect();
+    let marked: Vec<&str> = REDECLARED
+        .iter()
+        .map(|(name, _, _)| *name)
+        .filter(|name| found.iter().any(|row| row[0] == *name && row[1] == "!parse"))
+        .collect();
+    assert_eq!(marked, unparsed);
+}

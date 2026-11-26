@@ -505,5 +505,59 @@
   "Avoid destructuring queries from `render` result, use `screen.getByRole` instead",
   9,
   17
+ ],
+ [
+  "redeclared-parameter.test.tsx",
+  "testing-library/await-async-queries",
+  20,
+  3,
+  "promise returned from `labelled` wrapper over async query must be handled",
+  20,
+  11
+ ],
+ [
+  "redeclared-parameter.test.tsx",
+  "testing-library/await-async-queries",
+  22,
+  10,
+  "promise returned from `findByText` query must be handled",
+  22,
+  20
+ ],
+ [
+  "redeclared-parameter.test.tsx",
+  "testing-library/await-async-queries",
+  7,
+  3,
+  "promise returned from `findByText` query must be handled",
+  7,
+  13
+ ],
+ [
+  "redeclared-parameter.test.tsx",
+  "testing-library/await-async-utils",
+  21,
+  3,
+  "Promise returned from waited wrapper over async util must be handled",
+  21,
+  9
+ ],
+ [
+  "redeclared-parameter.test.tsx",
+  "testing-library/await-async-utils",
+  23,
+  3,
+  "Promise returned from `waitFor` must be handled",
+  23,
+  10
+ ],
+ [
+  "redeclared-parameter.test.tsx",
+  "testing-library/prefer-screen-queries",
+  7,
+  3,
+  "Avoid destructuring queries from `render` result, use `screen.findByText` instead",
+  7,
+  13
  ]
 ]
