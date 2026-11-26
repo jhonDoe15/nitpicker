@@ -60,6 +60,7 @@ import { rule as ruleNoFalsyDefault } from '../rules/signatures/no-falsy-default
 import { rule as ruleNoFalsyErrorCheck } from '../rules/errors/falsy-errors/no-falsy-error-check.mts';
 import { rule as ruleNoFilteredPositionalPairing } from '../rules/repeated-work/pairings/no-filtered-positional-pairing.mts';
 import { rule as ruleNoFirstTestChargedSetup } from '../rules/test-runtime/lifecycle/no-first-test-charged-setup.mts';
+import { rule as ruleNoFixedPortInTests } from '../rules/test-runtime/ports/no-fixed-port-in-tests.mts';
 import { rule as ruleNoFixedSleepSynchronization } from '../rules/test-runtime/lifecycle/no-fixed-sleep-synchronization.mts';
 import { rule as ruleNoFloatEqualityInTests } from '../test-assertions/no-float-equality-in-tests.mts';
 import { rule as ruleNoForwardingMethodAlias } from '../rules/api-shape/no-forwarding-method-alias.mts';
@@ -84,6 +85,7 @@ import { rule as ruleNoIntervalPollingInTests } from '../rules/test-runtime/life
 import { rule as ruleNoIoInLoop } from '../rules/loops/no-io-in-loop.mts';
 import { rule as ruleNoLazyRelationInLoop } from '../rules/effects/no-lazy-relation-in-loop.mts';
 import { rule as ruleNoListenOnAllInterfaces } from '../rules/listeners/no-listen-on-all-interfaces.mts';
+import { rule as ruleNoListingOrderInAssertions } from '../rules/test-runtime/listing-order/no-listing-order-in-assertions.mts';
 import { rule as ruleNoLoadedRowsSavedBack } from '../rules/queries/rows/no-loaded-rows-saved-back.mts';
 import { rule as ruleNoLocalTimeZone } from '../rules/time/no-local-time-zone.mts';
 import { rule as ruleNoLookupAsPresence } from '../rules/presence/lookups/no-lookup-as-presence.mts';
@@ -96,8 +98,6 @@ import { rule as ruleNoMalformedQueryText } from '../rules/query-text/no-malform
 import { rule as ruleNoManagedResourceConstructionOutsideCompositionRoots } from '../rules/boundaries/no-managed-resource-construction-outside-composition-roots.mts';
 import { rule as ruleNoManyToManyCascadeRemove } from '../rules/persistence/no-many-to-many-cascade-remove.mts';
 import { rule as ruleNoMismatchedPreconditionMessage } from '../rules/preconditions/no-mismatched-precondition-message.mts';
-import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
-import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -162,6 +162,7 @@ export const partRules = {
   'no-falsy-error-check': ruleNoFalsyErrorCheck,
   'no-filtered-positional-pairing': ruleNoFilteredPositionalPairing,
   'no-first-test-charged-setup': ruleNoFirstTestChargedSetup,
+  'no-fixed-port-in-tests': ruleNoFixedPortInTests,
   'no-fixed-sleep-synchronization': ruleNoFixedSleepSynchronization,
   'no-float-equality-in-tests': ruleNoFloatEqualityInTests,
   'no-forwarding-method-alias': ruleNoForwardingMethodAlias,
@@ -186,6 +187,7 @@ export const partRules = {
   'no-io-in-loop': ruleNoIoInLoop,
   'no-lazy-relation-in-loop': ruleNoLazyRelationInLoop,
   'no-listen-on-all-interfaces': ruleNoListenOnAllInterfaces,
+  'no-listing-order-in-assertions': ruleNoListingOrderInAssertions,
   'no-loaded-rows-saved-back': ruleNoLoadedRowsSavedBack,
   'no-local-time-zone': ruleNoLocalTimeZone,
   'no-lookup-as-presence': ruleNoLookupAsPresence,
@@ -199,6 +201,4 @@ export const partRules = {
     ruleNoManagedResourceConstructionOutsideCompositionRoots,
   'no-many-to-many-cascade-remove': ruleNoManyToManyCascadeRemove,
   'no-mismatched-precondition-message': ruleNoMismatchedPreconditionMessage,
-  'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
-  'no-module-level-let': ruleNoModuleLevelLet,
 };

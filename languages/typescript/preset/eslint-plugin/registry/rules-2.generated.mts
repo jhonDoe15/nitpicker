@@ -1,3 +1,5 @@
+import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
+import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
 import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
 import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multiple-collection-joins.mts';
 import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
@@ -96,10 +98,10 @@ import { rule as ruleNoUnescapedHtmlInterpolation } from '../rules/patterns/html
 import { rule as ruleNoUnescapedPatternTranslation } from '../rules/patterns/no-unescaped-pattern-translation.mts';
 import { rule as ruleNoUnfilteredSoftDeleteRead } from '../rules/queries/soft-delete/no-unfiltered-soft-delete-read.mts';
 import { rule as ruleNoUnguardedCyclicRecursion } from '../rules/recursion/no-unguarded-cyclic-recursion.mts';
-import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-unguarded-deleted-items.mts';
-import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
 
 export const partRules = {
+  'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
+  'no-module-level-let': ruleNoModuleLevelLet,
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
   'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
   'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
@@ -198,6 +200,4 @@ export const partRules = {
   'no-unescaped-pattern-translation': ruleNoUnescapedPatternTranslation,
   'no-unfiltered-soft-delete-read': ruleNoUnfilteredSoftDeleteRead,
   'no-unguarded-cyclic-recursion': ruleNoUnguardedCyclicRecursion,
-  'no-unguarded-deleted-items': ruleNoUnguardedDeletedItems,
-  'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
 };
