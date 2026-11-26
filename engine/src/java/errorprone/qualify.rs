@@ -39,6 +39,7 @@ pub fn qualify_type(context: &Context, at: Node, kind: &Type) -> String {
         Type::Variable(name) => name.clone(),
         Type::Primitive(name) => (*name).to_string(),
         Type::Wildcard => "?".to_string(),
+        Type::Bounded(lower, bound) => format!("? {} {}", if *lower { "super" } else { "extends" }, qualify_type(context, at, bound)),
         Type::Null => "null".to_string(),
     }
 }

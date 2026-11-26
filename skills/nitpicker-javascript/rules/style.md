@@ -153,6 +153,10 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `Promise.all(items.map(...))`. For a remote API without a batch endpoint use a limiter or fixed-size
   chunks. Paging loops, retries, a call that takes a whole chunk and broker publishes pass
   (`nitpicker/no-io-in-loop`).
+- Start reads that do not use each other's results together: `const [user, orders] = await
+  Promise.all([getUser(id), listOrders(id)])`, not two awaits in a row (`nitpicker/no-sequential-independent-reads`).
+- Await a promise started earlier where its result is first used, after the independent work, so the two
+  overlap (`nitpicker/no-early-wait-on-started-work`).
 - Don't copy an accumulator array with `concat` on every step of `reduce` or a loop: push into an array
   created before the loop, or build the result with `flatMap` (`nitpicker/no-accumulator-concat`).
 - Load a lazy TypeORM relation with the query that reads the items (`relations: { customer: true }` or
@@ -404,6 +408,31 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Output that grows with the project (`git ls-files`, `git diff`, `find`, a tool's JSON report) is read as a stream
   (`spawn` and its `stdout` line by line) or from a file the tool writes, not through `execFileSync`/`spawnSync`
   and a `maxBuffer`, which fails with `ENOBUFS` on a large project (`nitpicker/no-buffered-growing-output`).
+- Write a list that grows with the input (findings, results, rows) one element per line or in batches, and read it
+  back line by line: one `JSON.stringify` or `join` of the whole list throws `Invalid string length` past about 512
+  million characters, exactly when the output is largest (`nitpicker/no-whole-list-json-text`).
+- Map a long list while it is consumed (a generator that yields each mapped item, or the mapping inside the loop)
+  instead of `findings.map(...)` handed to a writer that walks it once (`nitpicker/no-mapped-copy-for-single-pass`).
+- Start a Go-built server or checker (`tsgo`, the TypeScript 7 API server, `tsgolint`, `gopls`) with `GOGC` (for
+  example 50) or `GOMEMLIMIT` in its `env`, unless the user set one: the default lets its heap grow to twice the live
+  size (`nitpicker/require-go-collector-setting`).
+- When JVMs are started in a loop or pool with `-Xmx` or `-XX:MaxRAMPercentage`, add a heap goal next to the ceiling
+  (`-XX:GCTimeRatio=4`, or `-XX:SoftMaxHeapSize` with ZGC): each JVM otherwise grows to its ceiling and keeps it
+  (`nitpicker/require-jvm-heap-goal`).
+- Run a type-aware linter or compiler (`tsc`, `tsgo`, `tsgolint`, `--type-aware`) once per bounded batch of files (for
+  example 500, each with the files that change the global scope), not once over every file of the project, whose
+  program grows with the project (`nitpicker/no-unbatched-heavy-run`).
+- When a function combines in-process work with the result of a memory-heavy child process that does not depend on it,
+  start the child step first: the parent otherwise keeps the memory of its own work while the child runs
+  (`nitpicker/no-child-wait-after-local-work`).
+- Read everything you need from one TypeScript program before building the next one in the same function, or build
+  each in its own function that returns plain data: two live programs need room for both
+  (`nitpicker/no-overlapping-typescript-programs`).
+- Keep a value used only while one loop item is processed in a local of the loop body, not in a module-level or field
+  map that never drops it: the map grows with the number of items (`nitpicker/no-per-item-cache-growth`).
+- Load `@typescript-eslint/parser` or `@typescript-eslint/eslint-plugin` when only the parser or only the plugin is
+  used, not the whole `typescript-eslint` package with every rule definition
+  (`nitpicker/no-aggregate-package-for-one-member`).
 - Time values carry their unit in the name (`timeoutMs`, `ttlSeconds`) and meet only the same unit: convert
   once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
   `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time

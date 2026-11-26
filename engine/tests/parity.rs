@@ -250,24 +250,20 @@ fn an_older_release_sees_the_library_of_that_release() {
     assert_eq!(override_lines("21"), [6, 10, 14, 18]);
 }
 
-#[test]
-fn null_away_reports_what_null_away_reports() {
-    type Told = (String, u64, u64, String);
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
-    let source = root.join("fixtures").join("nullaway");
-    let out = std::env::temp_dir().join(format!("nitpicker-engine-nullaway-{}.json", std::process::id()));
-    let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
-        .arg(&source)
-        .args(["--rules", "_ErrorProne", "--out"])
-        .arg(&out)
-        .env("NP_EP_ONLY", "NullAway")
-        .env("NP_NULLAWAY_PACKAGES", "n")
-        .status()
-        .expect("engine runs");
-    assert!(status.success());
+type Told = (String, u64, u64, String);
+
+/// NullAway rows of the engine on `source`, with paths relative to `base`, against expected rows from NullAway itself.
+fn null_away_differences(source: &Path, base: &Path, packages: &str, classpath: Option<&Path>, expected: &str) -> (Vec<Told>, Vec<Told>, usize) {
+    let out = std::env::temp_dir().join(format!("nitpicker-engine-nullaway-{}-{}.json", std::process::id(), RUNS.fetch_add(1, Ordering::Relaxed)));
+    let mut command = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"));
+    command.arg(source).args(["--rules", "_ErrorProne", "--out"]).arg(&out).env("NP_EP_ONLY", "NullAway").env("NP_NULLAWAY_PACKAGES", packages);
+    if let Some(classpath) = classpath {
+        command.arg("--classpath").arg(classpath);
+    }
+    assert!(command.status().expect("engine runs").success());
     let report: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&out).expect("report")).expect("json");
     let _ = std::fs::remove_file(&out);
-    let prefix = format!("{}/", source.display());
+    let prefix = format!("{}/", base.display());
     let text = |finding: &serde_json::Value, key: &str| finding[key].as_str().expect("text").to_string();
     let number = |finding: &serde_json::Value, key: &str| finding[key].as_u64().expect("number");
     let found: BTreeSet<Told> = report["findings"]
@@ -279,12 +275,42 @@ fn null_away_reports_what_null_away_reports() {
             (file.strip_prefix(&prefix).unwrap_or(&file).to_string(), number(finding, "line"), number(finding, "column"), text(finding, "message"))
         })
         .collect();
-    let expected: Vec<Told> = serde_json::from_str(&std::fs::read_to_string(root.join("expected").join("nullaway.json")).expect("expected")).expect("rows");
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
+    let expected: Vec<Told> = serde_json::from_str(&std::fs::read_to_string(root.join("expected").join(expected)).expect("expected")).expect("rows");
     let expected: BTreeSet<Told> = expected.into_iter().collect();
-    let missed: Vec<&Told> = expected.difference(&found).collect();
-    let extra: Vec<&Told> = found.difference(&expected).collect();
+    let missed = expected.difference(&found).cloned().collect();
+    let extra = found.difference(&expected).cloned().collect();
+    (missed, extra, expected.len())
+}
+
+#[test]
+fn null_away_reports_what_null_away_reports() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join("nullaway");
+    let (missed, extra, count) = null_away_differences(&source, &source, "n", None, "nullaway.json");
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(expected.len(), 119);
+    assert_eq!(count, 122);
+}
+
+/// A library compiled with javac carries its `@Nullable` in type annotations; NullAway reads them from the class files.
+#[test]
+fn null_away_reads_type_annotations_from_class_files() {
+    let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join("nullaway-classes");
+    let classes = std::env::temp_dir().join(format!("nitpicker-engine-nullaway-classes-{}", std::process::id()));
+    let mut sources = Vec::new();
+    let mut pending = vec![base.join("library")];
+    while let Some(folder) = pending.pop() {
+        for entry in std::fs::read_dir(folder).expect("library").flatten() {
+            let path = entry.path();
+            if path.is_dir() { pending.push(path) } else { sources.push(path) }
+        }
+    }
+    let javac = Path::new(&std::env::var("JAVA_HOME").expect("JAVA_HOME")).join("bin").join("javac");
+    assert!(Command::new(javac).arg("-d").arg(&classes).args(&sources).env_remove("JAVA_TOOL_OPTIONS").status().expect("javac runs").success());
+    let result = null_away_differences(&base.join("sources"), &base, "u,lib", Some(&classes), "nullaway-classes.json");
+    let _ = std::fs::remove_dir_all(&classes);
+    let (missed, extra, count) = result;
+    assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
+    assert_eq!(count, 34);
 }
 
 #[test]

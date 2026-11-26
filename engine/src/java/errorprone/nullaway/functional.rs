@@ -3,6 +3,7 @@
 use super::sites::{accepted, rows};
 use super::*;
 use crate::java::types::model::Method;
+use crate::java::types::typemarks;
 
 /// A type the way NullAway prints it in these messages: simple names, type arguments kept.
 fn pretty(kind: &Type) -> String {
@@ -15,7 +16,31 @@ fn pretty(kind: &Type) -> String {
         Type::Array(element) => format!("{} []", pretty(element)),
         Type::Variable(name) => name.clone(),
         Type::Wildcard => "?".to_string(),
+        Type::Bounded(lower, bound) => format!("? {} {}", if *lower { "super" } else { "extends" }, pretty(bound)),
         Type::Null => "null".to_string(),
+    }
+}
+
+/// A type the way NullAway prints it, with `@Nullable` wherever a class file marks it: before a type, or before the
+/// `[]` of a nullable array.
+fn marked(kind: &Type, marks: &[&[(u8, u8)]], path: &mut Vec<(u8, u8)>) -> String {
+    let here = marks.iter().any(|mark| mark.starts_with(path) && mark[path.len()..].iter().all(|(step, _)| *step == typemarks::INNER));
+    let inside = |kind: &Type, step: (u8, u8), path: &mut Vec<(u8, u8)>| {
+        path.push(step);
+        let shown = marked(kind, marks, path);
+        path.pop();
+        shown
+    };
+    let note = if here { "@Nullable " } else { "" };
+    match kind {
+        Type::Array(element) => format!("{} {note}[]", inside(element, (typemarks::ARRAY, 0), path)),
+        Type::Class(name, arguments) if !arguments.is_empty() => {
+            let simple = name.rsplit('.').next().unwrap_or(name);
+            let given: Vec<String> = arguments.iter().enumerate().map(|(at, argument)| inside(argument, (typemarks::ARGUMENT, u8::try_from(at).unwrap_or(u8::MAX)), path)).collect();
+            format!("{note}{simple}<{}>", given.join(", "))
+        }
+        Type::Bounded(lower, bound) => format!("{note}? {} {}", if *lower { "super" } else { "extends" }, inside(bound, (typemarks::WILDCARD, 0), path)),
+        _ => format!("{note}{}", pretty(kind)),
     }
 }
 
@@ -111,10 +136,13 @@ fn reference(context: &Context, node: Node, shown: &dyn Fn() -> String, above: (
 /// The functional interface method with the type arguments of this use filled in, the way NullAway prints it.
 /// Asked for only when a report is made: it resolves the surrounding call again with its type variables kept.
 fn shown(context: &Context, node: Node, declaring: &ClassInfo, method: &Method) -> String {
-    let resolver = context.resolver.symbolic();
+    let resolver = context.resolver.printing();
     let target = resolver.lambda_target(node).filter(|target| target.name() == declaring.name || resolver.index.is_subtype(&target.name(), &declaring.name));
     let map = target.map(|target| resolver.index.member_map(&target, &declaring.name)).unwrap_or_default();
-    let taken = method.generic_parameters.iter().map(|kind| pretty(&kind.substitute(&map)));
+    let taken = method.generic_parameters.iter().enumerate().map(|(at, kind)| {
+        let marks: Vec<&[(u8, u8)]> = method.detail.nullable_types.iter().filter(|(index, _)| usize::from(*index) == at).map(|(_, path)| path.as_slice()).collect();
+        marked(&kind.substitute(&map), &marks, &mut Vec::new())
+    });
     format!("{}.{}({})", declaring.name, method.name, taken.collect::<Vec<_>>().join(","))
 }
 

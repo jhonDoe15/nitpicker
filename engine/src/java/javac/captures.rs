@@ -103,8 +103,16 @@ fn of_class<'t>(resolver: &Resolver, names: &Names<'t>, class: Node<'t>, seen: &
     }
     *seen = collector.seen;
     let around = crate::engine::source::ancestor(class, &["class_body", "enum_body", "interface_body", "lambda_expression"]).filter(|around| around.kind() != "lambda_expression");
-    collector.found.retain(|(declared, _)| around.is_none_or(|around| holds(around, *declared)));
+    collector.found.retain(|(declared, _)| around.is_none_or(|around| holds(around, *declared) || compact_parameter(around, class, *declared)));
     collector.found
+}
+
+/// A record component named inside the compact constructor is that constructor's parameter.
+fn compact_parameter(body: Node, class: Node, declared: Node) -> bool {
+    let record = body.parent().filter(|record| record.kind() == "record_declaration");
+    let listed = record.and_then(|record| record.child_by_field_name("parameters"));
+    let compact = crate::engine::source::ancestor(class, &["compact_constructor_declaration"]);
+    listed.is_some_and(|listed| declared.parent() == Some(listed)) && compact.is_some_and(|compact| compact.parent() == Some(body))
 }
 
 /// What a lambda takes from around it, first use first.

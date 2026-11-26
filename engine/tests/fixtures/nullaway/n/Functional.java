@@ -133,9 +133,18 @@ class Functional {
       Taker<K> a = this::keep;
       Taker<List<K>> b = Functional::needsAny;
       Pair<K, List<K>> c = Box::both;
+      Pair<K, List<? extends K>> d = Box::bounded;
+      Pair<K, List<? super K>> e = Box::lower;
+      Pair<List<? extends Number>, java.util.Map<? super K, ?>> f = Box::nested;
     }
 
     static <T> void both(T first, List<T> second) {}
+
+    static <T> void bounded(T first, List<? extends T> second) {}
+
+    static <T> void lower(T first, List<? super T> second) {}
+
+    static void nested(List<? extends Number> first, java.util.Map<?, ?> second) {}
   }
 
   static <T> void needsAny(List<T> values) {}

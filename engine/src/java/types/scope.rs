@@ -132,6 +132,8 @@ pub struct Resolver<'a> {
     pub(super) resolving: RefCell<HashMap<usize, u8>>,
     /// Type variables in scope stay themselves instead of standing for their bounds.
     pub(super) symbolic: bool,
+    /// Bounded wildcards keep their kind, for types that are printed.
+    bounded: bool,
     pub(super) mapping: RefCell<HashMap<usize, u8>>,
     pub(super) loose: RefCell<HashMap<usize, Option<Type>>>,
     /// What each type node stands for, asked many times by the rules.
@@ -156,7 +158,7 @@ fn written_names<'f>(file: &'f SourceFile, list: Option<Node>) -> Vec<&'f str> {
 
 impl<'a> Resolver<'a> {
     pub fn new(index: &'a TypeIndex, file: &'a SourceFile, scope: &'a FileScope) -> Resolver<'a> {
-        Resolver { index, file, scope, cache: RefCell::new(HashMap::new()), depth: Cell::new(0), busy: RefCell::new(std::collections::HashSet::new()), skipped: Cell::new(0), work: Cell::new(0), resolving: RefCell::new(HashMap::new()), symbolic: false, loose: RefCell::new(HashMap::new()), written: RefCell::new(HashMap::new()), locals: RefCell::new(HashMap::new()), mapping: RefCell::new(HashMap::new()), patterns: RefCell::new(HashMap::new()), calls: RefCell::new(HashMap::new()), simples: RefCell::new(HashMap::new()) }
+        Resolver { index, file, scope, cache: RefCell::new(HashMap::new()), depth: Cell::new(0), busy: RefCell::new(std::collections::HashSet::new()), skipped: Cell::new(0), work: Cell::new(0), resolving: RefCell::new(HashMap::new()), symbolic: false, bounded: false, loose: RefCell::new(HashMap::new()), written: RefCell::new(HashMap::new()), locals: RefCell::new(HashMap::new()), mapping: RefCell::new(HashMap::new()), patterns: RefCell::new(HashMap::new()), calls: RefCell::new(HashMap::new()), simples: RefCell::new(HashMap::new()) }
     }
 
     /// Where the lookup of a simple name starts to matter: every node below the same place sees the same classes.
@@ -182,6 +184,10 @@ impl<'a> Resolver<'a> {
     /// A second resolver for the same file whose types keep the type variables in scope, as javac prints them.
     pub fn symbolic(&self) -> Resolver<'a> {
         Resolver { symbolic: true, ..Resolver::new(self.index, self.file, self.scope) }
+    }
+
+    pub fn printing(&self) -> Resolver<'a> {
+        Resolver { bounded: true, ..self.symbolic() }
     }
 
     /// The class a simple name stands for at a place. Every place directly inside the same block or class body
@@ -348,7 +354,11 @@ impl<'a> Resolver<'a> {
             }
             "wildcard" => {
                 let bound = crate::engine::source::named_children(node).into_iter().rev().find_map(|part| self.written(part, keep));
-                Some(bound.unwrap_or(Type::Wildcard))
+                let lower = children(node).into_iter().any(|part| part.kind() == "super");
+                Some(match bound {
+                    Some(bound) if self.bounded => Type::Bounded(lower, Box::new(bound)),
+                    other => other.unwrap_or(Type::Wildcard),
+                })
             }
             "annotated_type" => self.written(crate::engine::source::named_children(node).pop()?, keep),
             "type_identifier" | "scoped_type_identifier" | "identifier" | "scoped_identifier" => {
@@ -567,7 +577,7 @@ impl<'a> Resolver<'a> {
             .filter(|parameter| matches!(parameter.kind(), "formal_parameter" | "spread_parameter"))
             .map(|parameter| self.annotation_names(parameter))
             .collect();
-        super::model::Detail { access, annotations: self.annotation_names(member), parameter_annotations }
+        super::model::Detail { access, annotations: self.annotation_names(member), parameter_annotations, marked: String::new(), nullable_types: Vec::new() }
     }
 
     /// The bits the annotations of a declaration give.
@@ -889,7 +899,7 @@ impl<'a> Resolver<'a> {
                             constant: (info.is_interface || has(member, "final"))
                                 .then(|| declarator.field("value"))
                                 .flatten()
-                                .and_then(|value| self.joined(value)),
+                                .and_then(|value| self.joined(value).or_else(|| matches!(value.kind(), "true" | "false").then(|| value.kind().to_string()))),
                             number: (matches!(&kind, Type::Primitive("int")) && (info.is_interface || has(member, "final")))
                                 .then(|| declarator.field("value"))
                                 .flatten()

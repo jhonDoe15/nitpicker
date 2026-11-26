@@ -166,10 +166,27 @@ pub fn kind(resolver: &Resolver, declared: Node, usage: Node, name: &str) -> Opt
     if let Some(written) = written {
         return resolver.type_node(written);
     }
+    if let Some(class) = anonymous_var(resolver, declared) {
+        return Some(Type::class(&class));
+    }
     match resolver.binding(usage, name) {
         Some(Binding::Local(kind)) => kind,
         _ => None,
     }
+}
+
+/// A `var` local that holds a new anonymous class instance has that anonymous class for its type.
+fn anonymous_var(resolver: &Resolver, declared: Node) -> Option<String> {
+    let statement = parent(declared).filter(|statement| statement.kind() == "local_variable_declaration")?;
+    if statement.child_by_field_name("type").is_none_or(|written| resolver.file.text_of(written) != "var") {
+        return None;
+    }
+    let mut value = declared.child_by_field_name("value")?;
+    while value.kind() == "parenthesized_expression" {
+        value = value.named_child(0)?;
+    }
+    let body = value.kind() == "object_creation_expression" && children(value).iter().any(|part| part.kind() == "class_body");
+    body.then(|| resolver.scope.names.get(&value.id()).cloned()).flatten()
 }
 
 /// A `final` local of a primitive type or `String` whose value is a constant expression: the compiler puts the

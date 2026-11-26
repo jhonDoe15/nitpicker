@@ -185,6 +185,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `thread.join(30_000)`, `future.orTimeout(30, TimeUnit.SECONDS).join()`, and `mono.block(Duration.ofSeconds(30))`
   (also `blockOptional`, `blockFirst`, `blockLast`); never the no-argument form
   (`pmd/UnboundedWait`, `pmd/ReactorBlockWithoutTimeout`; a command's `main` that waits for its work takes an exception).
+- Wait for a future started earlier where its result is first used, not before independent work: start the task,
+  do the other work, then `future.get(30, TimeUnit.SECONDS)` (`pmd/EarlyWaitOnStartedWork`).
 - HTTP calls: every request has a deadline. `HttpRequest.newBuilder(uri).timeout(...)`,
   `setReadTimeout` on an `HttpURLConnection`, `setDefaultRequestConfig(...)` on an Apache client
   builder, `readTimeout` on a JAX-RS `ClientBuilder`; not `URL.openStream()` or
