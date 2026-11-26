@@ -126,6 +126,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Thread pools: never create a fixed pool (`Executors.newFixedThreadPool`) in a local variable and drop it: its
   threads outlive the method and leak on every call. Share one pool (a field or an injected bean), or shut the local one down with
   try-with-resources or `shutdown()` in `finally` (`pmd/LocalExecutorNeverShutDown`).
+- Futures: never start and wait in the same step: `map(id -> supplyAsync(...)).map(CompletableFuture::join)`
+  and `supplyAsync(...).join()` run one task at a time. Collect the futures with `toList()` first, then join
+  them in a second pipeline (`pmd/FutureJoinedWhereStarted`).
 - A `static` field or a singleton bean's field does not hold a `SimpleDateFormat`, `DecimalFormat`, `Calendar`,
   `Matcher`, `Cipher`, `Mac`, `BeanWrapper` or retry back-off: use `DateTimeFormatter`, a `Pattern` constant with
   `pattern.matcher(text)` per call, a per-call instance or a `ThreadLocal` (`pmd/SharedStatefulHelperField`).

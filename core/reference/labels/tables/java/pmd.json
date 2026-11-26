@@ -79,6 +79,7 @@
   "pmd/ForwardDropsParameter": ["bug"],
   "pmd/ForwardingMethodAlias": ["simplification"],
   "pmd/ForwardingMethodAliasRename": ["simplification"],
+  "pmd/FutureJoinedWhereStarted": ["bug", "performance", "async"],
   "pmd/FutureWithoutException": ["bug", "async"],
   "pmd/GeneratedEqualsSkipsSuperclass": ["bug"],
   "pmd/GeneratedMemberCycle": ["bug"],

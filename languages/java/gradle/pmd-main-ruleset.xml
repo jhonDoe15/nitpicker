@@ -1653,6 +1653,48 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="FutureJoinedWhereStarted" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A future is started and waited for in the same step, so the tasks run one at a time. In a stream, map(id -&gt; supplyAsync(...)) followed by map(CompletableFuture::join) moves one element through every stage before it takes the next: it starts one task, waits for it, and only then starts the next, with a thread hop added. The same holds for supplyAsync(...).join() or runAsync(...).join() written as one expression. Start all the tasks first and join afterwards: collect the futures into a list (toList()), then pending.stream().map(CompletableFuture::join).toList(). If the work is not meant to run concurrently, call the method directly. An exception fits a single call that is moved to another executor on purpose.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[@MethodName = ('join', 'get')][ArgumentList/@Size = 0]
+  [*[1]/self::MethodCall[
+       pmd-java:matchesSig('java.util.concurrent.CompletableFuture#supplyAsync(_)')
+    or pmd-java:matchesSig('java.util.concurrent.CompletableFuture#supplyAsync(_,_)')
+    or pmd-java:matchesSig('java.util.concurrent.CompletableFuture#runAsync(_)')
+    or pmd-java:matchesSig('java.util.concurrent.CompletableFuture#runAsync(_,_)')]]
+| //MethodCall[@MethodName = ('map', 'forEach', 'mapToObj', 'peek')]
+  [let $task := function($e) {
+         exists($e/self::MethodCall[
+              pmd-java:matchesSig('java.util.concurrent.CompletableFuture#supplyAsync(_)')
+           or pmd-java:matchesSig('java.util.concurrent.CompletableFuture#supplyAsync(_,_)')
+           or pmd-java:matchesSig('java.util.concurrent.CompletableFuture#runAsync(_)')
+           or pmd-java:matchesSig('java.util.concurrent.CompletableFuture#runAsync(_,_)')
+           or (@MethodName = 'submit' and *[1][pmd-java:typeIs('java.util.concurrent.ExecutorService')])
+           or ((empty(*[1][not(self::ArgumentList)]) or *[1][self::ThisExpression])
+               and @MethodName = ancestor::ClassBody[1]/MethodDeclaration
+                     [ModifierList/Annotation[pmd-java:typeIs('org.springframework.scheduling.annotation.Async')]]
+                     /@Name)])
+       },
+       $starts := function($stage) {
+         exists($stage[@MethodName = ('map', 'mapToObj')]
+           [some $e in ArgumentList/LambdaExpression/(*[last()] | Block/ReturnStatement/*[1])
+            satisfies $task($e)])
+       },
+       $up := *[1]/self::MethodCall
+   return $starts($up)
+       or ($up[@MethodName = ('filter', 'peek', 'distinct')] and $starts($up/*[1]/self::MethodCall))]
+  /ArgumentList[@Size = 1]/*[
+       self::MethodReference[@MethodName = ('join', 'get')]
+         [*[1]/descendant-or-self::ClassType[pmd-java:typeIs('java.util.concurrent.Future')]]
+    or self::LambdaExpression[*[last()]/descendant-or-self::MethodCall[@MethodName = ('join', 'get')]
+         [ArgumentList/@Size = 0][*[1]/self::VariableAccess[pmd-java:typeIs('java.util.concurrent.Future')]]]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="FutureWithoutException" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Complete the future on the failure path too: call future.completeExceptionally(error) from the error callback of the listener, or catch the failure in the callback and pass it on, or use an API that returns a CompletableFuture itself, such as CompletableFuture.supplyAsync(task, executor) or HttpClient.sendAsync. This future is completed only with complete(...) from a callback, so when the work behind the callback fails it never completes and whoever waits on it waits forever.">
     <priority>3</priority>
