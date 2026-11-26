@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
   type SourceCode,
+  memberRoot,
   nameOf,
   requiredLiteral,
   variableNamed,
@@ -132,10 +133,10 @@ export function listingBindings(
     if (statement.type === AST_NODE_TYPES.ImportDeclaration) {
       addImport(bindings, statement);
     }
-    if (statement.type === AST_NODE_TYPES.VariableDeclaration) {
-      for (const declarator of statement.declarations) {
-        addRequire(bindings, declarator);
-      }
+    const declarators =
+      statement.type === AST_NODE_TYPES.VariableDeclaration ? statement.declarations : [];
+    for (const declarator of declarators) {
+      addRequire(bindings, declarator);
     }
   }
   return bindings;
@@ -153,14 +154,6 @@ function namespaceKind(bindings: ListingBindings, node: TSESTree.Node): Kind | u
   return isPromises ? FS_PROMISES : undefined;
 }
 
-function rootOf(node: TSESTree.Node): TSESTree.Node {
-  let current = node;
-  while (current.type === AST_NODE_TYPES.MemberExpression) {
-    current = current.object;
-  }
-  return current;
-}
-
 function isTopLevel(sourceCode: SourceCode, node: TSESTree.Node): boolean {
   const scope =
     node.type === AST_NODE_TYPES.Identifier
@@ -172,7 +165,7 @@ function isTopLevel(sourceCode: SourceCode, node: TSESTree.Node): boolean {
 export function isListingCall(bindings: ListingBindings, node: TSESTree.Node): boolean {
   if (
     node.type !== AST_NODE_TYPES.CallExpression ||
-    !isTopLevel(bindings.sourceCode, rootOf(node.callee))
+    !isTopLevel(bindings.sourceCode, memberRoot(node.callee))
   ) {
     return false;
   }

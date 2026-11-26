@@ -33,16 +33,27 @@ function unwrap(node: TSESTree.Node): TSESTree.Node {
 }
 
 function isListingValue(bindings: ListingBindings, node: TSESTree.Node): boolean {
-  let value = unwrap(node);
-  while (
-    !isListingCall(bindings, value) &&
-    value.type === AST_NODE_TYPES.CallExpression &&
-    value.callee.type === AST_NODE_TYPES.MemberExpression &&
-    ORDER_KEEPING.has(nameOf(value.callee.property) ?? '')
-  ) {
-    value = unwrap(value.callee.object);
+  const pending = [unwrap(node)];
+  for (const value of pending) {
+    if (isListingCall(bindings, value)) {
+      return true;
+    }
+    const source = orderKeptSource(value);
+    if (source !== undefined) {
+      pending.push(unwrap(source));
+    }
   }
-  return isListingCall(bindings, value);
+  return false;
+}
+
+function orderKeptSource(value: TSESTree.Node): TSESTree.Node | undefined {
+  if (
+    value.type !== AST_NODE_TYPES.CallExpression ||
+    value.callee.type !== AST_NODE_TYPES.MemberExpression
+  ) {
+    return undefined;
+  }
+  return ORDER_KEEPING.has(nameOf(value.callee.property) ?? '') ? value.callee.object : undefined;
 }
 
 function isOrderedList(node: TSESTree.Node | undefined): boolean {
