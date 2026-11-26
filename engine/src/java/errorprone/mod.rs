@@ -114,6 +114,11 @@ mod misc_calls;
 mod branches;
 mod contracts;
 mod time_checks;
+mod time_with;
+mod inject_more;
+mod junit_more;
+mod misc_b17;
+mod hash_code_checks;
 mod decl_checks;
 mod undefined_equality;
 mod unnecessary_async;
@@ -650,6 +655,31 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["RefersToDaggerCodegen"], inject_codegen::refers_to_dagger_codegen),
     (&["MisleadingEscapedSpace"], source_text::misleading_escaped_space),
     (&["CompatibleWithAnnotationMisuse"], annotation_misuse::compatible_with_misuse),
+    (&["JavaDurationWithNanos"], time_with::java_duration_with_nanos),
+    (&["JavaDurationWithSeconds"], time_with::java_duration_with_seconds),
+    (&["JodaDurationWithMillis"], time_with::joda_duration_with_millis),
+    (&["JavaInstantGetSecondsGetNano"], time_with::java_instant_get_seconds_get_nano),
+    (&["JavaLocalDateTimeGetNano"], time_with::java_local_date_time_get_nano),
+    (&["JavaLocalTimeGetNano"], time_with::java_local_time_get_nano),
+    (&["JavaPeriodGetDays"], time_with::java_period_get_days),
+    (&["JodaConstructors"], time_with::joda_constructors),
+    (&["JodaDateTimeConstants"], time_with::joda_date_time_constants),
+    (&["JavaxInjectOnFinalField"], inject_more::javax_inject_on_final_field),
+    (&["InjectOnConstructorOfAbstractClass"], inject_more::inject_on_constructor_of_abstract_class),
+    (&["InjectedConstructorAnnotations"], inject_more::injected_constructor_annotations),
+    (&["InjectScopeAnnotationOnInterfaceOrAbstractClass"], inject_more::scope_annotation_on_interface_or_abstract_class),
+    (&["InjectInvalidTargetingOnScopingAnnotation"], inject_more::invalid_targeting_on_scoping_annotation),
+    (&["JUnit3FloatingPointComparisonWithoutDelta"], junit_more::junit3_floating_point_comparison_without_delta),
+    (&["JUnit4ClassUsedInJUnit3"], junit_more::junit4_class_used_in_junit3),
+    (&["JUnitAmbiguousTestClass"], junit_more::junit_ambiguous_test_class),
+    (&["JUnitIncompatibleType"], junit_more::junit_incompatible_type),
+    (&["HardCodedSdCardPath"], misc_b17::hard_coded_sd_card_path),
+    (&["ICCProfileGetInstance"], misc_b17::icc_profile_get_instance),
+    (&["IncorrectMainMethod"], misc_b17::incorrect_main_method),
+    (&["IncrementInForLoopAndHeader"], misc_b17::increment_in_for_loop_and_header),
+    (&["InstanceOfAndCastMatchWrongType"], misc_b17::instance_of_and_cast_match_wrong_type),
+    (&["IntFloatConversion"], misc_b17::int_float_conversion),
+    (&["InconsistentHashCode"], hash_code_checks::inconsistent_hash_code),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would

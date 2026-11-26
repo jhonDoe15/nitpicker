@@ -152,7 +152,7 @@ fn duration_call(context: &Context, call: Node, name: &str) -> bool {
         && context.resolver.resolve_call(call).is_some_and(|resolved| !resolved.method.is_static && resolved.receiver.erased().name() == "java.time.Duration")
 }
 
-fn nearby_scope<'t>(call: Node<'t>) -> Vec<Node<'t>> {
+pub(super) fn nearby_scope<'t>(call: Node<'t>) -> Vec<Node<'t>> {
     let mut current = parent(call);
     while let Some(at) = current {
         match at.kind() {

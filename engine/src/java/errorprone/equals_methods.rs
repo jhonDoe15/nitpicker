@@ -41,7 +41,7 @@ pub fn equals_declaration(context: &Context, method: Node) -> bool {
     parameters.len() == 1 && takes_exactly_object(context, parameters[0]) && returns_boolean(context, method, true)
 }
 
-fn hash_code_declaration(context: &Context, method: Node) -> bool {
+pub(super) fn hash_code_declaration(context: &Context, method: Node) -> bool {
     method.kind() == "method_declaration"
         && name_of(context, method) == "hashCode"
         && is_public(method)
@@ -50,7 +50,7 @@ fn hash_code_declaration(context: &Context, method: Node) -> bool {
 }
 
 /// A call of `equals(Object)` that gives a boolean, on any class.
-fn instance_equals_call(context: &Context, expression: Node) -> bool {
+pub(super) fn instance_equals_call(context: &Context, expression: Node) -> bool {
     if expression.kind() != "method_invocation" || expression.child_by_field_name("name").is_none_or(|name| context.text(name) != "equals") {
         return false;
     }

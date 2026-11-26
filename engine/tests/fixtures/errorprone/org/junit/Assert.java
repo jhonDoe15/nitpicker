@@ -23,4 +23,12 @@ public class Assert {
     public static void assertNotEquals(Object unexpected, Object actual) {}
 
     public static void assertNotEquals(String message, Object unexpected, Object actual) {}
+
+    public static void assertArrayEquals(String message, Object[] expected, Object[] actual) {}
+
+    public static void assertArrayEquals(long[] expected, long[] actual) {}
+
+    public static void assertArrayEquals(byte[] expected, byte[] actual) {}
+
+    public static void assertArrayEquals(String message, double[] expected, double[] actual, double delta) {}
 }
