@@ -53,7 +53,6 @@ export default defineConfig({
     include: suite.length === 0 ? TEST_FILES : suite,
     coverage: {
       provider: 'v8',
-      experimentalAstAwareRemapping: true,
       include: ['{core,languages,shared,scripts}/**/*.{ts,mts,cts,js,mjs,cjs}'],
       exclude: ['**/*.test.*', '**/fixtures/**', '**/*.d.ts'],
     },
