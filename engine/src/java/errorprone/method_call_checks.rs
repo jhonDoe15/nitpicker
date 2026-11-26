@@ -133,7 +133,7 @@ fn is_null_expression(context: &Context, expression: Node) -> bool {
 }
 
 /// `ProcessingEnvUtils.findVariableInScope`: the first parameter of the enclosing method, then field of the enclosing class, of that type.
-fn variable_in_scope(context: &Context, tree: Node, of: &str) -> Option<String> {
+pub(super) fn variable_in_scope(context: &Context, tree: Node, of: &str) -> Option<String> {
     let method = ancestor(tree, &["method_declaration", "constructor_declaration", "compact_constructor_declaration"]);
     let class = ancestor(tree, &["class_declaration", "interface_declaration", "enum_declaration", "record_declaration", "annotation_type_declaration", "object_creation_expression"]);
     let mut candidates: Vec<Node> = method.map(formals).unwrap_or_default();

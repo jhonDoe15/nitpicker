@@ -1,5 +1,6 @@
 //! ObjectToString: a value of a final class that does not override `toString` is turned into a string.
 use super::Context;
+use super::mirror_to_string::{SYMBOL, TYPE as TYPE_NAME, matches_mirror, type_fix};
 use super::shape::{arguments, preferred};
 use crate::engine::source::children;
 use crate::java::types::model::{OBJECT, Type, flag};
@@ -66,10 +67,13 @@ enum Mode {
     Object,
     Stream,
     LiteProto,
+    Symbol,
+    Type,
 }
 
-fn matches_type(context: &Context, kind: &Type, mode: Mode) -> bool {
+fn matches_type(context: &Context, matched: Node, kind: &Type, mode: Mode) -> bool {
     match mode {
+        Mode::Symbol | Mode::Type => matches_mirror(context, matched, kind, mode == Mode::Symbol),
         Mode::Object => plain_final(context, kind),
         Mode::Stream => matches!(kind, Type::Class(name, _) if name == STREAM || context.resolver.index.is_subtype(name, STREAM)),
         Mode::LiteProto => lite_proto(context, kind).is_some(),
@@ -112,7 +116,7 @@ fn stripped_log_message(context: &Context, matched: Node) -> bool {
     false
 }
 
-fn report(context: &Context, matched: Node, at: Node, kind: &Type, mode: Mode) {
+fn report(context: &Context, matched: Node, at: Node, kind: &Type, mode: Mode, explicit: bool) {
     if mode == Mode::LiteProto {
         if stripped_log_message(context, matched) {
             return;
@@ -123,6 +127,12 @@ fn report(context: &Context, matched: Node, at: Node, kind: &Type, mode: Mode) {
             "toString() on lite protos will not generate a useful representation of the proto from optimized builds. Consider whether using some subset of fields instead would provide useful information."
         };
         return context.report_fixed("LiteProtoToString", matched, preferred(at), message, &[]);
+    }
+    if matches!(mode, Mode::Symbol | Mode::Type) {
+        let (name, shown) = if mode == Mode::Symbol { (SYMBOL, "Element") } else { (TYPE_NAME, "TypeMirror") };
+        let message = format!("{shown}#toString shouldn't be used as it is expensive and fragile.");
+        let fixes: Vec<_> = if mode == Mode::Type && explicit { type_fix(context, matched, at).into_iter().collect() } else { Vec::new() };
+        return context.report_fixed(name, matched, preferred(at), &message, &fixes);
     }
     if mode == Mode::Stream {
         let message = "Calling toString on a Stream does not provide useful information";
@@ -138,14 +148,18 @@ fn report(context: &Context, matched: Node, at: Node, kind: &Type, mode: Mode) {
 }
 
 fn handle(context: &Context, matched: Node, stringified: Node, mode: Mode) {
-    if let Some(kind) = context.resolver.type_of(stringified).filter(|kind| matches_type(context, kind, mode)) {
-        report(context, matched, stringified, &kind, mode);
+    handle_kind(context, matched, stringified, mode, false);
+}
+
+fn handle_kind(context: &Context, matched: Node, stringified: Node, mode: Mode, explicit: bool) {
+    if let Some(kind) = context.resolver.type_of(stringified).filter(|kind| matches_type(context, matched, kind, mode)) {
+        report(context, matched, stringified, &kind, mode, explicit);
     }
 }
 
 fn handle_typed(context: &Context, matched: Node, stringified: Node, kind: &Type, mode: Mode) {
-    if matches_type(context, kind, mode) {
-        report(context, matched, stringified, kind, mode);
+    if matches_type(context, matched, kind, mode) {
+        report(context, matched, stringified, kind, mode, false);
     }
 }
 
@@ -180,12 +194,12 @@ fn call(context: &Context, node: Node, mode: Mode) {
             args.iter().for_each(|arg| handle(context, node, *arg, mode));
         }
     }
-    if method.is_static && object_only && name == "valueOf" && resolved.declaring == STRING {
+    if method.is_static && object_only && name == "valueOf" && resolved.declaring == STRING && !matches!(mode, Mode::Symbol | Mode::Type) {
         args.iter().for_each(|arg| handle(context, node, *arg, mode));
     }
     if !method.is_static && method.parameters.is_empty() && name == "toString" {
         if let Some(object) = object {
-            handle(context, node, object, mode);
+            handle_kind(context, node, object, mode, true);
         }
     }
     if formatted {
@@ -292,6 +306,14 @@ fn dispatch(context: &Context, node: Node, mode: Mode) {
 
 pub fn object_to_string(context: &Context, node: Node) {
     dispatch(context, node, Mode::Object);
+}
+
+pub fn symbol_to_string(context: &Context, node: Node) {
+    dispatch(context, node, Mode::Symbol);
+}
+
+pub fn type_to_string(context: &Context, node: Node) {
+    dispatch(context, node, Mode::Type);
 }
 
 pub fn stream_to_string(context: &Context, node: Node) {

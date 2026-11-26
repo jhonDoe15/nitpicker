@@ -1599,7 +1599,7 @@ impl<'a> Resolver<'a> {
         found
     }
 
-    fn resolve_delegation(&self, call: Node) -> Option<Call> {
+    pub fn resolve_delegation(&self, call: Node) -> Option<Call> {
         if self.spent() {
             return None;
         }

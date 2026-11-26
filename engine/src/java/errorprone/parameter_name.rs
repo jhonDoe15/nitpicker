@@ -7,7 +7,7 @@ use super::nodes::position;
 use crate::engine::source::named_children;
 use tree_sitter::Node;
 
-fn in_table(table: &[(u32, u32)], at: char) -> bool {
+pub(super) fn in_table(table: &[(u32, u32)], at: char) -> bool {
     let code = at as u32;
     table.binary_search_by(|&(low, high)| if code < low { std::cmp::Ordering::Greater } else if code > high { std::cmp::Ordering::Less } else { std::cmp::Ordering::Equal }).is_ok()
 }
