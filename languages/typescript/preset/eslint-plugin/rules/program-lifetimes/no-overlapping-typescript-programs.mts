@@ -84,13 +84,14 @@ function checkerVariables(
 }
 
 function releasedAt(variable: TSESLint.Scope.Variable, call: TSESTree.CallExpression): number {
-  const writes = variable.references.flatMap((reference) => {
+  let earliest = Number.POSITIVE_INFINITY;
+  for (const reference of variable.references) {
     const write = reference.identifier.parent;
-    return reference.isWrite() && !reference.init && write.range[1] >= call.range[1]
-      ? [write.range[0]]
-      : [];
-  });
-  return Math.min(Number.POSITIVE_INFINITY, ...writes);
+    if (reference.isWrite() && !reference.init && write.range[1] >= call.range[1]) {
+      earliest = Math.min(earliest, write.range[0]);
+    }
+  }
+  return earliest;
 }
 
 function readAfter(build: Build, call: TSESTree.CallExpression): boolean {

@@ -13,6 +13,8 @@ import { readLayout } from '../rules/typed/policy-views.mts';
 
 const stylesheetSpecifier: RegExp = untypedStylesheetSpecifier;
 
+const TYPED = { needs: 'types' } as const;
+
 const layout = readLayout();
 
 function isProductionSource(relative: string): boolean {
@@ -43,13 +45,13 @@ export type EngineRule = {
 };
 
 export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<string, EngineRule>([
-  ['exhaustive-union-predicate', { needs: 'types' }],
+  ['exhaustive-union-predicate', TYPED],
   ['hover-test-needs-keyboard', {}],
-  ['no-accumulator-concat', { needs: 'types' }],
+  ['no-accumulator-concat', TYPED],
   ['no-add-only-collection', {}],
-  ['no-array-spread-arguments', { needs: 'types' }],
-  ['no-blank-number-coercion', { needs: 'types' }],
-  ['no-chunkwise-stream-text', { needs: 'types' }],
+  ['no-array-spread-arguments', TYPED],
+  ['no-blank-number-coercion', TYPED],
+  ['no-chunkwise-stream-text', TYPED],
   [
     'no-copied-constant',
     {
@@ -60,9 +62,9 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
       },
     },
   ],
-  ['no-dropped-delegate-result', { needs: 'types' }],
-  ['no-empty-every-signal', { needs: 'types' }],
-  ['no-expanding-replacement-string', { needs: 'types' }],
+  ['no-dropped-delegate-result', TYPED],
+  ['no-empty-every-signal', TYPED],
+  ['no-expanding-replacement-string', TYPED],
   ['no-external-executables-in-unit-tests', {}],
   [
     'no-internal-module-mocks',
@@ -73,15 +75,15 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
       },
     },
   ],
-  ['no-falsy-default', { needs: 'types' }],
-  ['no-forwarding-method-alias', { needs: 'types' }],
-  ['no-forwarding-wrapper', { needs: 'types' }],
-  ['no-in-presence-check', { needs: 'types' }],
+  ['no-falsy-default', TYPED],
+  ['no-forwarding-method-alias', TYPED],
+  ['no-forwarding-wrapper', TYPED],
+  ['no-in-presence-check', TYPED],
   ['no-listen-on-all-interfaces', {}],
-  ['no-local-time-zone', { needs: 'types' }],
-  ['no-lookup-as-presence', { needs: 'types' }],
-  ['no-mutating-method-in-domain', { needs: 'types' }],
-  ['no-parameter-mutation', { needs: 'types' }],
+  ['no-local-time-zone', TYPED],
+  ['no-lookup-as-presence', TYPED],
+  ['no-mutating-method-in-domain', TYPED],
+  ['no-parameter-mutation', TYPED],
   [
     'no-production-console',
     {
@@ -93,10 +95,10 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
       }),
     },
   ],
-  ['no-shadowed-spread-key', { needs: 'types' }],
+  ['no-shadowed-spread-key', TYPED],
   ['no-silent-catch', {}],
-  ['no-string-as-regex', { needs: 'types' }],
-  ['no-swapped-arguments', { needs: 'types' }],
+  ['no-string-as-regex', TYPED],
+  ['no-swapped-arguments', TYPED],
   [
     'no-unhandled-void-promise',
     {
@@ -106,7 +108,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
       }),
     },
   ],
-  ['no-union-order-dependence', { needs: 'types' }],
+  ['no-union-order-dependence', TYPED],
   ['no-wait-for-with-fake-timers', {}],
   [
     'preserve-error-cause',

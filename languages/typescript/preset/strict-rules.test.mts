@@ -4,7 +4,8 @@ import { strictBoundaryRules } from './architecture/strict-boundary-rules.mts';
 import { reactRuleIds as untypedReactRuleIds } from './eslint-config/react/react-rules.mts';
 import { strictPresetConfig } from './eslint-config/strict.mts';
 import { defaultResolvedLayout } from './layout.mts';
-import { isStrictRule, strictEslintRuleIds } from './strict-rules.mts';
+import { strictEslintRuleIds } from './eslint-config/policy/strict-rule-ids.mts';
+import { isStrictRule } from './strict-rules.mts';
 
 const reactRuleIds = textsOf(untypedReactRuleIds);
 const PARAMETER_ONLY_RULE = '@typescript-eslint/no-unused-vars';
@@ -16,7 +17,7 @@ describe('strict rule ids', () => {
       .filter((rule) => rule !== PARAMETER_ONLY_RULE);
     expect(
       new Set(strictEslintRuleIds),
-      'a strict rule was added or removed: update strictEslintRuleIds in languages/typescript/preset/strict-rules.mts',
+      'a strict rule was added or removed: update strictEslintRuleIds in languages/typescript/preset/eslint-config/policy/strict-rule-ids.mts',
     ).toEqual(new Set(fromConfig));
   });
 

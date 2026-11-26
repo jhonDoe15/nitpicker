@@ -73,7 +73,7 @@ function analyzerEnvironment(
   const base = hostEnvironment(withCompileCache(environment));
   return {
     ...(task.invocation.command === process.execPath
-      ? withNodeHeap(base, undefined, task.memoryMegabytes ?? 0)
+      ? withNodeHeap(base, { admittedMegabytes: task.memoryMegabytes ?? 0 })
       : base),
     ...taskLimitEnvironment(task, FITTED_ANALYZER_STDOUT_BYTES),
   };

@@ -36,7 +36,7 @@ function functionCalls(
   const variable = findVariable(context, binding, binding.name);
   return (variable?.references ?? []).flatMap(({ identifier }) => {
     const { parent } = identifier;
-    return parent?.type === AST_NODE_TYPES.CallExpression && parent.callee === identifier
+    return parent.type === AST_NODE_TYPES.CallExpression && parent.callee === identifier
       ? [parent]
       : [];
   });

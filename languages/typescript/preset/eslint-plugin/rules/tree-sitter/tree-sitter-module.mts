@@ -4,8 +4,6 @@ const BINDINGS = new Set(['web-tree-sitter', 'tree-sitter']);
 const GRAMMAR_PACKAGE = /^((?:@[\w.-]+\/)?tree-sitter-[\w-]+)(?:\/.*)?$/u;
 const WASM_NAME = /tree-sitter-([\w-]+)\.wasm/u;
 
-export type ModuleSource = { readonly value: string; readonly node: TSESTree.Node };
-
 export function sourceOf(node: TSESTree.Node): string | undefined {
   if (
     node.type === AST_NODE_TYPES.ImportDeclaration ||

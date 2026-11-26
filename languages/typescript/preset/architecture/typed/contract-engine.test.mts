@@ -94,6 +94,8 @@ it.runIf(hasEngine)(
             strict: true,
             noEmit: true,
             rootDir: 'src',
+            types: [],
+            lib: ['ES2022'],
           },
           include: ['src'],
         }),

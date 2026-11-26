@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type { SourceContext } from '../analysis/constant-resolution.mts';
 import { innermostRepeat } from '../repeated-work/support/loop-invariance.mts';
-import { depthFirst, nameOf, nodeChildren } from '../typed/node-views.mts';
+import { depthFirst, nameOf, nodeChildren, soleBodyValue } from '../typed/node-views.mts';
 import { enclosingFunction, isFunction, type FunctionNode } from '../typed/syntax-views.mts';
 import { calledRepeatedly } from './call-sites.mts';
 import { fixedSource } from './fixed-sources.mts';
@@ -12,10 +12,10 @@ const EQUALITY = new Set(['===', '==']);
 function isPropertyName(node: TSESTree.Identifier): boolean {
   const { parent } = node;
   return (
-    (parent?.type === AST_NODE_TYPES.MemberExpression &&
+    (parent.type === AST_NODE_TYPES.MemberExpression &&
       parent.property === node &&
       !parent.computed) ||
-    (parent?.type === AST_NODE_TYPES.Property &&
+    (parent.type === AST_NODE_TYPES.Property &&
       parent.key === node &&
       !parent.computed &&
       !parent.shorthand)
@@ -34,7 +34,7 @@ function reads(node: TSESTree.Node, names: ReadonlySet<string>): boolean {
 }
 
 function comparesParameter(
-  test: TSESTree.Node | null | undefined,
+  test: TSESTree.Node | undefined,
   element: ReadonlySet<string>,
   parameters: ReadonlySet<string>,
 ): boolean {
@@ -59,14 +59,7 @@ function callbackTest(callback: TSESTree.Node | undefined): TSESTree.Node | unde
   ) {
     return undefined;
   }
-  const { body } = callback;
-  if (body.type !== AST_NODE_TYPES.BlockStatement) {
-    return body;
-  }
-  const [only] = body.body;
-  return body.body.length === 1 && only?.type === AST_NODE_TYPES.ReturnStatement
-    ? (only.argument ?? undefined)
-    : undefined;
+  return soleBodyValue(callback, 'ReturnStatement');
 }
 
 function parameterNames(fn: FunctionNode): Set<string> {

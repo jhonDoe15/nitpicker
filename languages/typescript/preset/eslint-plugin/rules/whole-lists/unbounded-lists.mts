@@ -88,53 +88,84 @@ function filledInLoop(
   });
 }
 
-function identifierList(context: SourceContext, node: TSESTree.Identifier, depth: number): boolean {
+interface Expansion {
+  unbounded: boolean;
+  next: TSESTree.Node[];
+}
+
+interface Pending {
+  node: TSESTree.Node;
+  depth: number;
+}
+
+const NO_EXPANSION: Expansion = { unbounded: false, next: [] };
+
+function identifierExpansion(context: SourceContext, node: TSESTree.Identifier): Expansion {
   const array = arrayDeclarator(context, node);
-  if (array === undefined) {
-    const value = resolveConstant(context, node);
-    return value !== undefined && FIXED_VALUES.has(value.type)
-      ? isUnboundedList(context, value, depth + 1)
-      : isListWord(node.name);
+  if (array !== undefined) {
+    return { unbounded: filledInLoop(context, node, array.declarator), next: [array.init] };
   }
-  return (
-    filledInLoop(context, node, array.declarator) || isUnboundedList(context, array.init, depth + 1)
+  const value = resolveConstant(context, node);
+  if (value !== undefined && FIXED_VALUES.has(value.type)) {
+    return { unbounded: false, next: [value] };
+  }
+  return { unbounded: isListWord(node.name), next: [] };
+}
+
+function callExpansion(node: TSESTree.CallExpression): Expansion {
+  const { callee } = node;
+  if (callee.type !== AST_NODE_TYPES.MemberExpression) {
+    return NO_EXPANSION;
+  }
+  return PASS_STEPS.has(nameOf(callee.property) ?? '')
+    ? { unbounded: false, next: [callee.object] }
+    : NO_EXPANSION;
+}
+
+function spreadArguments(node: TSESTree.ArrayExpression): TSESTree.Node[] {
+  return node.elements.flatMap((element) =>
+    element?.type === AST_NODE_TYPES.SpreadElement ? [element.argument] : [],
   );
 }
 
-function stepped(context: SourceContext, node: TSESTree.CallExpression, depth: number): boolean {
-  const { callee } = node;
-  if (callee.type !== AST_NODE_TYPES.MemberExpression) {
-    return false;
-  }
-  const step = nameOf(callee.property) ?? '';
-  return PASS_STEPS.has(step) && isUnboundedList(context, callee.object, depth + 1);
+function propertyValues(node: TSESTree.ObjectExpression): TSESTree.Node[] {
+  return node.properties.flatMap((property) =>
+    property.type === AST_NODE_TYPES.SpreadElement ? [] : [property.value],
+  );
 }
 
-export function isUnboundedList(context: SourceContext, start: TSESTree.Node, depth = 0): boolean {
-  const node = unwrapOf(start, TYPE_WRAPPERS);
-  if (depth > MAX_DEPTH) {
-    return false;
+function expansionOf(context: SourceContext, node: TSESTree.Node): Expansion {
+  if (node.type === AST_NODE_TYPES.Identifier) {
+    return identifierExpansion(context, node);
   }
-  switch (node.type) {
-    case AST_NODE_TYPES.Identifier:
-      return identifierList(context, node, depth);
-    case AST_NODE_TYPES.MemberExpression:
-      return !node.computed && isListWord(nameOf(node.property));
-    case AST_NODE_TYPES.CallExpression:
-      return stepped(context, node, depth);
-    case AST_NODE_TYPES.ArrayExpression:
-      return node.elements.some(
-        (element) =>
-          element?.type === AST_NODE_TYPES.SpreadElement &&
-          isUnboundedList(context, element.argument, depth + 1),
-      );
-    case AST_NODE_TYPES.ObjectExpression:
-      return node.properties.some((property) =>
-        property.type === AST_NODE_TYPES.SpreadElement
-          ? false
-          : isUnboundedList(context, property.value, depth + 1),
-      );
-    default:
-      return false;
+  if (node.type === AST_NODE_TYPES.MemberExpression) {
+    return { unbounded: !node.computed && isListWord(nameOf(node.property)), next: [] };
   }
+  if (node.type === AST_NODE_TYPES.CallExpression) {
+    return callExpansion(node);
+  }
+  if (node.type === AST_NODE_TYPES.ArrayExpression) {
+    return { unbounded: false, next: spreadArguments(node) };
+  }
+  if (node.type === AST_NODE_TYPES.ObjectExpression) {
+    return { unbounded: false, next: propertyValues(node) };
+  }
+  return NO_EXPANSION;
+}
+
+export function isUnboundedList(context: SourceContext, start: TSESTree.Node): boolean {
+  const pending: Pending[] = [{ node: start, depth: 0 }];
+  for (const { node, depth } of pending) {
+    if (depth > MAX_DEPTH) {
+      continue;
+    }
+    const { unbounded, next } = expansionOf(context, unwrapOf(node, TYPE_WRAPPERS));
+    if (unbounded) {
+      return true;
+    }
+    for (const child of next) {
+      pending.push({ node: child, depth: depth + 1 });
+    }
+  }
+  return false;
 }

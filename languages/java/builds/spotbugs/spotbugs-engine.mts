@@ -225,12 +225,12 @@ export function spotbugsOnEngine(
   if (!usable(plan, binary) || processors === 'other') {
     return [];
   }
-  const patterns =
-    processors === 'lombok'
-      ? ON_ENGINE.filter((pattern) => !pattern.startsWith(LOMBOK_WRITES))
-      : ON_ENGINE;
+  const lombok = processors === 'lombok';
+  const patterns = lombok
+    ? ON_ENGINE.filter((pattern) => !pattern.startsWith(LOMBOK_WRITES))
+    : ON_ENGINE;
   try {
-    const report = engineReport(plan, processors === 'lombok', { binary, environment, run });
+    const report = engineReport(plan, lombok, { binary, environment, run });
     const sarif = engineSarif(report, patterns);
     writeFileSync(path.join(plan.reportDir, SPOTBUGS_ENGINE_SARIF), sarif);
     return spotbugsArgumentsFor(plan.reportDir, patterns);

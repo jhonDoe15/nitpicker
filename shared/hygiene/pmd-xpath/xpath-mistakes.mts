@@ -27,7 +27,7 @@ const OPENING = new Set(['(', '[', '{']);
 const CLOSING = new Set([')', ']', '}']);
 const OPERATOR_BEFORE_PATH = new Set(['(', '[', ',', '=', '!', '<', '>', '|', '+', '-', '?']);
 
-export type XPathMistake = {
+type XPathMistake = {
   readonly kind: 'predicate-scan' | 'several-nodes';
   readonly text: string;
 };

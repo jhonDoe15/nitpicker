@@ -55,20 +55,21 @@ describe('withMemoryKillReport', () => {
     );
     const memory = killed.toolErrors.filter((entry) => entry.tool === MEMORY_TOOL);
     expect(memory).toHaveLength(1);
-    expect(memory[0]?.message).toContain(
-      '3 analyzers were killed with SIGKILL in this run ' +
-        '(eslint-lint, structure, typescript-typecheck)',
+    expect(memory[0]?.message).toBe(
+      '3 analyzers were killed with SIGKILL in this run (eslint-lint, structure, typescript-typecheck), ' +
+        'which almost always means the run ran out of memory. The measured peak was 15.0 GB of a ' +
+        '16.0 GB limit (cgroup memory.peak and memory.max). Run fewer jobs at once with ' +
+        'NITPICKER_MAX_PARALLEL, or give the job more memory, and rerun.',
     );
-    expect(memory[0]?.message).toContain('The measured peak was 15.0 GB of a 16.0 GB limit');
     expect(killed.toolErrors.map((entry) => entry.tool)).toEqual([
       'structure',
       'typescript-typecheck',
       MEMORY_TOOL,
     ]);
-    expect(killed.toolErrors[0]?.message).toMatch(
-      /^structure crashed with signal SIGKILL: no diagnostic output \(see the memory report\)/u,
+    expect(killed.toolErrors[0]?.message).toBe(
+      'structure crashed with signal SIGKILL: no diagnostic output (see the memory report) ' +
+        'See https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md#an-analyzer-crashes',
     );
-    expect(String(killed.toolErrors[0]?.message)).not.toContain('NITPICKER_MAX_PARALLEL');
     expect(killed.reports.get('eslint-lint')?.findings[0]?.message).toBe(
       'oxlint was killed by SIGKILL (see the memory report)',
     );

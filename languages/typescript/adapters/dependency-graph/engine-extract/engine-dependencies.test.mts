@@ -91,26 +91,36 @@ afterAll(() => {
   rmSync(folder, { recursive: true, force: true });
 });
 
+type CruiserCall = (...args: unknown[]) => unknown;
+
 type CruiserModules = {
-  readonly extract: (options: object, file: string, transpile: object) => unknown;
-  readonly detect: (extracted: unknown, kept: unknown) => unknown;
-  readonly acorn: (options: object, file: string, transpile: object) => unknown;
+  readonly extract: CruiserCall;
+  readonly detect: CruiserCall;
+  readonly acorn: CruiserCall;
 };
+
+function callOf(module: unknown, name: string): CruiserCall {
+  const member = fieldOf(module, name);
+  if (typeof member !== 'function') {
+    throw new Error(`dependency-cruiser has no ${name} function`);
+  }
+  return (...args) => Reflect.apply(member, undefined, args);
+}
 
 async function cruiserModules(): Promise<CruiserModules> {
   const tsc: unknown = await import(new URL('tsc/extract.mjs', EXTRACT).href);
   const acorn: unknown = await import(new URL('acorn/extract.mjs', EXTRACT).href);
   const helpers: unknown = await import(new URL('helpers.mjs', EXTRACT).href);
   return {
-    extract: fieldOf(tsc, 'extract') as CruiserModules['extract'],
-    acorn: fieldOf(acorn, 'extract') as CruiserModules['acorn'],
-    detect: fieldOf(helpers, 'detectPreCompilationNess') as CruiserModules['detect'],
+    extract: callOf(tsc, 'extract'),
+    acorn: callOf(acorn, 'extract'),
+    detect: callOf(helpers, 'detectPreCompilationNess'),
   };
 }
 
 async function cruiserExtraction(file: string): Promise<unknown> {
   const { extract, acorn, detect } = await cruiserModules();
-  const read = ts.readConfigFile(POLICY_TSCONFIG, ts.sys.readFile).config as object;
+  const read: unknown = ts.readConfigFile(POLICY_TSCONFIG, (file) => ts.sys.readFile(file)).config;
   const tsConfig = ts.parseJsonConfigFileContent(read, ts.sys, folder, {}, POLICY_TSCONFIG);
   const options = {
     baseDir: folder,
@@ -131,8 +141,10 @@ describe('import extraction on the engine', () => {
         { ...process.env, [ENGINE_SWITCH]: 'required' },
       ).get(file);
 
-      expect(extraction).not.toBeUndefined();
-      expect(detect(extraction?.dependencies, extraction?.kept)).toEqual(
+      if (extraction === undefined) {
+        throw new Error(`the engine did not extract ${file}`);
+      }
+      expect(detect(extraction.dependencies, extraction.kept)).toEqual(
         await cruiserExtraction(file),
       );
     },
