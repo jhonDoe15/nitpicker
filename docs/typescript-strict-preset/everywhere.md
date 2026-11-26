@@ -231,7 +231,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   iteration callback (`map`, `filter`, `some`, `forEach`, `reduce` and the like) although the pattern
   does not change inside it, in all production code (not in tests). It reports `path.matchesGlob`
   (also `path.posix` and `path.win32`, and `matchesGlob` imported from `node:path`), `minimatch(value,
-  pattern)`, `minimatch.match`, `minimatch.makeRe`, `minimatch.filter`, `new Minimatch(pattern)`,
+pattern)`, `minimatch.match`, `minimatch.makeRe`, `minimatch.filter`, `new Minimatch(pattern)`,
   `picomatch(pattern)`, `picomatch.isMatch`, `picomatch.makeRe`, `micromatch(list, pattern)`,
   `micromatch.isMatch`, `micromatch.matcher` and the other `micromatch` list tests, each imported or
   required from its package, when every name the pattern reads is declared outside the loop or
@@ -261,7 +261,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
 - `nitpicker/no-subtree-search-per-ancestor`: a walk up a parent chain that searches every child or
   the whole subtree at each level, in all production code (not in tests). It reports a `for` loop
   whose update, or a `while` or `do` loop whose body, steps a name to its parent (`el =
-  el.parentElement`, `parentNode`, `parent`, `parentPath`, `getParent()`), when the body runs on that
+el.parentElement`, `parentNode`, `parent`, `parentPath`, `getParent()`), when the body runs on that
   name a subtree search (`querySelector`, `querySelectorAll`, `getElementsByClassName`,
   `getElementsByTagName`, `descendants()`, `findAll`, `traverse`, `ts.forEachChild(at, ...)`) or goes
   over its children (`for...of`, a spread, `Array.from` or `find`, `some`, `filter`, `forEach` and the
@@ -276,7 +276,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   use it: the last operand of the left side of `&&`, `||` or `??`, the test of `?:` or of an `if`,
   against the start of the right side, of a branch, or of the first statement of the `if` block
   (`lookup(key) !== undefined && lookup(key).enabled`, `resolve(node).isPresent() ?
-  resolve(node).get() : x`). The two calls must read the same tokens, take at least one argument,
+resolve(node).get() : x`). The two calls must read the same tokens, take at least one argument,
   and their callee and arguments make no call, assignment or `await` of their own; nothing but
   member reads and calls on the first result runs between them. Calls named like cheap accessors
   (`get`, `has`, `at`, `indexOf`, `includes` and the like), calls named like actions (`next`,
@@ -308,7 +308,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
 - `nitpicker/no-read-all-before-pass`: every input read into memory before a single pass over
   them, in all production code (not in tests). It reports a `const` array filled with one file read
   per element, `await Promise.all(xs.map((x) => readFile(x)))`, `xs.map((x) =>
-  readFileSync(x))` or an empty array that the next statement fills in a `for...of` loop whose only
+readFileSync(x))` or an empty array that the next statement fills in a `for...of` loop whose only
   statement is `list.push(readFile...)` (a read through `fs`, `node:fs/promises` or `fs-extra`,
   optionally awaited or inside `JSON.parse`), when the array is then used exactly once: as the
   source of one `for...of` loop or one `forEach` statement that does not read the array again and
@@ -376,7 +376,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
 - `nitpicker/no-replacing-collection-merge`: maps of collections merged by replacing the collection
   of a key that an earlier source already filled, in all production code (not in tests). It reports
   `all.set(key, values)` where `[key, values]` are the entries of the inner loop (`for (const [key,
-  values] of part)` or `part.forEach((values, key) => ...)`) of a loop over several sources, and
+values] of part)` or `part.forEach((values, key) => ...)`) of a loop over several sources, and
   `Object.assign(all, part)` in a loop, when `all` is declared outside those loops as a `Map`,
   `ReadonlyMap` or `Record` whose value type is an array, `Set`, `Map` or `Record`. With one key in
   two sources, the values of the source merged last win, and with sources finishing in any order
@@ -634,7 +634,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   callback over a constant array are not reported. The rule reads no types.
 - `nitpicker/no-lossy-json-stringify` (type-aware): `JSON.stringify(value)` without a replacer (a second argument that
   is not `null` or `undefined`) where the type of `value` holds a `bigint` (it throws `TypeError: Do not know how to
-  serialize a BigInt`) or a `Map`, `Set`, `WeakMap`, `WeakSet` or `RegExp` (each becomes `{}`, so different values
+serialize a BigInt`) or a `Map`, `Set`, `WeakMap`, `WeakSet` or `RegExp` (each becomes `{}`, so different values
   give one string, such as a shared cache key or id). The type is read directly, in a union, an array or tuple
   element, an object property or an index signature, up to three levels deep. A type with a `toJSON` member (such as
   `Date`) is not entered, and `any`, `unknown` and type parameters are not reported. Allowed forms: a replacer
@@ -676,7 +676,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   named `id`, `_id`, `uid`, `key` or `name` (a `key` or `name` made from the date only, such as
   `toISOString().slice(0, 10)`, is a label and is not reported; a template, a concatenation, `String(Date.now())` or
   `Date.now().toString()`, not the bare number); and for a fallback (`message._id || String(Date.now())`, `id ??
-  Date.now()`). Not reported when anything else varies: a `randomUUID()`, `Math.random()`, `process.pid`, a counter, a
+Date.now()`). Not reported when anything else varies: a `randomUUID()`, `Math.random()`, `process.pid`, a counter, a
   parameter or any other variable in the name. Allowed forms: `fs.mkdtemp(path.join(os.tmpdir(), 'prefix-'))` for
   directories and `crypto.randomUUID()` for ids; a timestamp next to a unique part is fine. A name that is unique by
   design (one file per day) takes an exception. The rule reads no types.
@@ -873,7 +873,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   calling `forEachChild`/`visitEachChild` on itself, or a `for...of` loop. Two forms are reported: the lookup is
   followed by `if (test) return;` or `continue` whose test reads only the node, constants and collections from
   outside the walk (`const type = services.getTypeAtLocation(node.object); if (node.property.name !== 'then')
-  return;`), and a symbol lookup of the node's name whose answer is only checked with `has` or `get` on a
+return;`), and a symbol lookup of the node's name whose answer is only checked with `has` or `get` on a
   collection built before the walk, with only node-kind tests before it (`if (symbol && wanted.has(symbol))`).
   A collection that the function holding the walk also writes to (`add`, `set`, `delete`, `clear`, `push`,
   or a new value) is not built before the walk, and a `continue` or `return` inside a loop or `switch` nested
@@ -884,7 +884,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   intersection in the order the checker lists its members: `type.types[0]`, `.at(0)`, `.at(-1)`, `.find(...)`,
   `.findLast(...)`, `const [first] = type.types` (also after `filter`, `map`, `flatMap` or `slice`),
   `new Map(...)` or `Object.fromEntries(...)` over `type.types.flatMap(...)`, and `===` between a
-  `checker.typeToString(...)` result and text with ` | `. TypeScript 6 lists union members in the order
+  `checker.typeToString(...)` result and text with `|`. TypeScript 6 lists union members in the order
   their types were created and TypeScript 7 sorts them, so the same source gives different results. Not
   reported: a pick used only as a presence test (`if`, `!`, `?:`, `Boolean(...)`, a comparison with
   `undefined`); a `find` whose test can match one member only: identity (`member === stringType`), `.value`
@@ -1109,7 +1109,14 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   no later read uses an earlier result. A read is `fetch(url)` with no options or with an object
   literal that has no `body` and a `method` of `GET` or `HEAD`, or a read of TypeORM, Prisma, Drizzle,
   Kysely, Knex, Sequelize or MikroORM (`findMany`, `findUnique`, `count`, `find`, `findOne`,
-  `select().from()`, ...) in a project that depends on one. Start them together with
+  `select().from()`, ...) in a project that depends on one. A call to a project function counts as a
+  read when that function (declared in the same file, or imported from a project file, also through
+  `export { name } from` re-exports) does nothing but such reads: every call in it is a read, a call
+  inside a read, a body read of a response (`json()`, `text()`, `blob()`, `arrayBuffer()`), an array
+  method (`map`, `filter`, `find`, `some`, `every`, `reduce`, `flatMap`, `slice`, `at`, `includes`,
+  `join`) or a call on `console`, `logger`, `log`, `Math`, `JSON`, `Object`, `Array`, `Number` or
+  `String`; it awaits only reads, assigns only its own variables and throws nothing (a function that
+  throws when a row is missing or not allowed is a check). Start them together with
   `Promise.all`. Not reported: a write, a guard (`if (!user) return`) or any other statement between
   them, blocks inside a loop (`nitpicker/no-io-in-loop`) or a transaction callback, a client named like
   a transaction (`tx`, `trx`, `manager`, `queryRunner`, a repository taken from a transaction scope), a
@@ -1119,7 +1126,10 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `token`, `verify`, `guard` or `acl`), since its result may decide whether the next read runs.
 - Waits placed before independent work (`nitpicker/no-early-wait-on-started-work`, report-only, a broad
   rule, needs type information): `const result = await task;` where `task` is a `Promise` held in a
-  `const` of the same block initialized by a call or `new` (work started earlier), and `result` is first
+  `const` of the same block initialized by a call or `new` (work started earlier), or a member such as
+  `this.task` or `jobs.report` assigned a call or `new` earlier in the same block (with no statement
+  between the assignment and the wait that calls a method of, assigns to or passes along its owner),
+  and `result` is first
   read three or more statements later, while the statements in between do work, do not mention `task`
   and do not `return`, `throw`, `break` or `continue`. Work is a call other than a `get*`, `is*` or `has*`
   accessor, `join`, a logging call (`log`, `trace`, `debug`, `info`, `warn`, `error`) or a call on
@@ -1128,8 +1138,9 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   itself), a thenable that is not a `Promise` (a query builder), a wait in a `try` block, a task whose
   name has a word of a synchronization point (`lock`, `mutex`, `barrier`, `ready`, `init`, `shutdown`,
   `flush`, `close`, `drain`, `limit`, `sleep`, `delay`, `wait`, `done`, `exit`, `end`, `finish`,
-  `complete`, `settled`, `stop` and their past forms) and a wait whose value is never read. Java has the same check as
-  `pmd/EarlyWaitOnStartedWork`.
+  `complete`, `settled`, `stop` and their past forms) and a wait whose value is never read. For a member,
+  the statements in between must also not call a method of its owner, assign to it or pass it along
+  (`this.reset()`, `send(this)`). Java has the same check as `pmd/EarlyWaitOnStartedWork`.
 - Per-item I/O (`nitpicker/no-io-in-loop`): a database query or a remote request once per item of a
   loop (`for await` included) or an iteration callback (`map`, `forEach` of an array, a `Map` or a
   `Set`, `flatMap`, `filter`, `reduce`, `reduceRight`, `some`, `every`, `find`, `findIndex`,
@@ -1818,7 +1829,7 @@ await readdir(dir))`, `opendir` and `Dirent.name`); joined onto another base, or
   a message that names the checked value, a message about its type or concept (the last word matches:
   `TimeUnit` for `targetTimeUnit`), a function name at the start of the message
   (`useThing must be used inside a provider`), a first word that is an import, a class or a function (`Stripe is not
-  configured`), a checked value derived from the named one (`const stripped = title.trim()` then `!stripped` with
+configured`), a checked value derived from the named one (`const stripped = title.trim()` then `!stripped` with
   `title must be set`), a message that also names the checked value, and conditions that read more than one value.
   The same form runs as `pmd/PreconditionMessageNamesOtherValue` (Java and Kotlin).
 - `nitpicker/no-malformed-query-text` (production code): query text that is malformed once its literal parts are
@@ -1834,7 +1845,7 @@ await readdir(dir))`, `opendir` and `Dirent.name`); joined onto another base, or
   the next statement continues. Builder chains (`qb.append(...)`), loops and dialect syntax are not checked. The
   same form runs as `pmd/MalformedQueryText` (Java and Kotlin).
 - `nitpicker/no-unpaged-listing` (production code): an object-store or search listing read once. `new
-  ListObjectsV2Command(input)`, `ListObjectsCommand` and `ListObjectVersionsCommand` (AWS SDK v3), and an
+ListObjectsV2Command(input)`, `ListObjectsCommand` and `ListObjectVersionsCommand` (AWS SDK v3), and an
   `s3.listObjectsV2({ ... })` call (AWS SDK v2) whose function never mentions a page marker
   (`NextContinuationToken`, `ContinuationToken`, `IsTruncated`, `NextMarker`, `Marker`, `StartAfter`,
   `paginateListObjectsV2`) and whose input has no `MaxKeys`; and a node-redis `client.ft.search(index, query)` with no
@@ -2367,7 +2378,7 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   when the options pass no `env`, or an `env` object without `GOGC` or `GOMEMLIMIT` (`env: process.env`, a spread of
   `process.env` alone or a key set to `undefined` does not count). Not reported: `--version` and `--help` runs,
   options or an `env` the rule cannot read (a parameter, another spread). Pass `env: { ...process.env, GOGC:
-  process.env.GOGC ?? '50' }`.
+process.env.GOGC ?? '50' }`.
 - JVMs started in a loop or pool get a heap goal next to their heap ceiling (`nitpicker/require-jvm-heap-goal`,
   production files). A ceiling is not a size: with the default throughput goal a JVM grows its heap toward `-Xmx` or
   `-XX:MaxRAMPercentage` instead of collecting, and does not give it back, so several at once hold far more than their
@@ -2419,7 +2430,7 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   staying at the size of one (0.8 GB of token lists in one typed lint run). A `WeakMap` does not help when its keys
   stay reachable from the same long-lived owner. Reported: `cache.set(key, value)` inside a `for...of` or `for...in`
   loop, where `cache` is a module-level `const` or a class field initialised to an empty `new Map()` or `new
-  WeakMap()`, `key` reads the loop variable, a `cache.get(...)` with the same key follows in the same iteration, and
+WeakMap()`, `key` reads the loop variable, a `cache.get(...)` with the same key follows in the same iteration, and
   every other use of the map is inside that loop and none of them is `delete` or `clear`. Not reported: a map read or
   handed on outside the loop (a lookup table), exported, reassigned or returned, a function-local map, and a loop over
   an array literal. The cost only matters when the loop is long and the cached value is large; keep the value in a
@@ -2695,7 +2706,7 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   in the same function already tied to the key (`arg.startsWith('--scope=')`) are not reported, and a split on
   another separator is not. The same form runs as `pmd/PairSplitDropsRest` (Java),
   `kotlin-source/PairSplitDropsRest` (Kotlin), `pair-split-drops-rest` (Python, with `partition` and `split(sep,
-  1)` as the allowed forms) and `go-rules/pair-split-drops-rest` (Go, with `strings.Cut`), which skip the same
+1)` as the allowed forms) and `go-rules/pair-split-drops-rest` (Go, with `strings.Cut`), which skip the same
   clock-like names.
 - `nitpicker/no-ambiguous-lookup-key` (type-aware): a key of `Map` or `WeakMap` `set`, `get`, `has` and
   `delete`, of `Set` `add`, `has` and `delete`, or a computed key written into a `Record<string, ...>`
@@ -2948,7 +2959,7 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   holds `undefined`, `null` or `unknown` for a comparison; and `record[key] !== undefined` (also `===`, `!=`, `==`)
   with a non-literal key on a record whose values are `unknown`, used as a condition or returned, which cannot
   tell a missing key from a stored `undefined`. Write `m.has(k)` for the cache (`if (!m.has(k)) m.set(k, make());
-  const v = m.get(k)!;`) and `key in record` or `Object.hasOwn(record, key)` for the record. Not reported: a
+const v = m.get(k)!;`) and `key in record` or `Object.hasOwn(record, key)` for the record. Not reported: a
   value type that cannot be falsy (objects, functions), a map whose `get` result is only read, a miss branch
   that stores another key or map, `any` values, a `|| 0`, `|| ''` or `|| false` fallback (same result), a
   text or number map whose stored values are never empty (a non-empty literal or template, `emitFile()`,

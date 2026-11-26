@@ -1,36 +1,65 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable } from '../../analysis/constant-resolution.mts';
 import { nodesOutsideNestedFunctions } from '../react-effects.mts';
+import { BROWSER_GLOBALS, isBrowserTestHook } from './reach/browser-hooks.mts';
 
-const BROWSER_GLOBALS = new Set([
-  'window',
-  'document',
-  'navigator',
-  'localStorage',
-  'sessionStorage',
-  'matchMedia',
-]);
+export type FileContext = {
+  readonly sourceCode: TSESLint.SourceCode;
+  readonly filename: string;
+};
+type SourceCode = TSESLint.SourceCode;
+
 const EQUALITY = new Set(['===', '!==', '==', '!=']);
+const GLOBAL_THIS = new Set(['globalThis']);
 
-function typeofGlobal(node: TSESTree.Node, sourceCode: TSESLint.SourceCode): boolean {
+function isGlobal(node: TSESTree.Node, names: ReadonlySet<string>, sourceCode: SourceCode) {
+  return (
+    node.type === AST_NODE_TYPES.Identifier &&
+    names.has(node.name) &&
+    (findVariable({ sourceCode }, node, node.name)?.defs.length ?? 0) === 0
+  );
+}
+
+function globalThisMember(node: TSESTree.Node, sourceCode: SourceCode): boolean {
+  return (
+    node.type === AST_NODE_TYPES.MemberExpression &&
+    !node.computed &&
+    node.property.type === AST_NODE_TYPES.Identifier &&
+    BROWSER_GLOBALS.has(node.property.name) &&
+    isGlobal(node.object, GLOBAL_THIS, sourceCode)
+  );
+}
+
+function typeofGlobal(node: TSESTree.Node, sourceCode: SourceCode): boolean {
   return (
     node.type === AST_NODE_TYPES.UnaryExpression &&
     node.operator === 'typeof' &&
-    node.argument.type === AST_NODE_TYPES.Identifier &&
-    BROWSER_GLOBALS.has(node.argument.name) &&
-    (findVariable({ sourceCode }, node.argument, node.argument.name)?.defs.length ?? 0) === 0
+    (isGlobal(node.argument, BROWSER_GLOBALS, sourceCode) ||
+      globalThisMember(node.argument, sourceCode))
   );
 }
 
-function isTypeofTest(node: TSESTree.Node, sourceCode: TSESLint.SourceCode): boolean {
+function inGlobalThis(node: TSESTree.Node, sourceCode: SourceCode): boolean {
   return (
     node.type === AST_NODE_TYPES.BinaryExpression &&
-    EQUALITY.has(node.operator) &&
-    (typeofGlobal(node.left, sourceCode) || typeofGlobal(node.right, sourceCode))
+    node.operator === 'in' &&
+    node.left.type === AST_NODE_TYPES.Literal &&
+    typeof node.left.value === 'string' &&
+    BROWSER_GLOBALS.has(node.left.value) &&
+    isGlobal(node.right, GLOBAL_THIS, sourceCode)
   );
 }
 
-function combinesTypeofTests(node: TSESTree.Node, sourceCode: TSESLint.SourceCode): boolean {
+function isTypeofTest(node: TSESTree.Node, sourceCode: SourceCode): boolean {
+  return (
+    (node.type === AST_NODE_TYPES.BinaryExpression &&
+      EQUALITY.has(node.operator) &&
+      (typeofGlobal(node.left, sourceCode) || typeofGlobal(node.right, sourceCode))) ||
+    inGlobalThis(node, sourceCode)
+  );
+}
+
+function combinesTypeofTests(node: TSESTree.Node, sourceCode: SourceCode): boolean {
   const pending = [node];
   for (const each of pending) {
     if (each.type === AST_NODE_TYPES.LogicalExpression) {
@@ -54,23 +83,40 @@ function namesValue(node: TSESTree.Identifier): boolean {
   );
 }
 
-function moduleBrowserFlag(node: TSESTree.Node, sourceCode: TSESLint.SourceCode): boolean {
-  if (node.type !== AST_NODE_TYPES.Identifier || !namesValue(node)) {
-    return false;
-  }
-  const definition = findVariable({ sourceCode }, node, node.name)?.defs[0];
-  const declarator = definition?.node;
+function isHookCall(node: TSESTree.Node, context: FileContext): boolean {
   return (
-    declarator?.type === AST_NODE_TYPES.VariableDeclarator &&
-    declarator.parent.kind === 'const' &&
-    declarator.parent.parent.type === AST_NODE_TYPES.Program &&
-    declarator.init !== null &&
-    combinesTypeofTests(declarator.init, sourceCode)
+    node.type === AST_NODE_TYPES.CallExpression &&
+    node.arguments.length === 0 &&
+    node.callee.type === AST_NODE_TYPES.Identifier &&
+    /^use[A-Z]/u.test(node.callee.name) &&
+    isBrowserTestHook(context.filename, context.sourceCode, node.callee.name)
   );
 }
 
-export function testsBrowser(node: TSESTree.Node, sourceCode: TSESLint.SourceCode): boolean {
+function browserFlag(node: TSESTree.Node, context: FileContext): boolean {
+  if (node.type !== AST_NODE_TYPES.Identifier || !namesValue(node)) {
+    return false;
+  }
+  const { sourceCode } = context;
+  const definition = findVariable({ sourceCode }, node, node.name)?.defs[0];
+  const declarator = definition?.node;
+  if (
+    declarator?.type !== AST_NODE_TYPES.VariableDeclarator ||
+    declarator.parent.kind !== 'const' ||
+    declarator.init === null
+  ) {
+    return false;
+  }
+  return declarator.parent.parent.type === AST_NODE_TYPES.Program
+    ? combinesTypeofTests(declarator.init, sourceCode)
+    : isHookCall(declarator.init, context);
+}
+
+export function testsBrowser(node: TSESTree.Node, context: FileContext): boolean {
   return nodesOutsideNestedFunctions(node).some(
-    (each) => isTypeofTest(each, sourceCode) || moduleBrowserFlag(each, sourceCode),
+    (each) =>
+      isTypeofTest(each, context.sourceCode) ||
+      browserFlag(each, context) ||
+      isHookCall(each, context),
   );
 }
