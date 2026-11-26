@@ -775,7 +775,7 @@ that detector, except for Lombok modules: the engine does not see the static met
 On the six comparison code bases, SARIF results, same / missed / extra: jackson-databind 1 / 0 / 0, Guava
 8 / 0 / 0, the others 0.
 
-NN_NAKED_NOTIFY (#2263, `src/java/spotbugs/methods/notify.rs`, labs in `tests/fixtures/spotbugs/notify` and
+NN_NAKED_NOTIFY (#2263, `src/java/spotbugs/methods/notify/`, labs in `tests/fixtures/spotbugs/notify*` and
 `lombok_notify`): SpotBugs reads the method's instructions in class-file order. A `synchronized` method, or any
 `monitorenter`, starts a watch. While watching, instructions that read nothing keep it going: constants, stores to
 locals and static fields, static calls, `new` with constant arguments, `iinc`, array creation, casts, non-capturing
@@ -788,14 +788,20 @@ end of the code reports it; in a block, a local load and `monitorexit` report it
 after the call ends the watch, as does a second call. `super.notify()` (`invokespecial`) and calls on a value of an
 interface type (`invokeinterface`) do not count. There is one finding per method, at the first call reported, with
 priority 2, level `warning`, the line of the call's `(`, and the method as the argument. Inner class creation reads
-`this`; javac writes the value of a constant (also a `final` instance field set from a constant) and leaves out
-casts to a supertype and jumps to the next instruction, and copies `finally` blocks and instance initializers
-(into each constructor that does not call `this(...)`). Lombok's `@Synchronized` is a `synchronized` block on a
-field. The engine writes the instructions from the source (`methods/code.rs`, `values.rs`); code it does not follow
-(`switch` selectors, `try` with resources, `assert`, `yield`, unknown expressions) counts as a read. Every pattern of
+`this`, as does an anonymous class in an instance method; capturing lambdas and classes read what they capture. javac
+writes the value of a constant (also a `final` instance field or a `final` local set from a constant), folds
+`true ?`, `false &&` and `true ||`, turns `x += constant` on an `int` local into `iinc`, reads a static field named
+through a value after dropping the value, and leaves out casts to a supertype, jumps to the next instruction and
+the handlers of an empty `try` (its `finally` runs once). It copies `finally` blocks and instance initializers (into
+each constructor that does not call `this(...)`). `int.class` reads `Integer.TYPE`. A `switch` on a primitive is
+its selector and one instruction. Lombok's `@Synchronized` is a `synchronized` block on a
+field. The engine writes the instructions from the source (`code.rs`, `values.rs`); code it does not follow
+(`switch` on strings, enums and boxes, `try` with resources, `assert`, `yield`, unknown expressions) counts as a
+read. Known differences (#2508): type variables with an intersection bound, and local classes that take captured
+values only through a superclass or a constructor reference. Every pattern of
 `FindNakedNotify` is on the engine, so SpotBugs no longer runs that detector.
 
-On the six comparison code bases: Nacos 5 / 0 / 0, the others 0.
+Labs: 572 same / 4 missed / 2 extra (all #2508). On the six comparison code bases: Nacos 5 / 0 / 0, the others 0.
 
 ## Names the compiler makes up
 

@@ -6,11 +6,17 @@
 use super::super::classes::lines;
 use super::super::statements::{member_label, own_nodes};
 use super::super::{Context, lombok, names, place};
-use super::code::{Code, Op};
+use code::{Code, Op};
 use crate::engine::source::{children, named_children};
 use crate::java::helpers::{declarators, has_modifier};
 use crate::java::types::scope::TYPE_DECLARATIONS;
 use tree_sitter::Node;
+
+mod captures;
+mod code;
+mod constants;
+mod ends;
+mod values;
 
 const PATTERN: &str = "NN_NAKED_NOTIFY";
 
@@ -64,7 +70,7 @@ fn body_code<'a>(context: &Context<'a>, is_static: bool, body: Option<Node<'a>>,
     let mut code = Code::new(context, is_static);
     if let Some(body) = body {
         if locked { code.guarded(None, Some(body)) } else { code.statement(body) }
-        if returns && super::ends::completes(context, body) {
+        if returns && ends::completes(context, body) {
             code.push(Op::Return);
         }
     }
@@ -98,7 +104,7 @@ fn constructor_code<'a>(context: &Context<'a>, members: &[Node<'a>], constructor
         }
     }
     statements.into_iter().skip(usize::from(explicit.is_some())).for_each(|statement| code.statement(statement));
-    if body.is_none_or(|body| super::ends::completes(context, body)) {
+    if body.is_none_or(|body| ends::completes(context, body)) {
         code.push(Op::Return);
     }
     code.ops
@@ -138,7 +144,8 @@ pub fn check<'a>(context: &Context<'a>, class: Node<'a>) {
             }
             _ => {}
         }
-        lambdas(context, member);
+        let is_static = has_modifier(member, "static") || member.kind() == "static_initializer";
+        lambdas(context, member, is_static);
     }
     if constructors == 0 && initialized && class.kind() == "class_declaration" {
         let outer = crate::java::javac::instance_around(context.resolver, class);
@@ -148,7 +155,7 @@ pub fn check<'a>(context: &Context<'a>, class: Node<'a>) {
 }
 
 /// Lambdas are methods of their own, never `synchronized`.
-fn lambdas<'a>(context: &Context<'a>, member: Node<'a>) {
+fn lambdas<'a>(context: &Context<'a>, member: Node<'a>, is_static: bool) {
     if !holds_monitor(context, member) {
         return;
     }
@@ -158,7 +165,7 @@ fn lambdas<'a>(context: &Context<'a>, member: Node<'a>) {
         own_nodes(lambda, &mut nodes, &mut lambdas);
         let body = lambda.child_by_field_name("body").filter(|body| body.kind() == "block" && holds_monitor(context, *body));
         if let Some(body) = body {
-            let ops = body_code(context, false, Some(body), true, false);
+            let ops = body_code(context, is_static, Some(body), true, false);
             report(context, &ops, false, names::lambda(context, lambda));
         }
     }

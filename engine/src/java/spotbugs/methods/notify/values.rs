@@ -1,9 +1,9 @@
 //! The instructions javac writes for expressions, as `code.rs` counts them.
+use super::super::super::folds;
 use super::code::{AWAY, Code, Op};
 use crate::engine::source::named_children;
 use crate::java::types::expr::{Binding, Receiver, unwrap};
 use crate::java::types::model::{Type, flag};
-use std::collections::HashSet;
 use tree_sitter::Node;
 
 const LITERALS: &[&str] = &[
@@ -41,8 +41,9 @@ impl<'a> Code<'_, 'a> {
 
     fn increments(&self, node: Node) -> bool {
         let operator = node.child_by_field_name("operator").map(|operator| self.context.text(operator));
-        let amount = node.child_by_field_name("right").map(unwrap).filter(|right| right.kind() == "decimal_integer_literal");
-        matches!(operator, Some("+=" | "-=")) && amount.and_then(|amount| self.context.text(amount).parse::<i64>().ok()).is_some_and(|amount| amount <= 32767)
+        let amount = node.child_by_field_name("right").and_then(|right| self.amount(right));
+        let amount = if operator == Some("-=") { amount.map(|amount| -amount) } else { amount };
+        matches!(operator, Some("+=" | "-=")) && amount.is_some_and(|amount| (-32768..=32767).contains(&amount))
     }
 
     fn int_local(&self, node: Node) -> bool {
@@ -53,8 +54,9 @@ impl<'a> Code<'_, 'a> {
         let resolver = self.context.resolver;
         match node.kind() {
             "parenthesized_expression" => self.value(unwrap(node)),
+            "class_literal" if node.named_child(0).is_some_and(|kind| matches!(kind.kind(), "integral_type" | "floating_point_type" | "boolean_type" | "void_type")) => self.push(Op::Load),
             kind if LITERALS.contains(&kind) => self.push(Op::Other),
-            "identifier" => self.push(if resolver.constant_field_as(node, true) || self.constant_member(node) { Op::Other } else { Op::Load }),
+            "identifier" => self.push(if resolver.constant_field_as(node, true) || self.constant_member(node) || self.constant_local(node) { Op::Other } else { Op::Load }),
             "this" => self.push(Op::Load),
             "field_access" => self.field(node),
             "method_invocation" => self.call(node),
@@ -88,6 +90,11 @@ impl<'a> Code<'_, 'a> {
                 self.value_of(node.named_child(0));
                 self.push(Op::Other);
             }
+            "binary_expression" if self.short_circuit(node) => {}
+            "ternary_expression" if folds::fixed(self.context, node.child_by_field_name("condition")).is_some() => {
+                let taken = if folds::fixed(self.context, node.child_by_field_name("condition")) == Some(true) { "consequence" } else { "alternative" };
+                self.value_of(node.child_by_field_name(taken));
+            }
             "binary_expression" => {
                 self.value_of(node.child_by_field_name("left"));
                 self.value_of(node.child_by_field_name("right"));
@@ -101,9 +108,10 @@ impl<'a> Code<'_, 'a> {
                 self.value_of(node.child_by_field_name("alternative"));
             }
             "update_expression" => self.ops.extend([Op::Load, Op::Other]),
+            "switch_expression" => self.switch(node),
             "assignment_expression" => self.assign(node),
             "lambda_expression" => {
-                if self.captures(node) {
+                if self.captures(node, true) {
                     self.push(Op::Load);
                 }
                 self.push(Op::Other);
@@ -121,24 +129,6 @@ impl<'a> Code<'_, 'a> {
         }
     }
 
-    /// A `final` instance field of a class in this file set from a constant expression: javac writes its value.
-    fn constant_member(&self, name: Node) -> bool {
-        let Some(Binding::Field(_, info, field)) = self.context.resolver.binding(name, self.context.text(name)) else { return false };
-        let simple = matches!(&field.kind, Type::Primitive(_)) || field.kind.name() == "java.lang.String";
-        if !simple || field.flags & flag::FINAL == 0 || field.flags & flag::STATIC != 0 {
-            return false;
-        }
-        let Some(class) = self.context.classes.get(&info.name) else { return false };
-        let body = class.child_by_field_name("body");
-        let members = body.map(super::super::place::members).unwrap_or_default();
-        members.into_iter().filter(|member| member.kind() == "field_declaration").flat_map(crate::java::helpers::declarators).any(|declarator| {
-            let named = declarator.child_by_field_name("name").is_some_and(|written| self.context.text(written) == field.name);
-            let value = declarator.child_by_field_name("value");
-            let mut uses = Vec::new();
-            named && value.is_some_and(|value| self.context.resolver.constant_shape(value, &mut uses) && uses.is_empty())
-        })
-    }
-
     fn field(&mut self, node: Node<'a>) {
         let resolver = self.context.resolver;
         let (Some(object), Some(field)) = (node.child_by_field_name("object"), node.child_by_field_name("field")) else { return self.push(Op::Kill) };
@@ -153,6 +143,9 @@ impl<'a> Code<'_, 'a> {
             _ if matches!(resolver.receiver(object), Some(Receiver::Static(_))) => self.push(Op::Load),
             _ => {
                 self.value(object);
+                if self.static_member(object, field) {
+                    return self.ops.extend([Op::Other, Op::Load]);
+                }
                 let length = self.context.text(field) == "length" && matches!(resolver.type_of(object), Some(Type::Array(_)));
                 self.push(if length { Op::Other } else { Op::Field });
             }
@@ -207,22 +200,53 @@ impl<'a> Code<'_, 'a> {
 
     fn creation(&mut self, node: Node<'a>) {
         self.push(Op::Other);
-        let anonymous = named_children(node).iter().any(|part| part.kind() == "class_body");
-        let inner = || {
-            let kind = node.child_by_field_name("type").and_then(|kind| self.context.resolver.type_node(kind));
-            let Some(Type::Class(name, _)) = kind.map(|kind| kind.erased()) else { return false };
-            self.context.resolver.index.get(&name).is_some_and(|info| {
-                let nested = info.name.rsplit_once('.').is_some_and(|(outer, _)| self.context.resolver.index.get(outer).is_some());
-                nested && !info.is_interface && info.flags & (flag::STATIC | flag::ENUM | flag::RECORD) == 0
-            })
-        };
-        match node.child_by_field_name("object") {
-            Some(outer) => self.value(outer),
-            None if (anonymous && !self.is_static) || (!anonymous && inner()) => self.push(Op::Load),
-            None => {}
+        let body = named_children(node).into_iter().find(|part| part.kind() == "class_body");
+        let outer = node.child(0).filter(|first| first.kind() != "new" && first.is_named());
+        if let Some(outer) = outer {
+            self.value(outer);
+        }
+        match body {
+            Some(body) if !self.is_static || self.captures(body, false) => self.push(Op::Load),
+            None if outer.is_none() && self.inner(node) => self.push(Op::Load),
+            _ => {}
         }
         self.arguments(node.child_by_field_name("arguments"));
         self.push(Op::Other);
+    }
+
+    /// A class created with `new` that takes the instance around it.
+    pub(super) fn inner(&self, creation: Node) -> bool {
+        let kind = creation.child_by_field_name("type").and_then(|kind| self.context.resolver.type_node(kind));
+        let Some(Type::Class(name, _)) = kind.map(|kind| kind.erased()) else { return false };
+        let local = self.context.classes.get(&name).copied().filter(|declaration| crate::java::javac::declared_locally(*declaration));
+        if let Some(local) = local {
+            return !self.is_static || local.child_by_field_name("body").is_some_and(|body| self.captures(body, false));
+        }
+        self.context.resolver.index.get(&name).is_some_and(|info| {
+            let nested = info.name.rsplit_once('.').is_some_and(|(outer, _)| self.context.resolver.index.get(outer).is_some());
+            nested && !info.is_interface && info.flags & (flag::STATIC | flag::ENUM | flag::RECORD) == 0
+        })
+    }
+
+    /// `false && x` and `true || x` fold to a constant; `true && x` and `false || x` are `x`.
+    fn short_circuit(&mut self, node: Node<'a>) -> bool {
+        let operator = node.child_by_field_name("operator").map(|operator| self.context.text(operator));
+        let left = folds::fixed(self.context, node.child_by_field_name("left"));
+        match (operator, left) {
+            (Some("&&"), Some(false)) | (Some("||"), Some(true)) => self.push(Op::Other),
+            (Some("&&"), Some(true)) | (Some("||"), Some(false)) => {
+                self.value_of(node.child_by_field_name("right"));
+                self.push(Op::Other);
+            }
+            _ => return false,
+        }
+        true
+    }
+
+    /// A static field named through a value: javac evaluates the value, drops it and reads the field.
+    fn static_member(&self, object: Node, field: Node) -> bool {
+        let Some(Type::Class(owner, _)) = self.context.resolver.type_of(object).map(|kind| kind.erased()) else { return false };
+        self.context.resolver.index.field(&owner, self.context.text(field)).is_some_and(|(_, field)| field.flags & flag::STATIC != 0)
     }
 
     fn assign(&mut self, node: Node<'a>) {
@@ -251,48 +275,5 @@ impl<'a> Code<'_, 'a> {
         }
         self.value_of(right);
         self.push(Op::Other);
-    }
-
-    /// A cast javac writes no `checkcast` for: to a type the value already has.
-    fn widens(&self, node: Node) -> bool {
-        let resolver = self.context.resolver;
-        let target = node.child_by_field_name("type").and_then(|kind| resolver.type_node(kind)).map(|kind| kind.erased());
-        let source = node.child_by_field_name("value").and_then(|value| resolver.type_of(value)).map(|kind| kind.erased());
-        match (source, target) {
-            (Some(Type::Class(from, _)), Some(Type::Class(to, _))) => from == to || to == "java.lang.Object" || resolver.index.is_subtype(&from, &to),
-            _ => false,
-        }
-    }
-
-    /// Whether a lambda takes `this` or a local variable of the method around it.
-    fn captures(&self, lambda: Node) -> bool {
-        let resolver = self.context.resolver;
-        let mut declared = HashSet::new();
-        let mut stack = vec![lambda];
-        let mut used = Vec::new();
-        while let Some(node) = stack.pop() {
-            match node.kind() {
-                "this" | "super" => return true,
-                "identifier" => used.push(node),
-                "variable_declarator" | "formal_parameter" | "catch_formal_parameter" | "inferred_parameters" | "lambda_expression" => {
-                    let names = node.child_by_field_name("name").into_iter().chain(named_children(node).into_iter().filter(|part| part.kind() == "identifier"));
-                    declared.extend(names.map(|name| self.context.text(name)));
-                }
-                "method_invocation" if node.child_by_field_name("object").is_none() && !resolver.resolve_call(node).is_some_and(|call| call.method.is_static) => return true,
-                _ => {}
-            }
-            stack.extend(named_children(node));
-        }
-        used.into_iter().any(|name| {
-            let parent = crate::engine::source::parent(name);
-            let member = parent.is_some_and(|parent| {
-                (parent.kind() == "field_access" && parent.child_by_field_name("field") == Some(name)) || (parent.kind() == "method_invocation" && parent.child_by_field_name("name") == Some(name))
-            });
-            !member && !declared.contains(self.context.text(name)) && match resolver.binding(name, self.context.text(name)) {
-                Some(Binding::Local(_)) => true,
-                Some(Binding::Field(_, _, field)) => field.flags & flag::STATIC == 0 && !resolver.constant_field_as(name, true),
-                None => false,
-            }
-        })
     }
 }

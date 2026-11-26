@@ -1,6 +1,6 @@
 //! The instructions javac writes for a method body, in their order in the class file, reduced to the kinds that
 //! FindNakedNotify tells apart. Jumps to the next instruction are left out, as javac leaves them out.
-use super::super::{Context, folds};
+use super::super::super::{Context, folds};
 use super::ends::{completes, has};
 use crate::engine::source::{children, named_children};
 use crate::java::helpers::declarators;
@@ -241,7 +241,13 @@ impl<'c, 'a> Code<'c, 'a> {
             self.frames.push(Frame::Finally(block));
         }
         let body = node.child_by_field_name("body");
+        let before = self.ops.len();
         self.statement_of(body);
+        if self.ops[before..].iter().all(|op| matches!(op, Op::Label(_))) {
+            self.frames.truncate(depth);
+            self.statement_of(finally);
+            return self.place(end);
+        }
         let handled = !catches.is_empty() || finally.is_some();
         if body.is_some_and(|body| completes(self.context, body)) {
             self.inline(depth, finally);
@@ -267,9 +273,12 @@ impl<'c, 'a> Code<'c, 'a> {
         self.place(end);
     }
 
-    fn switch(&mut self, node: Node<'a>) {
-        self.value_of(node.child_by_field_name("condition"));
-        self.push(Op::Kill);
+    /// A `switch` on a primitive is its selector and one instruction; on a string, enum or box javac reads more.
+    pub(super) fn switch(&mut self, node: Node<'a>) {
+        let selector = node.child_by_field_name("condition");
+        self.value_of(selector);
+        let kind = selector.and_then(|selector| self.context.resolver.type_of(selector));
+        self.push(if matches!(kind, Some(crate::java::types::model::Type::Primitive(_))) { Op::Other } else { Op::Kill });
         let end = self.label();
         self.frames.push(Frame::Jumps(None, end, None));
         for part in node.child_by_field_name("body").map(named_children).unwrap_or_default() {
