@@ -154,7 +154,11 @@ function walkedFileCount(root: string, matches: (name: string) => boolean): numb
   return count;
 }
 
-function countedFiles(root: string, patterns: readonly string[], matches: (name: string) => boolean) {
+function countedFiles(
+  root: string,
+  patterns: readonly string[],
+  matches: (name: string) => boolean,
+) {
   const listed = listedFileCount(root, patterns);
   return listed > 0 ? listed : walkedFileCount(root, matches);
 }

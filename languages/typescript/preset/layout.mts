@@ -12,10 +12,7 @@ import {
   DEPENDENCY_PATH_PATTERN,
 } from './layout/code-files/project-code-files.mts';
 export { existingRoots, DEPENDENCY_PATH_PATTERN } from './layout/code-files/project-code-files.mts';
-import {
-  escapeRegExp as untypedEscapeRegExp,
-  globMatcher,
-} from '../../../shared/paths/glob.mts';
+import { escapeRegExp as untypedEscapeRegExp, globMatcher } from '../../../shared/paths/glob.mts';
 import { excludePatternOf } from './layout/exclude/exclude-pattern.mts';
 import type {
   ClassifierInput,
