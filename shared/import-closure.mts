@@ -1,11 +1,17 @@
 import path from 'node:path';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { checkoutModulePath } from './paths/checkout-module.mts';
-import { blankComments } from './hygiene/limits/scanning/scan.mts';
 
 const RELATIVE_SPECIFIER =
   /(?:\bfrom\s*|\bimport\s*\(\s*|^\s*import\s*)(['"])(\.{1,2}\/[^'"]+)\1/gmu;
 const SCRIPT_FILE = /\.[cm]?[jt]sx?$/u;
+
+const COMMENT = /\/\*[\s\S]*?\*\/|^[ \t]*\/\/[^\n]*/gmu;
+const NON_NEWLINE = /[^\n]/gu;
+
+function blankComments(text: string): string {
+  return text.replaceAll(COMMENT, (match) => match.replaceAll(NON_NEWLINE, ' '));
+}
 
 type VisitedFile = { readonly contents: string; readonly imports: readonly string[] };
 type Visit = (relativePath: string) => VisitedFile;
