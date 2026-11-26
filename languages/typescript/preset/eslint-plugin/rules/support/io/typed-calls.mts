@@ -221,6 +221,9 @@ export function resolveCall(state: ImplementationState, call: TsCall): Resolved 
 }
 
 function containerName(declaration: TypeScript.Declaration): string | undefined {
+  if (ts.isSourceFile(declaration)) {
+    return undefined;
+  }
   const container = declaration.parent;
   const named = ts.isClassLike(container) || ts.isInterfaceDeclaration(container);
   return named ? container.name?.text : undefined;

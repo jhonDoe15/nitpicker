@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
-import { PLACED, type Placed } from './spotbugs-placed.mts';
+import { PLACED, placesByArguments, type Placed } from './spotbugs-placed.mts';
 
 export type EngineSpotbugsFinding = {
   readonly file: string;
@@ -116,18 +116,6 @@ function withoutPackage(qualified: string, owner: string): string {
   return local === '' ? qualified : qualified.slice(local.length + 1);
 }
 
-const LANG = 'java.lang.';
-
-function shownClass(declaring: string, owner: string): string {
-  const simple = declaring.slice(LANG.length);
-  if (declaring.startsWith(LANG) && !simple.includes('.')) {
-    return simple;
-  }
-  return packageOf(declaring) === packageOf(owner)
-    ? withoutPackage(declaring, declaring)
-    : declaring;
-}
-
 function ownerOf(kind: string, qualified: string): string {
   if (kind === 'type') {
     return qualified;
@@ -158,7 +146,7 @@ function placedNameOf(
   placed: Placed,
   [kind, qualified, owner]: readonly [string, string, string],
 ): string {
-  if (placed.byArguments === true) {
+  if (placesByArguments(placed)) {
     return finding.arguments?.[1] ?? qualified;
   }
   return placed.classNamed?.includes(finding.priority ?? 0)
@@ -174,12 +162,10 @@ function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): Spotbug
     throw new Error(`the engine wrote a ${finding.rule} finding nitpicker cannot place: ${place}`);
   }
   const kind = place.slice(0, colon);
-  const [qualified = '', declaring] = place.slice(colon + 1).split('@');
+  const [qualified = '', written] = place.slice(colon + 1).split('|');
   const owner = ownerOf(kind, qualified);
-  const method = placed.inMethodArgument === true ? finding.arguments?.[0] : undefined;
-  const byArgument = placed.byArguments === true ? (finding.arguments?.[0] ?? owner) : owner;
-  const subject = method === undefined ? byArgument : classOf(method);
-  const directory = packageOf(subject).replaceAll('.', '/');
+  const subject = placesByArguments(placed) ? (finding.arguments?.[0] ?? owner) : owner;
+  const directory = (written ?? packageOf(subject)).replaceAll('.', '/');
   const file = path.basename(finding.file);
   return {
     ruleId: finding.rule,
@@ -193,10 +179,7 @@ function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): Spotbug
         },
         logicalLocations: [
           {
-            name:
-              declaring === undefined
-                ? placedNameOf(finding, placed, [kind, qualified, owner])
-                : `${shownClass(declaring, owner)}.${qualified.slice(qualified.lastIndexOf('.') + 1)}`,
+            name: placedNameOf(finding, placed, [kind, qualified, owner]),
             kind,
             fullyQualifiedName: qualified,
           },

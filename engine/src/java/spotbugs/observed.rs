@@ -79,7 +79,7 @@ fn caught(context: &Context, usage: Node, name: &str) -> bool {
 }
 
 /// Whether a name is a parameter declared with a type variable: SpotBugs reads its type from the generic signature.
-pub fn generic_parameter(context: &Context, usage: Node, name: &str) -> bool {
+fn generic_parameter(context: &Context, usage: Node, name: &str) -> bool {
     let Some(method) = ancestor(usage, &["method_declaration", "constructor_declaration"]) else { return false };
     let Some(parameters) = method.child_by_field_name("parameters") else { return false };
     let Some(written) = children(parameters)

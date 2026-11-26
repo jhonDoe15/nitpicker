@@ -12,6 +12,7 @@
 //!   once is MS_SHOULD_BE_REFACTORED_TO_BE_FINAL; the rest are MS_SHOULD_BE_FINAL, priority 1 for a non-array
 //!   object, else 2. They sit on the first store of the static initializer, or on no line.
 use super::super::order::Visits;
+use super::Phase;
 use super::{Notes, Write, initializes, sets_inside};
 use crate::engine::finding::Finding;
 use crate::java::types::index::TypeIndex;
@@ -53,10 +54,13 @@ fn field<'i>(index: &'i TypeIndex, key: &Key) -> Option<(&'i ClassInfo, &'i Fiel
     Some((info, info.fields.iter().find(|field| field.name == key.1)?))
 }
 
-fn finding(rule: &str, message: String, at: Result<&Write, &String>, place: String, priority: u8, argument: String) -> Finding {
-    let (file, line) = match at {
-        Ok(write) => (write.file.clone(), write.line),
-        Err(declared) => (declared.clone(), 0),
+/// A finding on a load or store, else on no line of the file that declares the field. A load or store in a file of
+/// another package adds that package to the place after a `|`.
+fn finding(rule: &str, message: String, at: Result<&Write, &String>, place: String, priority: u8, argument: String, package: &str) -> Finding {
+    let (file, line, place) = match at {
+        Ok(write) if write.package != package => (write.file.clone(), write.line, format!("{place}|{}", write.package)),
+        Ok(write) => (write.file.clone(), write.line, place),
+        Err(declared) => (declared.clone(), 0, place),
     };
     Finding { file, line, column: 1, rule: rule.to_string(), message, symbol: Some(place), priority: Some(priority), arguments: Some(vec![argument]) }
 }
@@ -107,20 +111,25 @@ impl Attributes {
             let place = format!("member:{name}");
             let is = |bit: u32| declared.flags & bit != 0;
             let rule = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE";
-            if !off.contains(&rule) && plain_class(info) && is(flag::PUBLIC) && !is(flag::FINAL) && stores.iter().any(sets_inside) {
+            let mut first_of = |accesses: &mut dyn Iterator<Item = &Write>| {
                 let visits = ranked.get_or_insert_with(|| (visits.take().expect("visits once"))());
                 let rank = |write: &Write| (visits.rank(&write.by).unwrap_or((true, u32::MAX)), write.order, write.file.clone());
-                let first = stores.iter().min_by_key(|write| rank(write)).ok_or(declared_in);
+                accesses.min_by_key(|write| rank(write)).cloned()
+            };
+            if !off.contains(&rule) && plain_class(info) && is(flag::PUBLIC) && !is(flag::FINAL) && stores.iter().any(sets_inside) {
+                let first = first_of(&mut stores.iter());
+                let first = first.as_ref().ok_or(declared_in);
                 let message = format!("Primitive field {name} is public and set from inside the class, which makes it too exposed. Consider making it private to limit external accessibility.");
-                out.push(finding(rule, message, first, place.clone(), 2, name.clone()));
+                out.push(finding(rule, message, first, place.clone(), 2, name.clone(), &info.package));
             }
             if let Some((rule, priority)) = mutable_static(index, info, declared, stores).filter(|(rule, _)| !off.contains(rule)) {
-                let first = stores.iter().filter(|write| initializes(write)).min_by_key(|write| write.order).ok_or(declared_in);
+                let first = first_of(&mut stores.iter().filter(|write| write.order.0 == Phase::StaticInit));
+                let first = first.as_ref().ok_or(declared_in);
                 let message = match rule {
                     "MS_SHOULD_BE_FINAL" => format!("{name} isn't final but should be"),
                     _ => format!("{name} should be package protected"),
                 };
-                out.push(finding(rule, message, first, place, priority, name));
+                out.push(finding(rule, message, first, place, priority, name, &info.package));
             }
         }
     }

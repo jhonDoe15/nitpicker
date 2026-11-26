@@ -98,7 +98,8 @@ pub fn build<'t>(file: &SourceFile, body: Node<'t>, guards: &dyn Fn(Node) -> boo
     build_with(file, body, guards, false)
 }
 
-/// The same graph; with `assertions`, the test of an `assert` is run before the statement's own step.
+/// The same graph; with `assertions`, the test of an `assert` is run before the statement's own step, and where
+/// it fails its message is made and the statement ends the method as a `throw` would.
 pub fn build_with<'t>(file: &SourceFile, body: Node<'t>, guards: &dyn Fn(Node) -> bool, assertions: bool) -> Cfg<'t> {
     let mut builder = Builder {
         file,
@@ -520,10 +521,19 @@ impl<'t> Builder<'t, '_> {
             // Assertions count as switched off unless asked for, as NullAway assumes by default: the test is never
             // run. The statement is still a step, for an analysis that wants to know a test was written there.
             "assert_statement" => {
-                if let Some(test) = node.named_child(0).filter(|_| self.assertions) {
-                    self.expression(test);
+                let Some(test) = node.named_child(0).filter(|_| self.assertions) else { return self.step(node) };
+                let (holds, fails, after) = (self.block(), self.block(), self.block());
+                self.test(test, holds, fails);
+                self.current = fails;
+                if let Some(message) = node.named_child(1) {
+                    self.expression(message);
                 }
                 self.step(node);
+                self.leave(Exit::End);
+                self.current = holds;
+                self.step(node);
+                self.jump(after);
+                self.current = after;
             }
             "explicit_constructor_invocation" => {
                 if let Some(arguments) = field("arguments") {

@@ -4,6 +4,7 @@ import { decoratorNames } from '../contracts/decorators.mts';
 import { packageOf } from '../contracts/infrastructure-types.mts';
 import { findInType } from '../contracts/type-walk.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
+import { compareText } from '../../../../../../shared/paths/path-order.mts';
 
 export type Entity = { readonly name: string; readonly orm: string };
 
@@ -150,5 +151,7 @@ function entityOf(checker: TypeScript.TypeChecker, type: TypeScript.Type): Entit
 }
 
 export function entitiesIn(checker: TypeScript.TypeChecker, type: TypeScript.Type): Entity[] {
-  return findInType(checker, type, (candidate) => entityOf(checker, candidate));
+  return findInType(checker, type, (candidate) => entityOf(checker, candidate)).toSorted(
+    (left, right) => compareText(left.name, right.name) || compareText(left.orm, right.orm),
+  );
 }

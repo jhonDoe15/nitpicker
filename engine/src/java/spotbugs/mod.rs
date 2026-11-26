@@ -3,7 +3,6 @@
 mod attributes;
 mod calls;
 mod classes;
-mod compare;
 mod constructors;
 mod equality;
 mod expose;
@@ -11,8 +10,10 @@ mod fields;
 mod handlers;
 mod held;
 mod flow;
+mod folds;
 mod known;
 mod lombok;
+mod methods;
 mod mutable;
 mod names;
 mod nulls;
@@ -150,6 +151,19 @@ impl<'a> Context<'a> {
         }
         false
     }
+    /// Whether a method of the class around a field declaration, or of a class around that one, carries
+    /// `@SuppressFBWarnings` naming the pattern: SpotBugs lets it cover the patterns it reports on fields there.
+    pub fn suppressed_by_methods(&self, pattern: &str, declaration: Node) -> bool {
+        let mut current = parent(declaration);
+        while let Some(at) = current {
+            let body = matches!(at.kind(), "class_body" | "enum_body" | "enum_body_declarations" | "interface_body");
+            if body && children(at).into_iter().any(|member| member.kind() == "method_declaration" && self.suppresses(member, pattern)) {
+                return true;
+            }
+            current = parent(at);
+        }
+        false
+    }
     fn suppresses(&self, declaration: Node, pattern: &str) -> bool {
         let Some(modifiers) = crate::java::helpers::modifiers(declaration) else { return false };
         children(modifiers).into_iter().any(|annotation| {
@@ -199,6 +213,7 @@ const DETECTORS: &[Detector] = &[
     constructors::constructor_throw as Detector,
     statements::statements as Detector,
     classes::class_shape as Detector,
+    methods::method_patterns as Detector,
     attributes::should_be_static as Detector,
 ];
 
@@ -230,7 +245,6 @@ impl FileRule for SpotBugs {
                 detector(&context, *node);
             }
         }
-        compare::ref_comparisons(&context);
         nulls::null_dereference(&context, &declared);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
         if context.wants(attributes::PATTERNS) {

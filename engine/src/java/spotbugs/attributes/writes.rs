@@ -7,6 +7,7 @@ use super::super::classes::lines;
 use crate::engine::source::{children, parent};
 use crate::java::helpers::has_modifier;
 use crate::java::types::scope::enclosing_types;
+use std::collections::HashMap;
 use tree_sitter::Node;
 
 const BODIES: &[&str] = &["class_body", "interface_body", "enum_body", "enum_body_declarations", "annotation_type_body"];
@@ -41,8 +42,23 @@ fn delegating(constructor: Node) -> bool {
     constructor.kind() == "constructor_declaration" && lines::delegates(constructor)
 }
 
+/// For each class body met so far, where its constructors start and the place of the first one that does not
+/// start with `this(...)`.
+pub type Constructors = HashMap<usize, (Vec<usize>, usize)>;
+
+fn constructors<'c>(body: Node, known: &'c mut Constructors) -> &'c (Vec<usize>, usize) {
+    known.entry(body.id()).or_insert_with(|| {
+        let all: Vec<Node> = super::super::place::members(body)
+            .into_iter()
+            .filter(|part| matches!(part.kind(), "constructor_declaration" | "compact_constructor_declaration"))
+            .collect();
+        let first = all.iter().position(|constructor| !delegating(*constructor)).unwrap_or(0);
+        (all.iter().map(|constructor| constructor.id()).collect(), first)
+    })
+}
+
 /// The order of a store in its class.
-pub fn order(node: Node) -> Option<Order> {
+pub fn order(node: Node, known: &mut Constructors) -> Option<Order> {
     let (member, lambda) = member_of(node)?;
     let at = node.start_byte();
     if lambda {
@@ -50,22 +66,15 @@ pub fn order(node: Node) -> Option<Order> {
     }
     let body = parent(member)?;
     let body = if body.kind() == "enum_body_declarations" { parent(body)? } else { body };
-    let constructors: Vec<Node> = super::super::place::members(body)
-        .into_iter()
-        .filter(|part| matches!(part.kind(), "constructor_declaration" | "compact_constructor_declaration"))
-        .collect();
     let in_interface = body.kind() == "interface_body";
     Some(match member.kind() {
         "constructor_declaration" | "compact_constructor_declaration" => {
-            let place = constructors.iter().position(|constructor| constructor.id() == member.id()).unwrap_or(0);
+            let place = constructors(body, known).0.iter().position(|id| *id == member.id()).unwrap_or(0);
             (Phase::Construct, place, 1, at)
         }
         "field_declaration" | "constant_declaration" if in_interface || has_modifier(member, "static") || member.kind() == "constant_declaration" => (Phase::StaticInit, 0, 0, at),
         "static_initializer" | "enum_constant" => (Phase::StaticInit, 0, 0, at),
-        "field_declaration" | "block" => {
-            let first = constructors.iter().position(|constructor| !delegating(*constructor)).unwrap_or(0);
-            (Phase::Construct, first, 0, at)
-        }
+        "field_declaration" | "block" => (Phase::Construct, constructors(body, known).1, 0, at),
         _ => (Phase::Method, 0, 0, at),
     })
 }
@@ -83,13 +92,22 @@ pub fn writer(context: &Context, node: Node) -> Option<String> {
     enclosing_types(context.resolver.scope, node).into_iter().next()
 }
 
+/// Whether a node is a statement of its own: a `switch` written as a statement, `this(...)` or `super(...)`, an
+/// enum constant, or a node whose kind says so.
+fn statement(node: Node, above: Node) -> bool {
+    let switch = node.kind() == "switch_expression" && matches!(above.kind(), "block" | "constructor_body" | "switch_block_statement_group" | "switch_rule");
+    switch
+        || matches!(node.kind(), "variable_declarator" | "local_variable_declaration" | "explicit_constructor_invocation" | "enum_constant")
+        || node.kind().ends_with("_statement")
+}
+
 /// The code that holds a field access and starts a line entry of its own: a statement, a lambda's body or a field
 /// initializer.
 fn scope_of(node: Node) -> Node {
     let mut current = node;
     while let Some(above) = parent(current) {
         let lambda_body = above.kind() == "lambda_expression" && above.child_by_field_name("body").is_some_and(|body| body.id() == current.id());
-        if lambda_body || current.kind() == "variable_declarator" || current.kind().ends_with("_statement") || current.kind() == "local_variable_declaration" {
+        if lambda_body || statement(current, above) {
             return current;
         }
         current = above;

@@ -1,0 +1,1 @@
+export function render(): Response { return new Response("ok"); }

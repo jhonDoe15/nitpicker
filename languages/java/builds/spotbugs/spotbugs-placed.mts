@@ -2,9 +2,12 @@ export type Placed = {
   readonly text: string;
   readonly levels: Readonly<Record<number, string>>;
   readonly classNamed?: readonly number[];
-  readonly byArguments?: boolean;
-  readonly inMethodArgument?: boolean;
+  readonly placement?: 'arguments';
 };
+
+export function placesByArguments(placed: Placed): boolean {
+  return placed.placement === 'arguments';
+}
 
 const ERROR = 'error';
 const WARNING = 'warning';
@@ -88,7 +91,7 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   EQ_DOESNT_OVERRIDE_EQUALS: {
     text: "Class doesn't override equals in superclass",
     levels: { 2: 'note' },
-    byArguments: true,
+    placement: 'arguments',
   },
   EQ_COMPARETO_USE_OBJECT_EQUALS: {
     text: 'Class defines compareTo(...) and uses Object.equals()',
@@ -97,6 +100,14 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS: {
     text: 'Equals method should not assume anything about the type of its argument',
     levels: { 2: 'note' },
+  },
+  NP_BOOLEAN_RETURN_NULL: {
+    text: 'Method with Boolean return type returns explicit null',
+    levels: { 1: 'warning', 2: 'warning' },
+  },
+  NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT: {
+    text: 'equals() method does not check for null argument',
+    levels: { 1: 'error', 2: 'warning' },
   },
   PA_PUBLIC_PRIMITIVE_ATTRIBUTE: {
     text: 'Primitive field is public',
@@ -113,10 +124,5 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   SS_SHOULD_BE_STATIC: {
     text: 'Unread field: should this field be static?',
     levels: { 2: NOTE },
-  },
-  RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN: {
-    text: 'Suspicious reference comparison of Boolean values',
-    levels: { 2: NOTE },
-    inMethodArgument: true,
   },
 };

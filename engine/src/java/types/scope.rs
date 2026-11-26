@@ -169,6 +169,9 @@ pub struct Memory {
     mapping: HashMap<usize, u8>,
 }
 
+/// The annotations SpotBugs reads as `@CheckForNull`; others of that simple name mean nothing to it.
+pub const CHECK_FOR_NULL_NAMES: &[&str] = &["javax.annotation.CheckForNull", "edu.umd.cs.findbugs.annotations.CheckForNull"];
+
 impl<'a> Resolver<'a> {
     /// A resolver that starts from what an earlier resolver of the same file and tree worked out.
     pub fn remembering(index: &'a TypeIndex, file: &'a SourceFile, scope: &'a FileScope, memory: Memory) -> Resolver<'a> {
@@ -626,12 +629,12 @@ impl<'a> Resolver<'a> {
         super::model::Detail { access, annotations: self.annotation_names(member), parameter_annotations, marked: String::new(), nullable_types: Vec::new() }
     }
 
-    /// The bits the annotations of a declaration give.
-    /// Whether a declaration carries `@CheckForNull` or an annotation that is itself annotated with it.
+    /// Whether a declaration carries `@CheckForNull` (JSR-305 or SpotBugs) or an annotation that is itself annotated with it.
     pub fn check_for_null(&self, member: Node) -> bool {
         super::super::helpers::annotation_names(self.file, member).iter().filter(|name| name.contains("Null")).any(|name| {
-            name.rsplit('.').next() == Some("CheckForNull")
-                || self.class_name(member, name).and_then(|class| self.index.get(&class)).is_some_and(|class| class.flags & super::model::flag::CHECK_FOR_NULL != 0)
+            let full = self.class_name(member, name);
+            full.as_deref().is_some_and(|full| CHECK_FOR_NULL_NAMES.contains(&full))
+                || full.and_then(|class| self.index.get(&class)).is_some_and(|class| class.flags & super::model::flag::CHECK_FOR_NULL != 0)
         })
     }
 
@@ -673,7 +676,8 @@ impl<'a> Resolver<'a> {
         use super::model::flag;
         let has = super::super::helpers::has_modifier;
         let mut bits = self.marks(declaration) | self.retention(declaration);
-        if super::super::helpers::annotation_names(self.file, declaration).iter().any(|name| name.rsplit('.').next() == Some("CheckForNull")) {
+        let written = super::super::helpers::annotation_names(self.file, declaration);
+        if written.iter().any(|name| self.class_name(declaration, name).is_some_and(|full| CHECK_FOR_NULL_NAMES.contains(&full.as_str()))) {
             bits |= flag::CHECK_FOR_NULL;
         }
         for (word, bit) in [("final", flag::FINAL), ("public", flag::PUBLIC), ("protected", flag::PROTECTED), ("static", flag::STATIC), ("abstract", flag::ABSTRACT), ("sealed", flag::SEALED), ("private", flag::PRIVATE)] {

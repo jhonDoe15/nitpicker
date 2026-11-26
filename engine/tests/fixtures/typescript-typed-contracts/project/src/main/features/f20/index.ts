@@ -1,0 +1,2 @@
+import type { Prisma, PrismaClient } from '@prisma/client';
+export function createOrders(db: PrismaClient) { return { tx(): Prisma.TransactionClient { return db; }, list(): string[] { return []; } }; }

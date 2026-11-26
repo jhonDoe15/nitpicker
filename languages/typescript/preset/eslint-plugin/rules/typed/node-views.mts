@@ -197,3 +197,24 @@ export function nameText(node: TSESTree.Identifier | TSESTree.StringLiteral): st
 export function unwrapAwait(node: TSESTree.Node | undefined): TSESTree.Node | undefined {
   return node?.type === AST_NODE_TYPES.AwaitExpression ? node.argument : node;
 }
+
+export function valueIdentifiersIn(
+  root: TSESTree.Node,
+  children: (node: TSESTree.Node) => readonly TSESTree.Node[],
+): TSESTree.Identifier[] {
+  return [...depthFirst<TSESTree.Node>(root, children)].filter(
+    (node): node is TSESTree.Identifier =>
+      node.type === AST_NODE_TYPES.Identifier &&
+      !(
+        node.parent.type === AST_NODE_TYPES.MemberExpression &&
+        node.parent.property === node &&
+        !node.parent.computed
+      ),
+  );
+}
+
+export function blockTail(statement: TSESTree.Node): TSESTree.Node | undefined {
+  return chainOf<TSESTree.Node>(statement, (link) =>
+    link.type === AST_NODE_TYPES.BlockStatement ? link.body.at(-1) : undefined,
+  ).at(-1);
+}

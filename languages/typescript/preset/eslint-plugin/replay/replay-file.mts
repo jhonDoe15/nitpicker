@@ -1,6 +1,6 @@
 import { closeSync, openSync, writeSync } from 'node:fs';
 
-export const SET_KINDS = ['file', 'rule', 'typedFile', 'typedRule'] as const;
+const SET_KINDS = ['file', 'rule', 'typedFile', 'typedRule'] as const;
 export const FINDING_KIND = 'finding';
 
 export type SetKind = (typeof SET_KINDS)[number];

@@ -14,6 +14,7 @@ export type EngineRule = {
 type RuleProperty = { readonly type: string; readonly value: string };
 
 const XPATH_RULE = 'net.sourceforge.pmd.lang.rule.xpath.XPathRule';
+const UNUSED_SUPPRESSION_RULE = 'net.sourceforge.pmd.lang.rule.impl.UnnecessaryPmdSuppressionRule';
 const RULE_PACKAGE = 'net.sourceforge.pmd.lang.java.rule';
 const PORTED_RULES: ReadonlySet<string> = new Set(
   [
@@ -36,6 +37,7 @@ const PORTED_RULES: ReadonlySet<string> = new Set(
     'bestpractices.SimplifiableTestAssertionRule',
     'bestpractices.UnitTestShouldIncludeAssertRule',
     'bestpractices.UnnecessaryVarargsArrayCreationRule',
+    'bestpractices.UnusedAssignmentRule',
     'bestpractices.UnusedFormalParameterRule',
     'bestpractices.UnusedLocalVariableRule',
     'bestpractices.UnusedPrivateFieldRule',
@@ -54,10 +56,13 @@ const PORTED_RULES: ReadonlySet<string> = new Set(
     'errorprone.BrokenNullCheckRule',
     'errorprone.CheckSkipResultRule',
     'errorprone.CloneMethodMustImplementCloneableRule',
+    'errorprone.CloseResourceRule',
     'errorprone.ConfusingArgumentToVarargsMethodRule',
     'errorprone.ConstructorCallsOverridableMethodRule',
     'errorprone.DetachedTestCaseRule',
     'errorprone.IdempotentOperationsRule',
+    'errorprone.ImplicitSwitchFallThroughRule',
+    'errorprone.InvalidLogMessageFormatRule',
     'errorprone.JUnitSpellingRule',
     'errorprone.JUnitStaticSuiteRule',
     'errorprone.NonSerializableClassRule',
@@ -87,7 +92,9 @@ const PORTED_RULES: ReadonlySet<string> = new Set(
     'performance.UselessStringValueOfRule',
     'security.HardCodedCryptoKeyRule',
     'security.InsecureCryptoIvRule',
-  ].map((rule) => `${RULE_PACKAGE}.${rule}`),
+  ]
+    .map((rule) => `${RULE_PACKAGE}.${rule}`)
+    .concat(UNUSED_SUPPRESSION_RULE),
 );
 const QUERY = 'xpath';
 const SUPPRESS_QUERY = 'violationSuppressXPath';
@@ -155,6 +162,10 @@ export function ruleLevel(rule: ResolvedRule): 'error' | 'warning' | 'note' {
 
 function isPorted(rule: ResolvedRule): boolean {
   return PORTED_RULES.has(rule.definition.attrs['class'] ?? '');
+}
+
+export function needsWholeRun(rule: ResolvedRule): boolean {
+  return rule.definition.attrs['class'] === UNUSED_SUPPRESSION_RULE;
 }
 
 export function runsOnPmd(rule: ResolvedRule): boolean {

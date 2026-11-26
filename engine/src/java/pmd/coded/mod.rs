@@ -7,11 +7,14 @@ mod design;
 pub mod ctx;
 mod errorprone;
 mod exceptions;
+mod flow;
 mod frameworks;
 mod logging;
 mod loops;
 pub(crate) mod message;
 mod performance;
+mod resources;
+pub mod suppressions;
 mod text;
 mod unused;
 mod usages;
@@ -23,12 +26,17 @@ pub type Port = fn(&ctx::Ctx, &mut Vec<ctx::Hit>);
 const PACKAGE: &str = "net.sourceforge.pmd.lang.java.rule.";
 
 pub fn port(class: &str) -> Option<Port> {
+    if class == suppressions::CLASS {
+        return Some(suppressions::placeholder);
+    }
     let short = class.strip_prefix(PACKAGE)?;
     let (category, name) = short.split_once('.')?;
     if let Some(found) = text::port(name).or_else(|| unused::port(name)).or_else(|| exceptions::port(name))
         .or_else(|| checks::port(name))
         .or_else(|| loops::port(name))
-        .or_else(|| logging::port(name)) {
+        .or_else(|| logging::port(name))
+        .or_else(|| flow::port(name))
+        .or_else(|| resources::port(name)) {
         return Some(found);
     }
     match category {

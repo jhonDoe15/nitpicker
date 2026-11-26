@@ -296,12 +296,16 @@ impl<'a> Resolver<'a> {
             let named = |holder: Node| holder.field("name").is_some_and(|n| self.file.text_of(n) == name);
             match node.kind() {
                 "block" | "constructor_body" | "switch_block_statement_group" | "program" => {
-                    let declared = self.locals_of(node);
-                    let found = declared.iter().find(|local| local.0 == name).filter(|local| local.1 < inner.start_byte());
-                    if let Some((_, _, statement, declarator)) = found {
-                        let statement = node.child(*statement)?;
-                        let declarator = statement.child(*declarator)?;
-                        return Some(Binding::Local(typed(statement, Some(declarator))));
+                    let earlier = std::iter::successors(node.prev_named_sibling(), |group| group.prev_named_sibling())
+                        .take_while(|group| node.kind() == "switch_block_statement_group" && group.kind() == node.kind());
+                    for holder in std::iter::once(node).chain(earlier) {
+                        let declared = self.locals_of(holder);
+                        let found = declared.iter().find(|local| local.0 == name).filter(|local| local.1 < inner.start_byte());
+                        if let Some((_, _, statement, declarator)) = found {
+                            let statement = holder.child(*statement)?;
+                            let declarator = statement.child(*declarator)?;
+                            return Some(Binding::Local(typed(statement, Some(declarator))));
+                        }
                     }
                 }
                 "for_statement" => {
@@ -1510,7 +1514,7 @@ impl<'a> Resolver<'a> {
         self.target(lambda, true)
     }
 
-    fn returned_type(&self, at: Node) -> Option<Type> {
+    pub fn returned_type(&self, at: Node) -> Option<Type> {
         let scope = crate::engine::source::ancestor(at, &["lambda_expression", "method_declaration", "class_body"])?;
         match scope.kind() {
             "method_declaration" => {
