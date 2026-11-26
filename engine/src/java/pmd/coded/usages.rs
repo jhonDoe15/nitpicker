@@ -1,6 +1,7 @@
 //! Which declaration each variable name of a file stands for, as PMD's usage resolution finds it: every
 //! `VariableAccess`, and every `FieldAccess` on a plain `this`, tied to the `VariableId` it reads or writes.
 use super::ctx::Ctx;
+use crate::java::types::model::{ClassInfo, Field, flag};
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -168,8 +169,14 @@ impl Walk<'_, '_, '_, '_> {
             }
             "VariableAccess" => {
                 let name = ctx.text(id, "Name");
-                if let Some((_, variable)) = self.names.iter().rev().find(|(known, _)| *known == name) {
-                    self.bind(id, *variable);
+                let found = self
+                    .names
+                    .iter()
+                    .rev()
+                    .find(|(known, _)| *known == name)
+                    .map(|(_, at)| *at);
+                if let Some(variable) = found.filter(|variable| !self.inherited_between(id, *variable, &name)) {
+                    self.bind(id, variable);
                 }
                 self.kids(id);
             }
@@ -191,6 +198,55 @@ impl Walk<'_, '_, '_, '_> {
             }
             _ => self.kids(id),
         }
+    }
+
+    /// Whether a type body between an access and the variable it seems to name inherits a field of that name,
+    /// which the access then names instead.
+    fn inherited_between(&self, access: u32, variable: u32, name: &str) -> bool {
+        let ctx = self.ctx;
+        let holders: Vec<u32> = ctx.ancestors(variable).collect();
+        for body in ctx.ancestors(access).take_while(|at| !holders.contains(at)) {
+            let Some(owner) = ctx.parent(body).filter(|_| ctx.is(body, "ClassBody")) else {
+                continue;
+            };
+            let supertypes: Vec<u32> = match ctx.name(owner) {
+                "AnonymousClassDeclaration" => ctx.parent(owner).into_iter().collect(),
+                "ClassDeclaration" => ["ExtendsList", "ImplementsList"]
+                    .iter()
+                    .filter_map(|list| ctx.kid(owner, list))
+                    .flat_map(|list| ctx.kids(list).to_vec())
+                    .collect(),
+                _ => Vec::new(),
+            };
+            let resolver = ctx.machine.resolver;
+            let top = ctx
+                .ancestors(access)
+                .filter(|at| super::ctx::TYPE_DECLARATIONS.contains(&ctx.name(*at)))
+                .last()
+                .map(|at| match resolver.scope.package.as_str() {
+                    "" => ctx.text(at, "SimpleName"),
+                    package => format!("{package}.{}", ctx.text(at, "SimpleName")),
+                });
+            let visible = |(info, field): (&ClassInfo, &Field)| {
+                let open = info.is_interface || field.flags & (flag::PUBLIC | flag::PROTECTED) != 0;
+                let within = top.as_ref().is_some_and(|top| {
+                    info.name == *top
+                        || info
+                            .name
+                            .strip_prefix(top.as_str())
+                            .is_some_and(|rest| rest.starts_with('.'))
+                });
+                within || (!field.is_private && (open || info.package == resolver.scope.package))
+            };
+            if supertypes.iter().any(|written| {
+                ctx.type_of(*written)
+                    .and_then(|kind| resolver.index.field(&kind.erased().name(), name))
+                    .is_some_and(visible)
+            }) {
+                return true;
+            }
+        }
+        false
     }
 
     /// Whether a statement cannot complete normally, as far as a pattern variable of an `if` before it needs.

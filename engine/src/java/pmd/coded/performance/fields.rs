@@ -1,80 +1,10 @@
 //! Rules about what fields and constructor arguments are initialized with.
+use super::fold::{Thrown, fold};
 use crate::java::pmd::coded::ctx::{Ctx, Hit};
 use crate::java::pmd::coded::hit;
 
-enum Constant {
-    Number(f64),
-    Char(u32),
-}
-
-fn constant(ctx: &Ctx, id: u32) -> Option<Constant> {
-    match ctx.name(id) {
-        "NumericLiteral" => match ctx.attribute(id, "ValueAsDouble") {
-            Some(crate::java::pmd::tree::Value::Real(value)) => Some(Constant::Number(value)),
-            _ => None,
-        },
-        "CharLiteral" => char_value(&ctx.text(id, "Image")).map(Constant::Char),
-        "UnaryExpression" => {
-            let inner = constant(ctx, ctx.nth(id, 0)?)?;
-            let value = match inner {
-                Constant::Number(value) => value,
-                Constant::Char(value) => f64::from(value),
-            };
-            match ctx.text(id, "Operator").as_str() {
-                "-" => Some(Constant::Number(-value)),
-                "+" => Some(Constant::Number(value)),
-                _ => None,
-            }
-        }
-        "CastExpression" => {
-            let kind = ctx.text(ctx.nth(id, 0)?, "Kind");
-            let value = match constant(ctx, ctx.nth(id, 1)?)? {
-                Constant::Number(value) => value,
-                Constant::Char(value) => f64::from(value),
-            };
-            match kind.as_str() {
-                "char" => Some(Constant::Char(value as u32)),
-                "double" | "float" => Some(Constant::Number(value)),
-                "" | "boolean" => None,
-                _ => Some(Constant::Number(value.trunc())),
-            }
-        }
-        "InfixExpression" => {
-            let number = |kid: Option<u32>| match constant(ctx, kid?)? {
-                Constant::Number(value) => Some((value, whole(ctx, kid?))),
-                Constant::Char(value) => Some((f64::from(value), true)),
-            };
-            let ((left, whole_left), (right, whole_right)) = (number(ctx.nth(id, 0))?, number(ctx.nth(id, 1))?);
-            let integral = whole_left && whole_right;
-            let value = match ctx.text(id, "Operator").as_str() {
-                "+" => left + right,
-                "-" => left - right,
-                "*" => left * right,
-                "/" if integral && right != 0.0 => (left / right).trunc(),
-                "/" => left / right,
-                "%" => left % right,
-                _ => return None,
-            };
-            Some(Constant::Number(value))
-        }
-        _ => None,
-    }
-}
-
-/// Whether an expression of numbers has a whole number type.
-fn whole(ctx: &Ctx, id: u32) -> bool {
-    match ctx.name(id) {
-        "NumericLiteral" => ctx.flag(id, "IntLiteral") || ctx.flag(id, "LongLiteral"),
-        "CharLiteral" => true,
-        "CastExpression" => ctx
-            .nth(id, 0)
-            .is_some_and(|kind| !matches!(ctx.text(kind, "Kind").as_str(), "double" | "float")),
-        _ => ctx.kids(id).iter().all(|kid| whole(ctx, *kid)),
-    }
-}
-
 /// The value of a character literal from its image, where unicode escapes are already replaced.
-fn char_value(image: &str) -> Option<u32> {
+pub fn char_value(image: &str) -> Option<u32> {
     let inner = image.strip_prefix('\'')?.strip_suffix('\'')?;
     let Some(escape) = inner.strip_prefix('\\') else {
         return inner.chars().next().map(|value| value as u32);
@@ -91,16 +21,12 @@ fn char_value(image: &str) -> Option<u32> {
     })
 }
 
-fn default_value(ctx: &Ctx, primitive: Option<&str>, value: u32) -> bool {
-    match primitive {
+fn default_value(ctx: &Ctx, primitive: Option<&str>, value: u32) -> Result<bool, Thrown> {
+    Ok(match primitive {
         Some("boolean") => ctx.is(value, "BooleanLiteral") && !ctx.flag(value, "True"),
-        Some(_) => match constant(ctx, value) {
-            Some(Constant::Number(number)) => number == 0.0,
-            Some(Constant::Char(code)) => code == 0,
-            None => false,
-        },
+        Some(_) => fold(ctx, value)?.is_some_and(|constant| constant.is_zero()),
         None => ctx.is(value, "NullLiteral"),
-    }
+    })
 }
 
 pub fn redundant_field_initializer(ctx: &Ctx, out: &mut Vec<Hit>) {
@@ -136,8 +62,10 @@ pub fn redundant_field_initializer(ctx: &Ctx, out: &mut Vec<Hit>) {
             let primitive = primitive
                 .as_deref()
                 .filter(|_| ctx.kid(variable, "ArrayDimensions").is_none());
-            if default_value(ctx, primitive, value) {
-                out.push(hit(variable));
+            match default_value(ctx, primitive, value) {
+                Ok(true) => out.push(hit(variable)),
+                Ok(false) => {}
+                Err(Thrown) => break,
             }
         }
     }

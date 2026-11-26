@@ -1,5 +1,6 @@
 //! Ports of PMD's performance and security rules written in Java.
 mod fields;
+mod fold;
 mod strings;
 
 use super::Port;

@@ -151,10 +151,12 @@ impl<'m, 'a, 't> Ctx<'m, 'a, 't> {
     /// The class that declares the method or constructor a call resolves to.
     pub fn declaring(&self, call: u32) -> Option<String> {
         let source = self.tree.nodes[call as usize].source?;
-        self.machine
+        let resolved = self
+            .machine
             .resolver
             .call_formals(source)
-            .map(|(call, _)| call.declaring)
+            .map(|(call, _)| call.declaring);
+        resolved.or_else(|| self.loose_call(call).map(|(declaring, _)| declaring))
     }
 
     /// Whether a variable access or field access names a variable the type model knows.

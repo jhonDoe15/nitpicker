@@ -112,3 +112,23 @@ class Singleton {
         return instance;
     }
 }
+
+class Folded {
+    int shifted = 0 << 2;
+    int complement = ~(-1);
+    int masked = 0 & 5;
+    int halved = 1 >> 1;
+    int chosen = true ? 0 : 1;
+    int wrapped = 65536 * 65536;
+    int doubled = 0x80000000 * 2;
+    long squared = 4294967296L * 4294967296L;
+    char narrowed = (char) 65536;
+    short cut = (short) 65536;
+    byte small = (byte) 256;
+    int sum = (byte) 0xFF + 1 - 0;
+    float tiny = 1e-50f;
+    int picked = 'a' - 97 > 0 ? 'a' : 0;
+    double widened = 0.1f - 0.1;
+    int broken = 1 / 0, after = 0;
+    int next = 0;
+}

@@ -1,5 +1,6 @@
-//! How PMD tells test classes and test methods of JUnit 3, 4, 5 and TestNG apart.
+//! How PMD tells test classes and test methods apart, and what it still knows of a call it cannot pin down.
 use super::ctx::Ctx;
+use crate::java::types::model::Type;
 
 const JUNIT5_TESTS: &[&str] = &[
     "org.junit.jupiter.api.Test",
@@ -65,5 +66,35 @@ impl Ctx<'_, '_, '_> {
 
     pub fn is_test_method(&self, method: u32) -> bool {
         self.is_junit_method(method) || self.annotation_present(method, "org.testng.annotations.Test")
+    }
+
+    /// The type of an expression, where a call whose arguments leave the overload open still has the class and
+    /// result that every candidate shares, as PMD keeps them.
+    pub fn loose_type(&self, id: u32) -> Option<Type> {
+        self.type_of(id)
+            .or_else(|| self.loose_call(id).and_then(|(_, returns)| returns))
+    }
+
+    pub(super) fn loose_call(&self, call: u32) -> Option<(String, Option<Type>)> {
+        let on = self.qualifier(call).filter(|_| self.is(call, "MethodCall"))?;
+        let owner = self.loose_type(on)?.erased().name();
+        let arity = self.arguments(call).len();
+        let resolver = self.machine.resolver;
+        let (index, package) = (resolver.index, &resolver.scope.package);
+        let candidates: Vec<_> = index
+            .methods(&owner, &self.method_name(call))
+            .into_iter()
+            .filter(|(class, method)| !method.package_private || class.package == *package)
+            .filter(|(_, method)| {
+                method.parameters.len() == arity || (method.varargs && arity + 1 >= method.parameters.len())
+            })
+            .collect();
+        let (first, _) = candidates.first()?;
+        if candidates.iter().any(|(class, _)| class.name != first.name) {
+            return None;
+        }
+        let returns = candidates[0].1.returns.clone();
+        let shared = candidates.iter().all(|(_, method)| method.returns == returns);
+        Some((first.name.clone(), shared.then_some(returns)))
     }
 }

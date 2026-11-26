@@ -37,3 +37,52 @@ class Lonely {
     static Lonely getInstance() { return inst; }
     void x() { class Q { static Lonely getInstance() { return null; } } }
 }
+
+class Shadowed {
+    void m(int modCount) {
+        new java.util.ArrayList<String>() {
+            void f() {
+                modCount = 1;
+            }
+        };
+    }
+
+    void n(int kept) {
+        new Object() {
+            void f() {
+                kept = 1;
+            }
+        };
+    }
+
+    String unresolved(StringBuilder sb, String s) {
+        sb.append(unknown).append("a");
+        sb.append(unknown).append('a').append("b");
+        return String.valueOf(unknown) + s + String.valueOf(unknownCall());
+    }
+}
+
+class Hiding {
+    private int hidden;
+    int shown;
+
+    static void use(int hidden, int shown) {
+        new Hiding() {
+            void f() {
+                hidden = 1;
+                shown = 1;
+            }
+        };
+    }
+}
+
+class Outside {
+    static void use(int hidden, int shown) {
+        new Hiding() {
+            void f() {
+                hidden = 1;
+                shown = 1;
+            }
+        };
+    }
+}
