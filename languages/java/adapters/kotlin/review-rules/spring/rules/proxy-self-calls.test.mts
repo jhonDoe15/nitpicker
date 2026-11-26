@@ -12,6 +12,7 @@ const IMPORTS = [
   'org.springframework.transaction.annotation.Transactional',
   'org.springframework.transaction.annotation.Propagation',
   'org.springframework.scheduling.annotation.Async',
+  'org.springframework.transaction.event.TransactionalEventListener',
 ].map((path) => ({ path, all: false }));
 
 function transactional(...args: Loose[]): Loose {
@@ -162,5 +163,47 @@ describe('SpringProxySelfCall in Kotlin for a call that would only join the tran
         target: { name: 'Async', type: 'Async', arguments: [] },
       }),
     ).toEqual([11]);
+  });
+});
+
+describe('SpringNoRequiresNew in Kotlin', () => {
+  function requiresNewLines(extra: Loose[]): number[] {
+    const entries = [transactional(arg('propagation', 'Propagation.REQUIRES_NEW')), ...extra];
+    const facts = file({
+      imports: IMPORTS,
+      classes: [klass('Ledger', { annotations: [] })],
+      functions: [member('record', 10, undefined, { annotationEntries: entries })],
+      scopes: [
+        { id: 0, k: 'class', name: 'Ledger', qualified: 'Ledger' },
+        { id: 1, parent: 0, k: 'fun', name: 'record', line: 10 },
+      ],
+      invocations: [],
+      locals: [],
+      catches: [],
+      literals: [],
+      nullReturns: [],
+      exceptionUses: [],
+      throws: [],
+    });
+    return springFindings([facts], {
+      finding: findingFactory(),
+      manifest: { spring: true },
+      projectFiles: [facts],
+      projectRoot: '/missing',
+      javaRoots: [],
+    })
+      .filter(({ rule }) => rule === 'SpringNoRequiresNew')
+      .map(({ location }) => location.line);
+  }
+
+  it('reports REQUIRES_NEW and leaves it alone on a @TransactionalEventListener', () => {
+    const listener = {
+      name: 'TransactionalEventListener',
+      type: 'TransactionalEventListener',
+      arguments: [],
+    };
+
+    expect(requiresNewLines([])).toEqual([10]);
+    expect(requiresNewLines([listener])).toEqual([]);
   });
 });

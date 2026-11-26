@@ -110,6 +110,11 @@ fn rare_built_in_rules_and_switch_facts_match_pmd() {
 }
 
 #[test]
+fn concurrency_and_value_rules_report_what_pmd_reports() {
+    same_as_pmd("values", "all");
+}
+
+#[test]
 fn error_prone_checks_report_what_error_prone_reports() {
     let (found, expected) = rows_of("errorprone", "_ErrorProne", "all");
     let found: BTreeMap<Row, _> = found.into_iter().filter(|(row, _)| row.1 != "NullAway").collect();
@@ -280,4 +285,51 @@ fn null_away_reports_what_null_away_reports() {
     let extra: Vec<&Told> = found.difference(&expected).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
     assert_eq!(expected.len(), 119);
+}
+
+#[test]
+fn ported_rules_report_what_pmd_reports_with_its_messages() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
+    let source = root.join("fixtures").join("coded");
+    let out = std::env::temp_dir().join(format!("nitpicker-engine-coded-{}.json", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
+        .arg(&source)
+        .args(["--rules", "_XPath", "--out"])
+        .arg(&out)
+        .env("NP_XPATH_RULES", root.join("rules").join("coded.json"))
+        .status()
+        .expect("engine runs");
+    assert!(status.success());
+    let report: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&out).expect("report")).expect("json");
+    let _ = std::fs::remove_file(&out);
+    let prefix = format!("{}/", source.display());
+    let mut found: Vec<(String, String, u64, u64, String)> = report["findings"]
+        .as_array()
+        .expect("findings")
+        .iter()
+        .map(|finding| {
+            let file = finding["file"].as_str().expect("file");
+            (
+                file.strip_prefix(&prefix).unwrap_or(file).to_string(),
+                finding["rule"].as_str().expect("rule").to_string(),
+                finding["line"].as_u64().expect("line"),
+                finding["column"].as_u64().expect("column"),
+                finding["message"].as_str().expect("message").to_string(),
+            )
+        })
+        .collect();
+    found.sort();
+    let read = |name: &str| -> Vec<(String, String, u64, u64, String)> {
+        serde_json::from_str(&std::fs::read_to_string(root.join("expected").join(name)).expect("expected")).expect("rows")
+    };
+    let wrong = read("coded-pmd-wrong.json");
+    let mut expected = read("coded.json");
+    for row in &wrong {
+        assert!(expected.contains(row), "{row:?} is listed as a wrong PMD finding but PMD did not report it");
+        assert!(!found.contains(row), "{row:?} copies a wrong PMD finding");
+    }
+    expected.retain(|row| !wrong.contains(row) && row.1 != "!error");
+    let missed: Vec<_> = expected.iter().filter(|row| !found.contains(row)).collect();
+    let extra: Vec<_> = found.iter().filter(|row| !expected.contains(row)).collect();
+    assert!(missed.is_empty() && extra.is_empty() && found.len() == expected.len(), "missed {missed:?}, extra {extra:?}");
 }

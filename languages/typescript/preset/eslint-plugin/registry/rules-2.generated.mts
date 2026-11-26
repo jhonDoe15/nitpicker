@@ -1,3 +1,5 @@
+import { rule as ruleNoManyToManyCascadeRemove } from '../rules/persistence/no-many-to-many-cascade-remove.mts';
+import { rule as ruleNoMappedCopyForSinglePass } from '../rules/whole-lists/no-mapped-copy-for-single-pass.mts';
 import { rule as ruleNoMismatchedPreconditionMessage } from '../rules/preconditions/no-mismatched-precondition-message.mts';
 import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
 import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
@@ -96,10 +98,10 @@ import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-
 import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mts';
 import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mts';
 import { rule as ruleNoUnencodedUrlPart } from '../rules/urls/construction/no-unencoded-url-part.mts';
-import { rule as ruleNoUnescapedCssSelector } from '../rules/selectors/no-unescaped-css-selector.mts';
-import { rule as ruleNoUnescapedFilterValue } from '../rules/patterns/filters/no-unescaped-filter-value.mts';
 
 export const partRules = {
+  'no-many-to-many-cascade-remove': ruleNoManyToManyCascadeRemove,
+  'no-mapped-copy-for-single-pass': ruleNoMappedCopyForSinglePass,
   'no-mismatched-precondition-message': ruleNoMismatchedPreconditionMessage,
   'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
   'no-module-level-let': ruleNoModuleLevelLet,
@@ -198,6 +200,4 @@ export const partRules = {
   'no-uncollected-tests': ruleNoUncollectedTests,
   'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
   'no-unencoded-url-part': ruleNoUnencodedUrlPart,
-  'no-unescaped-css-selector': ruleNoUnescapedCssSelector,
-  'no-unescaped-filter-value': ruleNoUnescapedFilterValue,
 };

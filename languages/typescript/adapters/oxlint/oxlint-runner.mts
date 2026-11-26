@@ -11,7 +11,8 @@ import {
   type Translation,
   planOf,
 } from './plan/oxlint-shapes.mts';
-import { withEngineLint } from './run/engine-pass.mts';
+import { withEngineLint, withTypedCoverage } from './run/engine-pass.mts';
+import { ENGINE_FINDINGS_FILE } from '../../../../shared/engine/engine-findings-file.mts';
 import { mergeResults } from './run/merged-results.mts';
 import { residualResults, residualRun } from './run/residual-run.mts';
 import { withTreeFile } from './stage/tree-file.mts';
@@ -90,6 +91,7 @@ export async function lintWithOxlint(request: StagedLint): Promise<LintResult[]>
 async function lintStage({
   options,
   environment,
+  projectConfigPath,
   runEslintCli,
   plan,
   files,
@@ -105,14 +107,14 @@ async function lintStage({
   const directiveFiles = directiveFilesOf(options.projectRoot, files, plan.noInlineConfig);
   const { projectRoot, timeoutMs } = options;
   const { results, residual } = await withEngineLint(
-    { plan, projectRoot, environment, timeoutMs },
-    (engineEnvironment) =>
+    { plan, projectRoot, projectConfigPath, environment, timeoutMs },
+    (engine) =>
       lintUntilAccepted({
-        plan,
+        plan: withTypedCoverage(plan, engine.coverage),
         stage,
         projectRoot,
         runEslintCli,
-        environment: engineEnvironment,
+        environment: engine.environment,
         timeoutMs,
         neutralized: new Map([
           ...inlineConfig.neutralized,
@@ -199,7 +201,10 @@ async function lintAttempt({
   return lintBesideResidual({
     residual: () =>
       residualRun(residualRuns, translation.residual, () =>
-        residualResults(projectRoot, translation.residual, runEslintCli),
+        residualResults(projectRoot, translation.residual, {
+          runEslintCli,
+          replay: environment[ENGINE_FINDINGS_FILE],
+        }),
       ),
     translation,
     bridgedRules,

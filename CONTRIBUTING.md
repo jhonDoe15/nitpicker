@@ -91,9 +91,14 @@ git fetch origin main
 npm run check
 ```
 
-`npm run check` runs the self-gate (nitpicker checks your change against the remote's default
-branch) and then the full test suite, and fails if either fails. Arguments after `--` go to vitest,
-so `npm run check -- --shard=2/3` runs only what one CI test shard runs. It needs Node.js 22.18 or newer (CI
+`npm run check` runs the full test suite with coverage, recording its results in
+`reports/test-results`, and then the self-gate (nitpicker checks your change against the remote's
+default branch), which reads coverage and CRAP from those results instead of running the suite
+again ([Test results recorded by your test jobs](docs/usage.md#test-results-recorded-by-your-test-jobs)).
+It fails if either fails. Arguments after `--` go to vitest, so `npm run check -- --shard=2/3` runs
+only what one CI test shard runs; the self-gate then runs with `--quick`, without coverage and CRAP.
+A plain `node core/cli.mts` without recorded results runs the whole suite on both the base and the
+head for coverage; use `npm run check`, or `--quick` for the fast checks alone. It needs Node.js 22.18 or newer (CI
 uses 24) and Java 21 for the structure-metrics test. It checks your working tree, uncommitted and
 untracked files included, while CI checks the pull request merged into its target branch, so commit
 everything and merge or rebase on the latest `main` before the final run. A change to a language's
@@ -151,6 +156,11 @@ The self-gate runs as three parallel `self-gate shard` jobs, each with its share
 ([Sharding in CI](docs/usage.md#sharding-in-ci)); the required `self-gate` check combines their
 reports with `nitpicker aggregate` and lists the findings of all shards. A shard fails on its own
 findings too.
+Coverage and CRAP are not in the shards: each test shard records its results and coverage in a
+Vitest blob report, and the `self-gate-tests` job merges them and runs those two analyzers on the
+merged results, so the suite runs once per run. The base tests are not run, so a coverage or CRAP
+finding fails only on a line the change adds or edits. The required `self-gate` check also fails
+when `self-gate-tests` failed. Mutation testing stays off until it fits a CI budget (#2375, #2376).
 
 CI splits the test files into shards that run as parallel jobs, and the required `test` check passes
 only when every shard passed. `scripts/test-shards/sequencer.mts` gives each shard about the same

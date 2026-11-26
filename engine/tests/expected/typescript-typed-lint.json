@@ -1,0 +1,99 @@
+[
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  4,
+  3,
+  "domain/ code does not mutate values, and Set.add changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  4,
+  11
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  5,
+  3,
+  "domain/ code does not mutate values, and Date.setTime changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  5,
+  15
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  6,
+  3,
+  "domain/ code does not mutate values, and Date.setUTCHours changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  6,
+  19
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  9,
+  16,
+  "domain/ code does not mutate values, and Array.push changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  9,
+  26
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  11,
+  3,
+  "domain/ code does not mutate values, and Set.delete changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  11,
+  17
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  12,
+  3,
+  "domain/ code does not mutate values, and Map.delete changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  12,
+  14
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  13,
+  3,
+  "domain/ code does not mutate values, and Uint8Array.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  13,
+  24
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  14,
+  3,
+  "domain/ code does not mutate values, and URLSearchParams.append changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  14,
+  31
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  15,
+  3,
+  "domain/ code does not mutate values, and Map.clear changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  15,
+  34
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  21,
+  58,
+  "domain/ code does not mutate values, and Set.add changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  21,
+  68
+ ],
+ [
+  "outside.ts",
+  "!types",
+  1,
+  1,
+  ""
+ ]
+]

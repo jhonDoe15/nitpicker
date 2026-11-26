@@ -77,7 +77,28 @@ pub fn literal_text(file: &crate::engine::source::SourceFile, literal: Node) -> 
                     chars.next();
                 }
                 let code: String = chars.by_ref().take(4).collect();
-                value.push(char::from_u32(u32::from_str_radix(&code, 16).ok()?)?);
+                let unit = u32::from_str_radix(&code, 16).ok()?;
+                if !(0xD800..0xE000).contains(&unit) {
+                    value.push(char::from_u32(unit)?);
+                    continue;
+                }
+                let mut ahead = chars.clone();
+                let low = (ahead.next() == Some('\\') && ahead.next() == Some('u'))
+                    .then(|| {
+                        while ahead.peek() == Some(&'u') {
+                            ahead.next();
+                        }
+                        u32::from_str_radix(&ahead.by_ref().take(4).collect::<String>(), 16).ok()
+                    })
+                    .flatten()
+                    .filter(|low| unit < 0xDC00 && (0xDC00..0xE000).contains(low));
+                match low {
+                    Some(low) => {
+                        value.push(char::from_u32(0x10000 + ((unit - 0xD800) << 10) + (low - 0xDC00))?);
+                        chars = ahead;
+                    }
+                    None => value.push(char::REPLACEMENT_CHARACTER),
+                }
             }
             digit @ '0'..='7' => {
                 let mut code = digit.to_digit(8)?;

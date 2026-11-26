@@ -34,6 +34,7 @@ export type FetchSite = { readonly kind: string; readonly at: number };
 export type Declaration = {
   readonly name: string;
   readonly entityName: string | undefined;
+  readonly persistent: boolean;
   readonly superclass: string | undefined;
   readonly text: string;
   readonly depths: Int32Array;

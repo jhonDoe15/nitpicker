@@ -1,0 +1,50 @@
+  <rule name="ScheduledTaskStopsOnFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This task is scheduled on a ScheduledExecutorService with scheduleAtFixedRate or scheduleWithFixedDelay and its body does I/O (a repository, database, REST or messaging call) without catching Exception, RuntimeException or Throwable. When one run throws, the executor suppresses every later run and keeps the exception in a ScheduledFuture nobody reads, so nothing is logged and the task silently stops until the process restarts. A failing database or remote call is a matter of time. Wrap the whole body in a try block with catch (RuntimeException e) that logs the failure, so the next run still happens. An exception fits a task that must stop on its first failure, in which case keep the returned future and handle its failure.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $all := ('java.lang.Exception', 'java.lang.RuntimeException', 'java.lang.Throwable'),
+    $io := ('org.springframework.data.repository.Repository',
+            'jakarta.persistence.EntityManager', 'javax.persistence.EntityManager',
+            'org.springframework.jdbc.core.JdbcOperations',
+            'org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations',
+            'org.springframework.web.client.RestOperations', 'org.springframework.web.client.RestClient',
+            'jakarta.jms.JMSContext', 'jakarta.jms.JMSProducer', 'jakarta.jms.JMSConsumer',
+            'javax.jms.JMSContext', 'javax.jms.JMSProducer', 'javax.jms.JMSConsumer',
+            'org.apache.kafka.clients.producer.Producer', 'org.apache.kafka.clients.consumer.Consumer'),
+    $recv := function($c) {
+      $c/*[1][self::VariableAccess or self::FieldAccess or self::MethodCall or self::TypeExpression]
+    },
+    $isIo := function($c) {
+      exists($recv($c)[some $t in $io satisfies pmd-java:typeIs($t)])
+        or exists($c[@MethodName = ('block', 'blockOptional', 'blockFirst', 'blockLast')]
+                    //*[self::VariableAccess or self::FieldAccess]
+                      [pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient')])
+    },
+    $depth := function($body) { count($body/ancestor-or-self::*) },
+    $unprotected := function($c, $body) {
+      empty($c/ancestor::TryStatement[CatchClause][count(ancestor::*) >= $depth($body)])
+        and count($c/ancestor::*[self::LambdaExpression or self::AnonymousClassDeclaration
+                                 or self::MethodDeclaration][1]/ancestor::*) = count($body/parent::*/ancestor::*)
+    },
+    $broad := function($body) {
+      exists($body/descendant-or-self::TryStatement/CatchClause/CatchParameter//ClassType
+               [some $t in $all satisfies pmd-java:typeIsExactly($t)])
+    }
+return
+//MethodCall[parent::ExpressionStatement]
+  [pmd-java:matchesSig('java.util.concurrent.ScheduledExecutorService#scheduleAtFixedRate(_,long,long,_)')
+   or pmd-java:matchesSig('java.util.concurrent.ScheduledExecutorService#scheduleWithFixedDelay(_,long,long,_)')]
+  [let $a := ArgumentList/*[1],
+       $body := if ($a/self::LambdaExpression) then $a/*[last()]
+                else if ($a/self::MethodReference[*[1][self::ThisExpression]])
+                then (let $ms := $a/ancestor::ClassBody[1]/MethodDeclaration[@Name = $a/@MethodName]
+                      return $ms[count($ms) = 1][FormalParameters/@Size = 0]/Block)
+                else ()
+   return exists($body) and not($broad($body))
+          and (some $c in $body/descendant-or-self::MethodCall satisfies $unprotected($c, $body) and $isIo($c))]
+]]></value>
+      </property>
+    </properties>
+  </rule>

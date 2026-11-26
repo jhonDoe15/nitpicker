@@ -12,6 +12,7 @@ const CLASS = /\bclass\s+([\w$]+)/gu;
 const EXTENDS = /\bextends\s+([\w$.]+)/u;
 const ANGLES: Steps = { '<': 1, '>': -1 };
 const ENTITY_NAME = /@\s*(?:[\w.]*\.)?Entity\s*\(\s*(?:name\s*=\s*)?"([^"]+)"/u;
+const PERSISTENT = /@\s*(?:[\w.]*\.)?(?:Entity|Embeddable|MappedSuperclass)\b/u;
 const ANNOTATION_CALL = /@\s*[\w$.]+\s*\([^()]*\)/gu;
 const ANNOTATION = /@\s*([\w$.]+)/gu;
 const MODIFIERS = /\b(?:private|protected|public|static|final|transient|volatile)\b/gu;
@@ -69,6 +70,7 @@ function declarationsIn(file: string): Declaration[] {
       {
         name: match[1] ?? '',
         entityName: ENTITY_NAME.exec(annotations)?.[1],
+        persistent: PERSISTENT.test(annotations),
         superclass: EXTENDS.exec(header)?.[1]?.split('.').at(-1),
         text,
         depths,
@@ -122,6 +124,11 @@ function indexOf(projectRoot: string, sourceRoots: readonly string[]): Map<strin
   return index;
 }
 
+function declaredAs(declarations: readonly Declaration[]): readonly Declaration[] {
+  const persistent = declarations.filter((declaration) => declaration.persistent);
+  return declarations.length > 1 && persistent.length > 0 ? persistent : declarations;
+}
+
 export function javaEntities(
   projectRoot: string,
   sourceRoots: readonly string[],
@@ -131,7 +138,7 @@ export function javaEntities(
     index ??= indexOf(projectRoot, sourceRoots);
     const pending = [entity];
     for (const current of pending) {
-      const [declaration, ...others] = index.get(current) ?? [];
+      const [declaration, ...others] = declaredAs(index.get(current) ?? []);
       if (declaration === undefined || others.length > 0) {
         return undefined;
       }

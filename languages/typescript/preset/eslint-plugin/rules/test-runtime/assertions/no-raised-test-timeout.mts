@@ -30,7 +30,14 @@ export { TEST_TIMEOUT_CEILING_MS } from '../../../../../../../shared/test-timeou
 
 const HOOK_TIMEOUT = 'hookTimeout';
 const TEARDOWN_TIMEOUT = 'teardownTimeout';
-const HOOKS = new Set(['beforeAll', 'beforeEach', 'afterAll', 'afterEach', 'before', 'after']);
+export const TEST_HOOKS: ReadonlySet<string> = new Set([
+  'beforeAll',
+  'beforeEach',
+  'afterAll',
+  'afterEach',
+  'before',
+  'after',
+]);
 const HOOK_TIMEOUT_KEYS = [HOOK_TIMEOUT, TEARDOWN_TIMEOUT];
 const TIMEOUT_KEYS = new Set(['timeout', 'testTimeout', HOOK_TIMEOUT, TEARDOWN_TIMEOUT]);
 
@@ -118,7 +125,11 @@ function timeoutNodes(context: SourceContext, node: TSESTree.CallExpression): Ti
   ) {
     return [];
   }
-  if (root !== undefined && HOOKS.has(root) && node.callee.type === AST_NODE_TYPES.Identifier) {
+  if (
+    root !== undefined &&
+    TEST_HOOKS.has(root) &&
+    node.callee.type === AST_NODE_TYPES.Identifier
+  ) {
     return node.arguments
       .slice(1, 2)
       .flatMap((argument) => argumentTimeouts(context, argument, true));

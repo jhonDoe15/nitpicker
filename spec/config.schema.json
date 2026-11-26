@@ -2417,6 +2417,7 @@
                             "pmd/UninjectableDelay",
                             "pmd/MutatingMethodInDomain",
                             "pmd/DelegateSkipsDefaultMethod",
+                            "pmd/HiddenInheritedField",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",

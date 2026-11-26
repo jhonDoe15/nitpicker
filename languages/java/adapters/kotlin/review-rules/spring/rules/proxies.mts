@@ -21,6 +21,7 @@ import {
   SCHEDULED,
   SPRING_PRESET_OPEN,
   SPRING_TRANSACTIONAL,
+  TRANSACTIONAL_EVENT_LISTENER,
   VALIDATED,
 } from '../spring-types.mts';
 import type {
@@ -211,9 +212,10 @@ function transactionAnnotations(view: SpringView): Reported[] {
       spring !== undefined &&
       owner !== undefined &&
       annotationIn(view.resolve, owner.annotations, CONTROLLERS) !== undefined;
-    const requiresNew = (
-      spring === undefined ? '' : (argumentOf(spring, 'propagation') ?? '')
-    ).includes('REQUIRES_NEW');
+    const requiresNew =
+      (spring === undefined ? '' : (argumentOf(spring, 'propagation') ?? '')).includes(
+        'REQUIRES_NEW',
+      ) && annotationIn(view.resolve, entries, TRANSACTIONAL_EVENT_LISTENER) === undefined;
     return [
       ...(annotationIn(view.resolve, entries, JAKARTA_TRANSACTIONAL)
         ? [report('SpringTransactionalAnnotation', declared, symbol)]
