@@ -63,6 +63,9 @@ impl Fix {
         let mut replaced = String::new();
         let mut at = start;
         for edit in edits.iter().filter(|edit| edit.0 <= trimmed_end && start <= edit.1) {
+            if edit.0 < at || edit.1 > text.len() {
+                return None;
+            }
             end = end.max(edit.1);
             replaced.push_str(&text[at..edit.0]);
             replaced.push_str(&edit.2);

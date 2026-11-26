@@ -97,11 +97,21 @@ fn assigns_fresh(context: &Context, statement: Node, key: &str) -> bool {
     })
 }
 
+/// `Integer.valueOf(...)` and the other boxing methods never return null.
+fn boxing(context: &Context, call: Node) -> bool {
+    const WRAPPERS: [&str; 8] = ["java.lang.Integer", "java.lang.Long", "java.lang.Short", "java.lang.Byte", "java.lang.Character", "java.lang.Boolean", "java.lang.Float", "java.lang.Double"];
+    call.child_by_field_name("name").is_some_and(|name| context.text(name) == "valueOf")
+        && context.resolver.resolve_call(call).is_some_and(|resolved| resolved.method.is_static && WRAPPERS.contains(&resolved.declaring.as_str()))
+}
+
 /// Whether the expression is known not to be null at its place.
 pub fn known_non_null(context: &Context, expression: Node) -> bool {
     let expression = unwrap(expression);
     if fresh(expression) || matches!(expression.kind(), "binary_expression" | "class_literal" | "text_block") {
         return true;
+    }
+    if expression.kind() == "method_invocation" {
+        return boxing(context, expression);
     }
     if !matches!(expression.kind(), "identifier" | "field_access") {
         return false;

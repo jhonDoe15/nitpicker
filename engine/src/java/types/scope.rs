@@ -914,7 +914,7 @@ impl<'a> Resolver<'a> {
                             fixed: None,
                             strict: false,
                             is_private: false,
-                            flags: super::model::flag::PUBLIC | super::model::flag::STATIC | super::model::flag::FINAL,
+                            flags: super::model::flag::PUBLIC | super::model::flag::STATIC | super::model::flag::FINAL | super::model::flag::ENUM,
                         });
                     }
                 }
@@ -967,7 +967,7 @@ impl<'a> Resolver<'a> {
                         varargs,
                         throws: self.thrown(member),
                         names: self.parameter_names(member),
-                        flags: bits(member),
+                        flags: bits(member) | if has(member, "private") { super::model::flag::PRIVATE } else { 0 },
                         detail: self.detail(member, false),
                         shown: self.shown_parameters(member),
                         nullable_parameters: self.nullable_parameters(member),

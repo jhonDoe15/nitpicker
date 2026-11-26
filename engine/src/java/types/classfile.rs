@@ -614,7 +614,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
             });
             let kind = Signature { text: descriptor, at: 0, written_bounds: Vec::new() }.kind()?;
             let generic = signature.and_then(|text| Signature { text, at: 0, written_bounds: Vec::new() }.kind()).unwrap_or_else(|| kind.clone());
-            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, flags: member_flags(flags, &found) | if flags & 0x0040 != 0 { flag::VOLATILE } else { 0 } });
+            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, flags: member_flags(flags, &found) | if flags & 0x0040 != 0 { flag::VOLATILE } else { 0 } | if flags & 0x4000 != 0 { flag::ENUM } else { 0 } });
         }
     }
     let mut methods = Vec::new();

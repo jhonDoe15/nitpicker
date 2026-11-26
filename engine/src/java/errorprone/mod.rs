@@ -37,6 +37,7 @@ mod nullaway;
 pub use nullaway::unread_marks;
 mod equality_fix;
 mod nullness;
+mod flow_nullness;
 mod operators;
 mod returns;
 mod namefixes;
@@ -85,6 +86,26 @@ mod tokens;
 mod unused;
 mod unused_fix;
 mod values;
+mod consts;
+mod parts;
+mod qualify;
+mod unsafe_calls;
+mod target;
+mod numeric;
+mod equality;
+mod varargs;
+mod arrays;
+mod imports;
+mod finals;
+mod classes3;
+mod deadlock;
+mod switches;
+mod capital;
+mod dedupe;
+mod docparams;
+mod compat;
+mod equalsincompat;
+mod doclinks;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -222,7 +243,7 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["JdkObsolete"], obsolete::jdk_obsolete),
     (&["BooleanLiteral"], targets::boolean_literal),
     (&["IdentifierName"], naming::identifier_name),
-    (&["EmptyBlockTag", "MissingSummary", "InvalidBlockTag", "UnescapedEntity", "EscapedEntity", "InvalidInlineTag", "InvalidThrows"], javadoc::javadoc),
+    (&["EmptyBlockTag", "MissingSummary", "InvalidBlockTag", "UnescapedEntity", "EscapedEntity", "InvalidInlineTag", "InvalidThrows", "InvalidParam", "InvalidLink"], javadoc::javadoc),
     (&["AnnotationPosition"], annotated::annotation_position),
     (&["RedundantOverride"], redundant::redundant_override),
     (&["CheckedExceptionNotThrown"], throws::checked_exception_not_thrown),
@@ -292,6 +313,28 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["UnsynchronizedOverridesSynchronized"], sync::unsynchronized_overrides_synchronized),
     (&["UndefinedEquals"], strings::undefined_equals),
     (&["DoubleBraceInitialization"], built_collections::double_brace_initialization),
+    (&["UnsafeLocaleUsage"], unsafe_calls::unsafe_locale_usage),
+    (&["BanSerializableRead"], unsafe_calls::ban_serializable_read),
+    (&["Interruption"], unsafe_calls::interruption),
+    (&["IdentityHashMapUsage"], unsafe_calls::identity_hash_map_usage),
+    (&["LongDoubleConversion"], numeric::long_double_conversion),
+    (&["NarrowCalculation"], numeric::narrow_calculation),
+    (&["BoxedPrimitiveEquality"], equality::boxed_primitive_equality),
+    (&["ExplicitArrayForVarargs"], varargs::explicit_array_for_varargs),
+    (&["BoxingComparator"], varargs::boxing_comparator),
+    (&["MixedArrayDimensions"], arrays::mixed_array_dimensions),
+    (&["MutablePublicArray"], arrays::mutable_public_array),
+    (&["UnnecessaryStaticImport"], imports::unnecessary_static_import),
+    (&["BadImport"], imports::bad_import),
+    (&["TypeParameterQualifier"], classes3::type_parameter_qualifier),
+    (&["OverrideThrowableToString"], classes3::override_throwable_to_string),
+    (&["TryWithResourcesVariable"], classes3::try_with_resources_variable),
+    (&["NonAtomicVolatileUpdate"], classes3::non_atomic_volatile_update),
+    (&["ClassCanBeStatic"], classes3::class_can_be_static),
+    (&["InconsistentCapitalization"], capital::inconsistent_capitalization),
+    (&["MissingCasesInEnumSwitch"], switches::missing_cases_in_enum_switch),
+    (&["EqualsIncompatibleType"], equalsincompat::equals_incompatible_type),
+    (&["ClassInitializationDeadlock"], deadlock::class_initialization_deadlock),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
@@ -305,6 +348,7 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["StronglyTypeTime"], strong_time::strongly_type_time),
     (&["UnicodeEscape"], lexical::unicode_escape),
     (&["MultipleTopLevelClasses"], lexical::multiple_top_level_classes),
+    (&["DeduplicateConstants"], dedupe::deduplicate_constants),
 ];
 
 pub struct ErrorProne;

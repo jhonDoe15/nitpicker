@@ -103,6 +103,8 @@ pub fn javadoc(context: &Context, node: Node) {
     super::doctagged::escaped_entity(&documented);
     super::doctagged::invalid_inline_tag(&documented, declaration);
     super::doc_throws::invalid_throws(&documented, declaration);
+    super::docparams::invalid_param(&documented, declaration);
+    super::doclinks::invalid_link(&documented, declaration);
 }
 
 fn empty_block_tag(documented: &Documented) {

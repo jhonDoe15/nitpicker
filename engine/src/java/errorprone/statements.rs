@@ -59,6 +59,12 @@ fn pretty_variable(context: &Context, declaration: Node, declarator: Node) -> St
 fn printed_value(context: &Context, value: Node) -> String {
     let mut gaps = Vec::new();
     crate::engine::source::walk(value, |node| {
+        if node.kind() == "array_creation_expression" {
+            let dims = node.child_by_field_name("dimensions");
+            if let (Some(dims), Some(value)) = (dims, node.child_by_field_name("value")) {
+                gaps.push((dims.end_byte(), value.start_byte()));
+            }
+        }
         if node.kind() == "cast_expression" {
             let close = children(node).into_iter().find(|part| part.kind() == ")");
             if let (Some(close), Some(operand)) = (close, node.child_by_field_name("value")) {
