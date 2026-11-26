@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 export const POM = 'pom.xml';
+const REPOSITORY = '<repository>';
 
 export function toolPath(directory: string, ...parts: readonly string[]): string {
   const base = path.resolve(directory);
@@ -28,11 +29,17 @@ export function writeToolsProject(
   directory: string,
   tools: Readonly<Record<string, readonly string[]>>,
 ): void {
-  for (const [name, dependencies] of Object.entries(tools)) {
+  for (const [name, entries] of Object.entries(tools)) {
+    const repositories = entries.filter((entry) => entry.startsWith(REPOSITORY));
+    const dependencies = entries.filter((entry) => !entry.startsWith(REPOSITORY));
     mkdirSync(toolPath(directory, name), { recursive: true });
     writeFileSync(
       toolPath(directory, name, POM),
-      pom(name, `<dependencies>${dependencies.join('')}</dependencies>`),
+      pom(
+        name,
+        (repositories.length === 0 ? '' : `<repositories>${repositories.join('')}</repositories>`) +
+          `<dependencies>${dependencies.join('')}</dependencies>`,
+      ),
     );
   }
   const modules = Object.keys(tools)

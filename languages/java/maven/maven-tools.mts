@@ -159,9 +159,12 @@ export function toolDependencies(
     ...Object.fromEntries(
       extraTools.map((tool) => [
         textOf(fieldOf(tool, 'name')),
-        textsOf(fieldOf(tool, 'coordinates')).map((entry) =>
-          dependency(entry, optionalTexts(fieldOf(tool, 'exclusions'))),
-        ),
+        [
+          ...textsOf(fieldOf(tool, 'repositories')),
+          ...textsOf(fieldOf(tool, 'coordinates')).map((entry) =>
+            dependency(entry, optionalTexts(fieldOf(tool, 'exclusions'))),
+          ),
+        ],
       ]),
     ),
   };
