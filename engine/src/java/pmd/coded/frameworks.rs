@@ -31,8 +31,12 @@ impl Ctx<'_, '_, '_> {
 
     /// The formal parameter types of the method or constructor a call resolves to.
     pub fn formals(&self, call: u32) -> Option<Vec<Type>> {
+        self.resolved(call).map(|(_, formals)| formals)
+    }
+
+    pub fn resolved(&self, call: u32) -> Option<(crate::java::types::expr::Call, Vec<Type>)> {
         let source = self.tree.nodes[call as usize].source?;
-        self.machine.resolver.call_formals(source).map(|(_, formals)| formals)
+        self.machine.resolver.call_formals(source)
     }
 
     /// PMD's `isAnnotationPresent`: an annotation of the declaration is of the type or a subtype.
@@ -79,7 +83,7 @@ impl Ctx<'_, '_, '_> {
             .any(|annotation| JUNIT5_TESTS.iter().any(|name| self.type_is_exactly(annotation, name)))
     }
 
-    fn is_junit_method(&self, method: u32) -> bool {
+    pub fn is_junit_method(&self, method: u32) -> bool {
         if self.has_modifier(method, "static") || self.kid(method, "Block").is_none() {
             return false;
         }

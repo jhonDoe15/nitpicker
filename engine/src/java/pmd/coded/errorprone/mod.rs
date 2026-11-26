@@ -3,6 +3,7 @@ mod assignments;
 mod classes;
 mod expressions;
 mod nulls;
+mod statements;
 
 use super::Port;
 
@@ -26,6 +27,9 @@ pub fn port(class: &str) -> Option<Port> {
         "SuspiciousOctalEscapeRule" => assignments::suspicious_octal_escape,
         "BrokenNullCheckRule" => nulls::broken_null_check,
         "TestClassWithoutTestCasesRule" => super::bestpractices::test_class_without_test_cases,
+        "AvoidBranchingStatementAsLastInLoopRule" => statements::avoid_branching_statement_as_last_in_loop,
+        "SingletonClassReturningNewInstanceRule" => statements::singleton_class_returning_new_instance,
+        "ConfusingArgumentToVarargsMethodRule" => super::design::varargs::confusing_argument_to_varargs_method,
         _ => return None,
     })
 }

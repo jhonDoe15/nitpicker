@@ -37,7 +37,9 @@ pub fn local(ctx: &Ctx, access: u32) -> bool {
         && ctx
             .usages()
             .declaration(access)
-            .is_some_and(|variable| !ctx.flag(variable, "Field"))
+            .is_some_and(|variable| {
+                !ctx.flag(variable, "Field") && ctx.parent(variable).is_none_or(|owner| !ctx.is(owner, "EnumConstant"))
+            })
 }
 
 pub fn camel_word(name: &str, prefix: &str) -> bool {
@@ -131,4 +133,33 @@ pub fn other_operand(ctx: &Ctx, id: u32) -> Option<u32> {
     let parent = ctx.parent(id).filter(|parent| ctx.is(*parent, "InfixExpression"))?;
     let at = ctx.kids(parent).iter().position(|kid| *kid == id)?;
     ctx.nth(parent, 1 - at)
+}
+
+/// Whether a field a name stands for is static and whether it is public; nothing when it names no field.
+pub fn field_flags(ctx: &Ctx, access: u32) -> Option<(bool, bool)> {
+    use crate::java::types::model::flag;
+    match symbol(ctx, access)? {
+        Symbol::Declared(variable) => ctx
+            .flag(variable, "Field")
+            .then(|| (ctx.flag(variable, "Static"), ctx.text(variable, "Visibility") == "public")),
+        Symbol::Field(class, name) => {
+            let (_, field) = ctx.machine.resolver.index.field(&class, &name)?;
+            Some((field.flags & flag::STATIC != 0, field.flags & flag::PUBLIC != 0))
+        }
+    }
+}
+
+/// PMD's `JavaAstUtils.isRefToFieldOfThisInstance`.
+pub fn field_of_this_instance(ctx: &Ctx, usage: Option<u32>) -> bool {
+    let Some(usage) = usage else { return false };
+    let Some((fixed, _)) = field_flags(ctx, usage) else { return false };
+    match ctx.name(usage) {
+        "VariableAccess" => !fixed,
+        "FieldAccess" => ctx
+            .qualifier(usage)
+            .is_some_and(|this| {
+                matches!(ctx.name(this), "ThisExpression" | "SuperExpression") && unqualified(ctx, this)
+            }),
+        _ => false,
+    }
 }

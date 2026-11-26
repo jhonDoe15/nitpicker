@@ -3,6 +3,7 @@ pub(super) mod calls;
 mod declarations;
 mod instantiation;
 mod resources;
+mod tests;
 
 pub use resources::test_class_without_test_cases;
 
@@ -21,6 +22,11 @@ pub fn port(class: &str) -> Option<Port> {
         "PrimitiveWrapperInstantiationRule" => instantiation::primitive_wrapper_instantiation,
         "LiteralsFirstInComparisonsRule" => calls::literals_first_in_comparisons,
         "UseTryWithResourcesRule" => resources::use_try_with_resources,
+        "JUnitUseExpectedRule" => tests::junit_use_expected,
+        "UnitTestShouldIncludeAssertRule" => tests::unit_test_should_include_assert,
+        "UnnecessaryVarargsArrayCreationRule" => super::design::varargs::unnecessary_varargs_array_creation,
+        "ArrayIsStoredDirectlyRule" => super::design::arrays::array_is_stored_directly,
+        "MethodReturnsInternalArrayRule" => super::design::arrays::method_returns_internal_array,
         _ => return None,
     })
 }
