@@ -567,6 +567,13 @@ are `fetch` without a body (method `GET` or `HEAD`) and ORM reads of the project
 statement ends the run; loops, transaction callbacks, transaction-named clients, locking reads and reads named after an
 authorization or session check are left alone. The JavaScript preset runs the same rule.
 
+Early waits: `nitpicker/no-early-wait-on-started-work` (production source, in `eslint-lint`, report-only, broad) reports
+`const r = await task` where `task` is a same-block `const` holding a `Promise` started earlier (type-aware) and `r` is
+first read three or more statements later after statements that do work (calls other than accessors, logging, `Math` and
+`JSON`), do not mention `task` and do not leave the block. Java runs the same check as `pmd/EarlyWaitOnStartedWork` on
+`Future.get()`, `get(timeout, unit)` and `join()` of a future started by `supplyAsync`, `runAsync`, `submit`, `schedule`
+or `sendAsync`.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

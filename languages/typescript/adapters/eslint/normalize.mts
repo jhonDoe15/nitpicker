@@ -65,6 +65,7 @@ const REPORT_ONLY_RULES = new Set([
   'nitpicker/promise-wait-deadline',
   'nitpicker/no-check-then-write',
   'nitpicker/no-sequential-independent-reads',
+  'nitpicker/no-early-wait-on-started-work',
 ]);
 
 export function normalizeEslintResults({

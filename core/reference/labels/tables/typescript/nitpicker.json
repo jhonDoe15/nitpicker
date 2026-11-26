@@ -27,6 +27,7 @@
   "eslint/nitpicker/no-cache-write-in-transaction": ["reliability", "persistence"],
   "eslint/nitpicker/no-check-then-write": ["bug", "persistence"],
   "eslint/nitpicker/no-sequential-independent-reads": ["performance", "persistence"],
+  "eslint/nitpicker/no-early-wait-on-started-work": ["performance"],
   "eslint/nitpicker/no-child-exit-event": ["bug", "reliability"],
   "eslint/nitpicker/no-chunkwise-stream-text": ["bug", "reliability"],
   "eslint/nitpicker/no-cleanup-skipped-on-failure": ["reliability"],

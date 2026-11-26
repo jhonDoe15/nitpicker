@@ -32,6 +32,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-unatomic-writes',
   'nitpicker/no-check-then-write',
   'nitpicker/no-sequential-independent-reads',
+  'nitpicker/no-early-wait-on-started-work',
   'nitpicker/no-unisolated-job-loop',
   'nitpicker/no-unfiltered-soft-delete-read',
   'nitpicker/no-unguarded-deleted-items',
