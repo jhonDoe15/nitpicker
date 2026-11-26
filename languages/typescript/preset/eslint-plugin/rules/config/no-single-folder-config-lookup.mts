@@ -4,8 +4,9 @@ import {
   stringValue,
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
-import { nameOf } from '../typed/node-views.mts';
-import { searchesParents } from './walk-up-searches.mts';
+import { depthFirst, functionBinding, nameOf, nodeChildren } from '../typed/node-views.mts';
+import { enclosingFunction } from '../typed/syntax-views.mts';
+import { searchesParents, walksUp } from './walk-up-searches.mts';
 
 const CONFIG_NAME =
   /^(?:tsconfig\.json|jsconfig\.json|\.eslintrc(?:\.[a-z]+)?|eslint\.config\.[cm]?[jt]s|babel\.config\.[cm]?[jt]s|\.babelrc(?:\.[a-z]+)?|\.prettierrc(?:\.[a-z]+)?|prettier\.config\.[cm]?[jt]s|pyproject\.toml|\.editorconfig)$/u;
@@ -23,6 +24,7 @@ const CHECKS = new Set([
 const READS = new Set(['readFileSync', 'readFile']);
 const JOINS = new Set(['join', 'resolve']);
 const ROOT_NAME = /root|repository|repo$/iu;
+const FILE_LIKE = /^[\w./-]+\.\w+$/u;
 const DEFAULT_NAME = /^[A-Z][A-Z0-9_]*$|^[a-z]\w*Default|^default/u;
 
 function lastName(node: TSESTree.Node): string | undefined {
@@ -35,11 +37,9 @@ function isDefault(node: TSESTree.Node | null | undefined): boolean {
   }
   switch (node.type) {
     case AST_NODE_TYPES.ObjectExpression:
-    case AST_NODE_TYPES.ArrayExpression:
-    case AST_NODE_TYPES.TemplateLiteral:
-      return true;
+      return node.properties.length > 0;
     case AST_NODE_TYPES.Literal:
-      return typeof node.value === 'string';
+      return typeof node.value === 'string' && FILE_LIKE.test(node.value);
     case AST_NODE_TYPES.Identifier:
     case AST_NODE_TYPES.MemberExpression:
       return DEFAULT_NAME.test(lastName(node) ?? '');
@@ -50,19 +50,36 @@ function isDefault(node: TSESTree.Node | null | undefined): boolean {
   }
 }
 
-function yieldsDefault(branch: TSESTree.Node | null | undefined): boolean {
+function isNothing(node: TSESTree.Node | null | undefined): boolean {
+  return (
+    node === null ||
+    node === undefined ||
+    (node.type === AST_NODE_TYPES.Identifier && node.name === 'undefined') ||
+    (node.type === AST_NODE_TYPES.Literal && (node.value === null || node.value === false))
+  );
+}
+
+type Outcome = { readonly value: TSESTree.Node | null | undefined } | undefined;
+
+function branchOutcome(branch: TSESTree.Node | null | undefined): Outcome {
   if (branch === null || branch === undefined) {
-    return false;
+    return undefined;
+  }
+  if (
+    branch.type !== AST_NODE_TYPES.BlockStatement &&
+    branch.type !== AST_NODE_TYPES.ReturnStatement &&
+    branch.type !== AST_NODE_TYPES.ExpressionStatement
+  ) {
+    return { value: branch };
   }
   const last = branch.type === AST_NODE_TYPES.BlockStatement ? branch.body.at(-1) : branch;
   if (last?.type === AST_NODE_TYPES.ReturnStatement) {
-    return isDefault(last.argument);
+    return { value: last.argument };
   }
-  return (
-    last?.type === AST_NODE_TYPES.ExpressionStatement &&
-    last.expression.type === AST_NODE_TYPES.AssignmentExpression &&
-    isDefault(last.expression.right)
-  );
+  return last?.type === AST_NODE_TYPES.ExpressionStatement &&
+    last.expression.type === AST_NODE_TYPES.AssignmentExpression
+    ? { value: last.expression.right }
+    : undefined;
 }
 
 function joinedName(context: SourceContext, argument: TSESTree.Node): string | undefined {
@@ -84,7 +101,7 @@ function joinedName(context: SourceContext, argument: TSESTree.Node): string | u
     : undefined;
 }
 
-function absentBranchDefaults(call: TSESTree.CallExpression): boolean {
+function absentOutcome(call: TSESTree.CallExpression): Outcome {
   let node: TSESTree.Node = call;
   let negated = false;
   while (node.parent !== undefined) {
@@ -103,22 +120,56 @@ function absentBranchDefaults(call: TSESTree.CallExpression): boolean {
   }
   const { parent } = node;
   if (parent?.type === AST_NODE_TYPES.ConditionalExpression && parent.test === node) {
-    return isDefault(negated ? parent.consequent : parent.alternate);
+    return branchOutcome(negated ? parent.consequent : parent.alternate);
   }
-  if (parent?.type === AST_NODE_TYPES.IfStatement && parent.test === node) {
-    return yieldsDefault(negated ? parent.consequent : parent.alternate);
+  if (parent?.type !== AST_NODE_TYPES.IfStatement || parent.test !== node) {
+    return undefined;
   }
-  return false;
+  if (negated || parent.alternate) {
+    return branchOutcome(negated ? parent.consequent : parent.alternate);
+  }
+  const siblings = parent.parent?.type === AST_NODE_TYPES.BlockStatement ? parent.parent.body : [];
+  const next = siblings[siblings.indexOf(parent) + 1];
+  const { consequent } = parent;
+  const ending =
+    consequent.type === AST_NODE_TYPES.BlockStatement ? consequent.body.at(-1) : consequent;
+  return ending?.type === AST_NODE_TYPES.ReturnStatement &&
+    next?.type === AST_NODE_TYPES.ReturnStatement
+    ? branchOutcome(next)
+    : undefined;
 }
 
-function catchDefaults(call: TSESTree.CallExpression): boolean {
+function catchOutcome(call: TSESTree.CallExpression): Outcome {
   for (let node: TSESTree.Node = call; node.parent; node = node.parent) {
     const parent: TSESTree.Node = node.parent;
     if (parent.type === AST_NODE_TYPES.TryStatement && parent.block === node) {
-      return yieldsDefault(parent.handler?.body);
+      return branchOutcome(parent.handler?.body);
     }
   }
-  return false;
+  return undefined;
+}
+
+function callerFallsBackToDefault(program: TSESTree.Node, call: TSESTree.CallExpression): boolean {
+  const owner = enclosingFunction(call);
+  const name = owner === undefined ? undefined : functionBinding(owner)?.name;
+  if (name === undefined) {
+    return false;
+  }
+  return [...depthFirst<TSESTree.Node>(program, nodeChildren)].some((node) => {
+    if (node.type !== AST_NODE_TYPES.CallExpression || nameOf(node.callee) !== name) {
+      return false;
+    }
+    let current: TSESTree.Node = node;
+    let defaulted = false;
+    while (
+      current.parent?.type === AST_NODE_TYPES.LogicalExpression &&
+      current.parent.operator !== '&&'
+    ) {
+      defaulted ||= current.parent.left === current && isDefault(current.parent.right);
+      current = current.parent;
+    }
+    return defaulted && !walksUp(current);
+  });
 }
 
 export const rule: TSESLint.RuleModule<'singleFolder'> = {
@@ -144,8 +195,15 @@ export const rule: TSESLint.RuleModule<'singleFolder'> = {
           return;
         }
         const config = joinedName(context, target);
-        const defaults = absentBranchDefaults(node) || (isRead && catchDefaults(node));
-        if (config !== undefined && defaults && !searchesParents(context.sourceCode.ast, node)) {
+        const outcome = absentOutcome(node) ?? (isRead ? catchOutcome(node) : undefined);
+        if (config === undefined || outcome === undefined) {
+          return;
+        }
+        const { ast } = context.sourceCode;
+        const defaults =
+          isDefault(outcome.value) ||
+          (isNothing(outcome.value) && callerFallsBackToDefault(ast, node));
+        if (defaults && !searchesParents(ast, node)) {
           context.report({ node, messageId: 'singleFolder' });
         }
       },

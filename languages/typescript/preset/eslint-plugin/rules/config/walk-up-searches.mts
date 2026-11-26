@@ -9,7 +9,7 @@ function calleeIdentifier(callee: TSESTree.Node): string | undefined {
   return callee.type === AST_NODE_TYPES.MemberExpression ? nameOf(callee.property) : nameOf(callee);
 }
 
-function walksUp(scope: TSESTree.Node): boolean {
+export function walksUp(scope: TSESTree.Node): boolean {
   return [...depthFirst<TSESTree.Node>(scope, nodeChildren)].some(
     (node) =>
       (node.type === AST_NODE_TYPES.CallExpression &&

@@ -2073,9 +2073,11 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `readFile` in a `try` of `path.join(directory, name)` where the name is a fixed config file that the tool itself
   searches for in the parent folders too (`tsconfig.json`, `jsconfig.json`, `.eslintrc*`, `eslint.config.*`,
   `babel.config.*`, `.babelrc*`, `.prettierrc*`, `prettier.config.*`, `pyproject.toml`, `.editorconfig`), when a
-  missing file leads to a default (a ternary or `if` whose absent branch is a string, an object or array literal, a
-  constant in upper case or a `default...` value, or a `catch` that returns one). A package covered by a config in a
-  parent folder gets the default instead. Not reported: other names (`package.json`, lockfiles, `.git`), a directory
+  missing file leads to a default: a ternary or `if` whose absent branch (or the `return` after an `if` that returns
+  the found file) is a file-name string, a non-empty object literal, a constant in upper case or a `default...`
+  value, or a `catch` that returns one; or that yields `undefined`, `null` or `false` while a same-file caller reads
+  it as `lookup(...) ?? default` or `|| default`. A package covered by a config in a parent folder gets the default
+  instead. Other strings, empty `{}` or `[]` and a result nobody defaults are not reported. Not reported: other names (`package.json`, lockfiles, `.git`), a directory
   named for the repository root, and a function or a same-file caller that walks the parent folders (`dirname`,
   `'..'`, `findUp`, `escalade`, or a helper named for ancestors, nearest or covering configs).
 - One failing input does not discard a whole batch (`nitpicker/no-all-or-nothing-batch`, production files).
