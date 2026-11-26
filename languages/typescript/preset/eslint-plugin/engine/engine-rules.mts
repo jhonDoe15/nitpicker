@@ -1,5 +1,6 @@
 import type { Environment } from '../../../../../shared/processes/environment.mts';
 import { loggerShapesFact } from './logger-shapes-fact.mts';
+import { validationPhraseFact } from './validation-phrase-fact.mts';
 import { isCompositionRootFile } from '../rules/boundaries/composition-root-files.mts';
 import { productionModulePath } from '../test-isolation/production-source.mts';
 import { stylesheetSpecifier as untypedStylesheetSpecifier } from '../../layout.mts';
@@ -10,6 +11,7 @@ import {
 } from '../rules/test-runtime/assertions/test-must-use-production-runtime.mts';
 import { vocabularyOf } from '../rules/runner-apis/runner-option.mts';
 import { readLayout } from '../rules/typed/policy-views.mts';
+import { featureOf } from '../rules/contracts/contract-infrastructure-type.mts';
 
 const stylesheetSpecifier: RegExp = untypedStylesheetSpecifier;
 
@@ -43,7 +45,12 @@ export type EngineRule = {
 };
 
 export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<string, EngineRule>([
+  [
+    'contract-infrastructure-type',
+    { needs: 'types', facts: (filename) => ({ feature: featureOf(filename) }) },
+  ],
   ['exhaustive-union-predicate', { needs: 'types' }],
+  ['handler-entity-type', { needs: 'types' }],
   ['hover-test-needs-keyboard', {}],
   ['no-accumulator-concat', { needs: 'types' }],
   ['no-add-only-collection', {}],
@@ -107,6 +114,17 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
     },
   ],
   ['no-union-order-dependence', { needs: 'types' }],
+  [
+    'no-unknown-in-domain',
+    {
+      needs: 'types',
+      facts: (filename, options, project) => ({
+        jsdoc: String(Reflect.get(Object(options[0]), 'jsdoc') === true),
+        phrase: validationPhraseFact(filename, project),
+      }),
+    },
+  ],
+  ['no-unversioned-orm-entity', { needs: 'types' }],
   ['no-wait-for-with-fake-timers', {}],
   [
     'preserve-error-cause',

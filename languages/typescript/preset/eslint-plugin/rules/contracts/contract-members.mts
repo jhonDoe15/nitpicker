@@ -16,12 +16,27 @@ function resolved(checker: Checker, symbol: TypeScript.Symbol): TypeScript.Symbo
   return (symbol.flags & ts.SymbolFlags.Alias) !== 0 ? checker.getAliasedSymbol(symbol) : symbol;
 }
 
+function compareText(left: string, right: string): number {
+  if (left === right) {
+    return 0;
+  }
+  return left < right ? -1 : 1;
+}
+
+function compareInfrastructure(left: Infrastructure, right: Infrastructure): number {
+  return (
+    compareText(left.packageName, right.packageName) ||
+    compareText(left.name, right.name) ||
+    compareText(left.kind, right.kind)
+  );
+}
+
 function infrastructureIn(checker: Checker, type: TypeScript.Type): Infrastructure[] {
   return findInType(checker, type, (candidate) =>
     typeSymbols(candidate)
       .map((symbol) => infrastructureOf(symbol))
       .find((found) => found !== undefined),
-  );
+  ).toSorted(compareInfrastructure);
 }
 
 function isHandlerSignature(checker: Checker, signature: TypeScript.Signature): boolean {
