@@ -27,6 +27,7 @@ import { rule as ruleNoUnversionedOrmEntity } from '../rules/database/versions/n
 import { rule as ruleNoUseAfterAwaitWhenDisposed } from '../rules/cancellation/disposal/no-use-after-await-when-disposed.mts';
 import { rule as ruleNoUtcDateAsLocalDate } from '../rules/time/utc-dates/no-utc-date-as-local-date.mts';
 import { rule as ruleNoWaitForWithFakeTimers } from '../rules/test-runtime/assertions/no-wait-for-with-fake-timers.mts';
+import { rule as ruleNoWallClockBoundInTests } from '../rules/test-runtime/time-bounds/no-wall-clock-bound-in-tests.mts';
 import { rule as ruleNoWallClockElapsed } from '../rules/wall-clock/no-wall-clock-elapsed.mts';
 import { rule as ruleNoWastedCollectionStep } from '../rules/collections/pipelines/no-wasted-collection-step.mts';
 import { rule as ruleNoWeakAssertion } from '../test-assertions/weak-assertion/no-weak-assertion.mts';
@@ -114,6 +115,7 @@ export const partRules = {
   'no-use-after-await-when-disposed': ruleNoUseAfterAwaitWhenDisposed,
   'no-utc-date-as-local-date': ruleNoUtcDateAsLocalDate,
   'no-wait-for-with-fake-timers': ruleNoWaitForWithFakeTimers,
+  'no-wall-clock-bound-in-tests': ruleNoWallClockBoundInTests,
   'no-wall-clock-elapsed': ruleNoWallClockElapsed,
   'no-wasted-collection-step': ruleNoWastedCollectionStep,
   'no-weak-assertion': ruleNoWeakAssertion,

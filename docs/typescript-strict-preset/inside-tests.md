@@ -418,6 +418,20 @@ the spec for Mocha.
   it. A file that mocks the listing (`vi.mock`/`jest.mock` of a listed module, `memfs` or `mock-fs`
   anywhere in the file, an import of `memfs` or `mock-fs`, or a `spyOn`/`stub` of a listing function)
   is not checked. Sort the result first, or compare without order.
+- `nitpicker/no-wall-clock-bound-in-tests`: a test does not assert that measured time stayed under a
+  limit below one second. The measured time is a later read minus an earlier read of the same clock
+  (`Date.now()`, `performance.now()`, `new Date().getTime()`, `+new Date()`), directly or through
+  variables that only hold such reads or such a difference. The assertion is `toBeLessThan`,
+  `toBeLessThanOrEqual`, chai's `below`, `lessThan`, `lt` or `most`, a comparison checked with
+  `toBe(true)`, `toBeTruthy()`, `toEqual(true)` or `toStrictEqual(true)`, or `assert`, `assert.ok`
+  or `assert.isTrue` of a comparison; the limit is a number or a same-file constant. A loaded CI
+  runner, a garbage collection pause or a cold cache pushes the time over the limit and the test
+  fails. Lower bounds, limits of a second or more (a hang guard), `*.bench.*` files and files that
+  fake or replace the clock (fake timers, `setSystemTime`, `spyOn` of `Date.now` or
+  `performance.now`, `stubGlobal` of `Date` or `performance`, an assignment to `Date.now`,
+  `FakeTimers.install()`) are not reported. Assert the behaviour (the calls made, the work counted) and
+  keep speed checks in a benchmark. `nitpicker/no-real-time-random-or-network` reports the
+  `Date.now()` reads of such a test too; this rule reports the assertion, and covers `performance.now()`.
 - `nitpicker/no-switched-off-tests`: no `it.todo`/`test.todo`/`describe.todo` (`vitest/no-disabled-tests`
   already reports `skip`; neither is a way to switch a test off) and no `skipIf(true)`/`runIf(false)`.
   A condition that folds to a constant counts as a literal: `skipIf(1 === 1)`, `skipIf(!false)`,

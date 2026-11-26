@@ -136,6 +136,7 @@ function honestyRulesBlock(
       'nitpicker/no-weak-assertion': ERROR,
       'nitpicker/no-fixed-port-in-tests': ERROR,
       'nitpicker/no-listing-order-in-assertions': ERROR,
+      'nitpicker/no-wall-clock-bound-in-tests': ERROR,
       ...matcherRules(runner),
     },
   };
