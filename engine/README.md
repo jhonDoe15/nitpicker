@@ -813,6 +813,54 @@ On the six comparison code bases, SARIF results, same / missed / extra: commons-
 Guava 41 / 0 / 0, jackson-databind 42 / 0 / 0, javaparser-core 2 / 0 / 0, Nacos 82 / 0 / 0. `SerializableIdiom`
 still runs in SpotBugs for its other patterns.
 
+### Method patterns
+
+HSM_HIDING_METHOD (#2263, `src/java/spotbugs/methods/hiding.rs`, labs in `tests/fixtures/spotbugs/hiding*`): a
+static method that is not private hides a static, not private method of a superclass with the same name and the
+same erased descriptor, return type included. Each superclass in the chain that declares one gives its own finding,
+library classes too (`Thread.currentThread()`); a package-private method of a superclass in another package counts.
+`main(String[])` is skipped (`main(int)` is not); static methods of interfaces and private methods are not hidden.
+Priority 2, level `error`, line = the method's first line, arguments the signature with simple parameter types,
+the simple binary name of the class (`N1`, `1L` for a local class, `1` for an anonymous one) and of the
+superclass. The SARIF name drops the package only when the superclass is in the class's own package (`B.f()`, but
+`p.T.currentThread()`). The engine writes the place as `function:p.B.f()@p.A` so nitpicker can tell. A class name
+that starts with `$` keeps it (`$D`). SpotBugs reports nothing more for a class from the first `native` method that
+hides one on, nothing for a class file with more than 1,000 methods (constructors, lambdas and the static
+initializer count; the engine estimates this from the source), and nothing for a class whose superclass chain
+cannot be resolved to `Object`. Every pattern of `FindHiddenMethod` is on the engine, so SpotBugs no longer runs
+that detector, except for Lombok modules: the engine does not see the static methods Lombok writes (`builder()`).
+
+On the six comparison code bases, SARIF results, same / missed / extra: jackson-databind 1 / 0 / 0, Guava
+8 / 0 / 0, the others 0.
+
+NN_NAKED_NOTIFY (#2263, `src/java/spotbugs/methods/notify/`, labs in `tests/fixtures/spotbugs/notify*` and
+`lombok_notify`): SpotBugs reads the method's instructions in class-file order. A `synchronized` method, or any
+`monitorenter`, starts a watch. While watching, instructions that read nothing keep it going: constants, stores to
+locals and static fields, static calls, `new` with constant arguments, `iinc`, array creation, casts, non-capturing
+lambdas, branches and returns. Reading a local, `this`, a static field or a field starts a read; a field read keeps
+it going, and `notify()` or `notifyAll()` called with `invokevirtual` then is the call. Anything else during a read
+ends the watch until the next `monitorenter`: `Object o = lock;`, `int y = count;`, a call on `this`, an `if` on a
+parameter, `assert`. A notify call made without a read first (`"x".notify()`, `getLock().notify()`,
+`R.class.notify()`) is not counted, and the watch goes on. After the call, one `return` or jump may follow, and the
+end of the code reports it; in a block, a local load and `monitorexit` report it right away. Any other instruction
+after the call ends the watch, as does a second call. `super.notify()` (`invokespecial`) and calls on a value of an
+interface type (`invokeinterface`) do not count. There is one finding per method, at the first call reported, with
+priority 2, level `warning`, the line of the call's `(`, and the method as the argument. Inner class creation reads
+`this`, as does an anonymous class in an instance method; capturing lambdas and classes read what they capture. javac
+writes the value of a constant (also a `final` instance field or a `final` local set from a constant), folds
+`true ?`, `false &&` and `true ||`, turns `x += constant` on an `int` local into `iinc`, reads a static field named
+through a value after dropping the value, and leaves out casts to a supertype, jumps to the next instruction and
+the handlers of an empty `try` (its `finally` runs once). It copies `finally` blocks and instance initializers (into
+each constructor that does not call `this(...)`). `int.class` reads `Integer.TYPE`. A `switch` on a primitive is
+its selector and one instruction. Lombok's `@Synchronized` is a `synchronized` block on a
+field. The engine writes the instructions from the source (`code.rs`, `values.rs`); code it does not follow
+(`switch` on strings, enums and boxes, `try` with resources, `assert`, `yield`, unknown expressions) counts as a
+read. Known differences (#2508): type variables with an intersection bound, and local classes that take captured
+values only through a superclass or a constructor reference. Every pattern of
+`FindNakedNotify` is on the engine, so SpotBugs no longer runs that detector.
+
+Labs: 572 same / 4 missed / 2 extra (all #2508). On the six comparison code bases: Nacos 5 / 0 / 0, the others 0.
+
 ### Field patterns
 
 Field patterns (#2262, `src/java/spotbugs/attributes/`, labs in `tests/fixtures/spotbugs/attr_*`). Each file notes

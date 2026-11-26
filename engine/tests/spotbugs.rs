@@ -56,7 +56,7 @@ fn patterns_report_what_spotbugs_reports() {
     let missed: Vec<&Row> = expected.difference(&found).collect();
     let extra: Vec<&Row> = found.difference(&expected).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(expected.iter().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 40);
+    assert_eq!(expected.iter().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 42);
 }
 
 /// SpotBugs names the variable a stored value came from; `tests/expected/spotbugs-variables.json` holds the names
@@ -91,7 +91,8 @@ fn findings_name_the_place_spotbugs_sarif_names() {
     for name in &cases {
         let case = root.join("fixtures").join("spotbugs").join(name);
         let listed = found_listed(&case, name, "symbol").into_iter().filter(|row| rules.contains(&row.1));
-        found.extend(listed.map(|(file, rule, line, place)| (file, rule, line, place.split('|').next().unwrap_or_default().to_string())));
+        let kept = |place: &str| place.split(['|', '@']).next().unwrap_or_default().to_string();
+        found.extend(listed.map(|(file, rule, line, place)| (file, rule, line, kept(&place))));
     }
     found.sort();
     assert_eq!(found, expected);

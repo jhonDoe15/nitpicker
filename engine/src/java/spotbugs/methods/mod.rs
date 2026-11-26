@@ -1,7 +1,10 @@
-//! Patterns that judge one method as a whole from its declaration and what it returns or dereferences:
-//! NP_BOOLEAN_RETURN_NULL and NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT.
+//! Patterns that judge one method as a whole: NP_BOOLEAN_RETURN_NULL and NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT from
+//! what it returns or dereferences, HSM_HIDING_METHOD from its declaration and the class's supertypes, and
+//! NN_NAKED_NOTIFY from the instructions javac writes for it.
 mod booleans;
 mod equals;
+mod hiding;
+mod notify;
 
 use super::Context;
 use crate::engine::source::children;
@@ -24,6 +27,11 @@ fn bodies<'a>(node: Node<'a>, out: &mut Vec<Node<'a>>) {
 /// The class body of a declaration or of the `new` expression or enum constant carrying an anonymous class.
 fn body_of(class: Node) -> Option<Node> {
     class.child_by_field_name("body").or_else(|| children(class).into_iter().find(|part| part.kind() == "class_body"))
+}
+
+pub fn methods<'a>(context: &Context<'a>, class: Node<'a>) {
+    hiding::check(context, class);
+    notify::check(context, class);
 }
 
 pub fn method_patterns<'a>(context: &Context<'a>, class: Node<'a>) {
