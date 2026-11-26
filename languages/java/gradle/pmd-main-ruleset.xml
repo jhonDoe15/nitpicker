@@ -6107,6 +6107,20 @@ let $cheap := ('get', 'getOrDefault', 'contains', 'containsKey', 'containsValue'
     $costly := function($call) {
       $call/ArgumentList/@Size > 0 and not($call/@MethodName = $cheap) and not(matches($call/@MethodName, $verbs))
         and $settled($call/ArgumentList) and $settled($call/*[1][not(self::ArgumentList)])
+    },
+    $cheapTest := function($test) {
+      empty($test/descendant-or-self::*[self::ConstructorCall or self::AssignmentExpression
+        or self::UnaryExpression[@Operator = ('++', '--')] or self::LambdaExpression or self::MethodReference
+        or self::MethodCall[matches(@MethodName, $verbs)]])
+    },
+    $repeated := function($node) {
+      let $scope := $node/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][1]
+      return exists($node/ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement]
+          [ancestor::* intersect $scope])
+        or exists($scope[self::LambdaExpression][parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach',
+          'forEachOrdered', 'forEachRemaining', 'map', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch',
+          'mapToObj', 'mapToInt', 'mapToLong')]])
+        or exists($scope[self::MethodDeclaration][matches(@Name, '^visit')])
     }
 return
 //LocalVariableDeclaration[parent::Block][count(VariableDeclarator) = 1]
@@ -6116,7 +6130,7 @@ return
      [*[2]/(self::Block/*[last()] | self::*[not(self::Block)])
        [self::BreakStatement or self::ContinueStatement or self::ReturnStatement or self::ThrowStatement]]
      [empty(.//VariableAccess[@Name = $name])]
-     [$settled(*[1])])]
+     [$settled(*[1]) or ($cheapTest(*[1]) and $repeated(.))])]
 ]]></value>
       </property>
     </properties>

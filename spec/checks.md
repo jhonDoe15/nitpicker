@@ -558,7 +558,9 @@ moving them would change which error the exit path raises) declared right before
 that does not read it. Java has `WorkBeforeEarlyExit` (main PMD ruleset), where PMD
 `PrematureDeclaration` treats calls as impure and so skips this case: a local initialised by a call
 with arguments right before an `if` without `else` that ends in an exit and reads neither the local
-nor any call. Kotlin, Python and Go follow in #2133.
+nor any call. Inside a loop body, an iteration callback or a `visit*` method the condition may call
+methods that do not change state (#2184): the expensive call is paid for every element the cheap
+test throws away. Kotlin, Python and Go follow in #2133.
 
 `nitpicker/no-read-all-before-pass` (production source, in `eslint-lint`) reports every file read
 into one array that is then only walked once. `nitpicker/no-collected-stream-rows` is the same idea
