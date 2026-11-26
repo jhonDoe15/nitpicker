@@ -13,7 +13,7 @@ fn is_array(context: &Context, node: Node) -> bool {
 }
 
 /// Whether the call is one of the recognised static equality methods with `(Object, Object)` parameters.
-fn static_equals(context: &Context, call: Node) -> bool {
+pub(super) fn static_equals(context: &Context, call: Node) -> bool {
     let known = [
         ("android.support.v4.util.ObjectsCompat", "equals"),
         ("androidx.v4.util.ObjectsCompat", "equals"),

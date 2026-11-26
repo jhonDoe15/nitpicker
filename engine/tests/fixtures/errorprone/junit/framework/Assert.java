@@ -12,10 +12,14 @@ public class Assert {
     public static void assertTrue(boolean condition) {}
 
     public static void assertTrue(String message, boolean condition) {}
+
     public static void assertEquals(Object expected, Object actual) {}
 
     public static void assertEquals(String message, Object expected, Object actual) {}
 
     public static void assertArrayEquals(Object[] expected, Object[] actual) {}
 
+    public static void assertNotSame(Object unexpected, Object actual) {}
+
+    public static void assertNotSame(String message, Object unexpected, Object actual) {}
 }

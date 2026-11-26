@@ -227,6 +227,14 @@ mod nested_instanceof;
 mod optional_nulls;
 mod mockito_setup;
 mod mock_unused;
+mod misc_defect_calls;
+mod declaration_defects;
+mod auto_value_fields;
+mod flogger_calls;
+mod assert_order;
+mod mock_invocations;
+mod boxed_constructor;
+mod catch_fail;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -709,6 +717,27 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["OptionalMapToOptional"], optional_nulls::optional_map_to_optional),
     (&["MockIllegalThrows"], mockito_setup::mock_illegal_throws),
     (&["MockitoDoSetup"], mockito_setup::mockito_do_setup),
+    (&["CacheLoaderNull"], async_nulls::cache_loader_null),
+    (&["DoNotMockAutoValue"], do_not_mock::do_not_mock_auto_value),
+    (&["BareDotMetacharacter"], misc_defect_calls::bare_dot_metacharacter),
+    (&["CharacterGetNumericValue"], misc_defect_calls::character_get_numeric_value),
+    (&["GetClassOnEnum"], misc_defect_calls::get_class_on_enum),
+    (&["BigDecimalEquals"], misc_defect_calls::big_decimal_equals),
+    (&["CollectorShouldNotUseState"], misc_defect_calls::collector_should_not_use_state),
+    (&["BindingToUnqualifiedCommonType"], misc_defect_calls::binding_to_unqualified_common_type),
+    (&["DeprecatedVariable"], declaration_defects::deprecated_variable),
+    (&["AutoValueFinalMethods"], auto_value_fields::auto_value_final_methods),
+    (&["AssertSameIncompatible"], assert_order::assert_same_incompatible),
+    (&["BoxedPrimitiveConstructor"], boxed_constructor::boxed_primitive_constructor),
+    (&["CatchFail"], catch_fail::catch_fail),
+    (&["AssertEqualsArgumentOrderChecker"], assert_order::assert_equals_argument_order),
+    (&["FloggerPerWithoutRateLimit"], flogger_calls::flogger_per_without_rate_limit),
+    (&["FloggerLogWithCause"], flogger_calls::flogger_log_with_cause),
+    (&["FloggerRedundantIsEnabled"], flogger_calls::flogger_redundant_is_enabled),
+    (&["AutoValueImmutableFields"], auto_value_fields::auto_value_immutable_fields),
+    (&["ClosingStandardOutputStreams"], declaration_defects::closing_standard_output_streams),
+    (&["AssistedInjectAndInjectOnConstructors"], declaration_defects::assisted_inject_and_inject_on_constructors),
+    (&["AssistedInjectAndInjectOnSameConstructor"], declaration_defects::assisted_inject_and_inject_on_same_constructor),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
@@ -733,6 +762,9 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["UnicodeInCode"], source_text::unicode_in_code),
     (&["TreeToString"], tree_to_string::tree_to_string),
     (&["MockNotUsedInProduction"], mock_unused::mock_not_used_in_production),
+    (&["DefaultPackage"], declaration_defects::default_package),
+    (&["EmptyTopLevelDeclaration"], declaration_defects::empty_top_level_declaration),
+    (&["DirectInvocationOnMock"], mock_invocations::direct_invocation_on_mock),
 ];
 
 pub struct ErrorProne;

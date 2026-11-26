@@ -8,6 +8,9 @@ use crate::java::helpers::declarators;
 use crate::java::types::model::Type;
 use tree_sitter::Node;
 
+const AUTO_VALUE: &str = "com.google.auto.value.AutoValue";
+const AUTO_VALUE_REASON: &str = "AutoValue classes represent pure value classes, so mocking them should not be necessary";
+
 fn rank(context: &Context, name: &str) -> usize {
     if name == "java.lang.Object" {
         return 0;
@@ -34,7 +37,7 @@ fn shown(reason: &str) -> String {
 }
 
 /// The message for a mocked type that has a `@DoNotMock` somewhere in its supertypes.
-fn forbidden(context: &Context, mocked: &Type) -> Option<String> {
+fn forbidden(context: &Context, mocked: &Type, auto_value: bool) -> Option<String> {
     let Type::Class(name, _) = mocked else { return None };
     let mut all = Vec::new();
     closure(context, name, &mut all);
@@ -45,12 +48,17 @@ fn forbidden(context: &Context, mocked: &Type) -> Option<String> {
     for (_, current) in ordered {
         let Some(info) = index.get(&current) else { continue };
         let base = format!("Do not mock '{}'{}", qualified(mocked), if *name == current { String::new() } else { format!(" (which is-a '{current}')") });
-        if let Some(reason) = &info.do_not_mock {
-            return Some(format!("{base}; {current} is annotated as @DoNotMock: {}.", shown(reason)));
+        let (short, reason_of): (&str, fn(&crate::java::types::model::ClassInfo) -> Option<String>) = if auto_value {
+            ("AutoValue", |info| info.class_annotations.iter().any(|full| full == AUTO_VALUE).then(|| AUTO_VALUE_REASON.to_string()))
+        } else {
+            ("DoNotMock", |info| info.do_not_mock.as_ref().map(|reason| shown(reason)))
+        };
+        if let Some(reason) = reason_of(info) {
+            return Some(format!("{base}; {current} is annotated as @{short}: {reason}."));
         }
         for full in &info.class_annotations {
-            if let Some(reason) = index.get(full).and_then(|meta| meta.do_not_mock.as_ref()) {
-                return Some(format!("{base}; {current} is annotated as @{full} (which is annotated as @DoNotMock): {}.", shown(reason)));
+            if let Some(reason) = index.get(full).and_then(|meta| reason_of(meta)) {
+                return Some(format!("{base}; {current} is annotated as @{full} (which is annotated as @{short}): {reason}."));
             }
         }
     }
@@ -72,6 +80,14 @@ fn inner_creation(context: &Context, creation: Node) -> Option<Type> {
 }
 
 pub fn do_not_mock(context: &Context, node: Node) {
+    mock_check(context, node, "DoNotMock", false);
+}
+
+pub fn do_not_mock_auto_value(context: &Context, node: Node) {
+    mock_check(context, node, "DoNotMockAutoValue", true);
+}
+
+fn mock_check(context: &Context, node: Node, check: &'static str, auto_value: bool) {
     match node.kind() {
         "method_invocation" => {
             if !static_on_class(context, node, "org.mockito.Mockito", &["mock", "spy"]) {
@@ -89,8 +105,8 @@ pub fn do_not_mock(context: &Context, node: Node) {
                     None => return,
                 },
             };
-            if let Some(message) = forbidden(context, &mocked) {
-                context.report_fixed("DoNotMock", node, preferred(context, node), &message, &[]);
+            if let Some(message) = forbidden(context, &mocked, auto_value) {
+                context.report_fixed(check, node, preferred(context, node), &message, &[]);
             }
         }
         "field_declaration" => {
@@ -101,8 +117,8 @@ pub fn do_not_mock(context: &Context, node: Node) {
             for declarator in declarators(node) {
                 let Some(mocked) = context.resolver.declared_type(node, Some(declarator)) else { continue };
                 let Some(name) = declarator.child_by_field_name("name") else { continue };
-                if let Some(message) = forbidden(context, &mocked) {
-                    context.report_fixed("DoNotMock", node, name.start_byte(), &message, &[]);
+                if let Some(message) = forbidden(context, &mocked, auto_value) {
+                    context.report_fixed(check, node, name.start_byte(), &message, &[]);
                 }
             }
         }

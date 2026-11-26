@@ -222,6 +222,8 @@ pub struct Field {
     pub strict: bool,
     /// Not seen from subclasses.
     pub is_private: bool,
+    /// Annotated with `@org.mockito.Mock` and no explicit `answer`.
+    pub mock: bool,
     pub flags: u32,
 }
 

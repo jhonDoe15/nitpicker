@@ -14,6 +14,7 @@ public class Assert {
     public static void assertTrue(String message, boolean condition) {}
 
     public static void assertEquals(long expected, long actual) {}
+
     public static void assertEquals(Object expected, Object actual) {}
 
     public static void assertEquals(String message, Object expected, Object actual) {}
@@ -35,4 +36,8 @@ public class Assert {
     public static <T extends Throwable> T assertThrows(Class<T> expectedThrowable, org.junit.function.ThrowingRunnable runnable) {
         return null;
     }
+
+    public static void assertNotSame(Object unexpected, Object actual) {}
+
+    public static void assertNotSame(String message, Object unexpected, Object actual) {}
 }

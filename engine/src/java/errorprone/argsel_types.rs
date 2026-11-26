@@ -65,6 +65,7 @@ pub fn assignable(index: &TypeIndex, same: &dyn Fn(&str) -> bool, from: &Type, b
         (Type::Null, Type::Primitive(_)) => false,
         (Type::Null, _) => true,
         (Type::Variable(own), Type::Variable(other)) => own == other && same(own),
+        (Type::Variable(_), _) if matches!(bound, Type::Variable(_)) => false,
         (Type::Variable(_), Type::Primitive(_)) => assignable(index, same, bound, bound, to),
         (Type::Variable(_), _) => !matches!(to, Type::Variable(_)) && assignable(index, same, bound, bound, to),
         (Type::Class(name, _), Type::Primitive(target)) => unbox(name).is_some_and(|primitive| primitive == *target || widens(primitive, target)),
@@ -76,7 +77,7 @@ pub fn assignable(index: &TypeIndex, same: &dyn Fn(&str) -> bool, from: &Type, b
         (Type::Array(a), Type::Array(b)) => match (&**a, &**b) {
             (Type::Primitive(left), Type::Primitive(right)) => left == right,
             (Type::Primitive(_), _) | (_, Type::Primitive(_)) => false,
-            (left, right) => assignable(index, same, left, left, right),
+            (left, right) => assignable(index, same, left, if let Type::Array(inner) = bound { inner } else { left }, right),
         },
         _ => false,
     }

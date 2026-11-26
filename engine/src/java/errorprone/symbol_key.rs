@@ -9,7 +9,7 @@ use std::cell::OnceCell;
 use tree_sitter::Node;
 
 #[derive(PartialEq)]
-enum Key {
+pub(super) enum Key {
     This(String),
     Super(String),
     Local(usize),
@@ -135,6 +135,33 @@ pub fn declared_key<'t>(context: &Context<'t>, declaration: Node<'t>) -> Option<
             }
         }
         "formal_parameter" | "spread_parameter" => Some(SymbolKey(Key::Local(declaration.start_byte()))),
+        _ => None,
+    }
+}
+
+/// `first.equals(second)` on the symbols of two names or field accesses: the same declaration, whatever object it is read from.
+pub fn same_declaration<'t>(context: &Context<'t>, first: Node<'t>, second: Node<'t>) -> bool {
+    let scopes = OnceCell::new();
+    plain(first) && plain(second) && key(context, &scopes, first).is_some_and(|a| key(context, &scopes, second) == Some(a))
+}
+
+/// The symbol of a name or field access, for comparing with the symbol of a declaration.
+pub(super) fn expression_key<'t>(context: &Context<'t>, node: Node<'t>) -> Option<Key> {
+    if !plain(node) {
+        return None;
+    }
+    key(context, &OnceCell::new(), node)
+}
+
+/// The symbol a variable declarator declares: a local variable, or a field of its class.
+pub(super) fn declaration_key<'t>(context: &Context<'t>, declarator: Node<'t>) -> Option<Key> {
+    let holder = crate::engine::source::parent(declarator)?;
+    match holder.kind() {
+        "local_variable_declaration" => Some(Key::Local(declarator.start_byte())),
+        "field_declaration" => {
+            let name = context.text(declarator.child_by_field_name("name")?).to_string();
+            Some(Key::Field(enclosing_type(context.file, context.resolver.scope, declarator)?, name))
+        }
         _ => None,
     }
 }
