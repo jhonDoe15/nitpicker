@@ -36,4 +36,12 @@ public class DateTime {
     public DateTime minus(ReadableDuration duration) {
         return this;
     }
+
+    public DateTime withDurationAdded(long millis, int scalar) {
+        return this;
+    }
+
+    public DateTime withDurationAdded(ReadableDuration duration, int scalar) {
+        return this;
+    }
 }

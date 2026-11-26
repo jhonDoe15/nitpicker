@@ -38,4 +38,12 @@ public class Instant implements ReadableInstant {
     public Instant minus(ReadableDuration duration) {
         return this;
     }
+
+    public Instant withDurationAdded(long millis, int scalar) {
+        return this;
+    }
+
+    public Instant withDurationAdded(ReadableDuration duration, int scalar) {
+        return this;
+    }
 }
