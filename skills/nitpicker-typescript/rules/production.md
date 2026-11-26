@@ -157,6 +157,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   million characters, exactly when the output is largest (`nitpicker/no-whole-list-json-text`).
 - Map a long list while it is consumed (a generator that yields each mapped item, or the mapping inside the loop)
   instead of `findings.map(...)` handed to a writer that walks it once (`nitpicker/no-mapped-copy-for-single-pass`).
+- Start a Go-built server or checker (`tsgo`, the TypeScript 7 API server, `tsgolint`, `gopls`) with `GOGC` (for
+  example 50) or `GOMEMLIMIT` in its `env`, unless the user set one: the default lets its heap grow to twice the live
+  size (`nitpicker/require-go-collector-setting`).
 - A page of rows has an order: `limit`/`offset`/`take`/`skip`, a Prisma `cursor` or SQL `LIMIT` comes with
   `orderBy` on a unique key (or a tie-breaker after a non-unique one), and `json_agg`/`array_agg` or
   Kysely `jsonArrayFrom` lists sort inside (`json_agg(t ORDER BY t.name)`) (`nitpicker/no-unordered-query`).

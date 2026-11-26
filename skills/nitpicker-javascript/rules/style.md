@@ -355,6 +355,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   million characters, exactly when the output is largest (`nitpicker/no-whole-list-json-text`).
 - Map a long list while it is consumed (a generator that yields each mapped item, or the mapping inside the loop)
   instead of `findings.map(...)` handed to a writer that walks it once (`nitpicker/no-mapped-copy-for-single-pass`).
+- Start a Go-built server or checker (`tsgo`, the TypeScript 7 API server, `tsgolint`, `gopls`) with `GOGC` (for
+  example 50) or `GOMEMLIMIT` in its `env`, unless the user set one: the default lets its heap grow to twice the live
+  size (`nitpicker/require-go-collector-setting`).
 - Time values carry their unit in the name (`timeoutMs`, `ttlSeconds`) and meet only the same unit: convert
   once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
   `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time

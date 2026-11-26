@@ -71,6 +71,7 @@ export const productionGuardEntries: Record<string, Linter.RuleEntry> = {
   'nitpicker/no-buffered-growing-output': 'error',
   'nitpicker/no-whole-list-json-text': 'error',
   'nitpicker/no-mapped-copy-for-single-pass': 'error',
+  'nitpicker/require-go-collector-setting': 'error',
   'nitpicker/require-client-timeout': 'error',
   'nitpicker/time-unit-mismatch': 'error',
   'nitpicker/no-sync-node-api-in-async': 'error',

@@ -2093,6 +2093,17 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `nitpicker/no-whole-list-json-text`). Not reported: a copy that is stored, sorted, read twice or returned, a
   parameter walked inside another loop or callback, a list cut with `slice` first, and functions from other files. Map
   each item as it is consumed: a generator over the list, or the mapping inside the loop.
+- A long-running Go-built server or checker is started with a collector setting
+  (`nitpicker/require-go-collector-setting`, production files). With Go's default `GOGC=100` the heap grows to twice
+  its live size before each collection, which is gigabytes for a server that keeps a whole program in memory (the
+  TypeScript 7 API server peaked at 4.6 GB with a live heap of 3.0 to 3.6 GB, and at 4.2 GB with `GOGC=50`, same wall
+  time). Reported: `spawn`, `spawnSync`, `execFile`, `execFileSync` and execa calls whose command is `tsgo`,
+  `tsgolint` or `gopls` (a literal, a path ending in one of them or in the `@typescript/native-preview` package, or a
+  binding named like `tsgoPath`), or whose arguments include `--api` while the command is a binding or a `tsc` path,
+  when the options pass no `env`, or an `env` object without `GOGC` or `GOMEMLIMIT` (`env: process.env`, a spread of
+  `process.env` alone or a key set to `undefined` does not count). Not reported: `--version` and `--help` runs,
+  options or an `env` the rule cannot read (a parameter, another spread). Pass `env: { ...process.env, GOGC:
+  process.env.GOGC ?? '50' }`.
 - Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and
   Python presets) have no TypeScript or JavaScript counterpart: nothing blocks a thread on a promise, and a promise
   that never settles is a missing deadline for `await`, which `nitpicker/require-client-timeout` and

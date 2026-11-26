@@ -467,6 +467,11 @@ Copies walked once: `nitpicker/no-mapped-copy-for-single-pass` (production sourc
 only walks that parameter once (`for...of`, `yield*`, `Readable.from`). The copy doubles the memory of the list for
 the length of the walk; the allowed form maps each item as it is consumed.
 
+Go collector settings: `nitpicker/require-go-collector-setting` (production source, in `eslint-lint`) reports a child
+process started on a Go-built server or checker (`tsgo`, `tsgolint`, `gopls`, the TypeScript 7 API server with
+`--api`) whose `env` sets neither `GOGC` nor `GOMEMLIMIT`. With the default `GOGC=100` such a server holds twice its
+live heap; the allowed form passes `GOGC` unless the user set one.
+
 Unbounded waits: `pmd/UnboundedWait` (Java, main sources) reports `get()` or `join()` without a timeout on a
 `Future` or `CompletableFuture`, `Thread.join()` and `CountDownLatch.await()`, and
 `pmd/ReactorBlockWithoutTimeout` (with `reactor-core` on the compile classpath) reports `block()`,

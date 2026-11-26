@@ -218,6 +218,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-buffered-growing-output',
   'nitpicker/no-whole-list-json-text',
   'nitpicker/no-mapped-copy-for-single-pass',
+  'nitpicker/require-go-collector-setting',
   'nitpicker/require-promise-reject',
   'nitpicker/require-test-process-timeout',
   'nitpicker/shorter-boolean-logic',
