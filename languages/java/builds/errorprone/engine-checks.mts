@@ -14,15 +14,20 @@ const TEST_ONLY = '--test-only';
 export const TEST_SENSITIVE: readonly string[] = [
   'CheckedExceptionNotThrown',
   'ConstantPatternCompile',
+  'DefaultPackage',
   'ExposedPrivateType',
   'FutureReturnValueIgnored',
+  'IgnoredPureGetter',
   'InterruptedExceptionSwallowed',
   'Interruption',
+  'LiteProtoToString',
   'NarrowCalculation',
   'ProtoBuilderReturnValueIgnored',
   'ReturnValueIgnored',
+  'RxReturnValueIgnored',
   'StaticAssignmentOfThrowable',
   'ThrowSpecificExceptions',
+  'TimeInStaticInitializer',
   'UseCorrectAssertInTests',
 ];
 const MODULE_PATH = '--module-path';

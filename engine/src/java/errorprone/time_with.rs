@@ -3,7 +3,7 @@ use super::call_match::instance_on_exact_class;
 use super::fix_helpers::qualify_type;
 use super::fixes::Fix;
 use super::lookup::field_of;
-use super::parts::{arguments, class_of, only_argument};
+use super::parts::{class_of, only_argument};
 use super::positions::preferred as preferred_at;
 use super::symbol_key::same_symbol;
 use super::time_checks::nearby_scope;

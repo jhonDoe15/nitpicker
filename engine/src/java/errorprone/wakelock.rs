@@ -3,7 +3,7 @@ use super::Context;
 use super::call_match::instance_on_exact_class;
 use super::consts::{Const, constant};
 use super::fixes::Fix;
-use super::positions::{arguments, preferred};
+use super::positions::arguments;
 use super::symbol_key::same_declared_symbol;
 use crate::engine::source::{ancestor, children, named_children, parent, walk};
 use crate::java::types::model::Type;

@@ -3,7 +3,7 @@ use super::ast::Ast;
 use super::{Env, MethodSym, Sym, VarKind, VarSym};
 use crate::java::errorprone::lookup::field_of;
 use crate::java::errorprone::Context;
-use crate::java::javac::locals::{Found, Scopes, declaration, kind as local_kind};
+use crate::java::javac::locals::{Found, declaration, kind as local_kind};
 use crate::java::types::expr::{Binding, Receiver};
 use crate::java::types::model::{Type, flag};
 use crate::java::types::scope::enclosing_type;

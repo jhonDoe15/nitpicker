@@ -121,7 +121,7 @@ mod time_checks;
 mod time_with;
 mod inject_more;
 mod junit_more;
-mod misc_b17;
+mod misc_defect_shapes;
 mod hash_code_checks;
 mod decl_checks;
 mod undefined_equality;
@@ -761,12 +761,12 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["JUnit4ClassUsedInJUnit3"], junit_more::junit4_class_used_in_junit3),
     (&["JUnitAmbiguousTestClass"], junit_more::junit_ambiguous_test_class),
     (&["JUnitIncompatibleType"], junit_more::junit_incompatible_type),
-    (&["HardCodedSdCardPath"], misc_b17::hard_coded_sd_card_path),
-    (&["ICCProfileGetInstance"], misc_b17::icc_profile_get_instance),
-    (&["IncorrectMainMethod"], misc_b17::incorrect_main_method),
-    (&["IncrementInForLoopAndHeader"], misc_b17::increment_in_for_loop_and_header),
-    (&["InstanceOfAndCastMatchWrongType"], misc_b17::instance_of_and_cast_match_wrong_type),
-    (&["IntFloatConversion"], misc_b17::int_float_conversion),
+    (&["HardCodedSdCardPath"], misc_defect_shapes::hard_coded_sd_card_path),
+    (&["ICCProfileGetInstance"], misc_defect_shapes::icc_profile_get_instance),
+    (&["IncorrectMainMethod"], misc_defect_shapes::incorrect_main_method),
+    (&["IncrementInForLoopAndHeader"], misc_defect_shapes::increment_in_for_loop_and_header),
+    (&["InstanceOfAndCastMatchWrongType"], misc_defect_shapes::instance_of_and_cast_match_wrong_type),
+    (&["IntFloatConversion"], misc_defect_shapes::int_float_conversion),
     (&["InconsistentHashCode"], hash_code_checks::inconsistent_hash_code),
     (&["JodaInstantWithMillis"], joda_checks::joda_instant_with_millis),
     (&["JodaNewPeriod"], joda_checks::joda_new_period),

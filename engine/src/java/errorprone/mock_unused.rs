@@ -22,7 +22,7 @@ fn mock_call(context: &Context, node: Node) -> bool {
 }
 
 /// A field is eligible when it, or a class around it, is private, anonymous or local.
-fn effectively_private(context: &Context, declarator: Node, private_member: bool) -> bool {
+fn effectively_private(_context: &Context, declarator: Node, private_member: bool) -> bool {
     if private_member {
         return true;
     }

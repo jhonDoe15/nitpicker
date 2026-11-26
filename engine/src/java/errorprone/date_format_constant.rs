@@ -1,6 +1,5 @@
 //! DateFormatConstant: a `DateFormat` kept in a constant field.
 use super::Context;
-use super::fixes::Fix;
 use super::nodes::name_position;
 use super::renames::{Use, rename_variable, variable_uses};
 use crate::engine::source::parent;

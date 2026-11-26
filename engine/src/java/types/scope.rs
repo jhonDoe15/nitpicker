@@ -966,7 +966,7 @@ impl<'a> Resolver<'a> {
 
     /// Whether an expression has the shape of a constant expression; the fields it reads are collected.
     pub fn constant_shape(&self, expression: Node, uses: &mut Vec<(String, String)>) -> bool {
-        let mut all = |uses: &mut Vec<(String, String)>| {
+        let all = |uses: &mut Vec<(String, String)>| {
             crate::engine::source::named_children(expression)
                 .into_iter()
                 .filter(|part| !part.kind().ends_with("comment"))

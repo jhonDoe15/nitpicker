@@ -2,7 +2,7 @@
 use super::Context;
 use super::fixes::Fix;
 use super::flogger_calls::on_descendant;
-use super::method_call_checks::{erased_subtype, expression_subtype};
+use super::method_call_checks::erased_subtype;
 use super::positions::{arguments, preferred};
 use crate::engine::source::children;
 use crate::java::types::model::Type;

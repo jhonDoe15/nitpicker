@@ -529,5 +529,7 @@
  "UnnecessaryQualifier",
  "TruthIncompatibleType",
  "FloggerRequiredModifiers",
- "ImmutableAnnotationChecker"
+ "ImmutableAnnotationChecker",
+ "CacheLoaderNull",
+ "DoNotMockAutoValue"
 ]

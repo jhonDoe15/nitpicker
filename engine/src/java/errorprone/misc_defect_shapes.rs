@@ -12,7 +12,7 @@ use super::symbol_key::{same_declared_symbol, same_symbol};
 use super::target::target_type;
 use super::testcode::is_junit_test_code;
 use super::Context;
-use crate::engine::source::{children, named_children, parent, walk};
+use crate::engine::source::{named_children, parent, walk};
 use crate::java::helpers::{has_modifier, in_interface_or_annotation};
 use crate::java::types::expr::literal_text;
 use crate::java::types::model::Type;
