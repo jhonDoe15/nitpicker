@@ -49,6 +49,7 @@ import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stat
 import { rule as ruleNoSharedTempPathInTests } from '../rules/test-runtime/temp-paths/no-shared-temp-path-in-tests.mts';
 import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
 import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
+import { rule as ruleNoShrinkingWorklistJoin } from '../rules/worklists/no-shrinking-worklist-join.mts';
 import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
 import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mts';
 import { rule as ruleNoSlashOnlyRedirectGuard } from '../rules/urls/requests/no-slash-only-redirect-guard.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/
 import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/registry/no-unguarded-registry-delete.mts';
 import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
-import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mts';
 
 export const partRules = {
   'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
@@ -151,6 +151,7 @@ export const partRules = {
   'no-shared-temp-path-in-tests': ruleNoSharedTempPathInTests,
   'no-shared-test-state': ruleNoSharedTestState,
   'no-shell-string-command': ruleNoShellStringCommand,
+  'no-shrinking-worklist-join': ruleNoShrinkingWorklistJoin,
   'no-silent-catch': ruleNoSilentCatch,
   'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
   'no-slash-only-redirect-guard': ruleNoSlashOnlyRedirectGuard,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unguarded-registry-delete': ruleNoUnguardedRegistryDelete,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
-  'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
 };

@@ -191,6 +191,7 @@
   "eslint/nitpicker/no-unfiltered-soft-delete-read": ["bug", "persistence"],
   "eslint/nitpicker/no-unguarded-cyclic-recursion": ["bug", "reliability"],
   "eslint/nitpicker/no-operand-depth-recursion": ["bug", "reliability"],
+  "eslint/nitpicker/no-shrinking-worklist-join": ["bug"],
   "eslint/nitpicker/no-depth-only-worklist": ["performance"],
   "eslint/nitpicker/no-unguarded-deleted-items": ["bug"],
   "eslint/nitpicker/no-unguarded-json-parse": ["bug", "reliability"],

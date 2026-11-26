@@ -265,6 +265,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A worklist that can add several items per turn keeps a `Set` of the items already expanded
   (`if (!expanded.add(item)) continue;`): a depth limit alone does not bound the number of paths
   (`pmd/DepthOnlyWorklist`).
+- A worklist pass whose transfer can remove facts keeps the last output per edge and recomputes each input from them,
+  instead of `input.get(next).addAll(out)` (`pmd/ShrinkingWorklistJoin`).
 - A public method or constructor does not wait a constant it cannot override
   (`pmd/UninjectableDelay`): `Thread.sleep(RETRY_DELAY_MS)` or `TimeUnit.SECONDS.sleep(...)` on a
   `private static final` makes a test wait it out. Take the delay as a parameter, or a field the constructor

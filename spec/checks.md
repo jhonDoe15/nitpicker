@@ -1060,6 +1060,14 @@ Operand depth recursion: `nitpicker/no-operand-depth-recursion` (production sour
 operator, a binary or infix node or an operand, and no parameter is named like a depth or limit or compared with one.
 The stack grows with the length of an operand chain, which generated code makes very long.
 
+Shrinking worklist join: `nitpicker/no-shrinking-worklist-join` (production source, in `eslint-lint`) and
+`pmd/ShrinkingWorklistJoin` (Java, main sources) report the join in a worklist loop that pushes a successor when a
+join into its stored state changed (`join`, `merge`, `union`, `meet`, `widen`, Java `addAll`, on `state.get(next)`),
+when the loop or a function it calls with the state removes facts from a copy of the state depending on the facts it
+holds (TypeScript: `clear`, or `delete`/`splice` of a value taken from the copy or the state; Java: `removeIf`,
+`retainAll`, `clear`, or `remove`/`removeAll` of a value taken from the copy or the state). A join cannot take back a
+fact an earlier pass sent along the same edge. A fixed kill set taken from the node is not reported.
+
 Depth-only worklist: `nitpicker/no-depth-only-worklist` (production source, in `eslint-lint`) and
 `pmd/DepthOnlyWorklist` (Java, main sources) report a worklist loop that can append more than one item per turn and
 compares the depth of an item (a property, accessor or variable declared in the loop) with a limit, with no visited set

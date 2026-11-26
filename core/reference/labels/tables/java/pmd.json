@@ -186,6 +186,7 @@
   "pmd/SharedStatefulHelperField": ["bug", "async"],
   "pmd/SharedTempPathInTest": ["tests", "reliability"],
   "pmd/SharedTestState": ["tests"],
+  "pmd/ShrinkingWorklistJoin": ["bug"],
   "pmd/SiblingValuePassed": ["bug"],
   "pmd/SimplifiableTestAssertion": ["tests", "simplification"],
   "pmd/SimplifiedTernary": ["simplification"],

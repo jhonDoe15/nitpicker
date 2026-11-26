@@ -692,6 +692,15 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   length of an operand chain, and generated code (thousands of `+` operands, a long `else if` ladder) overflows it.
   Allowed form: walk the left-leaning chain in a loop and recurse only into the right operand, use an explicit stack,
   or pass a depth and stop with an ordinary error past a limit.
+- `nitpicker/no-shrinking-worklist-join`: a worklist loop (`for...of` over an array it pushes to, or a `while` loop
+  that `pop`s or `shift`s it) that pushes a successor when a join into the stored state of that successor reports a
+  change (`join`, `merge`, `union`, `meet` or `widen` on `state.get(next)` or `state[next]`), while the transfer
+  removes facts depending on the facts it holds: in the loop body or a function of the file it calls with the state, a
+  copy of the state is cleared, or a key or value taken from the copy or the state is deleted (`delete`, `splice`, the
+  `delete` operator). A join never takes back what an earlier pass sent along the same edge, so the stored input keeps
+  an old, stronger fact. A fixed kill set (names that come from the node, as in liveness) only shrinks monotonically
+  and is not reported. Allowed form: keep the last output per edge and recompute the input of a node from all of them,
+  or make the transfer only add.
 - `nitpicker/no-depth-only-worklist`: a worklist loop (also over `this.name`) that can append more than one item per
   iteration (a spread, more than one argument, two pushes, or a push inside an inner loop or callback), compares a
   depth (`depth`, `level`, `hops`, `distance`: a property, or a variable declared in the loop) with a limit, and has no

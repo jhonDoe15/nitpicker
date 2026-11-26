@@ -3998,6 +3998,57 @@ return //ClassBody/FieldDeclaration
       </property>
     </properties>
   </rule>
+  <rule name="ShrinkingWorklistJoin" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This worklist pass joins the output of each block into the stored input of its successor (input.get(next).addAll(out)), but the transfer removes facts from a copy of the state depending on the facts it holds (removeIf, retainAll, clear, or remove and removeAll of values taken from the state). A join never takes back what an earlier pass sent along the same edge, so the successor keeps an old, stronger fact after the loop comes round with a weaker one, and the pass reports results that are not true. Store the last output per edge and recompute the input of a block from all of them whenever one changes, or make the transfer only add facts.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $takes := ('poll', 'pop', 'removeFirst', 'removeLast', 'pollFirst', 'pollLast', 'remove'),
+    $appends := ('add', 'push', 'offer', 'addLast', 'addFirst', 'offerLast', 'offerFirst'),
+    $names := function($e) {
+      $e/descendant-or-self::*[self::VariableAccess or self::FieldAccess]/@Name
+    },
+    $stateOf := function($e, $key) {
+      $e/self::MethodCall[@MethodName = 'get'][ArgumentList/*[1][self::VariableAccess[@Name = $key]]]
+        /*[1][self::VariableAccess or self::FieldAccess]/@Name
+    },
+    $removes := function($scope, $sources) {
+      let $copies := $scope//LocalVariableDeclaration/VariableDeclarator[$names(*[2]) = $sources]/VariableId/@Name,
+          $facts := ($copies, $sources)
+      return exists($scope//MethodCall[*[1][self::VariableAccess][@Name = $copies]]
+                      [@MethodName = ('removeIf', 'retainAll', 'clear')
+                       or (@MethodName = ('remove', 'removeAll') and $names(ArgumentList/*[1]) = $facts)])
+    }
+return
+//WhileStatement
+  /(let $loop := .,
+        $class := ancestor::ClassBody[1],
+        $work := (.//MethodCall[@MethodName = $takes][ArgumentList/@Size = 0]
+                    /*[1][self::VariableAccess or self::FieldAccess]/@Name)[1]
+    return .//IfStatement
+      /(let $key := *[position() > 1]//MethodCall[@MethodName = $appends]
+                      [*[1][self::VariableAccess or self::FieldAccess][@Name = $work]]
+                      /ArgumentList/*[1][self::VariableAccess]/@Name
+        return *[1]/descendant-or-self::MethodCall
+          [matches(@MethodName, '^(join|merge|union|meet|widen|addAll)', 'i')]
+          [let $state := (for $part in (*[1], ArgumentList/*), $k in $key return $stateOf($part, $k))[1]
+           return exists($state)
+             and ($removes($loop/*[last()], $state)
+                  or (some $call in $loop//MethodCall
+                                      [*[1][self::ArgumentList or self::ThisExpression or self::TypeExpression]]
+                      satisfies
+                        (some $method in $class/MethodDeclaration[@Name = $call/@MethodName]
+                                           [count(FormalParameters/FormalParameter) = $call/ArgumentList/@Size]
+                         satisfies $removes($method/Block,
+                           ($state, for $i in 1 to count($method/FormalParameters/FormalParameter)
+                                    return if ($names($call/ArgumentList/*[$i]) = $state)
+                                           then $method/FormalParameters/FormalParameter[$i]/VariableId/@Name
+                                           else ())))))]))
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="SiblingValuePassed" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="A value that belongs to another property fills this slot: the call sets one property from a variable named for a different one while a variable named for this property is never read, or an argument is repeated while its numbered sibling is left out. This is a copy-paste slip that compiles and shows up only at runtime. Pass the matching value (config.timeColumn(timeColumn), onException(type1, type2, type3)). An exception fits a converter that renames on purpose.">
     <priority>3</priority>
