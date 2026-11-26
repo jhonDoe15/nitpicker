@@ -156,6 +156,7 @@
   "pmd/OneDeclarationPerLine": ["style"],
   "pmd/OppositeBoundAssigned": ["bug"],
   "pmd/OptionalOrElseGetNull": ["bug"],
+  "pmd/ParallelStreamSharedMutation": ["bug", "reliability", "async"],
   "pmd/ParameterMutation": ["maintainability"],
   "pmd/PendingFuturesNotFailedOnClose": ["reliability", "async"],
   "pmd/PlainCollectionInConcurrentMap": ["bug", "async"],

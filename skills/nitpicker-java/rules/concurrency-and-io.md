@@ -119,6 +119,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - An atomic field is updated with one atomic call (`incrementAndGet`, `updateAndGet`, `accumulateAndGet`), and a
   check then act on an atomic flag is `if (flag.compareAndSet(false, true))`, never `x.set(f(x.get()))` or
   `if (!flag.get()) { flag.set(true); ... }` (`pmd/AtomicGetThenSet`).
+- Parallel streams: a `parallelStream()` lambda never adds to or puts into a plain `ArrayList`, `HashMap`,
+  `HashSet` or `StringBuilder` created outside it: it races and loses elements. Build the result with
+  `collect(Collectors.toList())`, `toList()` or `Collectors.toMap`, or use a concurrent collection
+  (`pmd/ParallelStreamSharedMutation`).
 - A `static` field or a singleton bean's field does not hold a `SimpleDateFormat`, `DecimalFormat`, `Calendar`,
   `Matcher`, `Cipher`, `Mac`, `BeanWrapper` or retry back-off: use `DateTimeFormatter`, a `Pattern` constant with
   `pattern.matcher(text)` per call, a per-call instance or a `ThreadLocal` (`pmd/SharedStatefulHelperField`).
