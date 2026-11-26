@@ -75,26 +75,34 @@ describe('engineChecksFor', () => {
     ]);
   });
 
-  it('does not run a check the project switched off', () => {
-    const own = classesIn('demo');
+  it('leaves only the checks the project configures to Error Prone', () => {
     const head = headWith(
-      own,
+      classesIn('demo'),
       '--errorprone-flag=-Xep:SystemOut:OFF',
+      '--errorprone-flag=-Xep:EmptyCatch:ERROR',
+      '--errorprone-flag=-Xep:JavaUtilDate',
+      '--errorprone-flag=-Xep:NullAway:ERROR',
       '--errorprone-flag=-Xep:Other:ERROR',
     );
+    const configured = ['SystemOut', 'EmptyCatch', 'JavaUtilDate', NULL_AWAY];
 
-    expect(engineChecksFor(head).checks).toStrictEqual(
-      ENGINE_CHECKS.filter((check) => check !== 'SystemOut'),
-    );
+    expect(engineChecksFor(head)).toStrictEqual({
+      checks: ENGINE_CHECKS.filter((check) => !configured.includes(check)),
+      packages: [],
+    });
   });
 
   it.each([
     '-XepExcludedPaths:.*/generated/.*',
     '-XepOpt:NullAway:ExcludedClasses=demo.A',
-    '-Xep:NullAway:ERROR',
     '-XepPatchChecks:MissingOverride',
+    '-XepDisableAllChecks',
   ])('leaves every check to Error Prone when the project passes %s', (flag) => {
-    const head = headWith(classesIn('demo'), `--errorprone-flag=${flag}`);
+    const head = headWith(
+      classesIn('demo'),
+      '--errorprone-flag=-Xep:SystemOut:WARN',
+      `--errorprone-flag=${flag}`,
+    );
 
     expect(engineChecksFor(head).checks).toStrictEqual([]);
   });
