@@ -7,6 +7,8 @@ import java.util.regex.Pattern;
 public class Cleaner {
   private static final String DIGITS = "\\d+";
   private static final String PLAIN = "abc";
+  private static final String JOINED = "a" + "b";
+  private static final String DOTTED = "a" + ".";
   private static final Pattern DATED = Pattern.compile("\\d{4}-\\d{2}-\\d{2}.*");
 
   public List<String> dated(List<String> lines) {
@@ -113,5 +115,21 @@ public class Cleaner {
 
   public long numeric(List<String> lines) {
     return lines.stream().filter(line -> line.matches(DIGITS)).count();
+  }
+
+  public List<String> constantPattern(List<String> lines) {
+    return lines.stream().map(line -> line.replaceAll(DIGITS, "#")).toList();
+  }
+
+  public String qualifiedPlain(String line) {
+    return line.replaceAll(Cleaner.PLAIN, "q");
+  }
+
+  public String joined(String line) {
+    return line.replaceAll(JOINED, "j");
+  }
+
+  public String dotted(String line) {
+    return line.replaceAll(DOTTED, "d");
   }
 }
