@@ -1,14 +1,20 @@
 //! Lint rules on the shared parse. Ids, messages and positions are those of the ESLint-plugin rule of the same name.
 mod arguments;
+mod chunks;
+mod collections;
 mod defaults;
 mod delegation;
 mod domain;
+mod empty_lists;
 mod errors;
 mod events;
 mod forwarding;
 mod lifecycles;
 mod listeners;
 mod modules;
+mod number_input;
+mod patterns;
+mod presence;
 mod promises;
 mod react_tests;
 mod signatures;
@@ -16,9 +22,11 @@ mod spreads;
 pub mod support;
 mod test_assertions;
 mod test_runtime;
-mod time;
 pub mod testing_library;
+mod time;
+mod time_zones;
 pub mod typed;
+mod union_members;
 
 use super::ParsedFile;
 use crate::engine::finding::Finding;
@@ -109,7 +117,7 @@ impl<'a> Context<'a, '_> {
 pub type Rule = fn(&mut Context);
 
 /// Rules written against the ESTree-shaped view.
-const ON_VIEW: &[&str] = &["hover-test-needs-keyboard", "no-add-only-collection", "no-array-spread-arguments", "no-copied-constant", "no-dropped-delegate-result", "no-external-executables-in-unit-tests", "no-falsy-default", "no-forwarding-method-alias", "no-forwarding-wrapper", "no-internal-module-mocks", "no-mutating-method-in-domain", "no-parameter-mutation", "no-shadowed-spread-key", "no-swapped-arguments", "no-unhandled-void-promise", "no-wait-for-with-fake-timers", "preserve-error-cause", "react-test-no-implementation-details", "report-module-load-effects", "require-error-listener", "settle-pending-on-close", "structured-catch-logging", "test-must-use-production-runtime", "time-unit-mismatch"];
+const ON_VIEW: &[&str] = &["exhaustive-union-predicate", "hover-test-needs-keyboard", "no-accumulator-concat", "no-add-only-collection", "no-array-spread-arguments", "no-blank-number-coercion", "no-chunkwise-stream-text", "no-copied-constant", "no-dropped-delegate-result", "no-empty-every-signal", "no-expanding-replacement-string", "no-external-executables-in-unit-tests", "no-falsy-default", "no-forwarding-method-alias", "no-forwarding-wrapper", "no-in-presence-check", "no-internal-module-mocks", "no-local-time-zone", "no-lookup-as-presence", "no-mutating-method-in-domain", "no-parameter-mutation", "no-shadowed-spread-key", "no-string-as-regex", "no-swapped-arguments", "no-unhandled-void-promise", "no-union-order-dependence", "no-wait-for-with-fake-timers", "preserve-error-cause", "react-test-no-implementation-details", "report-module-load-effects", "require-error-listener", "settle-pending-on-close", "structured-catch-logging", "test-must-use-production-runtime", "time-unit-mismatch"];
 
 pub const ALL: &[(&str, Rule)] = &[
     ("hover-test-needs-keyboard", react_tests::hover_test_needs_keyboard::check),
