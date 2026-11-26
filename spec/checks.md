@@ -776,6 +776,12 @@ in the file. Java has `ScanPerCallOverFixedCollection` (main PMD ruleset) for th
 (or its `values()`, `keySet()`, `entrySet()`) changed only in constructors, as a stream
 `filter(...).findFirst()`, `anyMatch`, `noneMatch` or an enhanced `for` that returns on a match.
 
+`nitpicker/no-cache-per-inner-unit` (production source, in `eslint-lint`) reports a cache
+(`new ...Cache(...)`, `...Memo`, `...Memoizer`, `...Shared`) created with arguments inside a loop body
+or iteration callback when no argument depends on the pass and the cache is not stored. Java has
+`CachePerInnerUnit` (main PMD ruleset) for the same shape. The second form of the pattern, a component
+rebuilt from the same input without its caches, is left to review.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

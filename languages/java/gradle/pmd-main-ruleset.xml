@@ -6291,6 +6291,45 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="CachePerInnerUnit" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This cache is created again for every pass of the loop although nothing it is built from depends on the element of the pass, so each pass starts empty and works out the same answers again. Create it once before the loop (or once per enclosing unit, such as the file or the run) and share it across the passes.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $repeats := ('ForeachStatement', 'ForStatement', 'WhileStatement', 'DoStatement'),
+    $iterating := ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'anyMatch', 'allMatch', 'noneMatch',
+                   'peek', 'mapToObj', 'mapToInt', 'mapToLong', 'mapToDouble'),
+    $cacheType := function($call) {
+      matches($call/ClassType/@SimpleName, '(Cache|Caches|Memo|Memoizer|Shared)$')
+    },
+    $units := function($node) {
+      let $method := $node/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+      return $node/ancestor::*[local-name() = $repeats
+        or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterating]]]
+        [exists(ancestor::* intersect $method)]
+    },
+    $varying := function($units) {
+      ($units//VariableId
+        | $units//AssignmentExpression/*[1][self::VariableAccess]
+        | $units//UnaryExpression[@Operator = ('++', '--')]/VariableAccess)/@Name
+    }
+return
+//LocalVariableDeclaration/VariableDeclarator[ConstructorCall]
+  [let $call := ConstructorCall,
+       $name := VariableId/@Name,
+       $units := $units(.),
+       $uses := ancestor::Block[1]//VariableAccess[@Name = $name]
+   return exists($units)
+     and $cacheType($call) and $call/ArgumentList/@Size > 0
+     and empty($call/ArgumentList//(MethodCall | ConstructorCall))
+     and empty($call/ArgumentList//VariableAccess[@Name = $varying($units[last()])])
+     and (every $use in $uses satisfies exists($use/parent::*[self::MethodCall or self::FieldAccess][*[1] is $use]))]
+  /ConstructorCall
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ScanPerCallOverFixedCollection" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This method scans every element of a field collection for one that matches its parameter, and it runs from a loop or from many call sites while the collection does not change after construction, so each call repeats the whole scan. Build an index once (a Map from the compared value to the element, filled where the field is filled) and look the parameter up in it.">
     <priority>3</priority>
@@ -6373,6 +6412,7 @@ return
      and empty($parameters[. = $name])
      and empty($changes)
      and empty(ancestor::*[local-name() = $repeats or self::LambdaExpression][ancestor::* intersect $method])
+     and count($class/MethodDeclaration[@Name = $own][@Arity = $arity]) = 1
      and (exists($looped) or count($calls) >= 3)]
 ]]></value>
       </property>

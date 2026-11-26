@@ -1,3 +1,4 @@
+import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-writes.mts';
 import { rule as ruleNoUnbatchedHeavyRun } from '../rules/heavy-steps/no-unbatched-heavy-run.mts';
 import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mts';
 import { rule as ruleNoUncheckedPositionalElement } from '../rules/positional-elements/no-unchecked-positional-element.mts';
@@ -97,9 +98,9 @@ import { rule as ruleRequireJvmHeapGoal } from '../rules/child-heaps/require-jvm
 import { rule as ruleRequireMovedTsconfigTypeRoots } from '../rules/temp-staging/require-moved-tsconfig-type-roots.mts';
 import { rule as ruleRequireProcessTimeout } from '../rules/processes/require-process-timeout.mts';
 import { rule as ruleRequirePromiseReject } from '../rules/promises/executors/require-promise-reject.mts';
-import { rule as ruleRequireStagedParentNodeModules } from '../rules/temp-staging/require-staged-parent-node-modules.mts';
 
 export const partRules = {
+  'no-unatomic-writes': ruleNoUnatomicWrites,
   'no-unbatched-heavy-run': ruleNoUnbatchedHeavyRun,
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,
   'no-unchecked-positional-element': ruleNoUncheckedPositionalElement,
@@ -199,5 +200,4 @@ export const partRules = {
   'require-moved-tsconfig-type-roots': ruleRequireMovedTsconfigTypeRoots,
   'require-process-timeout': ruleRequireProcessTimeout,
   'require-promise-reject': ruleRequirePromiseReject,
-  'require-staged-parent-node-modules': ruleRequireStagedParentNodeModules,
 };

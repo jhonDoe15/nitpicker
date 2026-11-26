@@ -6,6 +6,10 @@ export const GROUPS: readonly Group[] = [
     typescript: 'nitpicker/no-scan-per-call-over-fixed-collection',
   },
   {
+    java: 'CachePerInnerUnit',
+    typescript: 'nitpicker/no-cache-per-inner-unit',
+  },
+  {
     java: 'PerItemCacheGrowth',
     typescript: 'nitpicker/no-per-item-cache-growth',
   },
