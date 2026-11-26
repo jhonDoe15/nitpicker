@@ -77,7 +77,28 @@ pub fn literal_text(file: &crate::engine::source::SourceFile, literal: Node) -> 
                     chars.next();
                 }
                 let code: String = chars.by_ref().take(4).collect();
-                value.push(char::from_u32(u32::from_str_radix(&code, 16).ok()?)?);
+                let unit = u32::from_str_radix(&code, 16).ok()?;
+                if !(0xD800..0xE000).contains(&unit) {
+                    value.push(char::from_u32(unit)?);
+                    continue;
+                }
+                let mut ahead = chars.clone();
+                let low = (ahead.next() == Some('\\') && ahead.next() == Some('u'))
+                    .then(|| {
+                        while ahead.peek() == Some(&'u') {
+                            ahead.next();
+                        }
+                        u32::from_str_radix(&ahead.by_ref().take(4).collect::<String>(), 16).ok()
+                    })
+                    .flatten()
+                    .filter(|low| unit < 0xDC00 && (0xDC00..0xE000).contains(low));
+                match low {
+                    Some(low) => {
+                        value.push(char::from_u32(0x10000 + ((unit - 0xD800) << 10) + (low - 0xDC00))?);
+                        chars = ahead;
+                    }
+                    None => value.push(char::REPLACEMENT_CHARACTER),
+                }
             }
             digit @ '0'..='7' => {
                 let mut code = digit.to_digit(8)?;
@@ -1206,17 +1227,22 @@ impl<'a> Resolver<'a> {
     }
 
     /// The parameter types of the one method that `value::name` can mean.
-    fn reference_parameters(&self, reference: Node) -> Option<Vec<Type>> {
+    fn reference_parameters(&self, reference: Node) -> Option<(Vec<Type>, bool)> {
         let parts = children(reference);
         let name = self.file.text_of(*parts.last()?);
-        let Receiver::Value(owner) = self.receiver(*parts.first()?)? else { return None };
+        let (owner, unbound) = match self.receiver(*parts.first()?)? {
+            Receiver::Value(owner) => (owner, false),
+            Receiver::Static(class) if !self.index.generic(&class) => (Type::class(&class), true),
+            Receiver::Static(_) => return None,
+        };
         let methods = self.index.methods(&owner.name(), name);
         let [(declaring, method)] = methods.as_slice() else { return None };
         if !method.type_parameters.is_empty() {
             return None;
         }
         let map = self.index.member_map(&owner, &declaring.name);
-        Some(method.generic_parameters.iter().map(|kind| kind.substitute(&map)).collect())
+        let receiver = (unbound && !method.is_static).then(|| owner.clone());
+        Some((receiver.into_iter().chain(method.generic_parameters.iter().map(|kind| kind.substitute(&map))).collect(), unbound))
     }
 
     fn is_busy(&self, node: Node) -> bool {
@@ -1328,8 +1354,15 @@ impl<'a> Resolver<'a> {
                 }
             }
             if argument.kind() == "method_reference" {
-                for (wanted, declared) in taken.iter().zip(self.reference_parameters(argument).unwrap_or_default()) {
-                    self.unify(wanted, &declared, &method.type_parameters, &mut inferred);
+                let (declared, unbound) = self.reference_parameters(argument).unwrap_or_default();
+                let mut bounded = HashMap::new();
+                for (wanted, declared) in taken.iter().zip(declared) {
+                    self.unify(wanted, &declared, &method.type_parameters, if unbound { &mut bounded } else { &mut inferred });
+                }
+                if !matches!(call.parent().map(|parent| parent.kind()), Some("argument_list")) {
+                    for (name, kind) in bounded {
+                        inferred.entry(name).or_insert(kind);
+                    }
                 }
             }
             if !method.type_parameters.iter().any(|name| mentions(&returned, name)) {
@@ -1599,16 +1632,30 @@ impl<'a> Resolver<'a> {
         if self.index.is_subtype(&right, &left) {
             return a.clone();
         }
-        let class = self.index.superclasses(&left).into_iter().find(|ancestor| ancestor != OBJECT && self.index.is_subtype(&right, ancestor));
-        let found = class.or_else(|| {
-            self.index.lineage(&left).iter().find(|ancestor| *ancestor != OBJECT && self.index.is_subtype(&right, ancestor)).cloned()
-        });
+        let lineage = self.index.lineage(&left);
+        let common: Vec<&String> = lineage.iter().filter(|ancestor| *ancestor != OBJECT && !ancestor.contains('&') && self.index.is_subtype(&right, ancestor)).collect();
+        let mut lowest: Vec<&str> = common.iter().filter(|one| !common.iter().any(|other| other != *one && self.index.is_subtype(other, one))).map(|one| one.as_str()).collect();
+        lowest.dedup();
+        if lowest.len() > 1 {
+            let interface = |name: &str| self.index.get(name).is_some_and(|info| info.is_interface);
+            lowest.sort_by(|x, y| interface(x).cmp(&interface(y)).then(self.rank(y, 0).cmp(&self.rank(x, 0))).then(x.cmp(y)));
+            return Type::class(&lowest.join("&"));
+        }
+        let found = lowest.first().map(|only| only.to_string());
         // What two types with type arguments share has type arguments too: it is not a raw type.
         let written = |kind: &Type| matches!(kind, Type::Class(_, given) if !given.is_empty());
         match found.as_deref() {
             Some(found) if written(a) && written(b) => self.index.declared(found),
             found => Type::class(found.unwrap_or(OBJECT)),
         }
+    }
+
+    /// The length of the longest chain of supertypes from a class up to `Object`, which orders the parts of an
+    /// intersection: the deepest first.
+    fn rank(&self, name: &str, depth: usize) -> usize {
+        let Some(info) = self.index.get(name).filter(|_| depth < 64 && name != OBJECT) else { return 0 };
+        let above = info.superclass.iter().chain(&info.interfaces).map(|parent| self.rank(parent, depth + 1)).max().unwrap_or(0);
+        above + 1
     }
 
     fn conditional(&self, expression: Node) -> Option<Type> {

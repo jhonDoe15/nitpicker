@@ -165,6 +165,13 @@ imported from a router package),
 files are left alone; timers, `fetch`, `window` listeners, sockets and observers in render are reported by
 `react-x/purity`.
 
+React hydration: `nitpicker/react-no-hydration-mismatch` (production source in a package that depends on a
+server-rendering React framework, in `eslint-lint`, report-only) reports a ternary or `&&` rendered by a component (a
+JSX child or the returned value, in the component's own body) whose test checks `typeof window`, `document`,
+`navigator`, `localStorage`, `sessionStorage` or `matchMedia`, directly or through a module-level `const` made only of
+such tests. Portals, attributes, `suppressHydrationWarning`, shadowed globals, branches that render nothing, nested
+functions and branches inside another conditional branch are left alone.
+
 React i18next: `nitpicker/react-i18next-escape-value` (production source in a React project that depends on
 `react-i18next`, in `eslint-lint`) reports a `t(...)` or `<Trans values>` call that interpolates values into text React
 renders while no source file of the package sets `interpolation.escapeValue: false` and the call does not. The init
@@ -207,6 +214,11 @@ React effect resources: `nitpicker/react-no-leaked-effect-resource` (production 
 `ReportingObserver` that is created and never closed, a `navigator.geolocation.watchPosition` call whose id is never
 used, and a `requestAnimationFrame` loop that always schedules itself again and is never cancelled. A handle that is
 stored in a ref, passed on, returned or closed anywhere in the effect is left alone.
+`nitpicker/react-no-dropped-effect-handle` (same scope, type-aware) reports, in an effect callback that returns no
+cleanup, a `subscribe*`, `listen*`, `watch*`, `observe*`, `autorun*`, `addListener*`, `addEventListener` or `on[A-Z_]*`
+call whose result type is a `() => void` function or has `unsubscribe()` or `dispose()` and that is dropped or kept in
+a local the effect never reads. `once*` and
+`register*` calls, receivers created in the same effect and bounded RxJS streams are left alone.
 
 Rows changed in memory: `in-memory-update` in the Python preset reports rows loaded from a Django queryset or a
 SQLAlchemy query only to set the same values on each and write them back (`bulk_update`, `commit`), where one `update`
@@ -455,6 +467,55 @@ a buffered `child_process` or `execa` call whose output is read when the command
 constant, or when `maxBuffer` is a constant and the output is parsed whole (`JSON.parse`, `split`). Past the limit
 the child is killed and the call fails with `ENOBUFS`; the allowed forms read the output as a stream or from a file.
 
+Whole-list JSON text: `nitpicker/no-whole-list-json-text` (production source, in `eslint-lint`) reports
+`JSON.stringify` or `join` of a list that grows with the input (a findings, results, files or rows list, or an array
+filled in a loop) whose result is written with `writeFileSync`, `appendFileSync`, `writeSync` or a stream's `write`,
+and `JSON.parse(readFileSync(...))` read for such a list. Past about 512 million characters the string cannot be built
+and the output is lost; below it the text doubles the memory of the data. The allowed form writes and reads one
+element per line.
+
+Copies walked once: `nitpicker/no-mapped-copy-for-single-pass` (production source, in `eslint-lint`) reports `map`,
+`filter`, `flatMap` or a spread copy of a list that grows with the input passed to a function of the same file that
+only walks that parameter once (`for...of`, `yield*`, `Readable.from`). The copy doubles the memory of the list for
+the length of the walk; the allowed form maps each item as it is consumed.
+
+Go collector settings: `nitpicker/require-go-collector-setting` (production source, in `eslint-lint`) reports a child
+process started on a Go-built server or checker (`tsgo`, `tsgolint`, `gopls`, the TypeScript 7 API server with
+`--api`) whose `env` sets neither `GOGC` nor `GOMEMLIMIT`. With the default `GOGC=100` such a server holds twice its
+live heap; the allowed form passes `GOGC` unless the user set one.
+
+JVM heap goals: `nitpicker/require-jvm-heap-goal` (production source, in `eslint-lint`) reports a `java` child process
+started in a loop, a parallel map or a pool, or from a function called there, whose arguments or `JAVA_TOOL_OPTIONS`
+set a heap ceiling (`-Xmx`, `-XX:MaxRAMPercentage`) and no goal (`-XX:GCTimeRatio`, `-XX:SoftMaxHeapSize`,
+`-XX:MaxHeapFreeRatio`). Each such JVM grows to its ceiling and keeps it, so concurrent JVMs hold far more than their
+live data; the allowed form adds `-XX:GCTimeRatio=4` next to the ceiling.
+
+Unbatched heavy runs: `nitpicker/no-unbatched-heavy-run` (production source, in `eslint-lint`) reports a parameter or
+file listing spread whole into the arguments of a type-aware run (`tsc`, `tsgo`, `tsgolint`, `vue-tsc`,
+`--type-aware`) that is not started from a loop, a parallel map or a pool. One program over every file grows with the
+project; the allowed form runs once per bounded batch.
+
+Child waits after local work: `nitpicker/no-child-wait-after-local-work` (production source, in `eslint-lint`) reports
+a statement that starts a child process (directly or through a function of the same file) after an in-process step
+whose result it does not read, when both results are later combined in one array. The parent holds the
+memory of its own step while the child runs; the allowed form runs the child step first.
+
+Overlapping TypeScript programs: `nitpicker/no-overlapping-typescript-programs` (production source, in `eslint-lint`)
+reports a second `createProgram`, `createWatchProgram`, `createLanguageService` or
+`createSemanticDiagnosticsBuilderProgram` from `typescript` in a function that still reads the first program, or its
+type checker, after it. Both programs stay live at once; the allowed form finishes with the first before building the
+second.
+
+Per-item caches: `nitpicker/no-per-item-cache-growth` (production source, in `eslint-lint`, a broad rule) reports a
+module-level or field `Map` or `WeakMap` that a loop fills with one entry per item and reads back only for the same
+item, when nothing removes the entries. The map grows with the number of items; the allowed form keeps the value in a
+local of the loop body or deletes the entry when the item is done.
+
+Aggregate packages for one member: `nitpicker/no-aggregate-package-for-one-member` (production source, in
+`eslint-lint`) reports a `require`, dynamic `import` or static `import` of `typescript-eslint` used only through
+`parser` or only through `plugin`, which ship as their own packages. The aggregate loads every part of the tool; the
+allowed form loads the member's package.
+
 Unbounded waits: `pmd/UnboundedWait` (Java, main sources) reports `get()` or `join()` without a timeout on a
 `Future` or `CompletableFuture`, `Thread.join()` and `CountDownLatch.await()`, and
 `pmd/ReactorBlockWithoutTimeout` (with `reactor-core` on the compile classpath) reports `block()`,
@@ -604,6 +665,19 @@ Java `SortedRangeScan` (main PMD ruleset, #2312, Java only) reports an enhanced 
 `SortedSet` or the key set or entry set of a `SortedMap` whose body is only an `if` testing the
 element against a lower and an upper bound that returns or breaks on the first hit, and suggests
 `subSet`, `tailSet`, `ceiling` or `subMap`.
+
+Sequential reads: `nitpicker/no-sequential-independent-reads` (production source, in `eslint-lint`, report-only) reports
+two or more adjacent `const x = await <read>` statements in one block where no later read uses an earlier result. Reads
+are `fetch` without a body (method `GET` or `HEAD`) and ORM reads of the project's ORM. A write, a guard or any other
+statement ends the run; loops, transaction callbacks, transaction-named clients, locking reads and reads named after an
+authorization or session check are left alone. The JavaScript preset runs the same rule.
+
+Early waits: `nitpicker/no-early-wait-on-started-work` (production source, in `eslint-lint`, report-only, broad) reports
+`const r = await task` where `task` is a same-block `const` holding a `Promise` started earlier (type-aware) and `r` is
+first read three or more statements later after statements that do work (calls other than accessors, logging, `Math` and
+`JSON`), do not mention `task` and do not leave the block. Java runs the same check as `pmd/EarlyWaitOnStartedWork` on
+`Future.get()`, `get(timeout, unit)` and `join()` of a future started by `supplyAsync`, `runAsync`, `submit`, `schedule`
+or `sendAsync`.
 
 `nitpicker/no-accumulating-group-spread` (production source, in `eslint-lint`) reports a group of a
 `Map` or object spread into a new array that replaces it on every step of a loop or iteration
@@ -1123,6 +1197,45 @@ function that calls itself with a typed value reached through `cause`, `parents`
 `edges` and similar collection properties of its own parameter (or, for the TypeScript API `Type`, `types`, `target`,
 `base` and `getTypeArguments`) when the function has no visited set, map or depth limit. Single-pointer walks (`parent`,
 `next`, `prev`, `owner`), tree children, syntax tree nodes and untyped parameters are not reported.
+
+Cyclic recursion in Java: `pmd/UnguardedCyclicRecursion` (main sources) reports the same walk: a method that calls
+itself, with the same number of arguments, with an element reached from its parameter through `getDependencies()`,
+`getReferences()`, `getInterfaces()`, `getEdges()` and similar getters or fields (through a `for` loop variable, a
+local or a lambda parameter), or with `getCause()` directly, when the method names no visited set or depth and uses no
+`Collection` or `Map` other than its own locals.
+
+Operand depth recursion: `nitpicker/no-operand-depth-recursion` (production source, in `eslint-lint`) and
+`pmd/OperandDepthRecursion` (Java, main sources) report a function that calls itself on both operands of its parameter
+(`left`/`right`, `lhs`/`rhs`, `getLeft()`/`getRight()`, `getLeftOperand()`/`getRightOperand()`) when it names an
+operator, a binary or infix node or an operand, and no parameter is named like a depth or limit or compared with one.
+The stack grows with the length of an operand chain, which generated code makes very long.
+
+Unguarded recursion entry: `nitpicker/no-unguarded-recursion-entry` (production source, in `eslint-lint`) and
+`pmd/UnguardedRecursionEntry` (Java, main sources) report a function of a file or class that enters a recursion through
+a function shared with a sibling (both call it, it calls both back; Java follows up to two calls back) while only the
+sibling checks a `Set` or `Map` field keyed by its parameter. The reported entry point does not touch that guard and
+does not call the guarded sibling.
+
+Cache after guard fallback: `nitpicker/no-cache-after-guard-fallback` (production source, in `eslint-lint`) and
+`pmd/CacheAfterGuardFallback` (Java, main sources) report a cache write keyed by the same parameter as an earlier
+recursion guard check that returns early (TypeScript: `set` after `has` or `add`; Java: `put` or `putIfAbsent` after
+`!inProgress.add(node)`, `contains` or `containsKey`), in a function that recurses (TypeScript: through any functions
+of the file; Java: directly or through one other method of the class), unless the function names a partial result.
+The cached value may be one that a refused deeper turn cut short.
+
+Shrinking worklist join: `nitpicker/no-shrinking-worklist-join` (production source, in `eslint-lint`) and
+`pmd/ShrinkingWorklistJoin` (Java, main sources) report the join in a worklist loop that pushes a successor when a
+join into its stored state changed (`join`, `merge`, `union`, `meet`, `widen`, Java `addAll`, on `state.get(next)`),
+when the loop or a function it calls with the state removes facts from a copy of the state depending on the facts it
+holds (TypeScript: `clear`, or `delete`/`splice` of a value taken from the copy or the state; Java: `removeIf`,
+`retainAll`, `clear`, or `remove`/`removeAll` of a value taken from the copy or the state). A join cannot take back a
+fact an earlier pass sent along the same edge. A fixed kill set taken from the node is not reported.
+
+Depth-only worklist: `nitpicker/no-depth-only-worklist` (production source, in `eslint-lint`) and
+`pmd/DepthOnlyWorklist` (Java, main sources) report a worklist loop that can append more than one item per turn and
+compares the depth of an item (a property, accessor or variable declared in the loop) with a limit, with no visited set
+or mark anywhere in the loop (`has`, `add`, `includes`, Java `contains`, `containsKey`, `add` or `put` on a `Set` or
+`Map`, `computeIfAbsent`). Tree children (`children`, `getChildren()`, TypeScript `forEachChild`) are not reported.
 
 Chunkwise stream text: `nitpicker/no-chunkwise-stream-text` (production source, in `eslint-lint`, type-aware) reports,
 inside a `'data'` listener or a `for await` loop over a stream whose chunk is a `Buffer`, `Uint8Array` or untyped

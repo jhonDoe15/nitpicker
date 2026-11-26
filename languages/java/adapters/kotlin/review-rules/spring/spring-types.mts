@@ -71,6 +71,9 @@ export const SPRING_TRANSACTIONAL = group(
   inPackage(`${SPRING}.transaction.annotation`, 'Transactional'),
 );
 export const JAKARTA_TRANSACTIONAL = group(twins('transaction.Transactional'));
+export const TRANSACTIONAL_EVENT_LISTENER = group(
+  inPackage(`${SPRING}.transaction.event`, 'TransactionalEventListener'),
+);
 export const ASYNC = group(inPackage(`${SPRING}.scheduling.annotation`, 'Async'));
 export const SCHEDULED = group(inPackage(`${SPRING}.scheduling.annotation`, 'Scheduled'));
 export const META_PROXIED = group(

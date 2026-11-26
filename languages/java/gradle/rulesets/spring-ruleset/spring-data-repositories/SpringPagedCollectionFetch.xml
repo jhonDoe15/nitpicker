@@ -1,0 +1,23 @@
+  <rule name="SpringPagedCollectionFetch" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Load a page of ids first and fetch the collection for those ids in a second query (where o.id in :ids), or load it with @BatchSize or @Fetch(FetchMode.SUBSELECT): a paged query that fetches a collection cannot be limited in SQL, so Hibernate reads every matching row and cuts the page in memory (HHH90003004).">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration
+  [FormalParameters/FormalParameter/ClassType[pmd-java:typeIs('org.springframework.data.domain.Pageable')
+     or pmd-java:typeIs('org.springframework.data.domain.Limit')]
+   or ResultType/ClassType[pmd-java:typeIs('org.springframework.data.domain.Slice')]]
+  /ModifierList/Annotation
+    [(pmd-java:typeIs('org.springframework.data.jpa.repository.Query')
+      and not(AnnotationMemberList/MemberValuePair[@Name = 'nativeQuery']/BooleanLiteral[@True = true()])
+      and matches(lower-case(string-join(AnnotationMemberList/MemberValuePair[@Name = 'value']
+            //StringLiteral/@ConstValue, ' ')), 'join\s+fetch\s'))
+     or (pmd-java:typeIs('org.springframework.data.jpa.repository.EntityGraph')
+      and AnnotationMemberList/MemberValuePair[@Name = 'attributePaths'])]
+|
+//MethodCall[@MethodName = ('setMaxResults', 'setFirstResult')]
+  /descendant::MethodCall[@MethodName = ('createQuery', 'createSelectionQuery')][1]
+    [*[1][pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager')
+          or pmd-java:typeIs('org.hibernate.query.QueryProducer')]]
+    [matches(lower-case(string-join(ArgumentList/*[1]/descendant-or-self::StringLiteral/@ConstValue, ' ')), 'join\s+fetch\s')]
+]]></value></property></properties>
+  </rule>

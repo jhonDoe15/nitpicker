@@ -1,0 +1,23 @@
+  <rule name="SpringAnnotationBeforeProxy" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Move this work to an @EventListener(ApplicationReadyEvent.class) method or an ApplicationRunner, where the annotation applies: @PostConstruct, afterPropertiesSet and a @Bean initMethod run on the raw bean before Spring wraps it in its proxy, so @Transactional, @Async, @Cacheable, @CachePut, @CacheEvict, @Retryable and @PreAuthorize do nothing on them.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $beans := //MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]
+      /AnnotationMemberList/MemberValuePair[@Name = 'initMethod']]
+return //MethodDeclaration
+  [ModifierList/Annotation[pmd-java:typeIs('jakarta.annotation.PostConstruct') or pmd-java:typeIs('javax.annotation.PostConstruct')]
+   or (@Name = 'afterPropertiesSet' and @Arity = 0
+       and ancestor::ClassDeclaration[1][pmd-java:typeIs('org.springframework.beans.factory.InitializingBean')])
+   or (@Arity = 0 and (let $name := string(@Name), $owner := string(ancestor::ClassDeclaration[1]/@SimpleName)
+       return some $bean in $beans satisfies
+         ($bean/ClassType/@SimpleName = $owner
+          and $bean/ModifierList/Annotation/AnnotationMemberList/MemberValuePair[@Name = 'initMethod']
+            //StringLiteral/@ConstValue = $name)))]
+  /ModifierList/Annotation[some $t in ('org.springframework.transaction.annotation.Transactional',
+      'jakarta.transaction.Transactional', 'javax.transaction.Transactional',
+      'org.springframework.scheduling.annotation.Async', 'org.springframework.cache.annotation.Cacheable',
+      'org.springframework.cache.annotation.CachePut', 'org.springframework.cache.annotation.CacheEvict',
+      'org.springframework.retry.annotation.Retryable', 'org.springframework.security.access.prepost.PreAuthorize')
+    satisfies pmd-java:typeIs($t)]
+]]></value></property></properties>
+  </rule>

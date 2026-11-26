@@ -11,6 +11,9 @@ const REPLACEMENTS: ReadonlyMap<string, string> = new Map([
   ['extract/transpile/index.mjs ./typescript-wrap.mjs', 'typescript-wrap'],
   ['extract/resolve/index.mjs ./get-manifest.mjs', 'get-manifest'],
   ['extract/resolve/get-manifest.mjs ./merge-manifests.mjs', 'merge-manifests'],
+  ['extract/index.mjs ./gather-initial-sources.mjs', 'gather-initial-sources'],
+  ['extract/extract-dependencies.mjs ./tsc/extract.mjs', 'tsc-extract'],
+  ['extract/extract-dependencies.mjs ./acorn/extract.mjs', 'acorn-extract'],
 ]);
 
 function replacementFor(specifier: string, parentUrl: string | undefined): string | undefined {

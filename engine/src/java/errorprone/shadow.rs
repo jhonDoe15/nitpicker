@@ -22,6 +22,7 @@ fn pretty(kind: &Type) -> String {
         Type::Variable(name) => name.clone(),
         Type::Primitive(name) => (*name).to_string(),
         Type::Wildcard => "?".to_string(),
+        Type::Bounded(lower, bound) => format!("? {} {}", if *lower { "super" } else { "extends" }, pretty(bound)),
         Type::Null => "null".to_string(),
     }
 }

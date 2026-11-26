@@ -59,6 +59,7 @@ export type PlanProject = {
   readonly preset: string;
   readonly sharedFiles: readonly string[];
   readonly toolchainRoot?: string;
+  readonly derivedSourceRoots?: readonly string[];
   readonly configError?: string;
 };
 

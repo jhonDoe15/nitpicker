@@ -393,6 +393,45 @@ the spec for Mocha.
   `{ concurrent: false }` opt a block or test out, and a project that sets
   `sequence.concurrent: false` anywhere turns the config flag off. Run the tests that change such
   state in sequence, or keep the state inside the test.
+- `nitpicker/no-fixed-port-in-tests`: a test, hook or `describe` body does not start a server on a fixed
+  port: `listen(<port>)` or `listen({ port: <port> })` on any server, and `new WebSocketServer({ port })`
+  (`WebSocket.Server` too), with a port from 1 to 65535 written in the file (a literal or a same-file
+  constant). The port is taken whenever parallel test workers, a second run of the suite, a running
+  app or a socket of the previous test still closing hold it, and the test fails. Port 0, a port from
+  a parameter, a free-port helper or the environment are fine. Not reported: a `listen` the test
+  expects to fail (inside `expect(...)`, or a `try` block that calls `fail`, `assert.fail`,
+  `t.fail` or `expect.fail`), a test or suite whose title is about a taken port (`EADDRINUSE`, or
+  `port` with `in use`, `not available`, `occupied`, `taken` or `busy`), a test that doubles `listen`
+  (a local named `listen`, `spyOnListen`, `listenStub` and the like, or a `'listen'` string such as
+  `vi.spyOn(server, 'listen')`), and code outside tests, hooks and suites. Listen on port 0 and read
+  the port the server got (`server.address().port`).
+- `nitpicker/no-listing-order-in-assertions`: a directory listing or glob result is not compared in
+  order with a list of two or more items. `readdir`/`readdirSync` (`fs`, `fs/promises`, `fs.promises`,
+  `fs-extra`, `graceful-fs`), `glob`/`globSync` from `glob` (v9 and later, which do not sort),
+  `fast-glob`, `globby` and `tinyglobby` return entries in the order the file system gives, which
+  differs between file systems and machines. The rule reports `toEqual`/`toStrictEqual` and
+  `assert.deepEqual`/`deepStrictEqual` (and `t.deepEqual`) with the listing as the actual value and an
+  array of two or more plain elements (no spread) as the expected one. The listing is the call itself
+  (also awaited, through `?.`, `as` or `map`/`filter`), or a `const` holding one that is never sorted,
+  reversed or passed to another function. The listing function must be the module-level import or
+  `require`, not a local of the same name. `glob.sync` is not reported, since `glob` before v9 sorts
+  it. A file that mocks the listing (`vi.mock`/`jest.mock` of a listed module, `memfs` or `mock-fs`
+  anywhere in the file, an import of `memfs` or `mock-fs`, or a `spyOn`/`stub` of a listing function)
+  is not checked. Sort the result first, or compare without order.
+- `nitpicker/no-wall-clock-bound-in-tests`: a test does not assert that measured time stayed under a
+  limit below one second. The measured time is a later read minus an earlier read of the same clock
+  (`Date.now()`, `performance.now()`, `new Date().getTime()`, `+new Date()`), directly or through
+  variables that only hold such reads or such a difference. The assertion is `toBeLessThan`,
+  `toBeLessThanOrEqual`, chai's `below`, `lessThan`, `lt` or `most`, a comparison checked with
+  `toBe(true)`, `toBeTruthy()`, `toEqual(true)` or `toStrictEqual(true)`, or `assert`, `assert.ok`
+  or `assert.isTrue` of a comparison; the limit is a number or a same-file constant. A loaded CI
+  runner, a garbage collection pause or a cold cache pushes the time over the limit and the test
+  fails. Lower bounds, limits of a second or more (a hang guard), `*.bench.*` files and files that
+  fake or replace the clock (fake timers, `setSystemTime`, `spyOn` of `Date.now` or
+  `performance.now`, `stubGlobal` of `Date` or `performance`, an assignment to `Date.now`,
+  `FakeTimers.install()`) are not reported. Assert the behaviour (the calls made, the work counted) and
+  keep speed checks in a benchmark. `nitpicker/no-real-time-random-or-network` reports the
+  `Date.now()` reads of such a test too; this rule reports the assertion, and covers `performance.now()`.
 - `nitpicker/no-switched-off-tests`: no `it.todo`/`test.todo`/`describe.todo` (`vitest/no-disabled-tests`
   already reports `skip`; neither is a way to switch a test off) and no `skipIf(true)`/`runIf(false)`.
   A condition that folds to a constant counts as a literal: `skipIf(1 === 1)`, `skipIf(!false)`,

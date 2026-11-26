@@ -1,3 +1,11 @@
+import { rule as ruleNoMagicNumbers } from '../rules/wrapped/no-magic-numbers.mts';
+import { rule as ruleNoMalformedQueryText } from '../rules/query-text/no-malformed-query-text.mts';
+import { rule as ruleNoManagedResourceConstructionOutsideCompositionRoots } from '../rules/boundaries/no-managed-resource-construction-outside-composition-roots.mts';
+import { rule as ruleNoManyToManyCascadeRemove } from '../rules/persistence/no-many-to-many-cascade-remove.mts';
+import { rule as ruleNoMappedCopyForSinglePass } from '../rules/whole-lists/no-mapped-copy-for-single-pass.mts';
+import { rule as ruleNoMismatchedPreconditionMessage } from '../rules/preconditions/no-mismatched-precondition-message.mts';
+import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
+import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
 import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
 import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multiple-collection-joins.mts';
 import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
@@ -8,15 +16,18 @@ import { rule as ruleNoNodeProcessPerTest } from '../rules/test-runtime/processe
 import { rule as ruleNoNonLatin1HeaderValue } from '../rules/encoding/no-non-latin1-header-value.mts';
 import { rule as ruleNoNull } from '../rules/syntax/no-null.mts';
 import { rule as ruleNoNullBranchFallThrough } from '../rules/null-branches/no-null-branch-fall-through.mts';
+import { rule as ruleNoOperandDepthRecursion } from '../rules/recursion/operands/no-operand-depth-recursion.mts';
 import { rule as ruleNoOperandSlip } from '../rules/operands/no-operand-slip.mts';
 import { rule as ruleNoOrmQueryLogging } from '../rules/database/no-orm-query-logging.mts';
 import { rule as ruleNoOrmSchemaSync } from '../rules/database/no-orm-schema-sync.mts';
 import { rule as ruleNoOverflowingBackoff } from '../rules/backoff/no-overflowing-backoff.mts';
+import { rule as ruleNoOverlappingTypescriptPrograms } from '../rules/program-lifetimes/no-overlapping-typescript-programs.mts';
 import { rule as ruleNoParameterMutation } from '../rules/signatures/no-parameter-mutation.mts';
 import { rule as ruleNoPartialOutputAssertion } from '../rules/test-runtime/assertions/no-partial-output-assertion.mts';
 import { rule as ruleNoPatternCompiledInLoop } from '../rules/repeated-work/patterns/no-pattern-compiled-in-loop.mts';
 import { rule as ruleNoPerCallDebounce } from '../rules/lifecycles/debounce/no-per-call-debounce.mts';
 import { rule as ruleNoPerCallRegistration } from '../rules/lifecycles/registrations/no-per-call-registration.mts';
+import { rule as ruleNoPerItemCacheGrowth } from '../rules/program-lifetimes/no-per-item-cache-growth.mts';
 import { rule as ruleNoPipeDroppingErrors } from '../rules/streams/no-pipe-dropping-errors.mts';
 import { rule as ruleNoPlaceholderImplementation } from '../rules/placeholders/no-placeholder-implementation.mts';
 import { rule as ruleNoPrefixWithoutBoundary } from '../rules/affixes/no-prefix-without-boundary.mts';
@@ -46,6 +57,7 @@ import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/n
 import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mts';
 import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.mts';
 import { rule as ruleNoSendWithoutReturn } from '../rules/handlers/fall-through/no-send-without-return.mts';
+import { rule as ruleNoSequentialIndependentReads } from '../rules/waterfalls/no-sequential-independent-reads.mts';
 import { rule as ruleNoServerOrWorkerPerTest } from '../rules/test-runtime/processes/no-server-or-worker-per-test.mts';
 import { rule as ruleNoServiceLocator } from '../rules/service-locator/no-service-locator.mts';
 import { rule as ruleNoShadowedSpreadKey } from '../rules/spreads/no-shadowed-spread-key.mts';
@@ -53,6 +65,7 @@ import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stat
 import { rule as ruleNoSharedTempPathInTests } from '../rules/test-runtime/temp-paths/no-shared-temp-path-in-tests.mts';
 import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
 import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
+import { rule as ruleNoShrinkingWorklistJoin } from '../rules/worklists/no-shrinking-worklist-join.mts';
 import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
 import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mts';
 import { rule as ruleNoSlashOnlyRedirectGuard } from '../rules/urls/requests/no-slash-only-redirect-guard.mts';
@@ -80,26 +93,22 @@ import { rule as ruleNoTypeLookupPerNode } from '../rules/type-lookups/no-type-l
 import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framework-in-domain.mts';
 import { rule as ruleNoUnanchoredAffixReplace } from '../rules/affixes/no-unanchored-affix-replace.mts';
 import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-writes.mts';
+import { rule as ruleNoUnbatchedHeavyRun } from '../rules/heavy-steps/no-unbatched-heavy-run.mts';
 import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mts';
 import { rule as ruleNoUncheckedResponseJson } from '../rules/response-json/no-unchecked-response-json.mts';
 import { rule as ruleNoUncheckedUrlSink } from '../rules/urls/links/no-unchecked-url-sink.mts';
 import { rule as ruleNoUnclearedSharedMock } from '../test-quality/shared-mocks/no-uncleared-shared-mock.mts';
-import { rule as ruleNoUnclearedTimeout } from '../rules/lifecycles/timers/no-uncleared-timeout.mts';
-import { rule as ruleNoUnclosedFileDescriptor } from '../rules/resources/descriptors/no-unclosed-file-descriptor.mts';
-import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mts';
-import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mts';
-import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mts';
-import { rule as ruleNoUnencodedUrlPart } from '../rules/urls/construction/no-unencoded-url-part.mts';
-import { rule as ruleNoUnescapedCssSelector } from '../rules/selectors/no-unescaped-css-selector.mts';
-import { rule as ruleNoUnescapedFilterValue } from '../rules/patterns/filters/no-unescaped-filter-value.mts';
-import { rule as ruleNoUnescapedHtmlInterpolation } from '../rules/patterns/html/no-unescaped-html-interpolation.mts';
-import { rule as ruleNoUnescapedPatternTranslation } from '../rules/patterns/no-unescaped-pattern-translation.mts';
-import { rule as ruleNoUnfilteredSoftDeleteRead } from '../rules/queries/soft-delete/no-unfiltered-soft-delete-read.mts';
-import { rule as ruleNoUnguardedCyclicRecursion } from '../rules/recursion/no-unguarded-cyclic-recursion.mts';
-import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-unguarded-deleted-items.mts';
-import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
 
 export const partRules = {
+  'no-magic-numbers': ruleNoMagicNumbers,
+  'no-malformed-query-text': ruleNoMalformedQueryText,
+  'no-managed-resource-construction-outside-composition-roots':
+    ruleNoManagedResourceConstructionOutsideCompositionRoots,
+  'no-many-to-many-cascade-remove': ruleNoManyToManyCascadeRemove,
+  'no-mapped-copy-for-single-pass': ruleNoMappedCopyForSinglePass,
+  'no-mismatched-precondition-message': ruleNoMismatchedPreconditionMessage,
+  'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
+  'no-module-level-let': ruleNoModuleLevelLet,
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
   'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
   'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
@@ -110,15 +119,18 @@ export const partRules = {
   'no-non-latin1-header-value': ruleNoNonLatin1HeaderValue,
   'no-null': ruleNoNull,
   'no-null-branch-fall-through': ruleNoNullBranchFallThrough,
+  'no-operand-depth-recursion': ruleNoOperandDepthRecursion,
   'no-operand-slip': ruleNoOperandSlip,
   'no-orm-query-logging': ruleNoOrmQueryLogging,
   'no-orm-schema-sync': ruleNoOrmSchemaSync,
   'no-overflowing-backoff': ruleNoOverflowingBackoff,
+  'no-overlapping-typescript-programs': ruleNoOverlappingTypescriptPrograms,
   'no-parameter-mutation': ruleNoParameterMutation,
   'no-partial-output-assertion': ruleNoPartialOutputAssertion,
   'no-pattern-compiled-in-loop': ruleNoPatternCompiledInLoop,
   'no-per-call-debounce': ruleNoPerCallDebounce,
   'no-per-call-registration': ruleNoPerCallRegistration,
+  'no-per-item-cache-growth': ruleNoPerItemCacheGrowth,
   'no-pipe-dropping-errors': ruleNoPipeDroppingErrors,
   'no-placeholder-implementation': ruleNoPlaceholderImplementation,
   'no-prefix-without-boundary': ruleNoPrefixWithoutBoundary,
@@ -148,6 +160,7 @@ export const partRules = {
   'no-secret-in-log': ruleNoSecretInLog,
   'no-self-recursion': ruleNoSelfRecursion,
   'no-send-without-return': ruleNoSendWithoutReturn,
+  'no-sequential-independent-reads': ruleNoSequentialIndependentReads,
   'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
   'no-service-locator': ruleNoServiceLocator,
   'no-shadowed-spread-key': ruleNoShadowedSpreadKey,
@@ -155,6 +168,7 @@ export const partRules = {
   'no-shared-temp-path-in-tests': ruleNoSharedTempPathInTests,
   'no-shared-test-state': ruleNoSharedTestState,
   'no-shell-string-command': ruleNoShellStringCommand,
+  'no-shrinking-worklist-join': ruleNoShrinkingWorklistJoin,
   'no-silent-catch': ruleNoSilentCatch,
   'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
   'no-slash-only-redirect-guard': ruleNoSlashOnlyRedirectGuard,
@@ -182,22 +196,9 @@ export const partRules = {
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
   'no-unanchored-affix-replace': ruleNoUnanchoredAffixReplace,
   'no-unatomic-writes': ruleNoUnatomicWrites,
+  'no-unbatched-heavy-run': ruleNoUnbatchedHeavyRun,
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,
   'no-unchecked-response-json': ruleNoUncheckedResponseJson,
   'no-unchecked-url-sink': ruleNoUncheckedUrlSink,
   'no-uncleared-shared-mock': ruleNoUnclearedSharedMock,
-  'no-uncleared-timeout': ruleNoUnclearedTimeout,
-  'no-unclosed-file-descriptor': ruleNoUnclosedFileDescriptor,
-  'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
-  'no-uncollected-tests': ruleNoUncollectedTests,
-  'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
-  'no-unencoded-url-part': ruleNoUnencodedUrlPart,
-  'no-unescaped-css-selector': ruleNoUnescapedCssSelector,
-  'no-unescaped-filter-value': ruleNoUnescapedFilterValue,
-  'no-unescaped-html-interpolation': ruleNoUnescapedHtmlInterpolation,
-  'no-unescaped-pattern-translation': ruleNoUnescapedPatternTranslation,
-  'no-unfiltered-soft-delete-read': ruleNoUnfilteredSoftDeleteRead,
-  'no-unguarded-cyclic-recursion': ruleNoUnguardedCyclicRecursion,
-  'no-unguarded-deleted-items': ruleNoUnguardedDeletedItems,
-  'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
 };

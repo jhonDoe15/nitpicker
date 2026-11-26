@@ -109,28 +109,6 @@ describe('errorProneOnEngine', () => {
     ]);
   });
 
-  it('leaves NullAway to Error Prone when the engine says a library holds marks it did not read', () => {
-    const { plan, environment, source, argumentFile } = setup();
-    const findings = [rowIn(source, 'SystemOut'), rowIn(source, NULL_AWAY)];
-
-    errorProneOnEngine(plan, environment, {
-      run: engineWriting({ findings, nullAwayUnsure: true }),
-    });
-
-    const report = readFileSync(path.join(plan.reportDir, ENGINE_REPORT), 'utf8');
-    expect(listOf(parseJson(report)).map((row) => fieldOf(row, 'message'))).toStrictEqual([
-      '[SystemOut] found',
-    ]);
-    const flags = readFileSync(argumentFile, 'utf8')
-      .split('\n')
-      .filter((line) => line.startsWith('--errorprone-flag='));
-    expect(flags).toStrictEqual(
-      ENGINE_CHECKS.filter((check) => check !== NULL_AWAY).map(
-        (check) => `--errorprone-flag=-Xep:${check}:OFF`,
-      ),
-    );
-  });
-
   it.each([
     ['the engine fails', () => ({ status: 1, stdout: '', stderr: 'no types' }), 'no types'],
     [

@@ -1,0 +1,49 @@
+  <rule name="BigDecimalExactDivide" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="BigDecimal.divide(divisor) with one argument returns the exact quotient and throws an ArithmeticException (Non-terminating decimal expansion) when there is none, as for 1 divided by 3. It passes every test with round amounts and fails in production on the first value that does not divide evenly. Pass a scale and a rounding mode: total.divide(parts, 2, RoundingMode.HALF_EVEN), or a MathContext. An exception fits a divisor that is always a power of ten, or a constant from another file that is known to terminate.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[pmd-java:matchesSig('java.math.BigDecimal#divide(java.math.BigDecimal)')]
+  [let $strip := function($n, $self) {
+         if ($n = 0) then 0 else if ($n mod 2 = 0) then $self($n idiv 2, $self) else if ($n mod 5 = 0) then $self($n idiv 5, $self) else $n
+       },
+       $terminates := function($text) {
+         let $digits := replace(replace(replace(replace($text, '[eE][+-]?[0-9]+"?$', ''), '[_"lLdDfF]', ''), '\.', ''), '^0+', '')
+         return matches($digits, '^[0-9]{1,15}$') and $strip(xs:integer($digits), $strip) = 1
+       },
+       $exact := function($e) {
+         exists($e/self::MethodCall[@MethodName = 'valueOf'][ArgumentList[@Size = (1, 2)]/*[1][self::NumericLiteral][$terminates(string(@Image))]])
+         or exists($e/self::ConstructorCall[ArgumentList[@Size = 1]/*[self::StringLiteral or self::NumericLiteral][$terminates(string(@Image))]])
+       },
+       $one := function($r) {
+         exists($r[self::FieldAccess or self::VariableAccess][@Name = ('TEN', 'ONE')])
+         or exists($r/self::MethodCall[@MethodName = 'valueOf'][ArgumentList/NumericLiteral[@Image = ('1', '10', '1L', '10L')]])
+       },
+       $tenPower := function($e) {
+         exists($e/descendant-or-self::MethodCall[@MethodName = 'scaleByPowerOfTen'][$one(*[1])])
+         or exists($e/descendant-or-self::MethodCall[@MethodName = 'pow']
+                     [(*[1][pmd-java:typeIsExactly('java.lang.Math')]
+                       and ArgumentList/*[1][self::NumericLiteral][@Image = ('10', '10.0', '10d', '10D')])
+                      or *[1][self::FieldAccess or self::VariableAccess][@Name = 'TEN']
+                      or *[1][self::MethodCall[@MethodName = 'valueOf']/ArgumentList/NumericLiteral[@Image = ('10', '10L')]]])
+       },
+       $a := ArgumentList/*[1]
+   return not(
+        $a[self::FieldAccess or self::VariableAccess][@Name = ('TEN', 'ONE', 'TWO')]
+     or $exact($a)
+     or $tenPower($a)
+     or $a[self::VariableAccess][not(matches(@Name, '^[A-Z][A-Z0-9_]*$'))]
+          [let $n := @Name,
+               $d := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][1]
+                       //VariableDeclarator[VariableId[@Name = $n]]
+           return exists($d) and (every $v in $d satisfies exists($v/*[2]) and ($tenPower($v/*[2]) or $exact($v/*[2])))]
+     or $a[self::VariableAccess or self::FieldAccess][matches(@Name, '^[A-Z][A-Z0-9_]*$')]
+          [let $n := @Name, $d := //FieldDeclaration/VariableDeclarator[VariableId[@Name = $n]] return empty($d) or $exact($d/*[2])])]
+  [not(ancestor::Block[parent::TryStatement[CatchClause//ClassType
+        [pmd-java:typeIs('java.lang.ArithmeticException') or pmd-java:typeIsExactly('java.lang.Exception')
+         or pmd-java:typeIsExactly('java.lang.RuntimeException') or pmd-java:typeIsExactly('java.lang.Throwable')]]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

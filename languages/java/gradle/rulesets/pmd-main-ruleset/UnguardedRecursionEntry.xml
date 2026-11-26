@@ -1,0 +1,43 @@
+  <rule name="UnguardedRecursionEntry" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This method enters the same recursion as a sibling method of the class (both call a method that calls them back), but only the sibling checks a re-entry guard (a visited set, an in-progress map, a turn counter or a memo) before going on. A turn that comes in through this method is never refused, so nested input makes each turn redo the whole recursion and the work grows exponentially. Check the same guard here, or route this entry point through the guarded sibling.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//ClassBody
+  /(let $body := .,
+        $methods := MethodDeclaration[Block],
+        $names := MethodDeclaration/@Name,
+        $guards := FieldDeclaration/VariableDeclarator/VariableId
+                     [pmd-java:typeIs('java.util.Set') or pmd-java:typeIs('java.util.Map')]/@Name,
+        $calls := function($n) {
+          distinct-values($body/MethodDeclaration[@Name = $n]/Block//MethodCall
+                            [*[1][self::ArgumentList or self::ThisExpression]]/@MethodName[. = $names])
+        },
+        $guardsOf := function($m) {
+          $m/Block//MethodCall
+            [@MethodName = ('add', 'contains', 'containsKey', 'put', 'get', 'remove', 'computeIfAbsent',
+                            'putIfAbsent', 'merge', 'getOrDefault')]
+            [ArgumentList/*[1]/descendant-or-self::VariableAccess[1]/@Name
+               = $m/FormalParameters/FormalParameter/VariableId/@Name]
+            /*[1][self::VariableAccess or self::FieldAccess][@Name = $guards]/@Name
+        }
+    return
+      let $reach := function($n) {
+            let $direct := $calls($n)
+            return distinct-values(($direct, for $x in $direct return $calls($x)))
+          },
+          $sentries := $methods[exists($guardsOf(.))]
+      return $methods
+        [let $node := .,
+             $entry := string(@Name),
+             $out := $calls($entry)
+         return some $a in $sentries[@Name != $entry] satisfies
+           not($node//(VariableAccess | FieldAccess)[@Name = $guardsOf($a)])
+           and not($out = string($a/@Name))
+           and (some $s in $calls(string($a/@Name))[. = $out][. != string($a/@Name)][. != $entry] satisfies
+                  ($reach($s) = string($a/@Name)) and ($reach($s) = $entry))])
+]]></value>
+      </property>
+    </properties>
+  </rule>
