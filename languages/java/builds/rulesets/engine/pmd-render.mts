@@ -1,12 +1,29 @@
 import type { XmlElement } from '../../../../../shared/ingest/report-records.mts';
 import { element, renderXml } from '../../../../../shared/xml/xml-write.mts';
 import type { ResolvedRule } from './pmd-catalog.mts';
-import { overriddenMessage, overriddenPriority, overriddenProperties } from './pmd-rule-parts.mts';
+import {
+  overriddenMessage,
+  overriddenPriority,
+  overriddenProperties,
+  portablePattern,
+} from './pmd-rule-parts.mts';
 
 export type RulesetScope = {
   readonly include: readonly string[];
   readonly exclude: readonly string[];
 };
+
+function matchesWhole(pattern: string, file: string): boolean {
+  const portable = new RegExp(portablePattern(pattern));
+  return new RegExp(`^(?:${portable.source})$`).test(file);
+}
+
+export function covers({ include, exclude }: RulesetScope, file: string): boolean {
+  return (
+    !exclude.some((pattern) => matchesWhole(pattern, file)) ||
+    include.some((pattern) => matchesWhole(pattern, file))
+  );
+}
 
 const DECLARATION = '<?xml version="1.0" encoding="UTF-8"?>\n';
 const NAMESPACE = 'http://pmd.sourceforge.net/ruleset/2.0.0';

@@ -165,6 +165,11 @@ export function runPmd(options: PmdOptions): void {
   }
   const aux = writeAuxClasspath({ module, reportDir, classpaths });
   const rulesets = rulesetsToRun(options, { aux, dirs: linted });
+  if (rulesets.length === 0) {
+    writeFileSync(report, EMPTY_SARIF);
+    writeFileSync(path.join(reportDir, PMD_LOG), '');
+    return;
+  }
   const result = runJava({
     tool: 'PMD',
     classpath: tools['pmd'],
