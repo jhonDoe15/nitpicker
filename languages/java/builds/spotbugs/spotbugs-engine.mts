@@ -233,7 +233,9 @@ export function withoutSpotbugsEngineReport(reportDir: string): void {
 }
 
 function enginePatterns(lombok: boolean): readonly string[] {
-  return lombok ? ON_ENGINE.filter((pattern) => !LOMBOK_WRITES.some((prefix) => pattern.startsWith(prefix))) : ON_ENGINE;
+  return lombok
+    ? ON_ENGINE.filter((pattern) => !LOMBOK_WRITES.some((prefix) => pattern.startsWith(prefix)))
+    : ON_ENGINE;
 }
 
 export function spotbugsOnEngine(

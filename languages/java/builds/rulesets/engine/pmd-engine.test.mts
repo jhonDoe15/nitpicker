@@ -255,8 +255,29 @@ describe('pmdRulesetsWithEngine when no rule is left on PMD', () => {
 
     expect(rulesets).toEqual([]);
     expect(started).toHaveLength(1);
-    const sarif = readFileSync(path.join(plan.reportDir, ENGINE_SARIF), 'utf8');
-    expect(sarif).toContain('"ruleId":"Fast"');
+    expect(parseJson(readFileSync(path.join(plan.reportDir, ENGINE_SARIF), 'utf8'))).toEqual({
+      version: '2.1.0',
+      runs: [
+        {
+          tool: { driver: { name: 'PMD', rules: [] } },
+          results: [
+            {
+              ruleId: 'Fast',
+              message: { text: 'Fast' },
+              level: 'note',
+              locations: [
+                {
+                  physicalLocation: {
+                    artifactLocation: { uri: `file://${file}` },
+                    region: { startLine: 2, startColumn: 1 },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
   });
 
   it('leaves every rule to PMD when unused suppressions need rules that PMD runs', () => {

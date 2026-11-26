@@ -86,28 +86,28 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   },
   SE_NO_SERIALVERSIONID: {
     text: "Class is Serializable, but doesn't define serialVersionUID",
-    levels: { 2: 'note' },
+    levels: { 2: NOTE },
   },
   EQ_DOESNT_OVERRIDE_EQUALS: {
     text: "Class doesn't override equals in superclass",
-    levels: { 2: 'note' },
+    levels: { 2: NOTE },
     placement: 'arguments',
   },
   EQ_COMPARETO_USE_OBJECT_EQUALS: {
     text: 'Class defines compareTo(...) and uses Object.equals()',
-    levels: { 2: 'note' },
+    levels: { 2: NOTE },
   },
   BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS: {
     text: 'Equals method should not assume anything about the type of its argument',
-    levels: { 2: 'note' },
+    levels: { 2: NOTE },
   },
   NP_BOOLEAN_RETURN_NULL: {
     text: 'Method with Boolean return type returns explicit null',
-    levels: { 1: 'warning', 2: 'warning' },
+    levels: { 1: WARNING, 2: WARNING },
   },
   NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT: {
     text: 'equals() method does not check for null argument',
-    levels: { 1: 'error', 2: 'warning' },
+    levels: { 1: ERROR, 2: WARNING },
   },
   PA_PUBLIC_PRIMITIVE_ATTRIBUTE: {
     text: 'Primitive field is public',

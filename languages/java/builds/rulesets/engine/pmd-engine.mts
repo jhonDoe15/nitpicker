@@ -238,8 +238,9 @@ export function withoutEngineReports(reportDir: string): void {
 
 function wholeRunOnEngine(plan: PmdEnginePlan, splits: ReadonlyMap<string, Split>): boolean {
   const all = [...splits.values()];
-  const partial = plan.rulesets.some((file) => !splits.has(file)) || all.some(({ onPmd }) => onPmd.length > 0);
-  return !partial || !all.some(({ onEngine }) => onEngine.some(needsWholeRun));
+  const partial =
+    plan.rulesets.some((file) => !splits.has(file)) || all.some(({ onPmd }) => onPmd.length > 0);
+  return !(partial && all.some(({ onEngine }) => onEngine.some(needsWholeRun)));
 }
 
 function rulesetsAfterEngine(
