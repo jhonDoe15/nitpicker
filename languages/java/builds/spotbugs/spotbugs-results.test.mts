@@ -101,6 +101,44 @@ describe('spotbugsResultOf', () => {
     expect(result.locations[0].logicalLocations[0].fullyQualifiedName).toBe('A.date');
   });
 
+  it.each([
+    ['function:p.q.A$In.run(String)', 'function', 'run(String)', 'p/q/A.java'],
+    ['function:new p.q.A$In(int)', 'function', 'new A$In(int)', 'p/q/A.java'],
+    ['member:p.q.A$In.map', 'member', 'A$In.map', 'p/q/A.java'],
+    ['variable:p.q.A.run(Lock)#lock', 'variable', 'lock', 'p/q/A.java'],
+    ['function:Top.run()', 'function', 'run()', 'A.java'],
+  ])('places %s the way SpotBugs SARIF names it', (symbol, kind, name, uri) => {
+    const result = spotbugsResultOf({
+      file: '/src/p/q/A.java',
+      rule: 'WMI_WRONG_MAP_ITERATOR',
+      line: 7,
+      message: 'unused',
+      symbol,
+      priority: 2,
+    });
+    const qualified = symbol.slice(symbol.indexOf(':') + 1);
+
+    expect(result.level).toBe('note');
+    expect(result.message.text).toBe(
+      'Inefficient use of keySet iterator instead of entrySet iterator',
+    );
+    expect(result.locations[0].physicalLocation.artifactLocation.uri).toBe(uri);
+    expect(result.locations[0].logicalLocations).toStrictEqual([
+      { name, kind, fullyQualifiedName: qualified },
+    ]);
+  });
+
+  it('refuses a placed finding without a place or with a priority it has no level for', () => {
+    const finding = { file: '/A.java', rule: 'DCN_NULLPOINTER_EXCEPTION', line: 1, message: '' };
+
+    expect(() => spotbugsResultOf({ ...finding, symbol: undefined, priority: 2 })).toThrow(
+      /cannot place/u,
+    );
+    expect(() => spotbugsResultOf({ ...finding, symbol: 'function:p.A.a()', priority: 3 })).toThrow(
+      /cannot place/u,
+    );
+  });
+
   it('refuses a message it cannot read', () => {
     expect(() => resultOf('EI_EXPOSE_REP', 'something else')).toThrow(/cannot read/u);
     expect(() => resultOf('OTHER_PATTERN', 'x')).toThrow(/OTHER_PATTERN/u);
@@ -115,8 +153,9 @@ describe('spotbugsResultOf', () => {
         column: 1,
         message: 'm',
         symbol: 's',
+        priority: 1,
       }),
-    ).toStrictEqual({ file: 'f', rule: 'r', line: 2, message: 'm', symbol: 's' });
+    ).toStrictEqual({ file: 'f', rule: 'r', line: 2, message: 'm', symbol: 's', priority: 1 });
     expect(engineSpotbugsFindingOf({ file: 'f', rule: 'r', line: 2, message: 'm' }).symbol).toBe(
       undefined,
     );

@@ -542,6 +542,13 @@ What was measured (fixtures `tests/fixtures/spotbugs/stmt_*`):
   further; a loop's back jump counts too when javac emits a table with holes (they jump to the default). A last
   `case null -> {}` in a pattern switch is a fall through for SpotBugs.
 
+Each of these findings carries what SpotBugs' SARIF names (#2418, `src/java/spotbugs/place.rs`): the method,
+the field (a map field for the map-iterator pattern) or the local, and the priority that sets the SARIF level
+(`JLM_JSR166_LOCK_MONITORENTER` is priority 1, the others 2). A finding in a field initializer or an initializer
+block is named once for each constructor that does not start with `this(...)`, or for the static initializer;
+a finding inside a lambda names the lambda's method. `tests/expected/spotbugs-places.json` holds the places
+SpotBugs' SARIF gives for the fixtures, and the SARIF results of real runs match SpotBugs' on all seven code bases.
+
 Not done: `REC_CATCH_EXCEPTION` needs the checked exceptions each `try` block can throw and the rule for its
 priority (most findings are low priority and hidden at `-medium`); it is left for a later batch (#2262).
 

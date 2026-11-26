@@ -11,6 +11,10 @@ fn found_in(case: &Path, name: &str) -> BTreeSet<Row> {
 }
 
 fn found_with(case: &Path, name: &str, key: &str) -> BTreeSet<Row> {
+    found_listed(case, name, key).into_iter().collect()
+}
+
+fn found_listed(case: &Path, name: &str, key: &str) -> Vec<Row> {
     let out = std::env::temp_dir().join(format!("nitpicker-engine-spotbugs-{name}-{key}-{}.json", std::process::id()));
     let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
         .arg(case)
@@ -71,3 +75,20 @@ fn stores_name_the_variable_spotbugs_names() {
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
 }
 
+/// SpotBugs' SARIF report names a place for each finding: `tests/expected/spotbugs-places.json` holds them as
+/// `kind:fully qualified name`, one row per SARIF result, for the fixtures it lists.
+#[test]
+fn findings_name_the_place_spotbugs_sarif_names() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
+    let mut expected: Vec<Row> = serde_json::from_str(&std::fs::read_to_string(root.join("expected").join("spotbugs-places.json")).expect("expected")).expect("rows");
+    expected.sort();
+    let cases: BTreeSet<String> = expected.iter().filter_map(|row| row.0.split('/').next().map(String::from)).collect();
+    let rules: BTreeSet<String> = expected.iter().map(|row| row.1.clone()).collect();
+    let mut found: Vec<Row> = Vec::new();
+    for name in &cases {
+        let case = root.join("fixtures").join("spotbugs").join(name);
+        found.extend(found_listed(&case, name, "symbol").into_iter().filter(|row| rules.contains(&row.1)));
+    }
+    found.sort();
+    assert_eq!(found, expected);
+}

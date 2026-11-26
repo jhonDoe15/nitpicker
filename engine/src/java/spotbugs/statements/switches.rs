@@ -199,9 +199,11 @@ pub fn check(context: &Context, member: Node, nodes: &[Node], label: &str) {
         missing = missing.or(absent);
     }
     if let Some(line) = falls.first().copied().filter(|_| falls.len() < 4 || dead) {
-        context.report("SF_SWITCH_FALLTHROUGH", member, line, format!("Switch statement found in {label} where one case falls through to the next case"));
+        let message = format!("Switch statement found in {label} where one case falls through to the next case");
+        context.report_placed("SF_SWITCH_FALLTHROUGH", member, line, message, super::super::place::function(label), 2);
     }
     if let Some(line) = missing {
-        context.report("SF_SWITCH_NO_DEFAULT", member, line, format!("Switch statement found in {label} where default case is missing"));
+        let message = format!("Switch statement found in {label} where default case is missing");
+        context.report_placed("SF_SWITCH_NO_DEFAULT", member, line, message, super::super::place::function(label), 2);
     }
 }

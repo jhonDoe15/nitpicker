@@ -7,6 +7,7 @@ export type EngineSpotbugsFinding = {
   readonly line: number;
   readonly message: string;
   readonly symbol: string | undefined;
+  readonly priority?: number | undefined;
 };
 type LogicalLocation = {
   readonly name: string;
@@ -108,11 +109,109 @@ const SHAPES: Readonly<Record<string, Shape>> = {
   },
 };
 
+type Placed = { readonly text: string; readonly levels: Readonly<Record<number, string>> };
+
+const PLACED: Readonly<Record<string, Placed>> = {
+  DCN_NULLPOINTER_EXCEPTION: { text: 'NullPointerException caught', levels: { 2: 'note' } },
+  JLM_JSR166_LOCK_MONITORENTER: {
+    text: 'Synchronization performed on Lock',
+    levels: { 1: 'error' },
+  },
+  JLM_JSR166_UTILCONCURRENT_MONITORENTER: {
+    text: 'Synchronization performed on util.concurrent instance',
+    levels: { 2: 'error' },
+  },
+  PREDICTABLE_RANDOM: {
+    text: 'Predictable pseudorandom number generator',
+    levels: { 2: 'warning' },
+  },
+  VO_VOLATILE_INCREMENT: {
+    text: "An increment to a volatile field isn't atomic",
+    levels: { 2: 'warning' },
+  },
+  WMI_WRONG_MAP_ITERATOR: {
+    text: 'Inefficient use of keySet iterator instead of entrySet iterator',
+    levels: { 2: 'note' },
+  },
+  SF_SWITCH_FALLTHROUGH: {
+    text: 'Switch statement found where one case falls through to the next case',
+    levels: { 2: 'note' },
+  },
+  SF_SWITCH_NO_DEFAULT: {
+    text: 'Switch statement found where default case is missing',
+    levels: { 2: 'note' },
+  },
+};
+
+function withoutPackage(qualified: string, owner: string): string {
+  const local = packageOf(owner);
+  return local === '' ? qualified : qualified.slice(local.length + 1);
+}
+
+function ownerOf(kind: string, qualified: string): string {
+  if (kind === 'type') {
+    return qualified;
+  }
+  if (kind === 'member') {
+    return qualified.slice(0, qualified.lastIndexOf('.'));
+  }
+  const method = kind === 'variable' ? qualified.slice(0, qualified.lastIndexOf('#')) : qualified;
+  return classOf(method);
+}
+
+function placeName(kind: string, qualified: string, owner: string): string {
+  if (kind === 'variable') {
+    return qualified.slice(qualified.lastIndexOf('#') + 1);
+  }
+  if (kind !== 'function') {
+    return withoutPackage(qualified, owner);
+  }
+  if (qualified.startsWith(CONSTRUCTOR)) {
+    return `${CONSTRUCTOR}${withoutPackage(qualified.slice(CONSTRUCTOR.length), owner)}`;
+  }
+  const open = qualified.indexOf('(');
+  return qualified.slice(qualified.lastIndexOf('.', open) + 1);
+}
+
+function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): SpotbugsResult {
+  const place = finding.symbol ?? '';
+  const colon = place.indexOf(':');
+  const level = placed.levels[finding.priority ?? 0];
+  if (colon < 1 || level === undefined) {
+    throw new Error(`the engine wrote a ${finding.rule} finding nitpicker cannot place: ${place}`);
+  }
+  const kind = place.slice(0, colon);
+  const qualified = place.slice(colon + 1);
+  const owner = ownerOf(kind, qualified);
+  const directory = packageOf(owner).replaceAll('.', '/');
+  const file = path.basename(finding.file);
+  return {
+    ruleId: finding.rule,
+    message: { id: 'default', text: placed.text, arguments: [qualified] },
+    level,
+    locations: [
+      {
+        physicalLocation: {
+          artifactLocation: { uri: directory === '' ? file : `${directory}/${file}` },
+          region: { startLine: finding.line },
+        },
+        logicalLocations: [
+          { name: placeName(kind, qualified, owner), kind, fullyQualifiedName: qualified },
+        ],
+      },
+    ],
+  };
+}
+
 function classOfFinding(rule: string, [first]: readonly [string, string]): string {
   return rule === 'CT_CONSTRUCTOR_THROW' ? first : classOf(first);
 }
 
 export function spotbugsResultOf(finding: EngineSpotbugsFinding): SpotbugsResult {
+  const placed = PLACED[finding.rule];
+  if (placed !== undefined) {
+    return placedResultOf(finding, placed);
+  }
   const shape = SHAPES[finding.rule];
   const matched = shape?.pattern.exec(finding.message);
   const [, first, second] = matched ?? [];
@@ -142,11 +241,13 @@ export function spotbugsResultOf(finding: EngineSpotbugsFinding): SpotbugsResult
 
 export function engineSpotbugsFindingOf(value: unknown): EngineSpotbugsFinding {
   const symbol = fieldOf(value, 'symbol');
+  const priority = fieldOf(value, 'priority');
   return {
     file: String(fieldOf(value, 'file')),
     rule: String(fieldOf(value, 'rule')),
     line: Number(fieldOf(value, 'line')),
     message: String(fieldOf(value, 'message')),
     symbol: typeof symbol === 'string' ? symbol : undefined,
+    priority: typeof priority === 'number' ? priority : undefined,
   };
 }

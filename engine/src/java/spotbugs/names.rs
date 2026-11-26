@@ -34,12 +34,17 @@ pub fn simple(context: &Context, kind: &Type) -> String {
 
 /// `pkg.Class.method(A, B)`, or `new pkg.Class(A, B)` for a constructor. An inner class takes its outer instance first.
 pub fn method(context: &Context, class: &str, declaration: Node, outer: Option<&str>) -> String {
-    let (erased, _, _) = context.resolver.parameters(declaration.child_by_field_name("parameters"));
+    let creates = TYPE_DECLARATIONS.contains(&declaration.kind()) || declaration.kind().ends_with("constructor_declaration");
+    let holder = if TYPE_DECLARATIONS.contains(&declaration.kind()) { Some(declaration) } else { crate::engine::source::ancestor(declaration, TYPE_DECLARATIONS) };
+    let listed = if declaration.kind() == "compact_constructor_declaration" { holder } else { Some(declaration) };
+    let (erased, _, _) = context.resolver.parameters(listed.and_then(|listed| listed.child_by_field_name("parameters")));
     let mut shown: Vec<String> = outer.map(|outer| short(&binary(context, outer)).to_string()).into_iter().collect();
+    if creates && holder.is_some_and(|holder| holder.kind() == "enum_declaration") {
+        shown.extend(["String".to_string(), "int".to_string()]);
+    }
     shown.extend(erased.iter().map(|kind| simple(context, kind)));
     let owner = binary(context, class);
-    if TYPE_DECLARATIONS.contains(&declaration.kind()) || declaration.kind().ends_with("constructor_declaration") {
-        let holder = if TYPE_DECLARATIONS.contains(&declaration.kind()) { Some(declaration) } else { crate::engine::source::ancestor(declaration, TYPE_DECLARATIONS) };
+    if creates {
         let local = holder.filter(|holder| crate::java::javac::declared_locally(*holder));
         shown.extend(local.map(|local| context.compiled().local_class_extras(context.resolver, local)).unwrap_or_default().iter().map(|kind| shown_type(context, kind)));
         return format!("new {owner}({})", shown.join(", "));

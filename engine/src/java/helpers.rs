@@ -53,6 +53,7 @@ pub fn report(out: &mut Vec<Finding>, file: &SourceFile, at: Node, rule: &str, m
         rule: rule.to_string(),
         message,
         symbol: None,
+        priority: None,
     });
 }
 
