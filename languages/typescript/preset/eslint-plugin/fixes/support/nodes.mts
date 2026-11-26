@@ -28,7 +28,9 @@ export function containsNode(
   return false;
 }
 
-export function importedName(specifier: TSESTree.ImportClause): string | undefined {
+export function importedName(
+  specifier: TSESTree.ImportClause | TSESTree.ExportSpecifier,
+): string | undefined {
   if (specifier.type !== AST_NODE_TYPES.ImportSpecifier) {
     return undefined;
   }

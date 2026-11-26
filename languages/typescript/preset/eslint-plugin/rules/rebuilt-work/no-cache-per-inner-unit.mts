@@ -1,19 +1,17 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable, type SourceContext } from '../analysis/constant-resolution.mts';
 import { innermostRepeat, type Repeat } from '../repeated-work/support/loop-invariance.mts';
-import { contains, depthFirst, nameOf, nodeChildren } from '../typed/node-views.mts';
+import {
+  contains,
+  depthFirst,
+  nameOf,
+  nodeChildren,
+  valueIdentifiersIn,
+} from '../typed/node-views.mts';
 
 const CACHE_NAME = /(?:Cache|Caches|Memo|Memoizer|Shared)$/u;
 function identifiersIn(node: TSESTree.Node): TSESTree.Identifier[] {
-  return [...depthFirst<TSESTree.Node>(node, nodeChildren)].filter(
-    (inner): inner is TSESTree.Identifier =>
-      inner.type === AST_NODE_TYPES.Identifier &&
-      !(
-        inner.parent.type === AST_NODE_TYPES.MemberExpression &&
-        inner.parent.property === inner &&
-        !inner.parent.computed
-      ),
-  );
+  return valueIdentifiersIn(node, nodeChildren);
 }
 
 function changedIn(node: TSESTree.Node): TSESTree.Node[] {

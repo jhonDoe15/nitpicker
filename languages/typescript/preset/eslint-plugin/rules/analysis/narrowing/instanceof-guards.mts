@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import {
   ancestorsOf,
-  chainOf,
+  blockTail,
   constantInitializer,
   isNode,
   type SourceCode,
@@ -64,10 +64,7 @@ function provesNotInstance(guard: Guard, expression: TSESTree.Node): boolean {
 }
 
 function exits(statement: TSESTree.Node): boolean {
-  const tail = chainOf<TSESTree.Node>(statement, (link) =>
-    link.type === AST_NODE_TYPES.BlockStatement ? link.body.at(-1) : undefined,
-  ).at(-1);
-  return EXIT_STATEMENTS.has(tail?.type ?? '');
+  return EXIT_STATEMENTS.has(blockTail(statement)?.type ?? '');
 }
 
 function isEarlierExitGuard(guard: Guard, statement: TSESTree.Node): boolean {

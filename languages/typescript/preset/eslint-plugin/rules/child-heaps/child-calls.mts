@@ -127,9 +127,10 @@ export function envKeys(context: SourceContext, options: MaybeNode): EnvKeys {
   if (env === undefined || isProcessEnv(env) || nameOf(env) === 'undefined') {
     return new Map();
   }
-  if (env.type !== AST_NODE_TYPES.ObjectExpression) {
-    return UNKNOWN;
-  }
+  return env.type === AST_NODE_TYPES.ObjectExpression ? objectEnvKeys(env) : UNKNOWN;
+}
+
+function objectEnvKeys(env: TSESTree.ObjectExpression): EnvKeys {
   const keys = new Map<string, TSESTree.Node>();
   for (const property of env.properties) {
     const entry = envEntry(property);

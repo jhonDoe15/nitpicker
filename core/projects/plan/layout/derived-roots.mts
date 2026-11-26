@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync, type Dirent, type Stats } from 'node:fs';
 import path from 'node:path';
 import { parsedJsonc as untypedParsedJsonc } from '../../../../shared/jsonc/jsonc.mts';
-import { fieldOf, isPlainObject, listOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, isPlainObject, stringsIn } from '../../../../shared/values/readers.mts';
 import { expandBraces } from '../../../../languages/typescript/preset/layout/source-root/root-paths.mts';
 
 type ParsedJsonc = { readonly kind: string; readonly value?: unknown };
@@ -34,23 +34,6 @@ function statOf(file: string): StatResult {
 function objectIn(file: string): Record<string, unknown> | undefined {
   const parsed = statOf(file).stats?.isFile() ? parsedJsonc(readFileSync(file, 'utf8')) : undefined;
   return parsed?.kind === 'json' && isPlainObject(parsed.value) ? parsed.value : undefined;
-}
-
-function childrenOf(value: unknown): readonly unknown[] {
-  if (Array.isArray(value)) {
-    return listOf(value);
-  }
-  return isPlainObject(value) ? Object.values(value) : [];
-}
-
-function stringsIn(value: unknown): string[] {
-  const pending: unknown[] = [value];
-  for (const current of pending) {
-    for (const child of childrenOf(current)) {
-      pending.push(child);
-    }
-  }
-  return pending.filter((entry): entry is string => typeof entry === 'string');
 }
 
 function isFolder(file: string): boolean {
