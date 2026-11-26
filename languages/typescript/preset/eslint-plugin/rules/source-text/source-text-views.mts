@@ -1,5 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import {
+  findVariable,
+  isFunctionNode,
   resolveConstant,
   stringValue,
   type SourceContext,
@@ -51,8 +53,11 @@ const KEYWORD_PATTERN = new RegExp(
 const SOURCE_NAMES = new Set(['source', 'sourceText', 'sourceCode', 'sourceContent']);
 const SOURCE_FILE = /\.(?:java|ts|tsx|mts|cts|js|jsx|mjs|cjs|py|kt|go)$/u;
 const FILE_READS = new Set(['readFileSync', 'readFile', 'readText']);
-const SKIPS_COMMENTS = /strip|mask|removeComments|blank|tokeni[sz]e|parse/iu;
-const LEXING = /^lex|[a-z]Lex/u;
+const MASKING_HELPER =
+  /(?:strip|mask|blank)\w*(?:comment|string|literal)|removeComments|tokeni[sz]e|^lex/iu;
+const LEXING = /[a-z]Lex/u;
+const MASKING_VALUE = /^(?:strip|mask|blank|parse)/iu;
+const PATH_JOINS = new Set(['join', 'resolve']);
 
 export function regexPattern(context: SourceContext, node: TSESTree.Node): string | undefined {
   const target = resolveConstant(context, node);
@@ -94,6 +99,13 @@ function peel(node: TSESTree.Node): TSESTree.Node {
 }
 
 function pathText(node: TSESTree.Node | undefined): string | undefined {
+  if (
+    node?.type === AST_NODE_TYPES.CallExpression &&
+    node.callee.type === AST_NODE_TYPES.MemberExpression &&
+    PATH_JOINS.has(nameOf(node.callee.property) ?? '')
+  ) {
+    return pathText(node.arguments.at(-1));
+  }
   if (node?.type === AST_NODE_TYPES.TemplateLiteral) {
     return node.quasis.at(-1)?.value.cooked ?? undefined;
   }
@@ -113,23 +125,104 @@ function readsSourceFile(node: TSESTree.Node): boolean {
   );
 }
 
+function calleeName(node: TSESTree.CallExpression | TSESTree.NewExpression): string {
+  const callee =
+    node.callee.type === AST_NODE_TYPES.MemberExpression ? node.callee.property : node.callee;
+  return nameOf(callee) ?? '';
+}
+
+function isMaskingHelper(name: string): boolean {
+  return MASKING_HELPER.test(name) || LEXING.test(name);
+}
+
+function isJsonCall(node: TSESTree.CallExpression): boolean {
+  return (
+    node.callee.type === AST_NODE_TYPES.MemberExpression && nameOf(node.callee.object) === 'JSON'
+  );
+}
+
+export function passesThroughMasking(
+  context: SourceContext,
+  node: TSESTree.Node | undefined,
+  depth = 0,
+): boolean {
+  if (node === undefined || depth > 6) {
+    return false;
+  }
+  const value = peel(resolveConstant(context, node) ?? node);
+  if (value.type === AST_NODE_TYPES.MemberExpression) {
+    return passesThroughMasking(context, value.object, depth + 1);
+  }
+  if (value.type !== AST_NODE_TYPES.CallExpression) {
+    return false;
+  }
+  const name = calleeName(value);
+  if ((MASKING_VALUE.test(name) && !isJsonCall(value)) || isMaskingHelper(name)) {
+    return true;
+  }
+  const inputs = [
+    ...(value.callee.type === AST_NODE_TYPES.MemberExpression ? [value.callee.object] : []),
+    ...value.arguments,
+  ];
+  return inputs.some((input) => passesThroughMasking(context, input, depth + 1));
+}
+
+function maskedParameter(context: SourceContext, node: TSESTree.Node): boolean {
+  const text = peel(node);
+  if (text.type !== AST_NODE_TYPES.Identifier) {
+    return false;
+  }
+  const definition = findVariable(context, text, text.name)?.defs[0];
+  const fn = definition?.type === 'Parameter' ? definition.node : undefined;
+  if (fn === undefined || !isFunctionNode(fn)) {
+    return false;
+  }
+  const index = fn.params.findIndex(
+    (param) => param.type === AST_NODE_TYPES.Identifier && param.name === text.name,
+  );
+  const owner = functionName(fn);
+  if (index < 0 || owner === undefined) {
+    return false;
+  }
+  const calls = [...depthFirst<TSESTree.Node>(context.sourceCode.ast, nodeChildren)].filter(
+    (candidate): candidate is TSESTree.CallExpression =>
+      candidate.type === AST_NODE_TYPES.CallExpression &&
+      (candidate.callee.type === AST_NODE_TYPES.MemberExpression
+        ? nameOf(candidate.callee.property)
+        : nameOf(candidate.callee)) === owner,
+  );
+  return (
+    calls.length > 0 && calls.every((call) => passesThroughMasking(context, call.arguments[index]))
+  );
+}
+
+function functionName(fn: TSESTree.Node): string | undefined {
+  if (fn.type === AST_NODE_TYPES.FunctionDeclaration) {
+    return nameOf(fn.id);
+  }
+  const { parent } = fn;
+  if (parent?.type === AST_NODE_TYPES.VariableDeclarator) {
+    return nameOf(parent.id);
+  }
+  return parent?.type === AST_NODE_TYPES.MethodDefinition ||
+    parent?.type === AST_NODE_TYPES.Property
+    ? nameOf(parent.key)
+    : undefined;
+}
+
 export function holdsSourceText(context: SourceContext, node: TSESTree.Node): boolean {
   const text = peel(node);
   if (text.type === AST_NODE_TYPES.Identifier && SOURCE_NAMES.has(text.name)) {
-    return true;
+    return !maskedParameter(context, text) && !passesThroughMasking(context, text);
   }
   const resolved = text.type === AST_NODE_TYPES.Identifier ? resolveConstant(context, text) : text;
   return resolved !== undefined && readsSourceFile(resolved);
 }
 
 export function skipsCommentsIn(scope: TSESTree.Node): boolean {
-  return [...depthFirst<TSESTree.Node>(scope, nodeChildren)].some((node) => {
-    if (node.type !== AST_NODE_TYPES.CallExpression && node.type !== AST_NODE_TYPES.NewExpression) {
-      return false;
-    }
-    const callee =
-      node.callee.type === AST_NODE_TYPES.MemberExpression ? node.callee.property : node.callee;
-    const name = nameOf(callee) ?? '';
-    return SKIPS_COMMENTS.test(name) || LEXING.test(name);
-  });
+  return [...depthFirst<TSESTree.Node>(scope, nodeChildren)].some(
+    (node) =>
+      (node.type === AST_NODE_TYPES.CallExpression || node.type === AST_NODE_TYPES.NewExpression) &&
+      isMaskingHelper(calleeName(node)),
+  );
 }

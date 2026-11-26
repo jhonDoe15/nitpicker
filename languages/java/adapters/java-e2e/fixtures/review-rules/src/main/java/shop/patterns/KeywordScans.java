@@ -44,6 +44,42 @@ public final class KeywordScans {
     return CASE_LABEL.matcher(description).find();
   }
 
+  public static int countOfCode(String text) {
+    return countCases(stripCommentsAndStrings(text));
+  }
+
+  private static int countCases(String source) {
+    Matcher matcher = CASE_LABEL.matcher(source);
+    int count = 0;
+    while (matcher.find()) {
+      count++;
+    }
+    return count;
+  }
+
+  public static int countOfRaw(String text) {
+    return countRaw(stripCommentsAndStrings(text)) + countRaw(text);
+  }
+
+  private static int countRaw(String source) {
+    Matcher matcher = CASE_LABEL.matcher(source); // violation: KeywordRegexOverSource
+    int count = 0;
+    while (matcher.find()) {
+      count++;
+    }
+    return count;
+  }
+
+  public static int countLocal(String text) {
+    String source = stripCommentsAndStrings(text);
+    return CASE_LABEL.matcher(source).find() ? 1 : 0;
+  }
+
+  public static int countNested(String source) {
+    String code = stripCommentsAndStrings(source);
+    return code.lines().mapToInt(line -> CASE_LABEL.matcher(source).find() ? 1 : 0).sum(); // violation: KeywordRegexOverSource
+  }
+
   private static String stripCommentsAndStrings(String source) {
     return source.replaceAll("//[^\n]*", "");
   }

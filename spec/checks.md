@@ -439,8 +439,10 @@ and `directories` are not covered yet.
 Keyword regex over source text: `nitpicker/no-keyword-regex-over-source` (production source, in `eslint-lint`) and
 `pmd/KeywordRegexOverSource` (Java, main sources) report a regex with a language keyword between word boundaries
 (`\bcase\b`) applied to source text (a variable named `source` or `sourceText`, or a file read with a source extension)
-when the same function does not strip, mask or parse comments and strings first. Comments and strings match
-keywords too.
+when the same function does not call a masking helper (strip, mask or blank comments, strings or literals,
+`removeComments`, `tokenize`, `lex`) first, and the text does not come from such a call or, for a parameter, from
+same-file calls that all pass such a value. A `parse` call elsewhere in the same function (`JSON.parse`) hides
+nothing). Comments and strings match keywords too.
 
 Error output cut to its start: `nitpicker/no-head-cut-error-output` (production source, in `eslint-lint`) and
 `pmd/HeadCutErrorOutput` (Java, main sources) report a cut from the start (`slice(0, n)`, `substring(0, n)`,

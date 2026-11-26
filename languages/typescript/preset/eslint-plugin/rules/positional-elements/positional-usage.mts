@@ -100,8 +100,15 @@ function laterUse(
       continue;
     }
     const [callback] = call.arguments;
-    const [first] = callback && 'params' in callback ? callback.params : [];
-    if (first?.type !== AST_NODE_TYPES.Identifier || !isCallback(callback as FunctionNode)) {
+    if (
+      callback === undefined ||
+      !('params' in callback) ||
+      !isCallback(callback as FunctionNode)
+    ) {
+      continue;
+    }
+    const [first] = callback.params;
+    if (first?.type !== AST_NODE_TYPES.Identifier) {
       continue;
     }
     const uses = sourceCode
@@ -112,7 +119,7 @@ function laterUse(
       continue;
     }
     const found = uses?.find((use) => isUnchecked(use.identifier));
-    if (found !== undefined) {
+    if (found?.identifier.type === AST_NODE_TYPES.Identifier) {
       return found.identifier;
     }
   }

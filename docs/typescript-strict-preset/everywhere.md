@@ -2107,11 +2107,13 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   literal pattern, also held in a `const`) whose pattern has a keyword (`case`, `import`, `class`, `require`,
   `function`, `return` and similar) between word boundaries or followed by `\s` or `\(`, used with `match`,
   `matchAll`, `replace`, `replaceAll`, `split`, `search`, `test` or `exec` on a variable named `source`,
-  `sourceText`, `sourceCode` or `sourceContent` (not `code`, which often holds masked text), or on text read
-  from a file whose literal name ends in a source
-  extension (`.java`, `.ts`, `.js`, `.py`, `.kt`, `.go`). Comments, strings and text blocks match as well ("in this
-  case" matches `case`). Not reported: other text, a function that also calls something named for stripping,
-  masking, blanking, tokenizing, lexing or parsing, and keywords that are not between word boundaries. The Java
+  `sourceText`, `sourceCode` or `sourceContent`, or on text read from a file whose literal name ends in a source
+  extension (`.java`, `.ts`, `.js`, `.py`, `.kt`, `.go`; also the last literal segment of `path.join(dir, 'A.java')`).
+  Comments, strings and text blocks match as well ("in this case" matches `case`). Not reported: other text, a
+  function that calls a masking helper (a name with `strip`, `mask` or `blank` followed by `Comment`, `String` or
+  `Literal`, `removeComments`, `tokenize`, `lex...`), a subject that comes from a call named `strip...`, `mask...`,
+  `blank...` or `parse...` (not `JSON.parse`), a `source` parameter of a function whose same-file calls all pass such
+  a value, and keywords that are not between word boundaries. A `parse` call elsewhere in the function (`JSON.parse`) hides nothing. The Java
   preset has the same rule as `pmd/KeywordRegexOverSource`.
 - A tree-sitter field name must exist in the grammar (`nitpicker/no-unknown-tree-sitter-field`, production files).
   Reported: in a module that imports `web-tree-sitter` or `tree-sitter`, a constant field name in
