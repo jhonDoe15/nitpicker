@@ -62,6 +62,7 @@ impl<'t> Flow<'_, 't> {
             }
         }
         let Some((call, _)) = resolved else { return };
+        let call = anonymous_override(self.context, node, call);
         let formals = call.method.parameters.len();
         if formals == 0 {
             return;
@@ -316,6 +317,23 @@ pub(super) fn overriding(context: &Context, method: Node) {
 }
 
 /// The parameter positions a library model table gives for exactly this method of this class.
+/// A call on `new X() { ... }` calls the method the anonymous class declares when it overrides the one found in `X`,
+/// as javac binds it.
+pub(super) fn anonymous_override(context: &Context, call_node: Node, mut call: crate::java::types::expr::Call) -> crate::java::types::expr::Call {
+    let Some(object) = call_node.child_by_field_name("object").map(strip) else { return call };
+    if object.kind() != "object_creation_expression" || !children(object).iter().any(|part| part.kind() == "class_body") {
+        return call;
+    }
+    let Some(name) = context.resolver.scope.names.get(&object.id()) else { return call };
+    let Some(info) = context.resolver.index.get(name) else { return call };
+    let own = info.methods.iter().find(|method| method.name == call.method.name && !method.is_static && method.parameters == call.method.parameters);
+    if let Some(own) = own {
+        call.declaring = info.name.clone();
+        call.method = own.clone();
+    }
+    call
+}
+
 pub(super) fn rows(table: &'static [super::models::Model], class: &str, method: &crate::java::types::model::Method) -> Vec<usize> {
     let erased = erase(&method.shown);
     table.iter().filter(|row| row.0 == class && row.1 == method.name && row.2 == erased).map(|row| row.3).collect()
