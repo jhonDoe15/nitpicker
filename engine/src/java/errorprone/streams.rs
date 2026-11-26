@@ -117,7 +117,7 @@ fn has_static_final(context: &Context, declaration: Node) -> bool {
     text.split_whitespace().any(|word| word == "static") && text.split_whitespace().any(|word| word == "final")
 }
 
-fn closed_in_finally(context: &Context, declaration: Node, declarator: Node) -> bool {
+pub(super) fn closed_in_finally(context: &Context, declaration: Node, declarator: Node) -> bool {
     let Some(name) = declarator.child_by_field_name("name").map(|name| context.text(name)) else { return false };
     if declaration.kind() != "local_variable_declaration" || !is_final(context, declaration, name) {
         return false;

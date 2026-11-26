@@ -354,7 +354,8 @@ pub fn same_name_but_different(context: &Context, node: Node) {
         if CHAINS.contains(&holder.kind()) && (holder.named_child(0) != Some(part) || named_class(context, holder).is_some()) {
             return;
         }
-        if part.kind() == "identifier" && !super::values::value_name(part) && !matches!(holder.kind(), "annotation" | "marker_annotation") {
+        let referenced = holder.kind() == "method_reference" && holder.named_child(0) == Some(part);
+        if part.kind() == "identifier" && !referenced && !super::values::value_name(part) && !matches!(holder.kind(), "annotation" | "marker_annotation") {
             return;
         }
         if !chain && context.text(part) == "Builder" {
@@ -455,7 +456,8 @@ pub fn different_name_but_same(context: &Context, node: Node) {
         if CHAINS.contains(&holder.kind()) && (holder.named_child(0) != Some(part) || named_class(context, holder).is_some()) {
             return;
         }
-        if part.kind() == "identifier" && !super::values::value_name(part) && !matches!(holder.kind(), "annotation" | "marker_annotation") {
+        let referenced = holder.kind() == "method_reference" && holder.named_child(0) == Some(part);
+        if part.kind() == "identifier" && !referenced && !super::values::value_name(part) && !matches!(holder.kind(), "annotation" | "marker_annotation") {
             return;
         }
         let inner_creation = holder.kind() == "object_creation_expression"

@@ -518,5 +518,7 @@
  "TruthGetOrDefault",
  "UnrecognisedJavadocTag",
  "UrlInSee",
- "WakelockReleasedDangerously"
+ "WakelockReleasedDangerously",
+ "MustBeClosedChecker",
+ "NoAllocation"
 ]
