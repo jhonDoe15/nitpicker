@@ -3,7 +3,7 @@
 use crate::java::pmd::coded::ctx::Ctx;
 use crate::java::types::expr::Binding;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Symbol {
     Declared(u32),
     Field(String, String),
