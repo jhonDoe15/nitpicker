@@ -10,13 +10,14 @@ import {
 } from '../../../../shared/engine/engine-run.mts';
 import { fieldOf, listOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import { engineSpotbugsFindingOf, spotbugsResultOf } from './spotbugs-results.mts';
-import { lombokMarksGenerated, processorKind } from './spotbugs-lombok.mts';
+import { type ProcessorKind, lombokMarksGenerated, processorKind } from './spotbugs-lombok.mts';
 
 export type SpotbugsEnginePlan = {
   readonly reportDir: string;
   readonly sources: readonly string[];
   readonly classpath: readonly string[];
   readonly processorPath: readonly string[];
+  readonly processors?: ProcessorKind;
   readonly javaHome: string;
 };
 
@@ -173,7 +174,7 @@ function usable(plan: SpotbugsEnginePlan, binary: string | undefined): binary is
 }
 
 function enginePatterns(plan: SpotbugsEnginePlan): readonly string[] {
-  const processors = processorKind(plan.processorPath);
+  const processors = plan.processors ?? processorKind(plan.processorPath);
   if (processors === 'none') {
     return ON_ENGINE;
   }
