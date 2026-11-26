@@ -55,6 +55,7 @@ import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singu
 import { rule as ruleNoSlashOnlyRedirectGuard } from '../rules/urls/requests/no-slash-only-redirect-guard.mts';
 import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
 import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
+import { rule as ruleNoStatPerListedEntry } from '../rules/repeated-work/listings/no-stat-per-listed-entry.mts';
 import { rule as ruleNoStatusOnlySpawnCheck } from '../rules/processes/results/no-status-only-spawn-check.mts';
 import { rule as ruleNoStderrAsFailure } from '../rules/processes/results/no-stderr-as-failure.mts';
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-
 import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/no-unguarded-option-list.mts';
 import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/registry/no-unguarded-registry-delete.mts';
 import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
-import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
 
 export const partRules = {
   'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
@@ -157,6 +157,7 @@ export const partRules = {
   'no-slash-only-redirect-guard': ruleNoSlashOnlyRedirectGuard,
   'no-sql-string-building': ruleNoSqlStringBuilding,
   'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
+  'no-stat-per-listed-entry': ruleNoStatPerListedEntry,
   'no-status-only-spawn-check': ruleNoStatusOnlySpawnCheck,
   'no-stderr-as-failure': ruleNoStderrAsFailure,
   'no-string-as-regex': ruleNoStringAsRegex,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unguarded-option-list': ruleNoUnguardedOptionList,
   'no-unguarded-registry-delete': ruleNoUnguardedRegistryDelete,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
-  'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
 };

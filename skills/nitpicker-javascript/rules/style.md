@@ -134,6 +134,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   need the value (`nitpicker/no-work-before-early-exit`).
 - Read and handle files one at a time (or through a bounded pool), not all into one array that a later
   loop walks once (`nitpicker/no-read-all-before-pass`).
+- List a directory with `{ withFileTypes: true }` and ask each entry its kind, instead of a `stat`
+  call per entry (`nitpicker/no-stat-per-listed-entry`).
 - Parse a field that many items share (a message, a rule, a path) once per distinct value, not once
   per item (`nitpicker/no-repeated-parse-per-item`).
 - Share one read-only value across the items of a loop instead of storing a full copy of it with

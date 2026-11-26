@@ -344,6 +344,16 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `JSON.parse`). Each item then runs the parse again and keeps its own copy of the result. Calls of
   imported functions, a loop over a literal list and other fields are not reported. Allowed form:
   parse each distinct value once and share the result through a `Map` kept for the loop.
+- `nitpicker/no-stat-per-listed-entry`: a directory listing followed by one file system call per
+  entry to learn its kind, in all production code (not in tests). It reports `statSync`,
+  `lstatSync`, `stat` or `lstat` (from `fs`, `node:fs`, `fs/promises` or `fs-extra`, optionally
+  awaited) on a path built from the entry, inside a `for...of` loop or a `filter`, `map`, `flatMap`,
+  `forEach`, `some`, `every` or `find` callback over `readdirSync(dir)` or `await readdir(dir)`
+  called without an options object (directly or through a `const`), when only `isDirectory()`,
+  `isFile()` or `isSymbolicLink()` is read from the result. On a large tree the stat calls are most
+  of the time of the walk. A stat whose `size` or `mtime` is read, a listing with options and a
+  stat of another path are not reported. Allowed form: `readdirSync(dir, { withFileTypes: true })`
+  and the entry's own `isDirectory()` and `isFile()`.
 - `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
   walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
   `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,

@@ -567,6 +567,10 @@ of a value that does not change in a loop, made and stored on every pass of it.
 function of the same file called on a shared field of every item of a loop (`message`, `rule`,
 `path` and the like), where each distinct value could be parsed once.
 
+`nitpicker/no-stat-per-listed-entry` (production source, in `eslint-lint`) reports a `stat` or
+`lstat` call per entry of a `readdir` listing made without `withFileTypes`, when only the entry's
+kind is read from it.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

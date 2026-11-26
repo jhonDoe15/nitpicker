@@ -25,4 +25,6 @@ export const REPEATED_WORK_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/copies/no-loop-invariant-copy.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/parses/pure-parsers.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/parses/no-repeated-parse-per-item.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/repeated-work/listings/listed-entries.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/repeated-work/listings/no-stat-per-listed-entry.mjs',
 ];
