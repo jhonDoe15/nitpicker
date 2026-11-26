@@ -80,6 +80,21 @@
   "disable": ["mutation", "test-console"],
   "exceptions": [
     {
+      "rule": "nitpicker/no-module-level-mutable-state",
+      "paths": ["languages/typescript/adapters/dependency-graph/engine-extract/engine-hooks.mts"],
+      "reason": "Per-process singleton: dependency-cruiser loads the gather hook and the two extract hooks as separate shim modules, and they share the engine extraction made at gather time."
+    },
+    {
+      "rule": "nitpicker/no-null",
+      "paths": ["languages/typescript/preset/unused-api/engine/project-inputs.mts"],
+      "reason": "A tsconfig unsets an option it inherits through extends only with null; this object is written as the engine's tsconfig JSON."
+    },
+    {
+      "rule": "large-file",
+      "paths": ["engine/tests/expected/errorprone-messages.json"],
+      "reason": "Recorded Error Prone message catalogue that the engine parity tests compare against row for row."
+    },
+    {
       "rule": "pmd-xpath-rule-mistake",
       "paths": ["languages/java/gradle/**"],
       "reason": "The PMD rulesets nitpicker ships scan the file inside predicates in 12 rules; rewriting them is #2378."
