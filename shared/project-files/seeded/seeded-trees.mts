@@ -1,6 +1,6 @@
 import { closeSync, openSync, readFileSync, writeSync } from 'node:fs';
 import { ancestorDirectories } from '../../filesystem.mts';
-import { fieldOf, parseJson, textOf, textsOf } from '../../values/readers.mts';
+import { fieldOf, parseJson, textOf } from '../../values/readers.mts';
 import type { TreeListing } from '../project-files-types.mts';
 import { loadTree } from '../repository-listing.mts';
 import { hasRepositoryMarker } from '../tree-walk.mts';
@@ -24,8 +24,9 @@ function readSeed(file: string): Seeded {
     .split(/\r\n|\r|\n/u)
     .filter((line) => line.length > 0)
     .map(recordOf);
-  const valuesOf = (kind: string): string[] =>
-    records.filter((record) => record.kind === kind).map((record) => record.value);
+  function valuesOf(kind: string): string[] {
+    return records.filter((record) => record.kind === kind).map((record) => record.value);
+  }
   return {
     top: valuesOf('top')[0] ?? '',
     tree: {
