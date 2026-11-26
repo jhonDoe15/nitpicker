@@ -610,6 +610,50 @@ metamodel, Spring's configuration processors and others) are left out. The `@Gen
 Lombok reads `lombok.config`: from the outermost file to the nearest, with `clear`, `import` and
 `config.stopBubbling`; a module where it is off runs SpotBugs alone.
 
+### Class patterns
+
+`src/java/spotbugs/classes/` looks at a class as a whole. Findings on a class are placed on its first line as
+SpotBugs reports it: the lowest line any of the class's methods has code on, as `javac` writes the line table
+(`classes/lines.rs`). A constructor's code starts at its `this(...)` or `super(...)` call, else at the `{` of its
+body; a default constructor at the class name; field initializers at the field name (copied into each
+constructor that does not call `this(...)`); a static constant needs no code; a method at its first statement
+that makes code (a local variable at its name, an assignment at its operator, a call at its `(`), or the closing
+brace of an empty body. Enums, records, classes that hold an `assert` and classes that get a bridge method (a
+method overriding one of a generic supertype whose erased parameters or result differ) also have code on the
+first line of the declaration, annotations included.
+
+Singletons (#2261, labs in `tests/fixtures/spotbugs/sing*`): a class keeps an instance in a private static field
+of its own type, made with `new` of exactly that class (not an anonymous subclass) in the field's initializer, a
+static initializer or the method that hands it out, and a public static method returns that field (directly or
+through a local variable with one value). A static method that is not private and returns a `new` instance of
+the class means it is no singleton. Enums, interfaces and records are not looked at.
+
+- SING_SINGLETON_HAS_NONPRIVATE_CONSTRUCTOR: the first constructor that is not private, at its first line;
+  the default constructor unless the class is private.
+- SING_SINGLETON_IMPLEMENTS_SERIALIZABLE, SING_SINGLETON_IMPLEMENTS_CLONEABLE (listed in `implements`),
+  SING_SINGLETON_INDIRECTLY_IMPLEMENTS_CLONEABLE: at the class's first line.
+- SING_SINGLETON_IMPLEMENTS_CLONE_METHOD: a `clone()` that is not just `throw new CloneNotSupportedException()`.
+- SING_SINGLETON_GETTER_NOT_SYNCHRONIZED: the method that hands out the instance also makes it, compares the
+  field with `null`, and is neither `synchronized` nor holds a `synchronized` block.
+
+Clone idiom (#2261, `tests/fixtures/spotbugs/clones`):
+
+- CN_IDIOM: a class that lists `Cloneable` in `implements` itself, is neither abstract nor an enum, has no public
+  `clone()` and holds no call of `clone()` anywhere in its declaration. At the class's first line.
+- CN_IDIOM_NO_SUPER_CALL: a public instance `clone()` of a cloneable class that is public or protected, neither
+  abstract nor final, that can return and does not call `super.clone()` itself. Priority 1 (the SARIF place
+  then names the class too) when a class of the run extends the class, else 2.
+- CN_IMPLEMENTS_CLONE_BUT_NOT_CLONEABLE: a public instance `clone()` of a class that is neither abstract nor
+  cloneable; priority 1 when it calls `super.clone()`.
+
+On the six comparison code bases built here (Elasticsearch not built), SARIF results, same / missed / extra:
+singletons 122 / 1 / 0, clone idiom 112 / 0 / 0. The missed one is SING_SINGLETON_HAS_NONPRIVATE_CONSTRUCTOR on
+Nacos `AbstractProtocolNegotiatorBuilderSingleton`, an abstract class without a static field whose two
+subclasses are singletons handed out as the abstract type; test classes of the same shape are not reported.
+Real runs give both detectors to the engine (`MultipleInstantiationsOfSingletons` and `CloneIdiom` no longer
+run in SpotBugs), except the singleton patterns on Lombok modules, whose generated constructors the engine does
+not see.
+
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in

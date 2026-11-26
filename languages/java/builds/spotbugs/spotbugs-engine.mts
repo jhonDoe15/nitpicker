@@ -42,8 +42,27 @@ const ON_ENGINE: readonly string[] = [
   'WMI_WRONG_MAP_ITERATOR',
   'SF_SWITCH_FALLTHROUGH',
   'SF_SWITCH_NO_DEFAULT',
+  'SING_SINGLETON_HAS_NONPRIVATE_CONSTRUCTOR',
+  'SING_SINGLETON_IMPLEMENTS_SERIALIZABLE',
+  'SING_SINGLETON_IMPLEMENTS_CLONEABLE',
+  'SING_SINGLETON_INDIRECTLY_IMPLEMENTS_CLONEABLE',
+  'SING_SINGLETON_IMPLEMENTS_CLONE_METHOD',
+  'SING_SINGLETON_GETTER_NOT_SYNCHRONIZED',
+  'CN_IDIOM',
+  'CN_IDIOM_NO_SUPER_CALL',
+  'CN_IMPLEMENTS_CLONE_BUT_NOT_CLONEABLE',
 ];
+const LOMBOK_WRITES = 'SING_';
 const DETECTORS: Readonly<Record<string, readonly string[]>> = {
+  MultipleInstantiationsOfSingletons: [
+    'SING_SINGLETON_GETTER_NOT_SYNCHRONIZED',
+    'SING_SINGLETON_HAS_NONPRIVATE_CONSTRUCTOR',
+    'SING_SINGLETON_IMPLEMENTS_CLONEABLE',
+    'SING_SINGLETON_IMPLEMENTS_CLONE_METHOD',
+    'SING_SINGLETON_IMPLEMENTS_SERIALIZABLE',
+    'SING_SINGLETON_INDIRECTLY_IMPLEMENTS_CLONEABLE',
+  ],
+  CloneIdiom: ['CN_IDIOM', 'CN_IDIOM_NO_SUPER_CALL', 'CN_IMPLEMENTS_CLONE_BUT_NOT_CLONEABLE'],
   ConstructorThrow: ['CT_CONSTRUCTOR_THROW'],
   DontCatchNullPointerException: ['DCN_NULLPOINTER_EXCEPTION'],
   WrongMapIterator: ['WMI_WRONG_MAP_ITERATOR'],
@@ -203,7 +222,10 @@ export function spotbugsOnEngine(
   if (!usable(plan, binary) || processors === 'other') {
     return [];
   }
-  const patterns = ON_ENGINE;
+  const patterns =
+    processors === 'lombok'
+      ? ON_ENGINE.filter((pattern) => !pattern.startsWith(LOMBOK_WRITES))
+      : ON_ENGINE;
   try {
     const report = engineReport(plan, processors === 'lombok', { binary, environment, run });
     const sarif = engineSarif(report, patterns);

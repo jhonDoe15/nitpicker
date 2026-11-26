@@ -157,6 +157,33 @@ describe('spotbugsResultOf', () => {
     expect(engineSpotbugsFindingOf(finding).arguments).toStrictEqual(['java.util.Random']);
   });
 
+  it('names the class in the place where SpotBugs does', () => {
+    const finding = {
+      file: '/src/p/K.java',
+      rule: 'CN_IDIOM_NO_SUPER_CALL',
+      line: 5,
+      message: '',
+      symbol: 'function:p.K.clone()',
+      arguments: ['p.K.clone()'],
+    };
+
+    const first = spotbugsResultOf({ ...finding, priority: 1 });
+    const second = spotbugsResultOf({ ...finding, priority: 2 });
+
+    expect(first.message.arguments).toStrictEqual(['p.K.clone()']);
+    expect([first.level, first.locations[0].logicalLocations[0].name]).toStrictEqual([
+      'warning',
+      'K.clone()',
+    ]);
+    expect([second.level, second.locations[0].logicalLocations[0].name]).toStrictEqual([
+      'note',
+      'clone()',
+    ]);
+    expect(
+      engineSpotbugsFindingOf({ ...finding, arguments: ['p.K', 'p.K.clone()'] }).arguments,
+    ).toStrictEqual(['p.K', 'p.K.clone()']);
+  });
+
   it('refuses a message it cannot read', () => {
     expect(() => resultOf('EI_EXPOSE_REP', 'something else')).toThrow(/cannot read/u);
     expect(() => resultOf('OTHER_PATTERN', 'x')).toThrow(/OTHER_PATTERN/u);

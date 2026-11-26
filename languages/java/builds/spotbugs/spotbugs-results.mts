@@ -164,7 +164,13 @@ function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): Spotbug
           region: { startLine: finding.line },
         },
         logicalLocations: [
-          { name: placeName(kind, qualified, owner), kind, fullyQualifiedName: qualified },
+          {
+            name: placed.classNamed?.includes(finding.priority ?? 0)
+              ? withoutPackage(qualified, owner)
+              : placeName(kind, qualified, owner),
+            kind,
+            fullyQualifiedName: qualified,
+          },
         ],
       },
     ],

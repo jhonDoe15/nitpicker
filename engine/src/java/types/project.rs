@@ -19,6 +19,8 @@ pub struct JavaProject {
     pub volatiles: HashSet<(String, String)>,
     /// Integer constants the project declares, by field name; `None` when two declarations disagree.
     pub numbers: HashMap<String, Option<i64>>,
+    /// The classes some class of the sources extends.
+    pub extended: HashSet<String>,
 }
 
 fn jdk_home() -> PathBuf {
@@ -123,7 +125,8 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>, 
     let literals = class_literals(files, &scopes, &index);
     let volatiles = volatile_fields(files, &scopes);
     let numbers = integer_constants(files);
-    JavaProject { index, sources, literals, volatiles, numbers }
+    let extended = declared.iter().flatten().filter_map(|(_, name)| index.get(name)?.superclass.clone()).collect();
+    JavaProject { index, sources, literals, volatiles, numbers, extended }
 }
 
 /// Puts back, as statements of the blanked body, the class literals and `assert` statements that `literals` reads.
