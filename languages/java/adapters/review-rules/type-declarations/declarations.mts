@@ -154,7 +154,7 @@ function typeOf(source: BareSource, member: TypeMember, place: Place): TypeDecl 
   };
 }
 
-export function declarationsOf(source: BareSource, context: FileContext): TypeDecl[] {
+function declarationsOf(source: BareSource, context: FileContext): TypeDecl[] {
   const found: TypeDecl[] = [];
   const pending = [{ span: { from: 0, to: source.tokens.length }, scope: context.pkg }];
   for (const { span, scope } of pending) {

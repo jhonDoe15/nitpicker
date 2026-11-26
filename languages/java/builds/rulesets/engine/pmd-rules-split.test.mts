@@ -111,9 +111,18 @@ describe('engine rules', () => {
 
   it('sends a rule written in Java to its port on the engine by its PMD class', () => {
     const ported = resolved('/rules/ported.xml');
-    expect(ported.rules.filter(runsOnEngine).map((rule) => engineRule(rule, ported))).toMatchObject(
-      [{ name: 'Ported', xpath: '', port: PORTED, message: 'ported {0}' }],
-    );
+    expect(ported.rules.filter(runsOnEngine).map((rule) => engineRule(rule, ported))).toEqual([
+      {
+        name: 'Ported',
+        xpath: '',
+        port: PORTED,
+        message: 'ported {0}',
+        exclude: [],
+        include: [],
+        properties: {},
+        suppress: '',
+      },
+    ]);
     expect(engineRule(named('Shipped'), main).port).toBe('');
   });
 

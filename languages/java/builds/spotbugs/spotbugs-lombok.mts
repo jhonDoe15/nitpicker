@@ -57,6 +57,8 @@ const RENAMING =
 
 type Marked = boolean | undefined;
 
+const UNREADABLE = 'unreadable';
+
 function namesIn(service: string): string[] {
   return service
     .split('\n')
@@ -64,11 +66,11 @@ function namesIn(service: string): string[] {
     .filter((line) => line.length > 0);
 }
 
-function processorsOf(entry: string): string[] | undefined {
+function processorsOf(entry: string): string[] | typeof UNREADABLE {
   try {
     return readProcessors(entry);
   } catch {
-    return undefined;
+    return UNREADABLE;
   }
 }
 
@@ -98,17 +100,21 @@ function kindOf(names: readonly string[]): ProcessorKind {
 
 export function processorKind(entries: readonly string[]): ProcessorKind {
   const found = entries.map(processorsOf);
-  if (found.some((names) => names === undefined)) {
-    return 'other';
+  const names: string[] = [];
+  for (const each of found) {
+    if (each === UNREADABLE) {
+      return 'other';
+    }
+    names.push(...each);
   }
-  return kindOf(found.flatMap((each) => each ?? []));
+  return kindOf(names);
 }
 
 export function declaredProcessorKind(coordinates: readonly string[]): ProcessorKind {
   const artifacts = coordinates.map((coordinate) => coordinate.split(':').slice(0, 2).join(':'));
   if (
     artifacts.some(
-      (artifact) => !LOMBOK_ARTIFACTS.has(artifact) && !FILE_WRITER_ARTIFACTS.has(artifact),
+      (artifact) => !(LOMBOK_ARTIFACTS.has(artifact) || FILE_WRITER_ARTIFACTS.has(artifact)),
     )
   ) {
     return 'other';
@@ -116,14 +122,14 @@ export function declaredProcessorKind(coordinates: readonly string[]): Processor
   return artifacts.some((artifact) => LOMBOK_ARTIFACTS.has(artifact)) ? 'lombok' : 'none';
 }
 
-function linesOf(config: string): string[] | undefined {
+function linesOf(config: string): string[] | typeof UNREADABLE {
   try {
     return readFileSync(config, 'utf8')
       .split('\n')
       .map((line) => line.replace(/#.*/u, '').trim())
       .filter((line) => line.length > 0);
   } catch {
-    return undefined;
+    return UNREADABLE;
   }
 }
 
@@ -148,7 +154,7 @@ function imported(config: string, target: string): string | undefined {
 
 function applied(config: string, marked: Marked, seen: ReadonlySet<string>): Marked {
   const lines = linesOf(config);
-  if (lines === undefined || seen.has(config)) {
+  if (lines === UNREADABLE || seen.has(config)) {
     return undefined;
   }
   const inside = new Set([...seen, config]);
@@ -168,7 +174,8 @@ function applied(config: string, marked: Marked, seen: ReadonlySet<string>): Mar
 }
 
 function stopsBubbling(config: string): boolean {
-  return (linesOf(config) ?? []).some((line) => {
+  const lines = linesOf(config);
+  return (lines === UNREADABLE ? [] : lines).some((line) => {
     const setting = SETTING.exec(line);
     return setting?.[1]?.toLowerCase() === STOP_KEY && flag(setting[2] ?? '') === true;
   });
@@ -176,8 +183,8 @@ function stopsBubbling(config: string): boolean {
 
 function configsAbove(directory: string): string[] {
   const found: string[] = [];
-  let current = directory;
-  for (;;) {
+  const directories = [directory];
+  for (const current of directories) {
     const config = path.join(current, CONFIG);
     if (existsSync(config)) {
       found.unshift(config);
@@ -186,16 +193,16 @@ function configsAbove(directory: string): string[] {
       }
     }
     const parent = path.dirname(current);
-    if (parent === current) {
-      return found;
+    if (parent !== current) {
+      directories.push(parent);
     }
-    current = parent;
   }
+  return found;
 }
 
 function renames(config: string, seen: ReadonlySet<string>): boolean {
   const lines = linesOf(config);
-  if (lines === undefined || seen.has(config)) {
+  if (lines === UNREADABLE || seen.has(config)) {
     return false;
   }
   const inside = new Set([...seen, config]);

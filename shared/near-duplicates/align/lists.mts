@@ -4,7 +4,7 @@ import { KEY_MODES } from '../tree/keys.mts';
 import { appendAll, categoryOf, isTypeSlot, present } from '../tree/nodes.mts';
 import type { KeyCache, Side, TreeNode } from '../tree/tree-types.mts';
 
-type Table = { readonly table: Int32Array; readonly width: number };
+export type Table = { readonly table: Int32Array; readonly width: number };
 type Cursor = { readonly i: number; readonly j: number };
 type Pair = readonly [number, number];
 
@@ -24,23 +24,31 @@ export function coarseKey(node: TreeNode): string {
   return [head, ...node.children.map((child, index) => slotLabel(node, child, index))].join(' ');
 }
 
-function cellAt(table: Int32Array, index: number): number {
+export function cellAt(table: Int32Array, index: number): number {
   return table[index] ?? 0;
 }
 
-function suffixTable(left: readonly string[], right: readonly string[]): Table {
+export function suffixTable<Item>(
+  left: readonly Item[],
+  right: readonly Item[],
+  cellValue: (table: Int32Array, width: number, i: number, j: number) => number,
+): Table {
   const width = right.length + 1;
   const table = new Int32Array((left.length + 1) * width);
   const columns = [...right.keys()].toReversed();
   for (const i of [...left.keys()].toReversed()) {
     for (const j of columns) {
-      table[i * width + j] =
-        left[i] === right[j]
-          ? cellAt(table, (i + 1) * width + j + 1) + 1
-          : Math.max(cellAt(table, (i + 1) * width + j), cellAt(table, i * width + j + 1));
+      table[i * width + j] = cellValue(table, width, i, j);
     }
   }
   return { table, width };
+}
+
+function lcsCell(left: readonly string[], right: readonly string[]) {
+  return (table: Int32Array, width: number, i: number, j: number): number =>
+    left[i] === right[j]
+      ? cellAt(table, (i + 1) * width + j + 1) + 1
+      : Math.max(cellAt(table, (i + 1) * width + j), cellAt(table, i * width + j + 1));
 }
 
 function lcsStep(left: readonly string[], right: readonly string[], { table, width }: Table) {
@@ -67,7 +75,7 @@ function lcsPairs(left: readonly string[], right: readonly string[]): Pair[] {
   if (left.length * right.length > THRESHOLDS.maxListCells) {
     return diagonalPairs(left, right);
   }
-  const step = lcsStep(left, right, suffixTable(left, right));
+  const step = lcsStep(left, right, suffixTable(left, right, lcsCell(left, right)));
   return chainOf({ i: 0, j: 0 }, step)
     .filter(({ i, j }) => i < left.length && j < right.length && left[i] === right[j])
     .map(({ i, j }) => [i, j]);
