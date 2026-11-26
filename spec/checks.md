@@ -579,6 +579,11 @@ Java `FilteredPositionalPairing` (main PMD ruleset, #2129, label bug) reports tw
 one index of a counting `for` loop where one came from `stream().filter(...)` or had `removeIf` and
 the other was not filtered.
 
+Java `ReplacingCollectionMerge` (main PMD ruleset, #2209, label bug) reports `putAll`, or `put` of
+an entry value from a nested `entrySet()` loop or `Map.forEach`, into a map declared with a
+collection or map value type (`Map<K, Set<V>>`) outside the loop or iteration callback that runs it.
+The value type is read from the declaration, so a `var` target is not reported.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

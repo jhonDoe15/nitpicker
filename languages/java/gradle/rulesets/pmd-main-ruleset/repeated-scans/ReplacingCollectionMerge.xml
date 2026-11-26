@@ -1,0 +1,41 @@
+  <rule name="ReplacingCollectionMerge" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This merges maps whose values are collections into one target from more than one source by replacing the whole collection of a key that an earlier source may already have filled, so the values of a key seen twice are lost and the result depends on the order of the sources. Merge the values instead: target.computeIfAbsent(key, k -> new HashSet()).addAll(values), or target.merge(key, values, combine).">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $iterations := ('forEach', 'forEachOrdered', 'map', 'flatMap', 'peek', 'mapToObj'),
+    $passes := function($node) {
+      $node/ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
+        or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations]]]
+    },
+    $collectionValued := function($target, $outer) {
+      let $name := $target/@Name,
+          $scope := $target/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][last()],
+          $declarations := ($scope//LocalVariableDeclaration[VariableDeclarator/VariableId/@Name = $name]
+            | $scope//FormalParameter[VariableId/@Name = $name]
+            | $target/ancestor::ClassBody[1]/FieldDeclaration[VariableDeclarator/VariableId/@Name = $name])
+            [empty(ancestor::* intersect $outer)]
+      return exists($declarations[1]/ClassType[pmd-java:typeIs('java.util.Map')]/TypeArguments/*[2]
+        [pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')])
+    }
+return
+//MethodCall[@MethodName = 'putAll'][ArgumentList/@Size = 1][*[1][self::VariableAccess or self::FieldAccess]]
+  [let $outer := $passes(.)[last()]
+   return exists($outer) and $collectionValued(*[1], $outer)]
+|
+//MethodCall[@MethodName = 'put'][ArgumentList/@Size = 2][*[1][self::VariableAccess or self::FieldAccess]]
+  [let $value := ArgumentList/*[2],
+       $entryLoop := ancestor::ForeachStatement[*[2][self::MethodCall][@MethodName = 'entrySet']]
+         [LocalVariableDeclaration//VariableId/@Name = $value[self::MethodCall][@MethodName = 'getValue']
+           /*[1][self::VariableAccess]/@Name][1],
+       $entryLambda := ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = 'forEach']
+           [*[1][pmd-java:typeIs('java.util.Map')]]]
+         [LambdaParameterList/*[2]//VariableId/@Name = $value[self::VariableAccess]/@Name][1],
+       $inner := ($entryLoop | $entryLambda)[1],
+       $outer := $passes($inner)[last()]
+   return exists($inner) and exists($outer) and $collectionValued(*[1], $outer)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
