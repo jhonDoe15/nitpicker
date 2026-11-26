@@ -14,7 +14,6 @@ export function isProjectFile(
   sourceFile: TypeScript.SourceFile,
 ): boolean {
   return !(
-    program.isSourceFileFromExternalLibrary(sourceFile) ||
     program.isSourceFileDefaultLibrary(sourceFile) ||
     sourceFile.fileName.includes('/node_modules/')
   );

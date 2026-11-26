@@ -67,6 +67,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ],
   ['no-listen-on-all-interfaces', {}],
   ['no-mutating-method-in-domain', { needs: 'types' }],
+  ['no-parameter-mutation', { needs: 'types' }],
   [
     'no-production-console',
     {
