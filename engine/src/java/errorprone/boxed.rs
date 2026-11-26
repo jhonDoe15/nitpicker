@@ -61,6 +61,14 @@ fn is_value_of(context: &Context, expression: Node) -> bool {
         })
 }
 
+/// A use of a variable that changes when the variable becomes a primitive.
+#[derive(Clone, Copy)]
+enum Pending<'t> {
+    Assignment(Node<'t>),
+    NullCheck(Node<'t>),
+    Call(Node<'t>, Node<'t>, bool),
+}
+
 struct Usages<'c, 'a, 't> {
     context: &'c Context<'a>,
     boxed: HashSet<usize>,
@@ -69,8 +77,8 @@ struct Usages<'c, 'a, 't> {
     bodies: std::collections::HashMap<String, Node<'t>>,
     /// By declaration without a written type: whether its first use had a wrapper type.
     inferred: std::cell::RefCell<std::collections::HashMap<usize, bool>>,
-    /// By declaration: the edits its uses need when it becomes a primitive.
-    edits: std::collections::HashMap<usize, Vec<Edit>>,
+    /// By declaration: the uses that need an edit when it becomes a primitive, worked out only for a reported variable.
+    edits: std::collections::HashMap<usize, Vec<Pending<'t>>>,
 }
 
 /// The type of an expression; a conditional with a primitive branch and a primitive or wrapper branch is primitive.
@@ -135,6 +143,16 @@ impl<'t> Usages<'_, '_, 't> {
                 found.child_by_field_name("dimensions").is_none() && WRAPPERS.iter().any(|name| name.rsplit('.').next() == Some(simple))
             }
         }
+    }
+
+    fn edits_of(&self, symbol: usize) -> Vec<Edit> {
+        let pending = self.edits.get(&symbol).map(Vec::as_slice).unwrap_or_default();
+        pending.iter().flat_map(|use_of| match *use_of {
+            Pending::Assignment(right) => assignment_edits(self.context, right, is_value_of(self.context, right)),
+            Pending::NullCheck(call) => null_check_edit(self.context, call).into_iter().collect(),
+            Pending::Call(call, receiver, true) => cast_call_edit(self.context, call, receiver).into_iter().collect(),
+            Pending::Call(call, receiver, false) => simple_call_edit(self.context, call, receiver).into_iter().collect(),
+        }).collect()
     }
 
     fn value_of(&self, expression: Node) -> bool {
@@ -230,7 +248,7 @@ impl<'t> Usages<'_, '_, 't> {
             let first = node.child_by_field_name("arguments").map(named_children).unwrap_or_default().into_iter().find(|part| !part.kind().ends_with("comment"));
             if let Some(symbol) = first.map(crate::java::types::expr::unwrap).and_then(|first| self.symbol_of_argument(first)) {
                 self.dereferenced.insert(symbol);
-                self.edits.entry(symbol).or_default().extend(null_check_edit(self.context, node));
+                self.edits.entry(symbol).or_default().push(Pending::NullCheck(node));
                 return true;
             }
         }
@@ -241,8 +259,7 @@ impl<'t> Usages<'_, '_, 't> {
         if !instance {
             self.boxed.insert(symbol);
         } else if let Some(receiver) = node.child_by_field_name("object") {
-            let edit = if CASTS.contains(&name) { cast_call_edit(self.context, node, receiver) } else { simple_call_edit(self.context, node, receiver) };
-            self.edits.entry(symbol).or_default().extend(edit);
+            self.edits.entry(symbol).or_default().push(Pending::Call(node, receiver, CASTS.contains(&name)));
         }
         true
     }
@@ -264,8 +281,7 @@ impl<'t> Usages<'_, '_, 't> {
                     return self.scan(right);
                 }
                 if let Some(symbol) = self.symbol(left) {
-                    let edits = assignment_edits(self.context, right, is_value_of(self.context, right));
-                    self.edits.entry(symbol).or_default().extend(edits);
+                    self.edits.entry(symbol).or_default().push(Pending::Assignment(right));
                     let kind = kind_of(self.context, right);
                     let plain = primitive(&kind) || (kind.is_some() && (self.value_of(right) || right.kind() == "object_creation_expression"));
                     if plain {
@@ -400,7 +416,7 @@ pub fn unnecessary_boxed_variable(context: &Context, root: Node) {
                 };
                 if fits {
                     let unboxed = primitive_name(declared(context, node, Some(declarator))).unwrap_or_default();
-                    let edits = usages.edits.get(&declarator.id()).map(Vec::as_slice).unwrap_or_default();
+                    let edits = &usages.edits_of(declarator.id());
                     let fix = variable_fix(context, node, unboxed, value, value.is_some_and(|value| is_value_of(context, value)), edits);
                     report(context, node, declarator.child_by_field_name("name"), field, fix);
                 }
@@ -411,7 +427,7 @@ pub fn unnecessary_boxed_variable(context: &Context, root: Node) {
             let fits = matches!(&over, Some(Type::Array(element)) if matches!(**element, Type::Primitive(_)));
             if fits && wrapper(&declared(context, node, None)) && !usages.boxed.contains(&node.id()) {
                 let unboxed = primitive_name(declared(context, node, None)).unwrap_or_default();
-                let edits = usages.edits.get(&node.id()).map(Vec::as_slice).unwrap_or_default();
+                let edits = &usages.edits_of(node.id());
                 report(context, node, node.child_by_field_name("name"), false, variable_fix(context, node, unboxed, None, false, edits));
             }
         }
@@ -422,7 +438,7 @@ pub fn unnecessary_boxed_variable(context: &Context, root: Node) {
             }
             if usages.dereferenced.contains(&node.id()) && !usages.boxed.contains(&node.id()) && can_change_signature(context, method) {
                 let unboxed = primitive_name(resolver.declared_type(node, None)).unwrap_or_default();
-                let edits = usages.edits.get(&node.id()).map(Vec::as_slice).unwrap_or_default();
+                let edits = &usages.edits_of(node.id());
                 report(context, node, node.child_by_field_name("name"), false, variable_fix(context, node, unboxed, None, false, edits));
             }
         }

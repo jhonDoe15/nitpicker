@@ -4,6 +4,25 @@ mod docparse;
 mod docref;
 pub mod fixes;
 mod annotated;
+mod ban;
+mod comments;
+mod parameter_comment;
+mod text_blocks;
+mod streams;
+mod strong_time;
+mod references;
+mod reflection;
+mod buffers;
+mod ignorable;
+mod collections;
+mod compare_zero;
+mod constants;
+mod depann;
+mod literals;
+mod self_assignment;
+mod finally_block;
+mod locking;
+mod lookup;
 mod docplaced;
 mod doctagged;
 mod doctags;
@@ -217,6 +236,27 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["SuppressWarningsWithoutExplanation"], names::suppress_warnings_without_explanation),
     (&["TypeParameterUnusedInFormals"], names::type_parameter_unused_in_formals),
     (&["NullAway"], nullaway::null_away),
+    (&["BanClassLoader"], ban::ban_class_loader),
+    (&["BanJNDI"], ban::ban_jndi),
+    (&["SystemExitOutsideMain"], ban::system_exit_outside_main),
+    (&["ExtendsObject"], ban::extends_object),
+    (&["Finally"], finally_block::finally),
+    (&["CompareToZero"], compare_zero::compare_to_zero),
+    (&["SynchronizeOnNonFinalField"], locking::synchronize_on_non_final_field),
+    (&["LockNotBeforeTry"], locking::lock_not_before_try),
+    (&["DepAnn"], depann::dep_ann),
+    (&["FloatingPointLiteralPrecision"], literals::floating_point_literal_precision),
+    (&["StaticAssignmentOfThrowable"], constants::static_assignment_of_throwable),
+    (&["ModifyCollectionInEnhancedForLoop"], collections::modify_collection_in_enhanced_for_loop),
+    (&["SelfAssignment"], self_assignment::self_assignment),
+    (&["UnnecessarilyUsedValue"], ignorable::unnecessarily_used_value),
+    (&["StreamResourceLeak"], streams::stream_resource_leak),
+    (&["ByteBufferBackingArray"], buffers::byte_buffer_backing_array),
+    (&["ClassNewInstance"], reflection::class_new_instance),
+    (&["ParameterComment"], parameter_comment::parameter_comment),
+    (&["StringConcatToTextBlock"], text_blocks::string_concat_to_text_block),
+    (&["UnnecessaryMethodReference"], references::unnecessary_method_reference),
+    (&["AmbiguousMethodReference"], references::ambiguous_method_reference),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
@@ -226,6 +266,8 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["UnusedMethod"], unused_methods::unused_method),
     (&["NotJavadoc"], docplaced::not_javadoc),
     (&["AlmostJavadoc"], docplaced::almost_javadoc),
+    (&["InlineTrivialConstant"], constants::inline_trivial_constant),
+    (&["StronglyTypeTime"], strong_time::strongly_type_time),
 ];
 
 pub struct ErrorProne;

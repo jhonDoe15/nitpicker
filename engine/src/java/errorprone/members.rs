@@ -460,7 +460,7 @@ pub fn kept(context: &Context, declaration: Node, listed: &[&str]) -> bool {
     })
 }
 
-fn hidden(node: Node) -> bool {
+pub(super) fn hidden(node: Node) -> bool {
     let mut current = Some(node);
     while let Some(at) = current {
         let holder = crate::engine::source::parent(at);

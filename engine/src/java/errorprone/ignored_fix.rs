@@ -251,6 +251,10 @@ pub fn declaration_fix(context: &Context, class: &str, method: &crate::java::typ
         if found.is_some() || !matches!(part.kind(), "method_declaration" | "constructor_declaration") {
             return;
         }
+        let named = part.kind() == "constructor_declaration" || part.child_by_field_name("name").is_some_and(|name| context.text(name) == method.name);
+        if !named {
+            return;
+        }
         let same = super::hierarchy::declared_method(context, part).is_some_and(|(origin, own)| origin.name == class && own.name == method.name && own.parameters == method.parameters);
         if same {
             found = Some(part);
