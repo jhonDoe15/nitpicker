@@ -51,7 +51,7 @@ fn method_named(context: &Context, shape: &Shape, name: &str, parameters: usize)
 /// A static final `serialVersionUID` of a primitive type.
 fn versioned(context: &Context, shape: &Shape) -> bool {
     fields(shape).any(|(member, declarator)| {
-        let primitive = member.child_by_field_name("type").is_some_and(|kind| kind.kind().ends_with("_type") && kind.kind() != "generic_type");
+        let primitive = member.child_by_field_name("type").is_some_and(|kind| matches!(kind.kind(), "integral_type" | "floating_point_type" | "boolean_type"));
         named(context, declarator, "serialVersionUID") && has_modifier(member, "static") && has_modifier(member, "final") && primitive
     })
 }
@@ -103,15 +103,28 @@ pub fn check(context: &Context, shape: &Shape) {
 }
 
 fn inner(class: Node) -> bool {
-    if class.kind() != "class_declaration" {
-        return true;
+    if class.kind() == "enum_constant" {
+        return false;
     }
-    let holder = class.parent().map(|parent| parent.kind());
-    match holder {
-        Some("class_body" | "enum_body_declarations") => !has_modifier(class, "static"),
-        Some("program") | Some("interface_body") | Some("annotation_type_body") | None => false,
-        _ => true,
+    if class.kind() == "class_declaration" {
+        match class.parent().map(|parent| parent.kind()) {
+            Some("class_body" | "enum_body_declarations") => return !has_modifier(class, "static"),
+            Some("program" | "interface_body" | "annotation_type_body") | None => return false,
+            _ => {}
+        }
     }
+    let mut at = class.parent();
+    while let Some(node) = at {
+        match node.kind() {
+            "static_initializer" | "enum_constant" | "interface_body" => return false,
+            "method_declaration" | "field_declaration" => return !has_modifier(node, "static"),
+            "constructor_declaration" | "compact_constructor_declaration" => return true,
+            "block" if node.parent().is_some_and(|holder| holder.kind() == "class_body") => return true,
+            _ => {}
+        }
+        at = node.parent();
+    }
+    true
 }
 
 /// The classes the field may hold, or nothing when it only ever holds `null` and cannot change. A field the class
@@ -131,16 +144,12 @@ fn held_by(context: &Context, shape: &Shape, member: Node, name: &str) -> Option
     let mut held = Vec::new();
     match same {
         Some(array) if array.starts_with('[') => {
-            let index = context.resolver.index;
-            let name = &array[1..];
-            let interface = index.get(name).is_some_and(|info| info.is_interface);
-            if !(CONTAINERS.iter().any(|container| index.is_subtype(name, container)) && (interface || index.is_subtype(name, SERIALIZABLE))) {
-                held.push(name.to_string());
-            }
+            held_class(context, &array[1..], &mut held);
         }
         Some(class) => {
-            held.push(class);
-            if let Some(arguments) = written.child_by_field_name("type_arguments").or_else(|| children(written).into_iter().find(|part| part.kind() == "type_arguments")) {
+            let container = held_class(context, &class, &mut held);
+            let arguments = children(written).into_iter().find(|part| part.kind() == "type_arguments");
+            if let Some(arguments) = arguments.filter(|_| container) {
                 arguments_of(context, arguments, &mut held);
             }
         }
@@ -179,18 +188,25 @@ fn classes_of(context: &Context, written: Node, held: &mut Vec<String>) {
                 return;
             }
             let Some(Type::Class(name, _)) = context.resolver.type_node(written) else { return };
-            let index = context.resolver.index;
-            let container = CONTAINERS.iter().any(|container| index.is_subtype(&name, container));
-            let interface = index.get(&name).is_some_and(|info| info.is_interface);
-            if !(container && (interface || index.is_subtype(&name, SERIALIZABLE))) {
-                held.push(name);
-            }
+            let container = held_class(context, &name, held);
             let arguments = children(written).into_iter().find(|part| part.kind() == "type_arguments");
             if let Some(arguments) = arguments.filter(|_| container) {
                 arguments_of(context, arguments, held);
             }
         }
     }
+}
+
+/// Holds the class unless it is a `Collection` or `Map` interface or a serializable one; says whether it is a
+/// `Collection` or `Map`, whose type arguments count too.
+fn held_class(context: &Context, name: &str, held: &mut Vec<String>) -> bool {
+    let index = context.resolver.index;
+    let container = CONTAINERS.iter().any(|container| index.is_subtype(name, container));
+    let interface = index.get(name).is_some_and(|info| info.is_interface);
+    if !(container && (interface || index.is_subtype(name, SERIALIZABLE))) {
+        held.push(name.to_string());
+    }
+    container
 }
 
 fn arguments_of(context: &Context, arguments: Node, held: &mut Vec<String>) {
@@ -213,6 +229,7 @@ pub fn referenced(context: &Context) -> (Vec<String>, Vec<String>) {
             "cast_expression" | "method_declaration" | "field_declaration" | "formal_parameter" => (node.child_by_field_name("type"), false),
             "instanceof_expression" => (node.child_by_field_name("right"), false),
             "class_literal" => (node.named_child(0), false),
+            "spread_parameter" => (node.named_child(0).filter(|kind| kind.kind() != "modifiers").or_else(|| node.named_child(1)), false),
             "catch_type" => {
                 named.extend(children(node).into_iter().filter_map(|kind| class_in(context.resolver.type_node(kind))));
                 (None, false)
