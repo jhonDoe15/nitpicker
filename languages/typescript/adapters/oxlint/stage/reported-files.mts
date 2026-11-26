@@ -1,7 +1,7 @@
 import { realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-export type ReportedFile = { readonly filePath: string; readonly full: string };
+type ReportedFile = { readonly filePath: string; readonly full: string };
 
 export type ReportedFiles = (filename: string) => readonly ReportedFile[];
 
@@ -15,8 +15,14 @@ function realPathIndex(stage: string, listed: readonly string[]): Map<string, st
   const index = new Map<string, string[]>();
   for (const file of listed) {
     const real = realPathOf(path.join(stage, file));
-    if (real !== undefined) {
-      index.set(real, [...(index.get(real) ?? []), file]);
+    if (real === undefined) {
+      continue;
+    }
+    const group = index.get(real);
+    if (group === undefined) {
+      index.set(real, [file]);
+    } else {
+      group.push(file);
     }
   }
   return index;

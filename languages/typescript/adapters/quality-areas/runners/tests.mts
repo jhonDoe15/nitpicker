@@ -2,7 +2,8 @@ import type { Finding } from '../../static-checks/shared.mts';
 import type { QualityAreaOptions, TextOutput } from '../typed/area-types.mts';
 import { runNodeTool, parseReportJson } from '../typed/tooling.mts';
 import path from 'node:path';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import {
   COVERAGE_REPORT_PATH,
   coverageFailureFindings,
@@ -48,7 +49,7 @@ async function preparedCoverage(
     return prepared.findings;
   }
   if ((prepared.report.numTotalTests ?? 0) === 0) {
-    rmSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });
+    await rm(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });
     return [noTestsRanFinding(options, RUNNER_NAMES[projectTestRunner(options).runner])];
   }
   return [
@@ -67,12 +68,12 @@ export async function runCoverage(
   }
   const run = await runProjectTests(options);
   if (run.failed) {
-    rmSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });
+    await rm(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });
     const mockPin = await mockPinVerdict(options, run, output);
     return coverageFailureFindings(options, run, { mockPin });
   }
   if (run.report.numTotalTests === 0) {
-    rmSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });
+    await rm(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });
     return [noTestsRanFinding(options, run.runnerName)];
   }
   keepCoverageReport(options);
