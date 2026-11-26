@@ -48,6 +48,7 @@ import { rule as ruleNoSharedTempPathInTests } from '../rules/test-runtime/temp-
 import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
 import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
 import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
+import { rule as ruleNoSingleShapeManifestField } from '../rules/manifests/no-single-shape-manifest-field.mts';
 import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mts';
 import { rule as ruleNoSlashOnlyRedirectGuard } from '../rules/urls/requests/no-slash-only-redirect-guard.mts';
 import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-u
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
 import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mts';
 import { rule as ruleNoUninjectableDelay } from '../rules/test-runtime/lifecycle/no-uninjectable-delay.mts';
-import { rule as ruleNoUnionOrderDependence } from '../rules/union-order/no-union-order-dependence.mts';
 
 export const partRules = {
   'no-nan-only-check': ruleNoNanOnlyCheck,
@@ -150,6 +150,7 @@ export const partRules = {
   'no-shared-test-state': ruleNoSharedTestState,
   'no-shell-string-command': ruleNoShellStringCommand,
   'no-silent-catch': ruleNoSilentCatch,
+  'no-single-shape-manifest-field': ruleNoSingleShapeManifestField,
   'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
   'no-slash-only-redirect-guard': ruleNoSlashOnlyRedirectGuard,
   'no-sql-string-building': ruleNoSqlStringBuilding,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
   'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
   'no-uninjectable-delay': ruleNoUninjectableDelay,
-  'no-union-order-dependence': ruleNoUnionOrderDependence,
 };

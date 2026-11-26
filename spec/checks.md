@@ -431,6 +431,10 @@ function kills the group. `pmd/DestroyLeavesDescendants` (Java, main sources) re
 `destroyForcibly()` after a timed `waitFor` on a process the method started through such a command, when the method
 never reads `descendants()`. The timed-out wrapper dies and its child keeps running.
 
+A package.json field in several shapes: `nitpicker/no-single-shape-manifest-field` (production source, in
+`eslint-lint`) reports a list member read from `bundleDependencies`, `bundledDependencies`, `workspaces` or `man` of a
+manifest without an `Array.isArray` or `typeof` check, since npm also accepts `true`, an object or a string there.
+
 Error output cut to its start: `nitpicker/no-head-cut-error-output` (production source, in `eslint-lint`) and
 `pmd/HeadCutErrorOutput` (Java, main sources) report a cut from the start (`slice(0, n)`, `substring(0, n)`,
 `StringUtils.left` or `abbreviate`) of a tool's output (in Java also a printed stack trace) that goes into an

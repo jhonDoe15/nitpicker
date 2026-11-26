@@ -226,6 +226,8 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/processes/wrappers/no-wrapper-only-timeout.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/messages/no-head-cut-error-output.mjs',
   'languages/typescript/preset/eslint-plugin/rules/compiler-api/require-compiler-file-name.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/manifests/manifest-fields.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/manifests/no-single-shape-manifest-field.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/results/no-stderr-as-failure.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/results/stderr-sources.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/results/no-status-only-spawn-check.mjs',

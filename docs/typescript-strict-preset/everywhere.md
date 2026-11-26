@@ -2043,6 +2043,15 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   it (a file importing `./module` imports itself) and the extension picks TSX or the module format. Not reported: a
   function with no file name to pass, options from a variable or a spread, a `path` that is the `node:path` module,
   Babel, esbuild and SWC (not covered yet).
+- A package.json field that npm accepts in several shapes is not read as only one of them
+  (`nitpicker/no-single-shape-manifest-field`, production files). Reported: a list member (`includes`, `map`,
+  `filter`, `forEach`, `some`, `every`, `find`, `reduce`, `flatMap`, `join`, `push`, `indexOf`, `length`) of
+  `bundleDependencies` or `bundledDependencies` (a list or `true`) or `workspaces` (a list or an object with
+  `packages`), `.packages` of `workspaces`, or a list method of `man` (a string or a list), read from a value
+  named `manifest`, `pkg`, `packageJson` (or ending in `Manifest` or `PackageJson`), from `JSON.parse` of a read of a
+  `package.json` file, or typed `PackageJson`, also through a variable or `a || b` / `a ?? []`. A manifest in the
+  other shape throws `includes is not a function` or reads `undefined`. Not reported: code in the same function
+  that checks the value with `Array.isArray` or `typeof`, and other values.
 - A finished child process is not judged by text on its standard error (`nitpicker/no-stderr-as-failure`,
   production files). Reported: an `if` or a ternary whose test (alone, or as one side of `||`) checks that the
   standard error is not empty (`stderr`, `stderr.length`, `stderr.length > 0`, `stderr !== ''`, also through

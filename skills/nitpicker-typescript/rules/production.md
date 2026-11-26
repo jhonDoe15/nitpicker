@@ -147,6 +147,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Pass the real file name to the TypeScript compiler API (`ts.transpileModule(source, { fileName, compilerOptions })`,
   `ts.createSourceFile(fileName, ...)`) when you have it: the default name makes every input the same file and
   relative imports resolve against it (`nitpicker/require-compiler-file-name`).
+- A `package.json` field npm accepts in several shapes (`bundleDependencies: true`, `workspaces: { packages }`,
+  `man` as a string) is checked with `Array.isArray` or `typeof` before a list member is read from it
+  (`nitpicker/no-single-shape-manifest-field`).
 - Decide whether a child process failed by its exit status (`status !== 0`, `exitCode`, the callback's `error`), not
   by text on its standard error, which also carries warnings and notices (`nitpicker/no-stderr-as-failure`).
 - Read `error` and `signal` of a `spawnSync` result before its `status`: a child that could not start, timed out or
