@@ -147,19 +147,36 @@ pub mod flag {
     pub const NULL_UNMARKED: u32 = 1 << 25;
     /// A class file with type annotations on the class or a member: nullness written that way is not read.
     pub const TYPE_MARKS: u32 = 1 << 26;
-    /// An annotation class that is itself a scope annotation: `@Scope` or `@ScopeAnnotation`.
-    pub const SCOPE: u32 = 1 << 27;
+    /// An annotation type that is itself a scope annotation (`@Scope`, `@ScopeAnnotation`).
+    pub const SCOPE_ANNOTATION: u32 = 1 << 27;
+    /// An annotation type that is itself a qualifier (`@Qualifier`, `@BindingAnnotation`).
+    pub const QUALIFIER_ANNOTATION: u32 = 1 << 28;
+    /// An annotation type with `@Retention(RUNTIME)`.
+    pub const RUNTIME_RETENTION: u32 = 1 << 29;
+    /// An annotation type with `@Retention(SOURCE)`.
+    pub const SOURCE_RETENTION: u32 = 1 << 30;
     /// A field or parameter with `@CompileTimeConstant`.
-    pub const COMPILE_TIME_CONSTANT: u32 = 1 << 28;
+    pub const COMPILE_TIME_CONSTANT: u32 = 1 << 31;
 
     pub const IMMUTABLE_NAME: &str = "com.google.errorprone.annotations.Immutable";
     pub const IMMUTABLE_PARAMETER_NAME: &str = "com.google.errorprone.annotations.ImmutableTypeParameter";
+
+    /// The bits `@Retention` gives for the constant it names.
+    pub fn of_retention(constant: &str) -> u32 {
+        match constant {
+            "RUNTIME" => RUNTIME_RETENTION,
+            "SOURCE" => SOURCE_RETENTION,
+            _ => 0,
+        }
+    }
 
     /// The bits an annotation gives, by its full name with `.` between a class and its member class.
     pub fn of_annotation(name: &str) -> u32 {
         match name {
             "com.google.auto.value.AutoValue" => return AUTO_VALUE,
             "com.google.auto.value.AutoValue.Builder" | "com.google.auto.value.AutoBuilder" => return AUTO_BUILDER,
+            "javax.inject.Scope" | "jakarta.inject.Scope" | "com.google.inject.ScopeAnnotation" => return SCOPE_ANNOTATION,
+            "javax.inject.Qualifier" | "jakarta.inject.Qualifier" | "com.google.inject.BindingAnnotation" => return QUALIFIER_ANNOTATION,
             "dagger.Component.Builder"
             | "dagger.Subcomponent.Builder"
             | "dagger.producers.ProductionComponent.Builder"
@@ -172,7 +189,6 @@ pub mod flag {
             "com.google.errorprone.annotations.CompileTimeConstant" => COMPILE_TIME_CONSTANT,
             _ => 0,
         };
-        let exact = exact | if matches!(name, "javax.inject.Scope" | "jakarta.inject.Scope" | "com.google.inject.ScopeAnnotation") { SCOPE } else { 0 };
         exact | match name.rsplit('.').next().unwrap_or(name) {
             "CheckReturnValue" | "MustUseReturnValues" => CHECK_RESULT,
             "CanIgnoreReturnValue" | "IgnorableReturnValue" => IGNORE_RESULT,

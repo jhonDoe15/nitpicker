@@ -34,7 +34,7 @@ pub fn has_annotation(context: &Context, declaration: Node, wanted: &[&str]) -> 
 
 fn scope_annotations<'t>(context: &Context, class: Node<'t>) -> Vec<Node<'t>> {
     let index = context.resolver.index;
-    annotations(context, class).into_iter().filter(|(_, name)| index.get(name).is_some_and(|info| info.flags & flag::SCOPE != 0)).map(|(annotation, _)| annotation).collect()
+    annotations(context, class).into_iter().filter(|(_, name)| index.get(name).is_some_and(|info| info.flags & flag::SCOPE_ANNOTATION != 0)).map(|(annotation, _)| annotation).collect()
 }
 
 fn class_members<'t>(class: Node<'t>) -> Vec<Node<'t>> {

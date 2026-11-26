@@ -589,10 +589,34 @@ impl<'a> Resolver<'a> {
         })
     }
 
+    /// The bits of the `@Retention` of an annotation type.
+    fn retention(&self, declaration: Node) -> u32 {
+        if declaration.kind() != "annotation_type_declaration" {
+            return 0;
+        }
+        let Some(holder) = super::super::helpers::modifiers(declaration) else { return 0 };
+        let mut bits = 0;
+        for annotation in children(holder).into_iter().filter(|part| part.kind() == "annotation") {
+            let Some(name) = annotation.child_by_field_name("name") else { continue };
+            if self.class_name(declaration, self.file.text_of(name)).as_deref() != Some("java.lang.annotation.Retention") {
+                continue;
+            }
+            let Some(arguments) = annotation.child_by_field_name("arguments") else { continue };
+            let mut last = None;
+            crate::engine::source::walk(arguments, |part| {
+                if part.kind() == "identifier" {
+                    last = Some(part);
+                }
+            });
+            bits |= last.map_or(0, |constant| super::model::flag::of_retention(self.file.text_of(constant)));
+        }
+        bits
+    }
+
     fn class_flags(&self, declaration: Node) -> u32 {
         use super::model::flag;
         let has = super::super::helpers::has_modifier;
-        let mut bits = self.marks(declaration);
+        let mut bits = self.marks(declaration) | self.retention(declaration);
         if super::super::helpers::annotation_names(self.file, declaration).iter().any(|name| name.rsplit('.').next() == Some("CheckForNull")) {
             bits |= flag::CHECK_FOR_NULL;
         }

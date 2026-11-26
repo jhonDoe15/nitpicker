@@ -7,9 +7,9 @@ use crate::java::types::model::flag;
 use tree_sitter::Node;
 
 #[derive(Clone)]
-struct Member {
-    owner: String,
-    class: bool,
+pub(super) struct Member {
+    pub(super) owner: String,
+    pub(super) class: bool,
 }
 
 fn lookup(context: &Context, class: &str, name: &str, package: &str, out: &mut Vec<Member>) {
@@ -35,14 +35,14 @@ fn lookup(context: &Context, class: &str, name: &str, package: &str, out: &mut V
     }
 }
 
-struct StaticImport<'t> {
-    owner: String,
-    name: String,
-    members: Vec<Member>,
-    declaration: Node<'t>,
+pub(super) struct StaticImport<'t> {
+    pub(super) owner: String,
+    pub(super) name: String,
+    pub(super) members: Vec<Member>,
+    pub(super) declaration: Node<'t>,
 }
 
-fn static_import<'t>(context: &Context, declaration: Node<'t>) -> Option<StaticImport<'t>> {
+pub(super) fn static_import<'t>(context: &Context, declaration: Node<'t>) -> Option<StaticImport<'t>> {
     let parts = children(declaration);
     if !parts.iter().any(|part| part.kind() == "static") || parts.iter().any(|part| part.kind() == "asterisk") {
         return None;

@@ -158,6 +158,13 @@ mod junit_init;
 mod junit_tests;
 mod recursion;
 mod equals_wrong;
+mod inject_checks;
+mod date_format;
+mod call_defects;
+mod collection_self;
+mod source_defects;
+mod nullable_outer;
+mod cirv_classes;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -467,6 +474,30 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["JUnit4TestNotRun"], junit_tests::junit4_test_not_run),
     (&["InfiniteRecursion"], recursion::infinite_recursion),
     (&["EqualsWrongThing"], equals_wrong::equals_wrong_thing),
+    (&["JavaxInjectOnAbstractMethod"], inject_checks::javax_inject_on_abstract_method),
+    (&["MisplacedScopeAnnotations"], inject_checks::misplaced_scope_annotations),
+    (&["MissingRuntimeRetention"], inject_checks::missing_runtime_retention),
+    (&["MoreThanOneInjectableConstructor"], inject_checks::more_than_one_injectable_constructor),
+    (&["MoreThanOneQualifier"], inject_checks::more_than_one_qualifier),
+    (&["MisusedDayOfYear"], date_format::misused_day_of_year),
+    (&["MisusedWeekYear"], date_format::misused_week_year),
+    (&["JodaToSelf"], date_format::joda_to_self),
+    (&["LocalDateTemporalAmount"], date_format::local_date_temporal_amount),
+    (&["JUnitAssertSameCheck"], call_defects::junit_assert_same),
+    (&["LossyPrimitiveCompare"], call_defects::lossy_primitive_compare),
+    (&["MathRoundIntLong"], call_defects::math_round_int_long),
+    (&["MisleadingEmptyVarargs"], call_defects::misleading_empty_varargs),
+    (&["MockitoUsage"], call_defects::mockito_usage),
+    (&["NCopiesOfChar"], call_defects::n_copies_of_char),
+    (&["NonRuntimeAnnotation"], call_defects::non_runtime_annotation),
+    (&["ModifyingCollectionWithItself"], collection_self::modifying_collection_with_itself),
+    (&["LongLiteralLowerCaseSuffix"], source_defects::long_literal_lower_case_suffix),
+    (&["LoopConditionChecker"], source_defects::loop_condition_checker),
+    (&["NullTernary"], source_defects::null_ternary),
+    (&["NonFinalCompileTimeConstant"], source_defects::non_final_compile_time_constant),
+    (&["NonCanonicalStaticImport"], source_defects::non_canonical_static_import),
+    (&["NullableOnContainingClass"], nullable_outer::nullable_on_containing_class),
+    (&["NoCanIgnoreReturnValueOnClasses"], cirv_classes::no_can_ignore_return_value_on_classes),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
