@@ -115,6 +115,14 @@ impl<'a, 's> Scopes<'a, 's> {
         }
     }
 
+    /// The variable a name has in the scope at an offset, as `scope.set` looked up along the chain.
+    pub fn variable_by_name(&self, name: &str, offset: u32) -> Option<SymbolId> {
+        let scoping = self.semantic.scoping();
+        scoping.scope_ancestors(self.scope_at(offset)).find_map(|scope| {
+            scoping.get_bindings(scope).iter().find(|(bound, _)| bound.as_str() == name).map(|(_, symbol)| *symbol)
+        })
+    }
+
     pub fn name(&self, symbol: SymbolId) -> &str {
         self.semantic.scoping().symbol_name(symbol)
     }

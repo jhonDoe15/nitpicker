@@ -117,6 +117,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
       },
     },
   ],
+  ['time-unit-mismatch', {}],
 ]);
 
 export const PLUGIN_RULE_PREFIX = 'nitpicker/';
