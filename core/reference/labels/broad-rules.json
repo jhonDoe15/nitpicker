@@ -41,6 +41,7 @@
   "pmd/EarlyWaitOnStartedWork",
   "pmd/LegacyCalendarApi",
   "pmd/LiteralsFirstInComparisons",
+  "pmd/LoopInvariantCopy",
   "pmd/NonExhaustiveSwitch",
   "pmd/SimpleDateFormatNeedsLocale",
   "pmd/SwitchStmtsShouldHaveDefault",
