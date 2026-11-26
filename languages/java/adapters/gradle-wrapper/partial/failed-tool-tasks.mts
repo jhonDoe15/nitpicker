@@ -22,19 +22,28 @@ export type SkippedModule = { readonly path: string; readonly dir: string };
 
 const MODULE_BUILD_FAILED_RULE: string = SHARED_MODULE_BUILD_FAILED_RULE;
 const WENT_WRONG = /\* What went wrong:\n(?<first>[^\n]*)(?<rest>(?:\n(?:> | {2})[^\n]*)*)/gu;
-const FAILED_TOOL_TASK =
-  /^Execution failed for task '(?<project>(?::[\w.-]+)*):(?<task>nitpicker\w+)'/u;
+const CONFIGURATION_PROBLEM =
+  '(?:A problem was|Some problems were) found with the configuration of';
+const FAILED_TOOL_TASK = new RegExp(
+  String.raw`^(?:Execution failed for|${CONFIGURATION_PROBLEM}) task '(?<project>(?::[\w.-]+)*):(?<task>nitpicker\w+)'`,
+  'u',
+);
+const VALIDATION_REASON = /^Reason:\s*/u;
 const ROOT_PROJECT = ':';
 const MAX_REASON_LENGTH = 600;
 const MAX_NAMED_PROJECTS = 10;
 const DEADLINE_IDENTITY = 'deadline';
 
 function reasonOf(first: string, rest: string): string {
-  const detail = rest
+  const configuration = !first.startsWith('Execution failed for');
+  const lines = rest
     .split('\n')
     .map((line) => line.replace(/^>\s*/u, '').trim())
-    .filter((line) => line !== '')
-    .join(' ');
+    .filter((line) => line !== '');
+  const validation = configuration ? lines.filter((line) => VALIDATION_REASON.test(line)) : [];
+  const detail = (
+    validation.length > 0 ? validation.map((line) => line.replace(VALIDATION_REASON, '')) : lines
+  ).join(' ');
   const reason = detail === '' ? first : detail;
   const characters = Array.from(reason);
   return characters.length > MAX_REASON_LENGTH

@@ -100,6 +100,11 @@ fn review_rules_report_what_pmd_reports() {
 }
 
 #[test]
+fn rules_written_with_pmd_7_node_names_match_pmd() {
+    same_as_pmd("pmd7names", "all");
+}
+
+#[test]
 fn rare_built_in_rules_and_switch_facts_match_pmd() {
     same_as_pmd("builtins", "all");
 }
@@ -150,6 +155,44 @@ fn line_breaks_encodings_and_functions_match_pmd() {
 #[test]
 fn byte_order_mark_does_not_move_findings() {
     same_as_pmd("bom", "edges");
+}
+
+/// Java allows a NUL character in strings, text blocks, character literals and comments, and PMD parses such a file.
+/// The grammar stops at it, so the engine reads it as a space there; a NUL in code still marks the file broken.
+#[test]
+fn a_nul_character_breaks_a_file_only_in_code() {
+    let folder = std::env::temp_dir().join(format!("nitpicker-engine-nul-{}", std::process::id()));
+    std::fs::create_dir_all(&folder).expect("folder");
+    let sources = [
+        ("Text", "String s = \"a\0b\";"),
+        ("Letter", "char c = '\0';"),
+        ("Block", "String t = \"\"\"\n  x\0y\n  \"\"\";"),
+        ("Line", "// a\0b\nint a;"),
+        ("Comment", "/* a\0b */ int a;"),
+        ("Code", "int\0 a;"),
+    ];
+    for (name, body) in sources {
+        std::fs::write(folder.join(format!("{name}.java")), format!("class {name} {{\n{body}\n}}\n")).expect("source");
+    }
+    let rules = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("rules").join("edges.json");
+    let output = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
+        .arg(&folder)
+        .args(["--rules", "_XPath"])
+        .env("NP_XPATH_RULES", rules)
+        .env("NP_XPATH_ONLY", "Field")
+        .output()
+        .expect("engine runs");
+    let _ = std::fs::remove_dir_all(&folder);
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).expect("json");
+    let broken: Vec<String> = report["syntaxErrorFiles"]
+        .as_array()
+        .expect("files")
+        .iter()
+        .map(|file| Path::new(file.as_str().expect("file")).file_name().expect("name").to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(broken, ["Code.java"]);
+    assert_eq!(report["findings"].as_array().map(Vec::len), Some(6));
 }
 
 /// One file of a single expression thousands of terms deep: the run of one file uses the large worker stack too.

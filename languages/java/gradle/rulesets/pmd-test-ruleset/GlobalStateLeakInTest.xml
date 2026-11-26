@@ -44,7 +44,7 @@ let $typeOf := function($n) {
         and ($n/self::FieldAccess
              or (matches(string($n/@MethodName), '^set[A-Z]') and not(matches(string($n/@MethodName), '^setUp([A-Z]|$)'))
                  and $n/ArgumentList/@Size > 0))
-        and not($unit//(ClassDeclaration | EnumDeclaration | RecordDeclaration | InterfaceDeclaration)[@SimpleName = $type])
+        and not($unit//(ClassDeclaration | EnumDeclaration | RecordDeclaration)[@SimpleName = $type])
         and (if ($qualifier != '') then $owned($qualifier)
              else if (exists($imports)) then (some $import in $imports satisfies $owned(string($import/@PackageName)))
              else true()) }

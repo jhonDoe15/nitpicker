@@ -1,0 +1,109 @@
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import {
+  calledMember,
+  memberName,
+  someNode,
+} from '../../collections/costly-forms/repeated-runs.mts';
+import { variableNamed, type SourceCode } from '../../typed/node-views.mts';
+import { unwrapped } from '../../typed/syntax-views.mts';
+
+const KEEPING_STEPS = new Set(['map', 'slice', 'toReversed', 'toSorted']);
+
+function sourceOf(sourceCode: SourceCode, node: TSESTree.Node): TSESTree.Node {
+  const value = unwrapped(node);
+  if (value.type !== AST_NODE_TYPES.Identifier) {
+    return value;
+  }
+  const definition = variableNamed(sourceCode, value)?.defs[0];
+  const declarator = definition?.node;
+  return declarator?.type === AST_NODE_TYPES.VariableDeclarator &&
+    declarator.parent.kind === 'const' &&
+    declarator.init !== null
+    ? unwrapped(declarator.init)
+    : value;
+}
+
+function filterOf(
+  sourceCode: SourceCode,
+  node: TSESTree.Node,
+): TSESTree.CallExpression | undefined {
+  const pending = [sourceOf(sourceCode, node)];
+  for (const value of pending) {
+    if (value.type !== AST_NODE_TYPES.CallExpression) {
+      return undefined;
+    }
+    const member = calledMember(value);
+    const name = member === undefined ? undefined : memberName(member);
+    if (name === 'filter') {
+      return value;
+    }
+    if (member === undefined || !KEEPING_STEPS.has(name ?? '')) {
+      return undefined;
+    }
+    pending.push(sourceOf(sourceCode, member.object));
+  }
+  return undefined;
+}
+
+function initializerReads(
+  sourceCode: SourceCode,
+  node: TSESTree.Node,
+  other: TSESTree.Node,
+): boolean {
+  const value = unwrapped(node);
+  const name = unwrapped(other);
+  if (value.type !== AST_NODE_TYPES.Identifier || name.type !== AST_NODE_TYPES.Identifier) {
+    return false;
+  }
+  const declarator = variableNamed(sourceCode, value)?.defs[0]?.node;
+  return (
+    declarator?.type === AST_NODE_TYPES.VariableDeclarator &&
+    declarator.init !== null &&
+    someNode(
+      declarator.init,
+      (child) => child.type === AST_NODE_TYPES.Identifier && child.name === name.name,
+    )
+  );
+}
+
+function derivedFrom(sourceCode: SourceCode, first: TSESTree.Node, second: TSESTree.Node): boolean {
+  return initializerReads(sourceCode, first, second) || initializerReads(sourceCode, second, first);
+}
+
+function filterText(sourceCode: SourceCode, call: TSESTree.CallExpression): string {
+  return call.arguments
+    .map((argument) => sourceCode.getText(argument).replaceAll(/\s+/gu, ''))
+    .join();
+}
+
+export function filteredOneSide(
+  sourceCode: SourceCode,
+  first: TSESTree.Node,
+  second: TSESTree.Node,
+): TSESTree.Node | undefined {
+  if (derivedFrom(sourceCode, first, second)) {
+    return undefined;
+  }
+  const firstFilter = filterOf(sourceCode, first);
+  const secondFilter = filterOf(sourceCode, second);
+  if (firstFilter === undefined) {
+    return secondFilter === undefined ? undefined : second;
+  }
+  if (secondFilter === undefined) {
+    return first;
+  }
+  const same =
+    firstFilter === secondFilter ||
+    filterText(sourceCode, firstFilter) === filterText(sourceCode, secondFilter);
+  return same ? undefined : first;
+}
+
+const TABLE_NAME = /^[A-Z][A-Z\d_]*$/u;
+
+export function isFixedTable(sourceCode: SourceCode, node: TSESTree.Node): boolean {
+  const value = unwrapped(node);
+  return (
+    (value.type === AST_NODE_TYPES.Identifier && TABLE_NAME.test(value.name)) ||
+    sourceOf(sourceCode, value).type === AST_NODE_TYPES.ArrayExpression
+  );
+}

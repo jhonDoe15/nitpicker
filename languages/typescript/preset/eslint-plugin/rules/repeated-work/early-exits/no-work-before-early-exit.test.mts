@@ -9,6 +9,10 @@ const FS =
 
 tester.run('no-work-before-early-exit', rule, {
   valid: [
+    'export function f(node: ts.Node, checker: ts.TypeChecker) { const type = checker.getTypeAtLocation(node); if (!ts.isCallExpression(node)) return; use(type); }\ndeclare function use(t: ts.Type): void;',
+    'export function f(nodes: ts.Node[], checker: ts.TypeChecker) { for (const node of nodes) { const type = checker.getTypeAtLocation(node); if (!accepts(node)) continue; use(type); } }\ndeclare function accepts(n: ts.Node): boolean;\ndeclare function use(t: ts.Type): void;',
+    'export function f(nodes: ts.Node[], checker: ts.TypeChecker) { for (const node of nodes) { const type = checker.getTypeAtLocation(node); if (!isWanted(type)) continue; use(type); } }\ndeclare function isWanted(t: ts.Type): boolean;\ndeclare function use(t: ts.Type): void;',
+    'export function f(nodes: ts.Node[], checker: ts.TypeChecker) { for (const node of nodes) { const type = checker.getTypeAtLocation(node); if (!ts.isCallExpression(node.getChildAt(0))) continue; use(type); } }\ndeclare function use(t: ts.Type): void;',
     'export function f(text: string, enabled: boolean) { const parsed = JSON.parse(text); if (!enabled) return []; return parsed; }',
     `${FS}export async function f(path: string, enabled: boolean) { const text = await fs.readFile(path, "utf8"); if (!enabled) { return ""; } return text; }`,
     `${FS}export function f(paths: string[], skip: Set<string>) { for (const path of paths) { const text = readFileSync(path, "utf8").split("\\n").filter((line) => line.length > 0); if (path === "") continue; console.log(text); } }`,
@@ -31,6 +35,14 @@ tester.run('no-work-before-early-exit', rule, {
     'export function f(rows: number[], enabled: boolean) { let doubled = rows.map((row) => row * 2); if (!enabled) return []; doubled = []; return doubled; }',
   ],
   invalid: [
+    {
+      code: 'export function f(nodes: ts.Node[], checker: ts.TypeChecker) { for (const node of nodes) { const type = checker.getTypeAtLocation(node); if (!ts.isCallExpression(node)) continue; use(type); } }\ndeclare function use(t: ts.Type): void;',
+      errors: [WORK('type')],
+    },
+    {
+      code: 'export function f(nodes: ts.Node[], program: { checker: ts.TypeChecker }) { nodes.forEach((node) => { const symbol = program.checker.getSymbolAtLocation(node); if (!isNamed(node) || skip) return; use(symbol); }); }\ndeclare const skip: boolean;\ndeclare function isNamed(n: ts.Node): boolean;\ndeclare function use(t: unknown): void;',
+      errors: [WORK('symbol')],
+    },
     {
       code: 'export function f(rows: { due: boolean }[], active: boolean) { const due = rows.filter((row) => row.due).map((row) => ({ ...row })); if (!active) throw new Error("inactive"); return due; }',
       errors: [WORK('due')],

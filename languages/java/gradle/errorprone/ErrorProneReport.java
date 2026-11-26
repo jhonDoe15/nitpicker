@@ -153,13 +153,15 @@ public final class ErrorProneReport {
   }
 
   /**
-   * With {@code --skip-generated}, adds an {@code -XepExcludedPaths} pattern for each
-   * {@code --generated-root=<dir>} line, joined with a pattern the project declared. Error Prone
+   * Adds an {@code -XepExcludedPaths} pattern for the {@code -s} folder, where annotation processors write sources
+   * during this compile, and with {@code --skip-generated} for each {@code --generated-root=<dir>} line, joined with a
+   * pattern the project declared. Findings in the {@code -s} folder could never be placed in the project. Error Prone
    * matches the pattern against the file's decoded path, and the plugin option is split at whitespace, so a
    * directory's own whitespace is written as a hexadecimal escape.
    */
   static List<String> withoutGenerated(List<String> head, List<String> lines) {
-    if (!head.contains(SKIP_GENERATED)) {
+    int output = head.indexOf("-s") + 1;
+    if (!head.contains(SKIP_GENERATED) && output == 0) {
       return lines;
     }
     List<String> kept = new ArrayList<>();
@@ -171,8 +173,12 @@ public final class ErrorProneReport {
         kept.add(line);
       }
     }
-    List<String> roots = head.stream().filter(line -> line.startsWith(GENERATED_ROOT))
-        .map(line -> pathPattern(line.substring(GENERATED_ROOT.length()))).toList();
+    List<String> roots = new ArrayList<>(head.stream()
+        .filter(line -> head.contains(SKIP_GENERATED) && line.startsWith(GENERATED_ROOT))
+        .map(line -> pathPattern(line.substring(GENERATED_ROOT.length()))).toList());
+    if (output > 0) {
+      roots.add(pathPattern(head.get(output)));
+    }
     if (!roots.isEmpty()) {
       patterns.add(".*(?:" + String.join("|", roots) + ")/.*");
     }
@@ -344,11 +350,15 @@ public final class ErrorProneReport {
     List<String> others = sources.stream().filter(source -> !unsuppressed.contains(source)).toList();
     boolean immutable = immutableInReach(javacOptions(head, sources), sources);
     List<Job> jobs = new ArrayList<>();
-    for (List<String> group : Stream.of(others, unsuppressed).filter(list -> !list.isEmpty()).toList()) {
+    List<List<String>> groups = Stream.of(others, unsuppressed).filter(list -> !list.isEmpty()).toList();
+    for (List<String> group : groups) {
       List<List<String>> slices = slices(group);
       for (int slice = 0; slice < slices.size(); slice++) {
         List<String> files = slices.get(slice);
         List<String> options = javacOptions(head, sources);
+        if (groups.size() > 1 || slices.size() > 1) {
+          ownOutput(options, (group == unsuppressed ? "lombok-" : "slice-") + slice);
+        }
         if (fixChecks != null) {
           int processors = options.indexOf(PROCESSOR_PATH) + 1;
           options.set(processors, options.get(processors) + java.io.File.pathSeparator + fixChecks);
@@ -367,6 +377,21 @@ public final class ErrorProneReport {
       }
     }
     return jobs;
+  }
+
+  /**
+   * Moves a job's {@code -d} and {@code -s} folders into a subfolder of their own. Jobs run at once, and annotation
+   * processors that merge an index file in the class output would otherwise read each other's half-written files.
+   */
+  static void ownOutput(List<String> options, String job) throws IOException {
+    for (String flag : List.of("-d", "-s")) {
+      int at = options.indexOf(flag) + 1;
+      if (at > 0) {
+        Path folder = Path.of(options.get(at)).resolve(job);
+        Files.createDirectories(folder);
+        options.set(at, folder.toString());
+      }
+    }
   }
 
   /**
