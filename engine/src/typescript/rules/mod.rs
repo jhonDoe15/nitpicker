@@ -205,7 +205,7 @@ fn lint_file(path: &str, display: &str, settings: &[String], (selected, rules, v
             return unparsed(display, "!parse");
         }
         let built = SemanticBuilder::new().with_build_nodes(true).with_check_syntax_error(true).build(file.program);
-        if !built.diagnostics.is_empty() {
+        if support::early_errors::refused(&built) {
             return unparsed(display, "!parse");
         }
         let semantic = built.semantic;
