@@ -100,6 +100,11 @@ impl<'m, 'a, 't> Ctx<'m, 'a, 't> {
         BOUNDARIES.contains(&name) || (TYPE_DECLARATIONS.contains(&name) && self.flag(id, "Nested"))
     }
 
+    /// Whether the node is a written type: PMD's `ASTType`.
+    pub fn type_node(&self, id: u32) -> bool {
+        matches!(self.name(id), "ClassType" | "PrimitiveType" | "ArrayType" | "IntersectionType" | "UnionType" | "WildcardType" | "VoidType")
+    }
+
     pub fn attribute(&self, id: u32, key: &str) -> Option<Value> {
         self.tree.attribute(self.file, id, key)
     }
