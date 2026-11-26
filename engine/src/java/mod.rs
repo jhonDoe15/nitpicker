@@ -1,4 +1,5 @@
 pub mod errorprone;
+pub mod checkstyle;
 pub mod cpd;
 mod spotbugs;
 mod facts;
@@ -32,6 +33,7 @@ impl Language for Java {
             Box::new(magic_number::MagicNumber),
             Box::new(visibility::VisibilityModifier),
         ];
+        rules.push(Box::new(checkstyle::Checkstyle));
         rules.extend(naming::rules());
         rules.extend(statements::rules());
         rules.extend(pmd_sample::rules());

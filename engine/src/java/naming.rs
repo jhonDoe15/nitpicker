@@ -85,7 +85,11 @@ fn method_names<'t>(file: &SourceFile, node: Node<'t>, out: &mut Vec<Node<'t>>) 
     if node.kind() != "method_declaration" {
         return;
     }
-    let test = super::helpers::annotation_names(file, node).iter().any(|name| name.contains("Test"));
+    let annotations = super::helpers::annotation_names(file, node);
+    if annotations.iter().any(|name| matches!(*name, "Override" | "java.lang.Override")) {
+        return;
+    }
+    let test = annotations.iter().any(|name| name.contains("Test"));
     let Some(name) = node.field("name") else { return };
     if test && test_method_format().is_match(file.text_of(name)) {
         return;
@@ -99,6 +103,9 @@ fn test_method_format() -> &'static Regex {
 }
 
 fn parameter_names<'t>(_: &SourceFile, node: Node<'t>, out: &mut Vec<Node<'t>>) {
+    if !matches!(node.kind(), "formal_parameter" | "spread_parameter") {
+        return;
+    }
     let owner = node.parent().and_then(|list| list.parent()).map(|n| n.kind());
     if !matches!(owner, Some("method_declaration" | "constructor_declaration" | "compact_constructor_declaration")) {
         return;

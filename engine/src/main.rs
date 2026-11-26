@@ -48,6 +48,10 @@ fn main() {
         near::near_duplicate_search(&args[1..]);
         return;
     }
+    if args.first().map(String::as_str) == Some("checkstyle-javadoc-trees") {
+        java::checkstyle::dump(&args[1..]);
+        return;
+    }
     if args.first().map(String::as_str) == Some("cpd") {
         java::cpd::run(&args[1..]);
         return;
