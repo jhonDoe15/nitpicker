@@ -28,7 +28,7 @@ function callbackPairing(
     return undefined;
   }
   const receiver = unwrapped(member.object);
-  for (const other of indexedLists(sourceCode, callback.body, index.name)) {
+  for (const other of indexedLists(sourceCode, callback.body, index.name, callback)) {
     const filtered = filteredOneSide(sourceCode, receiver, other);
     if (filtered !== undefined && sourceCode.getText(other) !== sourceCode.getText(receiver)) {
       return { node: call, filtered };
@@ -51,7 +51,7 @@ function loopPairing(sourceCode: SourceCode, loop: TSESTree.ForStatement): Pairi
   if (counted === undefined || !isPlainList(counted.bound)) {
     return undefined;
   }
-  const lists = indexedLists(sourceCode, loop.body, counted.index);
+  const lists = indexedLists(sourceCode, loop.body, counted.index, loop);
   for (const [position, first] of lists.entries()) {
     for (const second of lists.slice(position + 1)) {
       const filtered = filteredOneSide(sourceCode, first, second);

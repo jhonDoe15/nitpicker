@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { memberName, someNode } from '../../collections/costly-forms/repeated-runs.mts';
+import { memberName } from '../../collections/costly-forms/repeated-runs.mts';
 import { variableNamed, type SourceCode } from '../../typed/node-views.mts';
 import { isFsCall } from '../repeated-calls/call-shapes.mts';
 import { listedEntry } from './listed-entries.mts';
@@ -24,6 +24,23 @@ function isKindTest(value: TSESTree.Node): boolean {
     member.parent.type === AST_NODE_TYPES.CallExpression &&
     member.parent.callee === member
   );
+}
+
+function isEntryName(node: TSESTree.Node | undefined, entry: string): boolean {
+  return node?.type === AST_NODE_TYPES.Identifier && node.name === entry;
+}
+
+function endsWithEntry(path: TSESTree.Node, entry: string): boolean {
+  if (isEntryName(path, entry)) {
+    return true;
+  }
+  if (path.type === AST_NODE_TYPES.CallExpression) {
+    return isEntryName(path.arguments.at(-1), entry);
+  }
+  if (path.type === AST_NODE_TYPES.TemplateLiteral) {
+    return isEntryName(path.expressions.at(-1), entry) && path.quasis.at(-1)?.value.cooked === '';
+  }
+  return path.type === AST_NODE_TYPES.BinaryExpression && isEntryName(path.right, entry);
 }
 
 function onlyKindTests(sourceCode: SourceCode, value: TSESTree.Node): boolean {
@@ -71,13 +88,7 @@ export const rule: TSESLint.RuleModule<'statPerEntry'> = {
           return;
         }
         const entry = listedEntry(sourceCode, call);
-        if (
-          entry !== undefined &&
-          someNode(
-            path,
-            (node) => node.type === AST_NODE_TYPES.Identifier && node.name === entry.name,
-          )
-        ) {
+        if (entry !== undefined && endsWithEntry(path, entry.name)) {
           context.report({
             node: call,
             messageId: 'statPerEntry',

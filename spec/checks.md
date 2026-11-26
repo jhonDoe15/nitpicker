@@ -549,7 +549,7 @@ Java (`resolve(x).isPresent() && resolve(x).get()`), Kotlin, Python and Go follo
 in-memory work (a collection pass, a `Map` or `Set` built; file reads and parses are left alone, since
 moving them would change which error the exit path raises) declared right before an early exit
 that does not read it, and in a loop or iteration callback a type checker query made before an exit
-guarded only by `is...` or `has...` calls. Java (where PMD `PrematureDeclaration` treats calls as
+whose test makes no call other than `is...` or `has...` guards. Java (where PMD `PrematureDeclaration` treats calls as
 impure and so skips this case), Kotlin, Python and Go follow in #2133.
 
 `nitpicker/no-read-all-before-pass` (production source, in `eslint-lint`) reports every file read

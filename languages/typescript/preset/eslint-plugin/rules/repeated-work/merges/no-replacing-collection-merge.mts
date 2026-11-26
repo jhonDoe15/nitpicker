@@ -1,5 +1,9 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { calledMember, memberName } from '../../collections/costly-forms/repeated-runs.mts';
+import {
+  calledMember,
+  memberName,
+  someNode,
+} from '../../collections/costly-forms/repeated-runs.mts';
 import { contains } from '../../typed/node-views.mts';
 import { calleeNameOf, unwrapped } from '../../typed/syntax-views.mts';
 import { innermostRepeat, type Repeat } from '../support/loop-invariance.mts';
@@ -32,6 +36,23 @@ function isName(node: TSESTree.Node | undefined, name: string): boolean {
   return node?.type === AST_NODE_TYPES.Identifier && node.name === name;
 }
 
+const PROBES = new Set(['get', 'has']);
+
+function readsTarget(area: TSESTree.Node, target: TSESTree.Node): boolean {
+  const wanted = unwrapped(target);
+  return someNode(area, (node) => {
+    const member = node.type === AST_NODE_TYPES.CallExpression ? calledMember(node) : undefined;
+    const owner = member === undefined ? undefined : unwrapped(member.object);
+    return (
+      member !== undefined &&
+      PROBES.has(memberName(member) ?? '') &&
+      owner?.type === AST_NODE_TYPES.Identifier &&
+      wanted.type === AST_NODE_TYPES.Identifier &&
+      owner.name === wanted.name
+    );
+  });
+}
+
 function setMerge(call: TSESTree.CallExpression): Merge | undefined {
   const member = calledMember(call);
   const [key, value] = call.arguments;
@@ -46,6 +67,9 @@ function setMerge(call: TSESTree.CallExpression): Merge | undefined {
     !isName(key, pair[0]) ||
     !isName(value, pair[1])
   ) {
+    return undefined;
+  }
+  if (readsTarget(repeat.node, member.object)) {
     return undefined;
   }
   const outer = innermostRepeat(repeat.node);

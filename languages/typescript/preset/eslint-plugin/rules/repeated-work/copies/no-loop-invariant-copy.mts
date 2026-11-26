@@ -43,14 +43,18 @@ function mutatedInside(
 ): boolean {
   const text = sourceCode.getText(source);
   return someNode(repeat, (node) => {
-    if (node.type !== AST_NODE_TYPES.CallExpression) {
+    if (node.type !== AST_NODE_TYPES.CallExpression && node.type !== AST_NODE_TYPES.NewExpression) {
       return false;
     }
     const { callee } = node;
+    const handed = node.arguments.some(
+      (argument) => argument.range[0] !== source.range[0] && sourceCode.getText(argument) === text,
+    );
     return (
-      callee.type === AST_NODE_TYPES.MemberExpression &&
-      MUTATORS.has(memberName(callee) ?? '') &&
-      sourceCode.getText(callee.object) === text
+      handed ||
+      (callee.type === AST_NODE_TYPES.MemberExpression &&
+        MUTATORS.has(memberName(callee) ?? '') &&
+        sourceCode.getText(callee.object) === text)
     );
   });
 }

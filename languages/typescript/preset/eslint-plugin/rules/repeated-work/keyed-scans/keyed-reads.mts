@@ -6,7 +6,7 @@ import {
 } from '../../collections/costly-forms/repeated-runs.mts';
 import { contains, variableNamed, type SourceCode } from '../../typed/node-views.mts';
 import { unwrapped } from '../../typed/syntax-views.mts';
-import { invariantIn } from '../support/loop-invariance.mts';
+import { invariantIn, writtenInside } from '../support/loop-invariance.mts';
 
 export type KeyedRead = { readonly map: TSESTree.Node; readonly key: TSESTree.Node };
 
@@ -43,9 +43,22 @@ export function keyedRead(sourceCode: SourceCode, node: TSESTree.Node): KeyedRea
     : undefined;
 }
 
-function declaredWithin(sourceCode: SourceCode, node: TSESTree.Identifier, area: TSESTree.Node) {
+function declaredWithin(
+  sourceCode: SourceCode,
+  node: TSESTree.Identifier,
+  area: TSESTree.Node,
+): boolean {
   const definition = variableNamed(sourceCode, node)?.defs[0];
   return definition !== undefined && contains(area, definition.name);
+}
+
+function changesWithin(
+  sourceCode: SourceCode,
+  node: TSESTree.Identifier,
+  area: TSESTree.Node,
+): boolean {
+  const variable = variableNamed(sourceCode, node);
+  return variable !== undefined && writtenInside(variable, area);
 }
 
 export function readsLoopState(
@@ -58,8 +71,8 @@ export function readsLoopState(
     node,
     (child) =>
       child.type === AST_NODE_TYPES.Identifier &&
-      declaredWithin(sourceCode, child, repeat) &&
-      !declaredWithin(sourceCode, child, own),
+      ((declaredWithin(sourceCode, child, repeat) && !declaredWithin(sourceCode, child, own)) ||
+        changesWithin(sourceCode, child, repeat)),
   );
 }
 
@@ -68,7 +81,9 @@ export function isRepeatingKey(
   read: KeyedRead,
   repeat: TSESTree.Node,
 ): boolean {
+  const key = unwrapped(read.key);
   return (
+    key.type !== AST_NODE_TYPES.Identifier &&
     invariantIn(sourceCode, read.map, repeat) &&
     readsLoopState(sourceCode, read.key, repeat, read.key)
   );

@@ -15,6 +15,8 @@ const SAVED =
 
 tester.run('no-repeated-parse-per-item', rule, {
   valid: [
+    'const isTs = (p: string) => /\\.tsx?$/u.test(p);\nexport function f(xs: Finding[]) { return xs.filter((x) => isTs(x.message)); }',
+    `${ROUTE}\nexport function f(xs: Finding[], cache: Map<string, unknown>) { return xs.map((x) => cache.get(x.message) ?? splitRoute(x.message)); }`,
     `${ONE_LINE}\nexport function f(item: Finding) { return oneLine(item.message); }`,
     `${ONE_LINE}\nexport function f(items: Finding[]) { return items.map((item) => oneLine(item.id)); }`,
     `${ONE_LINE}\nexport function f(items: Finding[], other: Finding) { return items.map((item) => oneLine(other.message)); }`,
@@ -35,8 +37,8 @@ tester.run('no-repeated-parse-per-item', rule, {
       errors: [PARSE('parseRule', 'rule')],
     },
     {
-      code: `${ONE_LINE}\nexport function f(items: Finding[]) { items.forEach((item) => { print(oneLine(item.path)); }); }\ndeclare function print(text: string): void;`,
-      errors: [PARSE('oneLine', 'path')],
+      code: `${ONE_LINE}\nexport function f(items: Finding[]) { items.forEach((item) => { print(oneLine(item.kind)); }); }\ndeclare function print(text: string): void;`,
+      errors: [PARSE('oneLine', 'kind')],
     },
   ],
 });

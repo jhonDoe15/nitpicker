@@ -14,7 +14,7 @@ const TYPE_QUERIES = new Set([
   'getTypeOfSymbolAtLocation',
   'typeToString',
 ]);
-const CHECKER = /checker$/iu;
+const CHECKER = /^(?:type)?checker$/iu;
 const GUARD = /^(?:is|has)[A-Z]/u;
 const UNSETTLED = new Set<string>([
   AST_NODE_TYPES.AssignmentExpression,

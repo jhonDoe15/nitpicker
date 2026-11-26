@@ -11,6 +11,7 @@ const ASYNC =
 
 tester.run('no-stat-per-listed-entry', rule, {
   valid: [
+    `${SYNC}\nexport function f(dir: string) { for (const name of readdirSync(dir)) { if (statSync(join(dir, name, "package.json")).isFile()) use(name); } }\ndeclare function use(n: string): void;`,
     `${SYNC}\nexport function walk(dir: string) { for (const entry of readdirSync(dir, { withFileTypes: true })) { if (entry.isDirectory()) walk(join(dir, entry.name)); } }`,
     `${SYNC}\nexport function sizes(dir: string) { return readdirSync(dir).map((name) => statSync(join(dir, name)).size); }`,
     `${SYNC}\nexport function f(dir: string) { for (const name of readdirSync(dir)) { const info = statSync(join(dir, name)); if (info.isFile()) use(info.mtimeMs); } }\ndeclare function use(n: number): void;`,

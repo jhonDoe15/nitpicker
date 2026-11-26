@@ -34,5 +34,6 @@ export const REPEATED_WORK_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/merges/collection-values.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/merges/no-replacing-collection-merge.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/keyed-scans/keyed-reads.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/repeated-work/keyed-scans/key-loops.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/keyed-scans/no-repeated-keyed-scan.mjs',
 ];

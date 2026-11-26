@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { calledMember, memberName } from '../../collections/costly-forms/repeated-runs.mts';
-import { ASSERTION_WRAPPERS, unwrapOf } from '../../typed/syntax-views.mts';
+import { ASSERTION_WRAPPERS, outermostOf, unwrapOf } from '../../typed/syntax-views.mts';
 import type { SourceCode } from '../../typed/node-views.mts';
 import { openRepeat } from '../support/loop-invariance.mts';
 
@@ -41,8 +41,12 @@ function readGroup(spread: TSESTree.SpreadElement): Group | undefined {
   return storedGroup(fallback.left);
 }
 
-function writtenGroup(array: TSESTree.ArrayExpression): Group | undefined {
+function writtenGroup(written: TSESTree.ArrayExpression): Group | undefined {
+  const array = outermostOf(written, WRAPPERS);
   const { parent } = array;
+  if (parent === undefined) {
+    return undefined;
+  }
   if (parent.type === AST_NODE_TYPES.AssignmentExpression) {
     return parent.operator === '=' && parent.right === array ? storedGroup(parent.left) : undefined;
   }

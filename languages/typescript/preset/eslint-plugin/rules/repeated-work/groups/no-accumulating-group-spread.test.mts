@@ -24,6 +24,10 @@ tester.run('no-accumulating-group-spread', rule, {
   ],
   invalid: [
     {
+      code: 'export function f(xs: Row[], groups: Map<string, Row[]>) { for (const x of xs) { groups.set(x.k, [...(groups.get(x.k) ?? []), x] as Row[]); } }',
+      errors: [COPIED('groups', 'x.k')],
+    },
+    {
       code: 'export function f(xs: Row[], groups: Map<string, Row[]>) { for (const x of xs) { groups.set(key(x), [...(groups.get(key(x)) ?? []), x]); } }',
       errors: [COPIED('groups', 'key(x)')],
     },

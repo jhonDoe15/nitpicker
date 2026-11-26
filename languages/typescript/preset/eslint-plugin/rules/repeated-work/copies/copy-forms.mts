@@ -95,7 +95,11 @@ export function isStored(copy: TSESTree.Node, repeat: TSESTree.Node): boolean {
     return false;
   }
   if (parent.type === AST_NODE_TYPES.Property) {
-    return parent.value === copy && parent.parent.type === AST_NODE_TYPES.ObjectExpression;
+    return (
+      parent.value === copy &&
+      parent.parent.type === AST_NODE_TYPES.ObjectExpression &&
+      isStored(parent.parent, repeat)
+    );
   }
   if (parent.type === AST_NODE_TYPES.AssignmentExpression) {
     return parent.right === copy && parent.left.type === AST_NODE_TYPES.MemberExpression;

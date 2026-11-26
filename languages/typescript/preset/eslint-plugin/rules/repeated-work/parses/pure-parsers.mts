@@ -126,8 +126,7 @@ export function parserVerdict(
     someNode(
       fn.body,
       (node) =>
-        (node.type === AST_NODE_TYPES.Literal && 'regex' in node) ||
-        (node.type === AST_NODE_TYPES.CallExpression && callVerdict(sourceCode, node, seen).parses),
+        node.type === AST_NODE_TYPES.CallExpression && callVerdict(sourceCode, node, seen).parses,
     );
   return { pure: !impure, parses };
 }

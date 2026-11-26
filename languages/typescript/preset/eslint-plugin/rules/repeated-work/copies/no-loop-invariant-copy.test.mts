@@ -10,6 +10,8 @@ const COPY = (copy: string, source: string) => ({
 
 tester.run('no-loop-invariant-copy', rule, {
   valid: [
+    'export function f(xs: Row[], buf: number[], history: number[][]) { for (const x of xs) { fill(buf, x); history.push([...buf]); } }\ndeclare function fill(b: number[], x: Row): void;',
+    'export function f(xs: Row[], cfg: { opts: object }) { for (const x of xs) { use({ opts: { ...cfg.opts }, x }); } }\ndeclare function use(o: object): void;',
     'export function f(xs: Row[], lines: string[], out: Report[]) { for (const x of xs) { const copy = [...lines]; copy.push(x.id); out.push({ x, copy }); } }',
     'export function f(xs: Row[], lines: string[], out: Report[]) { for (const x of xs) { lines.push(x.id); out.push({ x, lines: [...lines] }); } }',
     'export function f(xs: Row[], out: Report[]) { for (const x of xs) { out.push({ x, lines: [...x.lines] }); } }',

@@ -1,22 +1,16 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { memberName } from '../../collections/costly-forms/repeated-runs.mts';
 import { contains, variableNamed, type SourceCode } from '../../typed/node-views.mts';
-import { openRepeat, type Repeat } from '../support/loop-invariance.mts';
+import { openRepeat, readsMemo, type Repeat } from '../support/loop-invariance.mts';
 import { localFunction, parserVerdict } from './pure-parsers.mts';
 
 const SHARED_FIELDS = new Set([
   'category',
   'code',
-  'file',
-  'filePath',
   'kind',
   'message',
-  'path',
   'rule',
   'ruleId',
-  'source',
-  'text',
-  'title',
   'tool',
   'type',
 ]);
@@ -103,7 +97,11 @@ export const rule: TSESLint.RuleModule<'parsePerItem'> = {
           return;
         }
         const field = parsedField(sourceCode, call, repeat);
-        if (field !== undefined) {
+        const input = call.arguments[0];
+        const memo =
+          input !== undefined &&
+          readsMemo(repeat.node, (key) => sourceCode.getText(key) === sourceCode.getText(input));
+        if (field !== undefined && !memo) {
           context.report({
             node: call,
             messageId: 'parsePerItem',
