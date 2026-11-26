@@ -53,7 +53,7 @@ fn outermost(context: &Context, class: &str) -> String {
 }
 
 /// What the `@Generated` annotations of a class say: their `value` strings, or the annotation's own name.
-fn generated_by(context: &Context, class: Node) -> Vec<String> {
+pub(super) fn generated_by(context: &Context, class: Node) -> Vec<String> {
     let mut found = Vec::new();
     for annotation in annotations_of(class) {
         let Some(written) = annotation.child_by_field_name("name").map(|name| context.text(name)) else { continue };

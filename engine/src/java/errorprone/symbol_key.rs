@@ -103,3 +103,38 @@ pub fn same_declared_symbol<'t>(context: &Context<'t>, first: Node<'t>, second: 
     let scopes = OnceCell::new();
     key(context, &scopes, first).is_some_and(|found| key(context, &scopes, second) == Some(found))
 }
+
+/// What a name or field access stands for, to compare with `declared_key`.
+pub struct SymbolKey(Key);
+
+impl PartialEq for SymbolKey {
+    fn eq(&self, other: &SymbolKey) -> bool {
+        self.0 == other.0
+    }
+}
+
+pub fn reference_key<'t>(context: &Context<'t>, node: Node<'t>) -> Option<SymbolKey> {
+    if !plain(node) {
+        return None;
+    }
+    key(context, &OnceCell::new(), node).map(SymbolKey)
+}
+
+/// The symbol a variable declaration declares: a declarator of a local or a field, or a parameter.
+pub fn declared_key<'t>(context: &Context<'t>, declaration: Node<'t>) -> Option<SymbolKey> {
+    match declaration.kind() {
+        "variable_declarator" => {
+            let holder = crate::engine::source::parent(declaration)?;
+            match holder.kind() {
+                "local_variable_declaration" => Some(SymbolKey(Key::Local(declaration.start_byte()))),
+                "field_declaration" | "constant_declaration" => {
+                    let owner = enclosing_type(context.file, context.resolver.scope, declaration)?;
+                    Some(SymbolKey(Key::Field(owner, context.text(declaration.child_by_field_name("name")?).to_string())))
+                }
+                _ => None,
+            }
+        }
+        "formal_parameter" | "spread_parameter" => Some(SymbolKey(Key::Local(declaration.start_byte()))),
+        _ => None,
+    }
+}

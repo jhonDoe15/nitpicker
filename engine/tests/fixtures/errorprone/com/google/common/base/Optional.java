@@ -14,4 +14,6 @@ public abstract class Optional<T> {
   public static <T> Optional<T> fromNullable(T nullableReference) {
     return null;
   }
+
+  public abstract <V> Optional<V> transform(Function<? super T, V> function);
 }

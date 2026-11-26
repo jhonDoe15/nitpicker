@@ -31,4 +31,8 @@ public class Assert {
     public static void assertArrayEquals(byte[] expected, byte[] actual) {}
 
     public static void assertArrayEquals(String message, double[] expected, double[] actual, double delta) {}
+
+    public static <T extends Throwable> T assertThrows(Class<T> expectedThrowable, org.junit.function.ThrowingRunnable runnable) {
+        return null;
+    }
 }
