@@ -68,6 +68,8 @@ class, and annotations of your own that carry one of these or that an `@Aspect` 
 - A public service method that writes more than once (`save`, `delete`, a `@Modifying` query,
   `JdbcTemplate.update`), also through its private helpers, is `@Transactional` or runs the writes in
   `TransactionTemplate.execute`.
+- Never `synchronized` on a `@Transactional` method: the lock is released before the commit. Lock in
+  a caller around the transactional call, or in the database (`@Version`, `@Lock(PESSIMISTIC_WRITE)`).
 - No `@Transactional`, `@Async`, cache, `@Retryable` or `@PreAuthorize` on `@PostConstruct`,
   `afterPropertiesSet` or a `@Bean` `initMethod`: the proxy does not exist yet. Use
   `@EventListener(ApplicationReadyEvent.class)`.

@@ -218,6 +218,7 @@
   "pmd/SpringImmutableBeans": ["bug", "spring"],
   "pmd/SpringLiteConfiguration": ["performance", "spring"],
   "pmd/SpringLocalCacheWriteInTransaction": ["bug", "spring", "persistence"],
+  "pmd/SpringLockReleasedBeforeCommit": ["bug", "spring", "persistence", "async"],
   "pmd/SpringMultiWriteWithoutTransaction": ["reliability", "spring", "persistence"],
   "pmd/SpringNoComponentScan": ["maintainability", "spring"],
   "pmd/SpringNoCrossOrigin": ["security", "spring"],
