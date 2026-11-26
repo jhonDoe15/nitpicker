@@ -393,6 +393,18 @@ the spec for Mocha.
   `{ concurrent: false }` opt a block or test out, and a project that sets
   `sequence.concurrent: false` anywhere turns the config flag off. Run the tests that change such
   state in sequence, or keep the state inside the test.
+- `nitpicker/no-fixed-port-in-tests`: a test, hook or `describe` body does not start a server on a fixed
+  port: `listen(<port>)` or `listen({ port: <port> })` on any server, and `new WebSocketServer({ port })`
+  (`WebSocket.Server` too), with a port from 1 to 65535 written in the file (a literal or a same-file
+  constant). The port is taken whenever parallel test workers, a second run of the suite, a running
+  app or a socket of the previous test still closing hold it, and the test fails. Port 0, a port from
+  a parameter, a free-port helper or the environment are fine. Not reported: a `listen` the test
+  expects to fail (inside `expect(...)`, or a `try` block that calls `fail`, `assert.fail`,
+  `t.fail` or `expect.fail`), a test or suite whose title is about a taken port (`EADDRINUSE`, or
+  `port` with `in use`, `not available`, `occupied`, `taken` or `busy`), a test that doubles `listen`
+  (a local named `listen`, `spyOnListen`, `listenStub` and the like, or a `'listen'` string such as
+  `vi.spyOn(server, 'listen')`), and code outside tests, hooks and suites. Listen on port 0 and read
+  the port the server got (`server.address().port`).
 - `nitpicker/no-switched-off-tests`: no `it.todo`/`test.todo`/`describe.todo` (`vitest/no-disabled-tests`
   already reports `skip`; neither is a way to switch a test off) and no `skipIf(true)`/`runIf(false)`.
   A condition that folds to a constant counts as a literal: `skipIf(1 === 1)`, `skipIf(!false)`,

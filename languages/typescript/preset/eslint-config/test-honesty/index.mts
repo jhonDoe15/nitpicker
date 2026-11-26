@@ -134,6 +134,7 @@ function honestyRulesBlock(
       'nitpicker/no-assertion-in-loop': [ERROR, { assertionFunctionNames }],
       'nitpicker/no-unowned-async-assertion': ERROR,
       'nitpicker/no-weak-assertion': ERROR,
+      'nitpicker/no-fixed-port-in-tests': ERROR,
       ...matcherRules(runner),
     },
   };
