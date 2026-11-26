@@ -293,7 +293,18 @@ fn null_away_reports_what_null_away_reports() {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join("nullaway");
     let (missed, extra, count) = null_away_differences(&source, &source, "n", None, "nullaway.json");
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(count, 124);
+    assert_eq!(count, 132);
+}
+
+/// The Error Prone fixtures, with the top-level packages of the sources as NullAway's annotated packages. Classes in
+/// the default package are outside them.
+#[test]
+fn null_away_reports_what_null_away_reports_on_the_error_prone_fixtures() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join("errorprone");
+    let packages = "com.google.common.collect,com.google.common.primitives,com.google.errorprone.annotations,com.google.protobuf,e,e6";
+    let (missed, extra, count) = null_away_differences(&source, &source, packages, None, "nullaway-errorprone.json");
+    assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
+    assert_eq!(count, 224);
 }
 
 /// A library compiled with javac carries its `@Nullable` in type annotations; NullAway reads them from the class files.
