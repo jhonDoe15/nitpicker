@@ -1054,10 +1054,11 @@ impl<'a> Resolver<'a> {
         let Some(outer) = outer else { return self.type_node(kind) };
         let base = if kind.kind() == "generic_type" { *crate::engine::source::named_children(kind).first()? } else { kind };
         let simple = self.file.text_of(base);
-        let owner = self.type_of(outer)?.name();
-        let name = self.index.lineage(&owner).iter().map(|class| format!("{class}.{simple}")).find(|name| self.index.has(name))?;
+        let Some(owner) = self.type_of(outer).map(|kind| kind.name()) else { return self.type_node(kind) };
+        let found = self.index.lineage(&owner).iter().map(|class| format!("{class}.{simple}")).find(|name| self.index.has(name));
+        let Some(name) = found else { return self.type_node(kind) };
         let given = match children(kind).into_iter().find(|part| part.kind() == "type_arguments") {
-            Some(list) => crate::engine::source::named_children(list).into_iter().filter_map(|argument| self.type_node(argument)).collect(),
+            Some(list) => crate::engine::source::named_children(list).into_iter().map(|argument| self.type_node(argument).unwrap_or(Type::class("?"))).collect(),
             None => Vec::new(),
         };
         Some(Type::Class(name, given))

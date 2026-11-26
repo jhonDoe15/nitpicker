@@ -83,7 +83,7 @@ fn join(target: &mut Option<Store>, from: &Store) -> bool {
 
 fn annotated_packages() -> &'static [String] {
     static PACKAGES: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
-    PACKAGES.get_or_init(|| std::env::var("NP_NULLAWAY_PACKAGES").map(|list| list.split(',').map(String::from).collect()).unwrap_or_default())
+    PACKAGES.get_or_init(|| std::env::var("NP_NULLAWAY_PACKAGES").map(|list| list.split(',').map(str::trim).filter(|one| !one.is_empty()).map(String::from).collect()).unwrap_or_default())
 }
 
 /// Whether a debug switch (`NP_DBG` for call resolution, `NP_TRACE` for step values) names the line of a node,
