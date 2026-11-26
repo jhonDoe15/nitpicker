@@ -494,6 +494,11 @@ reports a second `createProgram`, `createWatchProgram`, `createLanguageService` 
 type checker, after it. Both programs stay live at once; the allowed form finishes with the first before building the
 second.
 
+Per-item caches: `nitpicker/no-per-item-cache-growth` (production source, in `eslint-lint`, a broad rule) reports a
+module-level or field `Map` or `WeakMap` that a loop fills with one entry per item and reads back only for the same
+item, when nothing removes the entries. The map grows with the number of items; the allowed form keeps the value in a
+local of the loop body or deletes the entry when the item is done.
+
 Unbounded waits: `pmd/UnboundedWait` (Java, main sources) reports `get()` or `join()` without a timeout on a
 `Future` or `CompletableFuture`, `Thread.join()` and `CountDownLatch.await()`, and
 `pmd/ReactorBlockWithoutTimeout` (with `reactor-core` on the compile classpath) reports `block()`,

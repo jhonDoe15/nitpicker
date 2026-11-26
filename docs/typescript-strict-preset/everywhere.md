@@ -2149,6 +2149,17 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `getTypeChecker()`. Not reported: a first program last read before the second build, builds in separate functions,
   and functions of the same name from other packages. Read what you need from the first program before building the
   second, or build each in its own function that returns plain data.
+- A long-lived map does not get one entry per loop item that is only read for that item
+  (`nitpicker/no-per-item-cache-growth`, production files, a broad rule). Each item adds an entry used only while that
+  item is processed, but the map lives as long as its owner, so memory grows with the number of items instead of
+  staying at the size of one (0.8 GB of token lists in one typed lint run). A `WeakMap` does not help when its keys
+  stay reachable from the same long-lived owner. Reported: `cache.set(key, value)` inside a `for...of` or `for...in`
+  loop, where `cache` is a module-level `const` or a class field initialised to an empty `new Map()` or `new
+  WeakMap()`, `key` reads the loop variable, a `cache.get(...)` with the same key follows in the same iteration, and
+  every other use of the map is inside that loop and none of them is `delete` or `clear`. Not reported: a map read or
+  handed on outside the loop (a lookup table), exported, reassigned or returned, a function-local map, and a loop over
+  an array literal. The cost only matters when the loop is long and the cached value is large; keep the value in a
+  local of the loop body, or delete the entry once the item is done.
 - Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and
   Python presets) have no TypeScript or JavaScript counterpart: nothing blocks a thread on a promise, and a promise
   that never settles is a missing deadline for `await`, which `nitpicker/require-client-timeout` and

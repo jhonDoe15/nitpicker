@@ -17,6 +17,7 @@ import { rule as ruleNoPartialOutputAssertion } from '../rules/test-runtime/asse
 import { rule as ruleNoPatternCompiledInLoop } from '../rules/repeated-work/patterns/no-pattern-compiled-in-loop.mts';
 import { rule as ruleNoPerCallDebounce } from '../rules/lifecycles/debounce/no-per-call-debounce.mts';
 import { rule as ruleNoPerCallRegistration } from '../rules/lifecycles/registrations/no-per-call-registration.mts';
+import { rule as ruleNoPerItemCacheGrowth } from '../rules/program-lifetimes/no-per-item-cache-growth.mts';
 import { rule as ruleNoPipeDroppingErrors } from '../rules/streams/no-pipe-dropping-errors.mts';
 import { rule as ruleNoPlaceholderImplementation } from '../rules/placeholders/no-placeholder-implementation.mts';
 import { rule as ruleNoPrefixWithoutBoundary } from '../rules/affixes/no-prefix-without-boundary.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-u
 import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
 import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/no-unguarded-option-list.mts';
 import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/registry/no-unguarded-registry-delete.mts';
-import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
 
 export const partRules = {
   'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
@@ -119,6 +119,7 @@ export const partRules = {
   'no-pattern-compiled-in-loop': ruleNoPatternCompiledInLoop,
   'no-per-call-debounce': ruleNoPerCallDebounce,
   'no-per-call-registration': ruleNoPerCallRegistration,
+  'no-per-item-cache-growth': ruleNoPerItemCacheGrowth,
   'no-pipe-dropping-errors': ruleNoPipeDroppingErrors,
   'no-placeholder-implementation': ruleNoPlaceholderImplementation,
   'no-prefix-without-boundary': ruleNoPrefixWithoutBoundary,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
   'no-unguarded-option-list': ruleNoUnguardedOptionList,
   'no-unguarded-registry-delete': ruleNoUnguardedRegistryDelete,
-  'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
 };

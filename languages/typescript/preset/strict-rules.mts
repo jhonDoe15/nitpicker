@@ -223,6 +223,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-unbatched-heavy-run',
   'nitpicker/no-child-wait-after-local-work',
   'nitpicker/no-overlapping-typescript-programs',
+  'nitpicker/no-per-item-cache-growth',
   'nitpicker/require-promise-reject',
   'nitpicker/require-test-process-timeout',
   'nitpicker/shorter-boolean-logic',

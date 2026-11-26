@@ -76,6 +76,7 @@ export const productionGuardEntries: Record<string, Linter.RuleEntry> = {
   'nitpicker/no-unbatched-heavy-run': 'error',
   'nitpicker/no-child-wait-after-local-work': 'error',
   'nitpicker/no-overlapping-typescript-programs': 'error',
+  'nitpicker/no-per-item-cache-growth': 'error',
   'nitpicker/require-client-timeout': 'error',
   'nitpicker/time-unit-mismatch': 'error',
   'nitpicker/no-sync-node-api-in-async': 'error',
