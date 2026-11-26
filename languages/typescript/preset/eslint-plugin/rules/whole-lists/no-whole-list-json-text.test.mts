@@ -28,7 +28,7 @@ tester.run('no-whole-list-json-text', rule, {
   ],
   invalid: [
     write('writeFileSync(out, JSON.stringify(report.findings));'),
-    write('process.stdout.write(`${JSON.stringify({ findings })}\\n`);'),
+    write(`process.stdout.write(\`\${JSON.stringify({ findings })}\\n\`);`),
     write(
       'export function f(results) { writeFileSync(out, JSON.stringify(results, null, 2) + "\\n"); }',
     ),

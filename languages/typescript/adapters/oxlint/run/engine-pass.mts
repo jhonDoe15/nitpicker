@@ -14,6 +14,7 @@ import type { Environment } from '../../../../../shared/processes/environment.mt
 import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import { ENGINE_FINDINGS_FILE } from '../../../../../shared/engine/engine-findings-file.mts';
+import { writeReplay } from '../../../preset/eslint-plugin/replay/replay-file.mts';
 import { trackTemporaryPath, untrackTemporaryPath } from '../../typed/tooling.mts';
 import { isFile } from '../../../../../shared/filesystem.mts';
 import { nativeCompilerPath } from '../../typed-engine/compiler-binary.mts';
@@ -224,17 +225,14 @@ function engineLint(pass: EnginePass): EngineLint {
   const findings = readEngineFindings(out);
   const typed = rules.ids.filter(pass.requests.isTypedOnEngine);
   const covered = typedFiles(files, findings).filter((file) => rules.typedFiles.has(file));
-  const replay = path.join(pass.directory, 'replay.json');
-  writeFileSync(
-    replay,
-    JSON.stringify({
-      files: parsedFiles(files, findings),
-      rules: rules.ids,
-      typedFiles: covered,
-      typedRules: typed,
-      findings: findings.map(replayRow),
-    }),
-  );
+  const replay = path.join(pass.directory, 'replay.jsonl');
+  writeReplay(replay, {
+    file: parsedFiles(files, findings),
+    rule: rules.ids,
+    typedFile: covered,
+    typedRule: typed,
+    finding: findings.map(replayRow),
+  });
   return {
     environment: { ...pass.environment, [ENGINE_FINDINGS_FILE]: replay },
     coverage: { rules: new Set(typed), files: new Set(covered) },

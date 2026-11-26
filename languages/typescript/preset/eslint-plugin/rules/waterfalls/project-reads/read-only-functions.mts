@@ -96,12 +96,19 @@ function calledFunction(
     : undefined;
 }
 
-export function callsReadOnlyFunction(
-  call: TSESTree.CallExpression,
-  context: { readonly sourceCode: TSESLint.SourceCode; readonly filename: string },
-  isRead: IsRead,
-  optionsKey: string,
-): boolean {
+type ReadOnlyQuery = {
+  readonly call: TSESTree.CallExpression;
+  readonly context: { readonly sourceCode: TSESLint.SourceCode; readonly filename: string };
+  readonly isRead: IsRead;
+  readonly optionsKey: string;
+};
+
+export function callsReadOnlyFunction({
+  call,
+  context,
+  isRead,
+  optionsKey,
+}: ReadOnlyQuery): boolean {
   const { callee } = call;
   if (callee.type !== AST_NODE_TYPES.Identifier) {
     return false;
