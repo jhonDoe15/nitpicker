@@ -4,33 +4,37 @@ import {
 } from '../../../../../shared/paths/glob.mts';
 
 const escapeRegExp: (value: string) => string = untypedEscapeRegExp;
-const GLOB_SYNTAX = /[*?{}[\]\\]/u;
-const FOLDER_GLOB = /^(?<folder>[^*?{}[\]\\]+)\/\*\*$/u;
-const NAMED_FOLDER_GLOB = /^\*\*\/(?<name>[^*?{}[\]\\/]+)\/\*\*$/u;
+const PATH = '[^*?{}[\\]\\\\]+';
+const SEGMENT = '[^*?{}[\\]\\\\/]+';
+const SHAPES: readonly (readonly [RegExp, (alternatives: string) => string])[] = [
+  [new RegExp(`^(?<part>${PATH})/\\*\\*$`, 'u'), (folders) => `^(?:${folders})/`],
+  [new RegExp(`^\\*\\*/(?<part>${SEGMENT})/\\*\\*$`, 'u'), (names) => `(?:^|/)(?:${names})/`],
+  [new RegExp(`^\\*\\*/\\*(?<part>${SEGMENT})$`, 'u'), (endings) => `(?:^|/)[^/]*(?:${endings})$`],
+  [new RegExp(`^\\*(?<part>${SEGMENT})$`, 'u'), (endings) => `^[^/]*(?:${endings})$`],
+  [new RegExp(`^\\*\\*/(?<part>${SEGMENT})$`, 'u'), (names) => `(?:^|/)(?:${names})$`],
+];
 
-function folderOf(glob: string): string | undefined {
-  const folder = FOLDER_GLOB.exec(glob)?.groups?.['folder'];
-  return folder === undefined || GLOB_SYNTAX.test(folder) ? undefined : folder;
-}
-
-function namedFolderOf(glob: string): string | undefined {
-  return NAMED_FOLDER_GLOB.exec(glob)?.groups?.['name'];
+function shapeOf(glob: string): readonly [number, string] | undefined {
+  for (const [index, [shape]] of SHAPES.entries()) {
+    const part = shape.exec(glob)?.groups?.['part'];
+    if (part !== undefined) return [index, escapeRegExp(part)];
+  }
+  return undefined;
 }
 
 export function excludePatternOf(globs: readonly string[]): string | undefined {
-  const folders: string[] = [];
-  const named: string[] = [];
+  const grouped: string[][] = SHAPES.map(() => []);
   const others: string[] = [];
   for (const glob of globs) {
-    const folder = folderOf(glob);
-    const name = namedFolderOf(glob);
-    if (folder !== undefined) folders.push(escapeRegExp(folder));
-    else if (name !== undefined) named.push(escapeRegExp(name));
-    else others.push(globToRegExpSource(glob));
+    const shape = shapeOf(glob);
+    if (shape === undefined) others.push(globToRegExpSource(glob));
+    else grouped[shape[0]]?.push(shape[1]);
   }
   const parts = [
-    ...(folders.length === 0 ? [] : [`^(?:${folders.join('|')})/`]),
-    ...(named.length === 0 ? [] : [`(?:^|/)(?:${named.join('|')})/`]),
+    ...SHAPES.flatMap(([, folded], index) => {
+      const alternatives = grouped[index] ?? [];
+      return alternatives.length === 0 ? [] : [folded(alternatives.join('|'))];
+    }),
     ...others,
   ];
   return parts.length === 0 ? undefined : parts.join('|');
