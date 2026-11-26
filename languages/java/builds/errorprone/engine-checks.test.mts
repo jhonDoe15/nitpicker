@@ -11,10 +11,11 @@ import {
   releaseOf,
   withProjectFlags,
 } from './engine-arguments.mts';
-import { ENGINE_CHECKS, engineChecksFor, NULL_AWAY } from './engine-checks.mts';
+import { ENGINE_CHECKS, engineChecksFor, NULL_AWAY, TEST_SENSITIVE } from './engine-checks.mts';
 
 const REPOSITORY = path.resolve(import.meta.dirname, '../../../..');
 const WITHOUT_NULL_AWAY = ENGINE_CHECKS.filter((check) => check !== NULL_AWAY);
+const ON_TEST_SOURCES = WITHOUT_NULL_AWAY.filter((check) => !TEST_SENSITIVE.includes(check));
 const projectWith = useTempProjects('nitpicker-errorprone-checks-');
 
 function classesIn(...packages: readonly string[]): string {
@@ -53,8 +54,10 @@ describe('engineChecksFor', () => {
   it('leaves NullAway to Error Prone on test sources, without own classes and with a module path', () => {
     const own = classesIn('demo');
 
-    expect(engineChecksFor(headWith(own, '--test-only')).packages).toStrictEqual([]);
-    expect(engineChecksFor(headWith(own, '--test-only')).checks).not.toContain(NULL_AWAY);
+    expect(engineChecksFor(headWith(own, '--test-only'))).toStrictEqual({
+      checks: ON_TEST_SOURCES,
+      packages: [],
+    });
     expect(engineChecksFor(headWith(path.join(own, 'missing'))).checks).toStrictEqual(
       WITHOUT_NULL_AWAY,
     );
@@ -64,12 +67,12 @@ describe('engineChecksFor', () => {
   });
 
   it('leaves checks that Error Prone treats differently in test code to Error Prone on test sources', () => {
-    const checks = engineChecksFor(headWith(classesIn('demo'), '--test-only')).checks;
+    const watched = ['CheckReturnValue', 'ThrowSpecificExceptions', 'ReturnValueIgnored'];
 
-    expect(checks).toContain('CheckReturnValue');
-    expect(
-      checks.filter((check) => ['ThrowSpecificExceptions', 'ReturnValueIgnored'].includes(check)),
-    ).toStrictEqual([]);
+    expect(ON_TEST_SOURCES.length).toBe(WITHOUT_NULL_AWAY.length - TEST_SENSITIVE.length);
+    expect(ON_TEST_SOURCES.filter((check) => watched.includes(check))).toStrictEqual([
+      'CheckReturnValue',
+    ]);
   });
 
   it('does not run a check the project switched off', () => {

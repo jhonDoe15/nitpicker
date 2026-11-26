@@ -11,7 +11,7 @@ export type EngineChecks = {
 
 const NONE: EngineChecks = { checks: [], packages: [] };
 const TEST_ONLY = '--test-only';
-const TEST_SENSITIVE: readonly string[] = [
+export const TEST_SENSITIVE: readonly string[] = [
   'CheckedExceptionNotThrown',
   'ConstantPatternCompile',
   'ExposedPrivateType',
