@@ -584,6 +584,11 @@ an entry value from a nested `entrySet()` loop or `Map.forEach`, into a map decl
 collection or map value type (`Map<K, Set<V>>`) outside the loop or iteration callback that runs it.
 The value type is read from the declaration, so a `var` target is not reported.
 
+Java `RepeatedKeyedScan` (main PMD ruleset, #2210) reports `map.get(key).stream().anyMatch(test)`
+(also `allMatch`, `noneMatch`, `filter`, directly or through a local holding the lookup) in an
+enhanced `for` or iteration callback, where the key reads the loop element and the test reads
+nothing of it. The weaker ordered-comparison form is not reported, as in TypeScript.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

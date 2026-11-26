@@ -176,6 +176,7 @@
   "pmd/RegexPartDefect": ["bug"],
   "pmd/RemoveByKeyDropsNewerValue": ["bug", "async"],
   "pmd/RepeatedCall": ["performance"],
+  "pmd/RepeatedKeyedScan": ["performance"],
   "pmd/ReplaceWithWrongLiteralKind": ["bug"],
   "pmd/ReplacingCollectionMerge": ["bug"],
   "pmd/RetryInTest": ["tests"],

@@ -169,6 +169,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Merge maps of collections value by value (`computeIfAbsent(key, k -> new HashSet<>()).addAll(values)`),
   not with `putAll` or `put` in a loop, which keeps only the last source's values of a key
   (`pmd/ReplacingCollectionMerge`).
+- Answer a question about the collection of a key once per key, not once per element that shares the
+  key (`pmd/RepeatedKeyedScan`).
 - Do repeated work once: look a reflective member up by its constant name before the loop, not in it
   (`pmd/ConstantLookupInLoop`); test the kind of a level before you search its subtree while you climb
   a parent chain (`pmd/SubtreeSearchPerAncestor`); keep the result of `resolve(key)` in a local

@@ -3775,6 +3775,39 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="RepeatedKeyedScan" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This scans the collection looked up by the key of the current element with a test that reads nothing of the element, so every element with the same key repeats the same scan. Work the answer out once per key (before the loop, or kept in a Map by key) and read it here.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $iterations := ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch',
+      'mapToObj', 'mapToInt', 'mapToLong'),
+    $lookup := function($node, $element) {
+      exists($node/self::MethodCall[@MethodName = ('get', 'getOrDefault')][*[1][pmd-java:typeIs('java.util.Map')]]
+        [ArgumentList/*[1]/descendant-or-self::VariableAccess[@Name = $element]])
+    }
+return
+//MethodCall[@MethodName = ('anyMatch', 'allMatch', 'noneMatch', 'filter')][ArgumentList/@Size = 1]
+  [*[1][self::MethodCall][@MethodName = ('stream', 'parallelStream')][ArgumentList/@Size = 0]]
+  [let $pass := ancestor::*[self::ForeachStatement
+         or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations]]][1],
+       $element := ($pass/self::ForeachStatement/LocalVariableDeclaration//VariableId
+         | $pass/self::LambdaExpression/LambdaParameterList//VariableId)/@Name,
+       $source := *[1]/*[1],
+       $test := ArgumentList/*[1]
+   return count($element) = 1
+     and ($lookup($source, $element)
+       or exists($source[self::VariableAccess]
+         [let $name := @Name
+          return exists($pass//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name]
+            [*[2][$lookup(., $element)]])]))
+     and (exists($test[self::LambdaExpression][empty(.//VariableAccess[@Name = $element])])
+       or exists($test[self::MethodReference][not(*[1][self::VariableAccess][@Name = $element])]))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ReplaceWithWrongLiteralKind" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="String.replace takes plain text and replaceAll and replaceFirst take a regex, and this call mixes them up. replace(&quot;\\s+&quot;, &quot;&quot;) looks for the three characters \s+ and removes nothing; replaceAll(&quot;.tmp&quot;, &quot;&quot;) treats the dot as any character; replaceAll(&quot;?&quot;, value) throws PatternSyntaxException; and a File.separator or a backslash or dollar sign in the replacement is read as an escape or a group reference, which breaks on Windows. Use replaceAll for a regex (path.replaceAll(&quot;\\s+&quot;, &quot;&quot;)), replace for text (sql.replace(&quot;?&quot;, value), file.replace(&quot;.tmp&quot;, &quot;&quot;)), and Matcher.quoteReplacement(File.separator) for a replacement. An exception fits text that really contains the escape characters.">
     <priority>3</priority>
