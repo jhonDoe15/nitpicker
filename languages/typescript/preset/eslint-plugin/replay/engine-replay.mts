@@ -61,7 +61,12 @@ function readReplay(file: string): Replay {
           return [kind ?? '', value ?? ''] as const;
         }),
       };
-      reports.set(key, [...(reports.get(key) ?? []), report]);
+      const group = reports.get(key);
+      if (group === undefined) {
+        reports.set(key, [report]);
+      } else {
+        group.push(report);
+      }
     }
   }
   return {
