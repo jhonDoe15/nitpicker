@@ -11,6 +11,7 @@ import { isInvokedModule, writeAdapterReport } from './typed/static-checks.mts';
 import { applyAreaExceptions } from './exceptions/area-exceptions.mts';
 import { hasProjectTests } from './test-runners/test-run.mts';
 import type { Finding } from './static-checks/shared.mts';
+import { TEST_RESULTS_VARIABLE } from './quality-areas/runners/prepared/prepared-results.mts';
 
 const STDERR_OUTPUT: TextOutput = {
   write(text: string): void {
@@ -66,6 +67,7 @@ if (isInvokedModule(import.meta.url)) {
       runQualityAreaReport({
         ...parseArguments(process.argv.slice(2), process.env),
         keepCoverageReport: process.env['NITPICKER_KEEP_COVERAGE_REPORT'],
+        preparedTestResults: process.env[TEST_RESULTS_VARIABLE],
       }),
     process,
   );

@@ -51,6 +51,23 @@ export function innermostRepeat(node: TSESTree.Node): Repeat | undefined {
   return undefined;
 }
 
+function runsOverLiteral(repeat: Repeat): boolean {
+  if (repeat.node.type === AST_NODE_TYPES.ForOfStatement) {
+    return repeat.node.right.type === AST_NODE_TYPES.ArrayExpression;
+  }
+  const call = repeat.kind === 'callback' ? repeat.node.parent : undefined;
+  return (
+    call?.type === AST_NODE_TYPES.CallExpression &&
+    call.callee.type === AST_NODE_TYPES.MemberExpression &&
+    call.callee.object.type === AST_NODE_TYPES.ArrayExpression
+  );
+}
+
+export function openRepeat(node: TSESTree.Node): Repeat | undefined {
+  const repeat = innermostRepeat(node);
+  return repeat === undefined || runsOverLiteral(repeat) ? undefined : repeat;
+}
+
 export function declaredInside(
   variable: TSESLint.Scope.Variable,
   boundary: TSESTree.Node,

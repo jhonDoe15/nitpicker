@@ -1,3 +1,10 @@
+import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-unguarded-deleted-items.mts';
+import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
+import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/no-unguarded-option-list.mts';
+import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/registry/no-unguarded-registry-delete.mts';
+import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
+import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
+import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mts';
 import { rule as ruleNoUninjectableDelay } from '../rules/test-runtime/lifecycle/no-uninjectable-delay.mts';
 import { rule as ruleNoUnionOrderDependence } from '../rules/union-order/no-union-order-dependence.mts';
 import { rule as ruleNoUnisolatedJobLoop } from '../rules/jobs/no-unisolated-job-loop.mts';
@@ -80,6 +87,13 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-unguarded-deleted-items': ruleNoUnguardedDeletedItems,
+  'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
+  'no-unguarded-option-list': ruleNoUnguardedOptionList,
+  'no-unguarded-registry-delete': ruleNoUnguardedRegistryDelete,
+  'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
+  'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
+  'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
   'no-uninjectable-delay': ruleNoUninjectableDelay,
   'no-union-order-dependence': ruleNoUnionOrderDependence,
   'no-unisolated-job-loop': ruleNoUnisolatedJobLoop,

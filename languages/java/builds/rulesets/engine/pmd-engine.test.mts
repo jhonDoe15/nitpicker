@@ -18,7 +18,7 @@ const HEAD = '<ruleset name="demo" xmlns="http://pmd.sourceforge.net/ruleset/2.0
 const projectWith = useTempProjects('nitpicker-pmd-engine-');
 
 function xpathRule(name: string) {
-  return { name, xpath: '//A', message: name, suppress: '', properties: {}, include: [] };
+  return { name, xpath: '//A', port: '', message: name, suppress: '', properties: {}, include: [] };
 }
 
 function renderedXml(name: string, lines: readonly string[]): string {

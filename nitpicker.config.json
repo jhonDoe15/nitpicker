@@ -20,6 +20,7 @@
       "languages/typescript/adapters/entry-points-runner.mts",
       "languages/typescript/adapters/eslint-wrapper.config.mts",
       "languages/typescript/adapters/dependency-graph/cruiser-hooks/register.mts",
+      "languages/typescript/adapters/dependency-graph/engine-extract/engine-hooks.mts",
       "languages/typescript/adapters/oxlint/oxlint-bridge.mts",
       "languages/typescript/adapters/oxlint/oxlint-plan.mts",
       "languages/typescript/adapters/test-runners/mocha/mocha-files.config.mts",
@@ -75,7 +76,7 @@
     "languages/typescript/preset/test-runtime/fixtures/**",
     "engine/tests/fixtures/**"
   ],
-  "disable": ["coverage", "crap", "mutation"],
+  "disable": ["mutation", "test-console"],
   "exceptions": [
     {
       "rule": "nitpicker/no-process-access-outside-composition-root",

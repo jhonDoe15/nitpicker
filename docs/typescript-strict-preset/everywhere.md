@@ -298,8 +298,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   same kind. An initializer with an `await` is reported only when the test reads nothing but
   parameters and `const` names, since other state may change while it waits. Calls of project
   functions, `sort` and other changes in place, clocks and ids, a test that reads `x`, an initializer
-  that is a `?:`, `&&` or `||`, and an exit that calls a local function reading `x` are not reported. Allowed form: declare the value below the exit; keep it above only when its error must
-  be raised on the early path too.
+  that is a `?:`, `&&` or `||`, and an exit that calls a local function reading `x` are not reported. Inside a loop
+  body or an iteration callback it also reports a type checker query (`checker.getTypeAtLocation`,
+  `getSymbolAtLocation`, `getResolvedSignature`, `typeToString` and the like on a receiver named
+  `checker` or `typeChecker`) made before such an exit whose test makes no call other than `is...`
+  or `has...` guards on plain arguments (`if (!ts.isCallExpression(node)) continue;`): the query is paid for every
+  element the guard throws away. Allowed form: declare the value below the exit; keep it above only
+  when its error must be raised on the early path too.
 - `nitpicker/no-read-all-before-pass`: every input read into memory before a single pass over
   them, in all production code (not in tests). It reports a `const` array filled with one file read
   per element, `await Promise.all(xs.map((x) => readFile(x)))`, `xs.map((x) =>
@@ -311,6 +316,86 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   largest one. A literal list of inputs, an array that is returned, sorted, sized, indexed or passed
   on, and reads through a project function are not reported. Allowed forms: read and handle one input
   at a time, a bounded pool for parallel reads, or keep only what the pass needs from each input.
+- `nitpicker/no-accumulating-group-spread`: a group of a `Map` or object copied into a new array on
+  every step of a loop or iteration callback, in all production code (not in tests). It reports
+  `m.set(k, [...(m.get(k) ?? []), v])` and `o[k] = [...(o[k] ?? []), v]` (also with `||` and with
+  `...vs` after the spread) when the read and the write name the same target and the same key. A
+  group of n items then costs n²/2 element copies. A loop over a literal list, a spread of a
+  different list, a spread that is not the first element and a single write outside any loop are
+  not reported. Allowed form: get the group once and push onto it, creating it with `[v]` when it is
+  missing. `nitpicker/no-accumulating-spread` reports the same copy when the accumulator is a
+  variable; this rule is separate because oxlint's native port of that rule does not see groups.
+- `nitpicker/no-loop-invariant-copy`: a full copy of a value that does not change in a loop, stored
+  on every pass of it, in all production code (not in tests). It reports `[...shared]`,
+  `shared.slice()`, `Array.from(shared)`, `{ ...shared }`, `new Map(shared)`, `new Set(shared)`,
+  `structuredClone(shared)` and `Buffer.from(shared)` inside a loop body or an iteration callback
+  when `shared` is a name or a `this` or member path declared outside the loop, neither assigned
+  nor changed in place there (`push`, `set`, `sort` and the like), and the copy is stored: a property
+  of an object literal, the value of a member assignment, the argument of `push`, `unshift`, `set`,
+  `add` or of a constructor, or the result of the callback. Memory then grows with the number of
+  passes times the size of the value. A property counts as stored only when its object literal is
+  stored itself. A copy kept in a local, a copy of a literal, a value also handed to another call in
+  the loop (which may change it, so each copy is a snapshot), a loop over a literal list and a copy
+  with other elements next to the spread are not reported. Whether a
+  consumer changes its copy later is not visible, so this is a broad rule. Allowed forms: share one
+  read-only value, or copy once before the loop.
+- `nitpicker/no-repeated-parse-per-item`: the same kind of text parsed again for every item of a
+  list, in all production code (not in tests). It reports a call of a function of the same file
+  inside a loop body or an iteration callback whose argument is a field of the item that items
+  usually share (`message`, `rule`, `ruleId`, `tool`, `kind`, `type`, `code`, `category`), possibly through other such functions
+  (`splitRoute(oneLine(finding.message))`), when every function in the chain is a pure parse of its
+  argument: string methods, regular expressions, `split`, `slice` and `JSON.parse`, no assignment,
+  `await`, `this` or `new`, and no state read but its parameters, its own locals and `const` names
+  around it. At least one of them must parse (`split`, `replace`, `match`, `exec` or `JSON.parse`;
+  a regular expression used only with `test` gives a boolean and does not count). Each item then
+  runs the parse again and keeps its own copy of the result. Calls of imported functions, a loop that
+  already reads a `Map` by the same field, a loop over a literal list and other fields are not
+  reported. Allowed form:
+  parse each distinct value once and share the result through a `Map` kept for the loop.
+- `nitpicker/no-stat-per-listed-entry`: a directory listing followed by one file system call per
+  entry to learn its kind, in all production code (not in tests). It reports `statSync`,
+  `lstatSync`, `stat` or `lstat` (from `fs`, `node:fs`, `fs/promises` or `fs-extra`, optionally
+  awaited) on the entry's own path (`join(dir, name)`, `` `${dir}/${name}` `` or `dir + name`), inside a `for...of` loop or a `filter`, `map`, `flatMap`,
+  `forEach`, `some`, `every` or `find` callback over `readdirSync(dir)` or `await readdir(dir)`
+  called without an options object (directly or through a `const`), when only `isDirectory()`,
+  `isFile()` or `isSymbolicLink()` is read from the result. On a large tree the stat calls are most
+  of the time of the walk. A stat whose `size` or `mtime` is read, a listing with options and a
+  stat of another path (such as a file inside the entry) are not reported. Allowed form: `readdirSync(dir, { withFileTypes: true })`
+  and the entry's own `isDirectory()` and `isFile()`.
+- `nitpicker/no-filtered-positional-pairing`: a list filtered before it is paired by position with a
+  list that was not filtered the same way, in all production code (not in tests). It reports a
+  `map`, `flatMap`, `forEach`, `some` or `every` callback whose index reads `other[i]`, a counted
+  `for (let i = 0; i < list.length; i++)` loop that reads two lists at `[i]`, and `zip(a, b)`,
+  when one side is the result of `filter` (directly, through a `const`, or followed by `map`,
+  `slice`, `toSorted` or `toReversed`) and the other is not filtered with the same callback. After
+  the first dropped entry the positions no longer line up. Not reported: a partner whose initializer
+  reads the other list (built from it, so it lines up), a partner written at `[i]`, a partner
+  declared inside the callback or loop or reached through its element, and a constant table (an
+  `UPPER_CASE` name or an array literal). Allowed forms: pair first and filter the
+  pairs, or keep a placeholder for the dropped entries.
+- `nitpicker/no-replacing-collection-merge`: maps of collections merged by replacing the collection
+  of a key that an earlier source already filled, in all production code (not in tests). It reports
+  `all.set(key, values)` where `[key, values]` are the entries of the inner loop (`for (const [key,
+  values] of part)` or `part.forEach((values, key) => ...)`) of a loop over several sources, and
+  `Object.assign(all, part)` in a loop, when `all` is declared outside those loops as a `Map`,
+  `ReadonlyMap` or `Record` whose value type is an array, `Set`, `Map` or `Record`. With one key in
+  two sources, the values of the source merged last win, and with sources finishing in any order
+  the result changes from run to run. A target filled from one source, a target declared inside
+  the loop, an inner loop that also reads the target with `get` or `has` (the usual merge and
+  first-wins forms), scalar values and a merge of an object literal are not reported. Allowed form: get the
+  collection of the key and add to it, creating it when it is missing.
+- `nitpicker/no-repeated-keyed-scan`: the same scan of a collection repeated for every element that
+  shares its key, in all production code (not in tests). It reports `some`, `every`, `filter`,
+  `find`, `findIndex` or `findLast` with a callback, inside a loop body or an iteration callback,
+  on a collection read as `map.get(key)` (also with `?? []`, `?.` or through a `const`) when the
+  `map` does not change in the loop, the key is a field or call of the current element (not the
+  element itself, which is usually unique), and the callback reads nothing declared or changed in
+  the loop. Elements with the same key then repeat the same scan: with 10,000
+  elements of one key over a collection of 10,000 entries that is 100 million tests. A callback
+  that reads the element, a key that does not read it, a loop over the map's own keys (`keys()`,
+  `Object.keys`, a `Set`), a collection or map changed in the loop (`push`, `add`, `set` and the
+  like) and a map built in the loop are not reported. Allowed form: work the answer out once per key, before the loop or kept in a `Map` by
+  key.
 - `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
   walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
   `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,
