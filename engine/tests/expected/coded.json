@@ -362,6 +362,8 @@
 ["f/Flow.java", "ImplicitSwitchFallThrough", 32, 13, "This switch case may be reached by fallthrough from the previous case"],
 ["f/Flow.java", "ImplicitSwitchFallThrough", 58, 37, "This switch case may be reached by fallthrough from the previous case"],
 ["f/Flow.java", "ImplicitSwitchFallThrough", 74, 9, "This switch case may be reached by fallthrough from the previous case"],
+["f/Flow.java", "ImplicitSwitchFallThrough", 84, 9, "This switch case may be reached by fallthrough from the previous case"],
+["f/Flow.java", "ImplicitSwitchFallThrough", 89, 9, "This switch case may be reached by fallthrough from the previous case"],
 ["f/Flow.java", "MissingOverride", 44, 60, "The method 'toString()' is missing an @Override annotation."],
 ["f/Flow.java", "NullAssignment", 56, 47, "Assigning an Object to null is a code smell.  Consider refactoring."],
 ["f/Flow.java", "UnusedAssignment", 5, 18, "The value assigned to field 'f' is never used (overwritten on line 5)"],

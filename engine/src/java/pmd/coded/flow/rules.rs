@@ -6,7 +6,7 @@ use regex::Regex;
 use std::sync::LazyLock;
 
 static FALLS_THROUGH: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?is)/[/*].*\bfalls?[ -]?thr(ough|u)\b.*").expect("valid pattern"));
+    LazyLock::new(|| Regex::new(r"(?s)/[/*].*\b[fF][aA][lL][lL][sS]?[ -]?[tT][hH][rR]([oO][uU][gG][hH]|[uU])\b.*").expect("valid pattern"));
 
 fn line(ctx: &Ctx, node: u32) -> i64 {
     ctx.whole(node, "BeginLine").unwrap_or(0)
@@ -117,8 +117,8 @@ pub fn unused_assignment(ctx: &Ctx, out: &mut Vec<Hit>) {
 /// Whether a comment right before the next branch says that falling through is meant.
 fn commented(ctx: &Ctx, branch: u32, next: u32) -> bool {
     let (end, start) = (ctx.tree.nodes[branch as usize].end, ctx.tree.nodes[next as usize].start);
-    let gap = ctx.file.text.get(end..start).unwrap_or_default();
-    let mut at = gap;
+    let gap = crate::java::pmd::tree::unicode_unescaped(ctx.file.text.get(end..start).unwrap_or_default());
+    let mut at = gap.as_str();
     while let Some(open) = at.find('/') {
         let rest = &at[open..];
         let close = if rest.starts_with("//") {

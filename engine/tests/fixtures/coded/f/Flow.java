@@ -78,4 +78,15 @@ class Flow {
         }
         return 2;
     }
+    void empty(int x) {
+        switch (x) {
+        case 1: ;
+        case 2: helper();
+        // FALL THRU
+        case 3: helper();
+        // fall\u0020through
+        case 4: helper();
+        default:
+        }
+    }
 }

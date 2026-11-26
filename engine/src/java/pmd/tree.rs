@@ -107,7 +107,7 @@ fn find<'t>(node: Node<'t>, kind: &str) -> Option<Node<'t>> {
 }
 
 /// Source text with its `\uXXXX` escapes replaced, as the Java lexer sees it.
-fn unicode_unescaped(written: &str) -> String {
+pub(crate) fn unicode_unescaped(written: &str) -> String {
     if !written.contains("\\u") {
         return written.to_string();
     }
@@ -1443,7 +1443,8 @@ impl<'a, 't> Builder<'a, 't> {
                 if !last {
                     continue;
                 }
-                for part in parts.iter().filter(|part| part.kind() != "switch_label") {
+                let statements = children(group).into_iter().filter(|part| (part.is_named() && !part.kind().ends_with("comment") || part.kind() == ";") && part.kind() != "switch_label");
+                for part in statements.collect::<Vec<_>>().iter() {
                     if arrow && part.kind() == "expression_statement" {
                         kids(*part).first().into_iter().for_each(|inner| {
                             self.expr(branch, *inner);
