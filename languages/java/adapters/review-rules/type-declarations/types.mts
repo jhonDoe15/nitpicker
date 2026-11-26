@@ -1,3 +1,5 @@
+import type { Span } from '../max-value-sums/sum-types.mts';
+
 export type MethodDecl = {
   readonly name: string;
   readonly params: readonly string[];
@@ -9,8 +11,11 @@ export type MethodDecl = {
 
 export type FieldDecl = {
   readonly name: string;
+  readonly index: number;
   readonly type: string;
   readonly generated: boolean;
+  readonly modifiers: ReadonlySet<string>;
+  readonly array: boolean;
 };
 
 export type TypeKind = 'class' | 'interface' | 'enum' | 'record';
@@ -23,6 +28,7 @@ export type TypeDecl = {
   readonly imports: readonly string[];
   readonly file: string;
   readonly line: number;
+  readonly body: Span;
   readonly superclass: string | undefined;
   readonly interfaces: readonly string[];
   readonly methods: readonly MethodDecl[];
