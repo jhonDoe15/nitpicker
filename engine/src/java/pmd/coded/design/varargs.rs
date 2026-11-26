@@ -67,6 +67,10 @@ fn simple(kind: &Type, out: &mut String) {
         }
         Type::Variable(name) => out.push_str(name),
         Type::Wildcard => out.push('?'),
+        Type::Bounded(lower, bound) => {
+            out.push_str(if *lower { "? super " } else { "? extends " });
+            simple(bound, out);
+        }
         Type::Null => out.push_str("null"),
     }
 }
