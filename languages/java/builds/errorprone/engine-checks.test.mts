@@ -134,6 +134,10 @@ describe('engineChecksFor', () => {
     expect(WITHOUT_NULL_AWAY.filter((check) => !ported.includes(check))).toStrictEqual([]);
     expect(ENGINE_CHECKS.filter((check) => special.includes(check))).toStrictEqual([]);
   });
+
+  it('keeps on Error Prone the checks Error Prone refuses to switch off', () => {
+    expect(ENGINE_CHECKS).not.toContain('UnicodeDirectionalityCharacters');
+  });
 });
 
 describe('the arguments file', () => {
