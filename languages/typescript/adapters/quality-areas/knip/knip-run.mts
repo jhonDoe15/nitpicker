@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -44,7 +44,7 @@ function isKnipReport(value: unknown): value is KnipReport {
 }
 
 function readKnipReport(reportFile: string, logged: string): KnipReport {
-  if (!existsSync(reportFile)) {
+  if (statSync(reportFile, { throwIfNoEntry: false })?.isFile() !== true) {
     const output = logged.trim();
     throw new Error(`knip wrote no report${output.length === 0 ? '' : `; it printed: ${output}`}`);
   }

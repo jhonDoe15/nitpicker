@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 export const KNIP_REPORT_FILE_VARIABLE = 'NITPICKER_KNIP_REPORT_FILE';
@@ -33,21 +33,25 @@ async function jsonReporter(): Promise<Reporter> {
 }
 
 function textOfChunk(chunk: unknown): string {
-  return typeof chunk === 'string' ? chunk : Buffer.from(chunk as Uint8Array).toString('utf8');
+  return chunk instanceof Uint8Array ? Buffer.from(chunk).toString('utf8') : String(chunk);
 }
 
-export default async function reportToFile(options: unknown): Promise<void> {
-  const reporter = await jsonReporter();
-  const chunks: string[] = [];
+function capturedRun(run: () => unknown, chunks: string[]): unknown {
   const write = process.stdout.write.bind(process.stdout);
   process.stdout.write = (chunk: unknown): boolean => {
     chunks.push(textOfChunk(chunk));
     return true;
   };
   try {
-    await reporter(options);
+    return run();
   } finally {
     process.stdout.write = write;
   }
-  writeFileSync(requiredVariable(KNIP_REPORT_FILE_VARIABLE), chunks.join(''));
+}
+
+export default async function reportToFile(options: unknown): Promise<void> {
+  const reporter = await jsonReporter();
+  const chunks: string[] = [];
+  await capturedRun(() => reporter(options), chunks);
+  await writeFile(requiredVariable(KNIP_REPORT_FILE_VARIABLE), chunks.join(''));
 }
