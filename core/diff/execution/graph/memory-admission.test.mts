@@ -127,7 +127,10 @@ describe('a 15,300-file project on a 4-core, 10 GB budget', () => {
         { memory: 16 * GIB, defaultLimit: 2 * GIB },
         11_750,
       ),
-    ).toEqual({ NITPICKER_MAX_PARALLEL: '4', NODE_OPTIONS: '--max-old-space-size=11750' });
+    ).toEqual({
+      NITPICKER_MAX_PARALLEL: '4',
+      NODE_OPTIONS: '--max-old-space-size=11750 --max-semi-space-size=64',
+    });
   });
 });
 
@@ -170,9 +173,9 @@ describe('analyzer memory errors', () => {
     });
     const messages = report.findings.map((finding) => textOf(fieldOf(finding, 'message')));
     return Number(
-      /^(?:.* )?--max-old-space-size=(?<megabytes>\d+)$/u.exec(messages[0] ?? '')?.groups?.[
-        'megabytes'
-      ],
+      /^(?:.* )?--max-old-space-size=(?<megabytes>\d+) --max-semi-space-size=64$/u.exec(
+        messages[0] ?? '',
+      )?.groups?.['megabytes'],
     );
   }
 

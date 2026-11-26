@@ -13,8 +13,8 @@ type Sizing = {
   readonly program?: number;
 };
 
-const NODE_PROCESS_MEGABYTES = 150;
-const TYPED_TOOLS_MEGABYTES = 250;
+const NODE_PROCESS_MEGABYTES = 300;
+const TYPED_TOOLS_MEGABYTES = 400;
 
 const SIZINGS = new Map<string, Sizing>([
   ['eslint-lint', { perThousandFiles: 600, base: TYPED_TOOLS_MEGABYTES, program: 1750 }],

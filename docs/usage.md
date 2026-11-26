@@ -4719,10 +4719,12 @@ npx nitpicker aggregate --input-root shards --shard-count 3
 - Set `NITPICKER_MAX_PARALLEL` to a positive integer to cap how many analyzers run at once within
   one job. It also sizes the heap of every built-in Node analyzer (and of the Node tools it starts,
   ESLint among them): three quarters of the memory less 1.5 GB for each other analyzer that can run at
-  once, unless `NODE_OPTIONS` already sets `--max-old-space-size`. The built-in TypeScript analyzers
-  also carry a memory estimate for their whole process tree (the TypeScript API servers and linters
-  they start included): a base per process, for the type check, the structure checks, the lint pass
-  and the coding standards also a program floor when the project or a covering ancestor has a
+  once, unless `NODE_OPTIONS` already sets `--max-old-space-size`, and a 64 MB young generation
+  (`--max-semi-space-size=64`, which cuts garbage collection time on large programs) unless
+  `NODE_OPTIONS` already sets one. The built-in TypeScript analyzers also carry a memory estimate for
+  their whole process tree (the TypeScript API servers and linters they start included): a base per
+  process, for the type check, the structure checks, the lint pass and the coding standards also a
+  program floor when the project or a covering ancestor has a
   `tsconfig.json`, and a part that grows with the source files the program reaches, which are the
   project's own, the folders its `tsconfig.json` reaches through path mappings and project
   references, and the installed workspace packages it depends on (only the runtime and peer
