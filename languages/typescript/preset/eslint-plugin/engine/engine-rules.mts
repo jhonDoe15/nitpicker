@@ -17,7 +17,10 @@ import { testSourcesFact } from './test-sources-fact.mts';
 const stylesheetSpecifier: RegExp = untypedStylesheetSpecifier;
 
 const TYPED = { needs: 'types' } as const;
-const EFFECTS: EngineRule = { ...TYPED, facts: (_filename, _options, { root }) => testSourcesFact(root) };
+const EFFECTS: EngineRule = {
+  ...TYPED,
+  facts: (_filename, _options, { root }) => testSourcesFact(root),
+};
 
 const layout = readLayout();
 

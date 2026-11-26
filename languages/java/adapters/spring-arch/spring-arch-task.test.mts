@@ -103,6 +103,7 @@ describe('empty-project onlyIf skips across Gradle analysis tasks', () => {
     ).toEqual([
       'if (!javaFiles().isEmpty()) {',
       'reportDir.get().file(\'pmd.sarif\').asFile.text = \'{"version":"2.1.0","runs":[]}\'',
+      'reportDir.get().file(\'pmd.sarif\').asFile.text = \'{"version":"2.1.0","runs":[]}\'',
     ]);
 
     const checkstyleConfig = taskBody('nitpickerCheckstyleConfig');
