@@ -192,9 +192,10 @@ fn chain_class(context: &Context, node: Node) -> Option<String> {
     Some(class)
 }
 
-/// What a simple name means where the node stands: a variable hides a class.
+/// What a simple name means where the node stands: a variable hides a class; a resource is not seen in its own declaration.
 fn meaning(context: &Context, at: Node, name: &str) -> Option<String> {
-    if context.resolver.is_variable(at, name) {
+    let seen_from = crate::engine::source::ancestor(at, &["resource", "block"]).filter(|holder| holder.kind() == "resource").unwrap_or(at);
+    if context.resolver.is_variable(seen_from, name) {
         return Some(String::new());
     }
     let class = context.resolver.class_name(at, name)?;

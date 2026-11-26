@@ -91,7 +91,7 @@ pub fn qualify_type(context: &Context, at: Node, qualified: &str) -> String {
 }
 
 /// Whether the parser folds the node into one string literal: strings joined by `+`.
-fn folded_strings(node: Node) -> bool {
+pub fn folded_strings(node: Node) -> bool {
     match node.kind() {
         "string_literal" => true,
         "binary_expression" => {

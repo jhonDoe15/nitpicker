@@ -143,6 +143,12 @@ mod docparams;
 mod compat;
 mod equalsincompat;
 mod doclinks;
+mod object_to_string;
+mod constant_pattern;
+mod already_checked;
+mod already_pure;
+mod ignored_matchers;
+mod returns_ignored;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -426,6 +432,9 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["JavaTimeDefaultTimeZone"], time_checks::java_time_default_time_zone),
     (&["JavaDurationGetSecondsGetNano"], time_checks::duration_get_seconds_get_nano),
     (&["JavaDurationGetSecondsToToSeconds"], time_checks::duration_get_seconds_to_seconds),
+    (&["ObjectToString"], object_to_string::object_to_string),
+    (&["ConstantPatternCompile"], constant_pattern::constant_pattern_compile),
+    (&["ReturnValueIgnored"], returns_ignored::return_value_ignored),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
@@ -442,6 +451,7 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["DeduplicateConstants"], dedupe::deduplicate_constants),
     (&["FieldCanBeLocal"], fieldlocal::field_can_be_local),
     (&["UnusedNestedClass"], unused_nested::unused_nested_class),
+    (&["AlreadyChecked"], already_checked::already_checked),
 ];
 
 pub struct ErrorProne;

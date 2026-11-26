@@ -63,83 +63,9 @@ fn unused_name(context: &Context, call: Node) -> Option<String> {
     std::iter::once("unused".to_string()).chain((2..10).map(|number| format!("unused{number}"))).find(|name| !in_scope(context, call, name))
 }
 
-fn pure_variable(context: &Context, expression: Node) -> bool {
-    match context.resolver.receiver(expression) {
-        Some(Receiver::Static(_)) => return true,
-        None => return false,
-        Some(Receiver::Value(_)) => {}
-    }
-    let name = if expression.kind() == "field_access" { expression.child_by_field_name("field").map(|field| context.text(field)) } else { Some(context.text(expression)) };
-    let Some(name) = name else { return false };
-    if expression.kind() == "identifier" {
-        if let Some(Named::Variable(declarator)) = named(context, expression) {
-            return parent(declarator).is_some_and(|declaration| has_modifier(declaration, "final")) || !assigned(context, expression, name);
-        }
-        if let Some(Named::Other(_)) = named(context, expression) {
-            return !assigned(context, expression, name);
-        }
-    }
-    let owner = crate::java::types::scope::enclosing_type(context.file, context.resolver.scope, expression);
-    owner.and_then(|owner| context.resolver.index.field(&owner, name).map(|(_, field)| field.flags & flag::FINAL != 0)).unwrap_or(false)
-}
-
-fn assigned(context: &Context, around: Node, name: &str) -> bool {
-    let scope = std::iter::successors(parent(around), |each| parent(*each))
-        .find(|each| matches!(each.kind(), "method_declaration" | "constructor_declaration" | "lambda_expression" | "class_body"));
-    let Some(scope) = scope else { return true };
-    let mut found = false;
-    walk(scope, |part| {
-        let target = match part.kind() {
-            "assignment_expression" => part.child_by_field_name("left"),
-            "update_expression" => named_children(part).into_iter().next(),
-            _ => None,
-        };
-        found |= target.is_some_and(|target| target.kind() == "identifier" && context.text(target) == name);
-    });
-    found
-}
-
-const PURE_CLASSES: [&str; 33] = [
-    "com.google.common.base.Optional", "com.google.common.base.Pair", "com.google.common.base.Splitter", "com.google.common.collect.ImmutableBiMap",
-    "com.google.common.collect.ImmutableCollection", "com.google.common.collect.ImmutableList", "com.google.common.collect.ImmutableListMultimap",
-    "com.google.common.collect.ImmutableMap", "com.google.common.collect.ImmutableMultimap", "com.google.common.collect.ImmutableMultiset",
-    "com.google.common.collect.ImmutableRangeMap", "com.google.common.collect.ImmutableRangeSet", "com.google.common.collect.ImmutableSet",
-    "com.google.common.collect.ImmutableSetMultimap", "com.google.common.collect.ImmutableSortedMap", "com.google.common.collect.ImmutableSortedMultiset",
-    "com.google.common.collect.ImmutableSortedSet", "com.google.common.collect.ImmutableTable", "com.google.common.collect.Range",
-    "com.google.protobuf.GeneratedMessage", "java.time.MonthDay", "java.time.Period", "java.time.Year", "java.time.YearMonth", "java.time.ZoneId",
-    "java.time.ZoneOffset", "java.util.Optional", "java.util.OptionalDouble", "java.util.OptionalInt", "java.util.OptionalLong",
-    "java.util.regex.Pattern", "org.joda.time.DateTimeZone", "org.joda.time.format.DateTimeFormatter",
-];
-
-fn pure_method(context: &Context, call: Node) -> bool {
-    let Some(resolved) = context.resolver.resolve_call(call) else { return false };
-    let method = &resolved.method;
-    if method.is_static {
-        return PURE_CLASSES.contains(&resolved.declaring.as_str());
-    }
-    resolved.declaring == "java.lang.String" || context.resolver.index.is_subtype(&resolved.receiver.erased().name(), "java.lang.String")
-}
-
-/// A call or name that stands for the same value each time: Error Prone's `ConstantExpressions` for the common shapes.
+/// A call or name that stands for the same value each time: Error Prone's `ConstantExpressions`.
 pub fn constant(context: &Context, expression: Node) -> bool {
-    match expression.kind() {
-        kind if kind.ends_with("_literal") || matches!(kind, "true" | "false" | "string_literal" | "text_block") => true,
-        "binary_expression" => {
-            let equal = expression.child_by_field_name("operator").is_some_and(|operator| matches!(context.text(operator), "==" | "!="));
-            equal && ["left", "right"].iter().all(|side| expression.child_by_field_name(side).is_some_and(|part| constant(context, part)))
-        }
-        "identifier" => pure_variable(context, expression),
-        "field_access" => expression.child_by_field_name("object").is_some_and(|object| constant(context, object) || matches!(context.resolver.receiver(object), Some(Receiver::Static(_)))) && pure_variable(context, expression),
-        "method_invocation" => {
-            let receiver = expression.child_by_field_name("object");
-            let static_call = context.resolver.resolve_call(expression).is_some_and(|call| call.method.is_static);
-            let arguments = expression.child_by_field_name("arguments").map(named_children).unwrap_or_default();
-            (static_call || receiver.is_none_or(|object| constant(context, object)))
-                && pure_method(context, expression)
-                && arguments.into_iter().filter(|part| !part.kind().ends_with("comment")).all(|argument| constant(context, argument))
-        }
-        _ => false,
-    }
+    super::already_pure::Constants::new(context).expression(expression).is_some()
 }
 
 /// The leftmost name of a chain of calls, when it is a variable: `a` for `a.b().c()`.

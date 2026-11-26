@@ -187,5 +187,9 @@
  "UnusedNestedClass",
  "ReturnFromVoid",
  "UnnecessaryAnonymousClass",
- "ModifiedButNotUsed"
+ "ModifiedButNotUsed",
+ "ObjectToString",
+ "ConstantPatternCompile",
+ "AlreadyChecked",
+ "ReturnValueIgnored"
 ]

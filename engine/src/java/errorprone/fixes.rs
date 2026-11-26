@@ -49,6 +49,9 @@ impl Fix {
         self.imports |= other.imports;
         self
     }
+    pub fn is_empty(&self) -> bool {
+        self.edits.is_empty()
+    }
     pub fn changes_imports(&self) -> bool {
         self.imports
     }
@@ -57,6 +60,9 @@ impl Fix {
         let mut edits: Vec<&(usize, usize, String)> = self.edits.iter().collect();
         edits.sort_by_key(|edit| (edit.0, edit.1));
         let first = *edits.first()?;
+        if edits.iter().any(|edit| edit.1 > text.len() || !text.is_char_boundary(edit.0) || !text.is_char_boundary(edit.1)) {
+            return None;
+        }
         let start = back(text, first.0, LINE_REACH);
         let trimmed_end = forth(text, first.1, LINE_REACH);
         let mut end = trimmed_end;

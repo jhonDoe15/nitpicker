@@ -41,15 +41,22 @@ fn field_use(context: &Context, access: Node, class: &Option<String>) -> bool {
     receiver_class(context, object).is_some_and(|found| Some(&found) == class.as_ref())
 }
 
-pub fn rename_variable(context: &Context, root: Node, matched: Node, name_node: Node, replacement: &str) -> Fix {
+/// A use of a variable the file declares: a plain name, or a field read through an object.
+pub enum Use<'t> {
+    Name(Node<'t>),
+    Select(Node<'t>, Node<'t>),
+}
+
+/// Every use of the variable that `matched` declares, in the order of the tree below `root`.
+pub fn variable_uses<'t>(context: &Context, root: Node<'t>, matched: Node, name_node: Node) -> Vec<Use<'t>> {
     let name = context.text(name_node);
-    let mut fix = Fix::replace(name_node.start_byte(), name_node.end_byte(), replacement);
+    let mut uses = Vec::new();
     let field = parent(matched).is_some_and(|holder| matches!(holder.kind(), "field_declaration" | "constant_declaration"));
     let class = if field { declaring_class(context, matched) } else { None };
     walk(root, |node| match node.kind() {
         "identifier" if node.id() != name_node.id() && context.text(node) == name && value_name(node) => {
             if names_declaration(named(context, node), matched) {
-                fix = std::mem::take(&mut fix).and(node.start_byte(), node.end_byte(), replacement);
+                uses.push(Use::Name(node));
             }
         }
         "field_access" if field => {
@@ -57,12 +64,29 @@ pub fn rename_variable(context: &Context, root: Node, matched: Node, name_node: 
                 return;
             }
             if let Some(object) = node.child_by_field_name("object").filter(|_| field_use(context, node, &class)) {
-                fix = select(std::mem::take(&mut fix), node, object, ".", replacement);
+                uses.push(Use::Select(node, object));
             }
         }
         _ => {}
     });
+    uses
+}
+
+/// The replacements of every use of the variable, without its declaration.
+pub fn rename_usages(context: &Context, root: Node, matched: Node, name_node: Node, replacement: &str) -> Fix {
+    let mut fix = Fix::new();
+    for usage in variable_uses(context, root, matched, name_node) {
+        fix = match usage {
+            Use::Name(node) => fix.and(node.start_byte(), node.end_byte(), replacement),
+            Use::Select(access, object) => select(fix, access, object, ".", replacement),
+        };
+    }
     fix
+}
+
+pub fn rename_variable(context: &Context, root: Node, matched: Node, name_node: Node, replacement: &str) -> Fix {
+    let fix = Fix::replace(name_node.start_byte(), name_node.end_byte(), replacement);
+    fix.merged(rename_usages(context, root, matched, name_node, replacement))
 }
 
 pub fn rename_method(context: &Context, root: Node, method: Node, name_node: Node, replacement: &str) -> Fix {

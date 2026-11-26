@@ -232,7 +232,8 @@ fn can_be_overridden(context: &Context, method: Node) -> bool {
     if has("static") || has("private") || has("final") || method.kind() == "constructor_declaration" {
         return false;
     }
-    let Some(owner) = parent(method).and_then(parent) else { return false };
+    let body = parent(method).and_then(|body| if body.kind() == "enum_body_declarations" { parent(body) } else { Some(body) });
+    let Some(owner) = body.and_then(parent) else { return false };
     match owner.kind() {
         "object_creation_expression" | "enum_constant" => false,
         "record_declaration" => false,

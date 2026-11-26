@@ -444,7 +444,7 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
             let handlers = reader.u2()? as usize;
             reader.skip(handlers * 8)?;
             for _ in 0..reader.u2()? {
-                let inner = utf8(reader.u2()?)?;
+                let inner = utf8(reader.u2()?).unwrap_or_default();
                 let size = reader.u4()? as usize;
                 let finish = reader.at + size;
                 if inner == b"LocalVariableTable" {

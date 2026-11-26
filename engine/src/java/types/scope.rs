@@ -893,7 +893,9 @@ impl<'a> Resolver<'a> {
                             number: (matches!(&kind, Type::Primitive("int")) && (info.is_interface || has(member, "final")))
                                 .then(|| declarator.field("value"))
                                 .flatten()
-                                .and_then(|value| self.file.text_of(value).replace('_', "").parse().ok()),
+                                .map(|value| self.file.text_of(value).replace('_', ""))
+                                .filter(|digits| digits == "0" || !digits.starts_with('0'))
+                                .and_then(|digits| digits.parse().ok()),
                             fixed: (info.is_interface || (has(member, "final") && has(member, "static"))).then(|| declarator.field("value")).flatten().and_then(
                                 |value| {
                                     let mut uses = Vec::new();

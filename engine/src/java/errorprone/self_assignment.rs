@@ -161,7 +161,9 @@ fn declaration(context: &Context, node: Node) {
         }
         let text = &context.file.text[node.start_byte()..declarator.end_byte()];
         let Some(equals) = text.find('=') else { continue };
-        let kept = format!("{};", &text[..equals.saturating_sub(1)]);
+        let mut before = text[..equals].chars();
+        before.next_back();
+        let kept = format!("{};", before.as_str());
         let fix = Fix::replace(node.start_byte(), node.end_byte(), kept);
         context.report_fixed("SelfAssignment", node, name.start_byte(), MESSAGE, &[fix]);
     }

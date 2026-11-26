@@ -143,7 +143,7 @@ class B6Threads {
   }
 
   void waitInLambdaInLoop() {
-    while (true) {
+    while (Thread.interrupted()) {
       Runnable r = () -> {
         try {
           monitor.wait();

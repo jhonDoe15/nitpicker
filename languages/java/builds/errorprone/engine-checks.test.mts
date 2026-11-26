@@ -53,16 +53,23 @@ describe('engineChecksFor', () => {
   it('leaves NullAway to Error Prone on test sources, without own classes and with a module path', () => {
     const own = classesIn('demo');
 
-    expect(engineChecksFor(headWith(own, '--test-only'))).toStrictEqual({
-      checks: WITHOUT_NULL_AWAY,
-      packages: [],
-    });
+    expect(engineChecksFor(headWith(own, '--test-only')).packages).toStrictEqual([]);
+    expect(engineChecksFor(headWith(own, '--test-only')).checks).not.toContain(NULL_AWAY);
     expect(engineChecksFor(headWith(path.join(own, 'missing'))).checks).toStrictEqual(
       WITHOUT_NULL_AWAY,
     );
     expect(engineChecksFor(headWith(own, '--module-path', '/lib.jar')).checks).toStrictEqual(
       WITHOUT_NULL_AWAY,
     );
+  });
+
+  it('leaves checks that Error Prone treats differently in test code to Error Prone on test sources', () => {
+    const checks = engineChecksFor(headWith(classesIn('demo'), '--test-only')).checks;
+
+    expect(checks).toContain('CheckReturnValue');
+    expect(
+      checks.filter((check) => ['ThrowSpecificExceptions', 'ReturnValueIgnored'].includes(check)),
+    ).toStrictEqual([]);
   });
 
   it('does not run a check the project switched off', () => {

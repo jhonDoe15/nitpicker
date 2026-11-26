@@ -217,18 +217,16 @@ pub fn can_be_overridden(method: Node) -> bool {
     if method.kind() != "method_declaration" || ["static", "private", "final"].iter().any(|word| has_modifier(method, word)) {
         return false;
     }
-    let Some(body) = parent(method) else { return true };
+    let Some(mut body) = parent(method) else { return true };
+    if body.kind() == "enum_body_declarations" {
+        let Some(enum_body) = parent(body) else { return true };
+        body = enum_body;
+    }
     let Some(owner) = parent(body) else { return true };
     match owner.kind() {
         "class_declaration" => !has_modifier(owner, "final"),
         "record_declaration" | "object_creation_expression" | "enum_constant" => false,
-        "enum_declaration" => {
-            let mut with_body = false;
-            crate::engine::source::walk(owner, |part| {
-                with_body |= part.kind() == "enum_constant" && children(part).iter().any(|inner| inner.kind() == "class_body");
-            });
-            with_body
-        }
+        "enum_declaration" => children(body).into_iter().any(|part| part.kind() == "enum_constant" && part.child_by_field_name("body").is_some()),
         _ => true,
     }
 }

@@ -294,7 +294,8 @@ fn references_outer(context: &Context, class: Node, own: &str) -> bool {
             }
             "type_identifier" => {
                 let name = context.text(node);
-                if let Some(declared) = type_parameter(context.file, node, name) {
+                if parent(node).is_some_and(|above| above.kind() == "type_parameter") {
+                } else if let Some(declared) = type_parameter(context.file, node, name) {
                     let owner = parent(declared).and_then(parent);
                     if owner.is_none_or(|owner| owner.id() != class.id()) {
                         found = true;
