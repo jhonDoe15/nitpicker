@@ -582,7 +582,7 @@ impl TypeIndex {
                     Slot::Later(origin, _) => (!jdk_class(name)).then_some((name, origin)),
                 })
                 .collect();
-            let names: Vec<&String> = later.par_iter().filter(|(_, origin)| read_bytes(origin).is_some_and(|bytes| mentions_guard(&bytes))).map(|(name, _)| *name).collect();
+            let names: Vec<&String> = later.iter().filter(|(_, origin)| read_bytes(origin).is_some_and(|bytes| mentions_guard(&bytes))).map(|(name, _)| *name).collect();
             for name in names {
                 if let Some(class) = self.get(name) {
                     add(class, &mut found);

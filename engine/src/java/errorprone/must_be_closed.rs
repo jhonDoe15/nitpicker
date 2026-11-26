@@ -11,7 +11,7 @@ use tree_sitter::Node;
 pub(super) const ANNOTATION: &str = "com.google.errorprone.annotations.MustBeClosed";
 const AUTO_CLOSEABLE: &str = "java.lang.AutoCloseable";
 const MESSAGE: &str = "This method returns a resource which must be managed carefully, not just left for garbage collection. If it is a constant that will persist for the lifetime of your program, move it to a private static final field. Otherwise, you should use it in a try-with-resources.";
-const BLOCKS: &[&str] = &["method_declaration", "constructor_declaration"];
+const BLOCKS: &[&str] = &["method_declaration", "constructor_declaration", "compact_constructor_declaration"];
 
 pub fn must_be_closed(context: &Context, root: Node) {
     if !context.resolver.index.has(ANNOTATION) {
@@ -22,7 +22,7 @@ pub fn must_be_closed(context: &Context, root: Node) {
 
 fn inspect(context: &Context, node: Node) {
     match node.kind() {
-        "method_declaration" | "constructor_declaration" => method(context, node),
+        "method_declaration" | "constructor_declaration" | "compact_constructor_declaration" => method(context, node),
         "class_declaration" => {
             if let Some(name) = context.resolver.scope.names.get(&node.id()) {
                 class(context, node, node.child_by_field_name("body"), name.clone(), node.child_by_field_name("name").map_or(node.start_byte(), |name| keyword_of(node, name)));
@@ -82,7 +82,7 @@ fn method(context: &Context, method: Node) {
         return;
     }
     let at = method.child_by_field_name("name").map_or(method.start_byte(), |name| name.start_byte());
-    if method.kind() == "constructor_declaration" {
+    if method.kind() != "method_declaration" {
         let owner = crate::java::types::scope::enclosing_type(context.file, context.resolver.scope, method);
         if !owner.is_some_and(|owner| closeable(context, &owner)) {
             report(context, method, at, "MustBeClosed should only annotate constructors of AutoCloseables.", &[]);

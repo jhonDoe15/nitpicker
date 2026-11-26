@@ -850,7 +850,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         nickname(&found);
         let signature = found.signature;
         let marks = std::mem::take(&mut found.type_marks);
-        if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == ACC_PRIVATE && method_name[0] != b'<' {
+        if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == ACC_PRIVATE && method_name.first() != Some(&b'<') {
             hidden.push(Hidden { name: String::from_utf8_lossy(method_name).into_owned(), descriptor: String::from_utf8_lossy(descriptor).into_owned(), is_static: flags & ACC_STATIC != 0, is_method: true, before: methods.len() });
         }
         if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == 0 && method_name != b"<clinit>" {
