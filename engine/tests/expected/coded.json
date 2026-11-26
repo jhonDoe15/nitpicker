@@ -453,6 +453,8 @@
 ["h/Logged.java", "InvalidLogMessageFormat", 6, 9, "Missing arguments, expected 1 argument but found 0"],
 ["h/Logged.java", "InvalidLogMessageFormat", 9, 20, "Missing arguments, expected 1 argument but found 0"],
 ["h/Logged.java", "InvalidLogMessageFormat", 14, 16, "Missing arguments, expected 2 arguments but found 1"],
+["h/OnDemand.java", "CloseResource", 5, 44, "Ensure that resources like this FileSystem object are closed after use"],
+["h/OnDemand.java", "UnusedLocalVariable", 5, 44, "Avoid unused local variables such as 'fs'."],
 ["junit/framework/TestCase.java", "AbstractClassWithoutAbstractMethod", 3, 17, "This abstract class does not have any abstract methods"],
 ["junit/framework/TestSuite.java", "TestClassWithoutTestCases", 3, 8, "The class 'TestSuite' might be a test class, but it contains no test cases."],
 ["org/junit/Assert.java", "UnusedFormalParameter", 4, 43, "Avoid unused method parameters such as 'condition'."],
