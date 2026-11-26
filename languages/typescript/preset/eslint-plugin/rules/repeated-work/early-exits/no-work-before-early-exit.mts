@@ -6,6 +6,7 @@ import { isEarlyExit, isSettledAcrossAwait } from './early-guards.mts';
 import { isCostly, isPureWork } from './pure-work.mts';
 import { isGuardTest, isTypeQuery } from './type-queries.mts';
 import { innermostRepeat } from '../support/loop-invariance.mts';
+import { isSettled } from '../repeated-calls/call-shapes.mts';
 
 const BRANCHING = new Set<string>([
   AST_NODE_TYPES.ConditionalExpression,
@@ -55,14 +56,13 @@ export const rule: TSESLint.RuleModule<'workBeforeExit'> = {
         const typeQuery = isTypeQuery(init) && innermostRepeat(declaration) !== undefined;
         if (
           readLater &&
+          isEarlyExit(sourceCode, next, name) &&
           (typeQuery
-            ? isEarlyExit(sourceCode, next, name, isGuardTest)
-            : isEarlyExit(sourceCode, next, name) &&
+            ? isGuardTest(next.test)
+            : isSettled(next.test) &&
               isCostly(sourceCode, init) &&
               isPureWork(sourceCode, init) &&
-              (!awaits(init) ||
-                (next?.type === AST_NODE_TYPES.IfStatement &&
-                  isSettledAcrossAwait(sourceCode, next.test))))
+              (!awaits(init) || isSettledAcrossAwait(sourceCode, next.test)))
         ) {
           context.report({ node: declarator, messageId: 'workBeforeExit', data: { name } });
         }

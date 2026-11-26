@@ -65,13 +65,12 @@ export function readsLoopState(
   sourceCode: SourceCode,
   node: TSESTree.Node,
   repeat: TSESTree.Node,
-  own: TSESTree.Node,
 ): boolean {
   return someNode(
     node,
     (child) =>
       child.type === AST_NODE_TYPES.Identifier &&
-      ((declaredWithin(sourceCode, child, repeat) && !declaredWithin(sourceCode, child, own)) ||
+      ((declaredWithin(sourceCode, child, repeat) && !declaredWithin(sourceCode, child, node)) ||
         changesWithin(sourceCode, child, repeat)),
   );
 }
@@ -85,6 +84,6 @@ export function isRepeatingKey(
   return (
     key.type !== AST_NODE_TYPES.Identifier &&
     invariantIn(sourceCode, read.map, repeat) &&
-    readsLoopState(sourceCode, read.key, repeat, read.key)
+    readsLoopState(sourceCode, read.key, repeat)
   );
 }

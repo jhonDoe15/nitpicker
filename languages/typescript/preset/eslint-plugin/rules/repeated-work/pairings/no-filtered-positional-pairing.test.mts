@@ -8,40 +8,48 @@ const PAIRED = (filtered: string) => ({ messageId: 'filteredPairing', data: { fi
 
 tester.run('no-filtered-positional-pairing', rule, {
   valid: cases(`
-export function f(xs: string[]) { const unique = xs.filter((x) => x.length > 0); const sizes = sizesOf(unique); return unique.map((spec, index) => ({ spec, size: sizes[index] })); }
+export function f(xs: string[]) { const unique = xs.filter((x) => x.length > 0); const sizes = sizesOf(unique);
+  return unique.map((spec, index) => ({ spec, size: sizes[index] })); }
 declare function sizesOf(xs: string[]): number[];
 
-export function f(a: number[]) { const kept = a.filter(Boolean); const labels = kept.map(String); return kept.map((x, i) => use(x, labels[i])); }
+export function f(a: number[]) { const kept = a.filter(Boolean); const labels = kept.map(String);
+  return kept.map((x, i) => use(x, labels[i])); }
 declare function use(...xs: unknown[]): void;
 
-export function f(a: number[], out: number[]) { const kept = a.filter(Boolean); for (let i = 0; i < kept.length; i++) out[i] = kept[i]! * 2; }
+export function f(a: number[], out: number[]) { const kept = a.filter(Boolean); for (let i = 0; i < kept.length;
+  i++) out[i] = kept[i]! * 2; }
 
 export function f(rows: Row[]) { return rows.filter((r) => r.ok).map((row, i) => use(row.cells[i])); }
 declare function use(...xs: unknown[]): void;
 
-export function f(rows: Row[]) { return rows.filter((r) => r.ok).map((row, i) => { const cells = row.slice(); return use(cells[i]); }); }
+export function f(rows: Row[]) { return rows.filter((r) => r.ok).map((row, i) => { const cells = row.slice();
+  return use(cells[i]); }); }
 declare function use(...xs: unknown[]): void;
 
 const COLORS = ["red", "blue"];
 export function f(series: Row[]) { return series.filter((s) => s.visible).map((s, i) => use(s, COLORS[i])); }
 declare function use(...xs: unknown[]): void;
 
-export function f(a: number[], b: number[]) { const ka = a.filter((x) => x>0); const kb = b.filter((x) => x > 0); return ka.map((x, i) => x + kb[i]!); }
+export function f(a: number[], b: number[]) { const ka = a.filter((x) => x>0); const kb = b.filter((x) => x > 0);
+  return ka.map((x, i) => x + kb[i]!); }
 
 export function f(a: number[], b: number[]) { return a.map((x, i) => x + b[i]!); }
 
 export function f(a: number[], b: number[]) { const kept = a.filter((x) => x > 0); return kept.map((x) => x * 2); }
 
-export function f(a: number[], b: number[]) { const ka = a.filter((x) => x > 0); const kb = b.filter((x) => x > 0); return ka.map((x, i) => x + kb[i]!); }
+export function f(a: number[], b: number[]) { const ka = a.filter((x) => x > 0); const kb = b.filter((x) => x > 0);
+  return ka.map((x, i) => x + kb[i]!); }
 
 export function f(a: number[]) { const kept = a.filter((x) => x > 0); return kept.map((x, i) => x + kept[i]!); }
 
-export function f(a: number[], b: number[]) { const pairs = a.map((x, i) => [x, b[i]!] as const); return pairs.filter(([x]) => x > 0); }
+export function f(a: number[], b: number[]) { const pairs = a.map((x, i) => [x, b[i]!] as const);
+  return pairs.filter(([x]) => x > 0); }
 
 export function f(a: number[], b: number[]) { for (let i = 0; i < a.length; i++) { use(a[i], b[i]); } }
 declare function use(...xs: unknown[]): void;
 
-export function f(a: number[]) { const kept = a.filter((x) => x > 0); for (let i = 0; i < kept.length; i++) { use(kept[i]); } }
+export function f(a: number[]) { const kept = a.filter((x) => x > 0); for (let i = 0; i < kept.length; i++) {
+  use(kept[i]); } }
 declare function use(...xs: unknown[]): void;
 
 export function f(a: number[], b: number[]) { return zip(a, b); }

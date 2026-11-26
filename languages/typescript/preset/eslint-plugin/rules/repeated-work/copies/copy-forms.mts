@@ -1,13 +1,15 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { calledMember, memberName } from '../../collections/costly-forms/repeated-runs.mts';
-import { ancestorsOf } from '../../typed/node-views.mts';
+import { ancestorsOf, chainOf } from '../../typed/node-views.mts';
 import { isFunction } from '../../typed/syntax-views.mts';
 
 const COPYING_CALLS = new Set(['Array.from', 'structuredClone', 'Buffer.from']);
 const COPYING_CONSTRUCTORS = new Set(['Map', 'Set']);
 const STORING_METHODS = new Set(['push', 'unshift', 'set', 'add']);
 
-function soleSpread(elements: readonly (TSESTree.Node | null)[]): TSESTree.Node | undefined {
+function soleSpread(
+  elements: TSESTree.ArrayExpression['elements'] | TSESTree.ObjectExpression['properties'],
+): TSESTree.Node | undefined {
   const [first] = elements;
   return elements.length === 1 && first?.type === AST_NODE_TYPES.SpreadElement
     ? first.argument
@@ -63,17 +65,6 @@ export function copiedSource(node: TSESTree.Node): TSESTree.Node | undefined {
   return callSource(node);
 }
 
-export function isPlainSource(node: TSESTree.Node): boolean {
-  if (node.type === AST_NODE_TYPES.Identifier) {
-    return true;
-  }
-  return (
-    node.type === AST_NODE_TYPES.MemberExpression &&
-    !node.computed &&
-    (node.object.type === AST_NODE_TYPES.ThisExpression || isPlainSource(node.object))
-  );
-}
-
 function isStoringCall(parent: TSESTree.Node, child: TSESTree.Node): boolean {
   if (parent.type === AST_NODE_TYPES.NewExpression) {
     return parent.arguments.some((argument) => argument === child);
@@ -89,20 +80,26 @@ function isStoringCall(parent: TSESTree.Node, child: TSESTree.Node): boolean {
   );
 }
 
+function storedValue(copy: TSESTree.Node): TSESTree.Node {
+  const values = chainOf<TSESTree.Node>(copy, (current) => {
+    const property = current.parent;
+    return property?.type === AST_NODE_TYPES.Property &&
+      property.value === current &&
+      property.parent.type === AST_NODE_TYPES.ObjectExpression
+      ? property.parent
+      : undefined;
+  });
+  return values.at(-1) ?? copy;
+}
+
 export function isStored(copy: TSESTree.Node, repeat: TSESTree.Node): boolean {
-  const { parent } = copy;
+  const value = storedValue(copy);
+  const { parent } = value;
   if (parent === undefined) {
     return false;
   }
-  if (parent.type === AST_NODE_TYPES.Property) {
-    return (
-      parent.value === copy &&
-      parent.parent.type === AST_NODE_TYPES.ObjectExpression &&
-      isStored(parent.parent, repeat)
-    );
-  }
   if (parent.type === AST_NODE_TYPES.AssignmentExpression) {
-    return parent.right === copy && parent.left.type === AST_NODE_TYPES.MemberExpression;
+    return parent.right === value && parent.left.type === AST_NODE_TYPES.MemberExpression;
   }
   if (parent === repeat && parent.type === AST_NODE_TYPES.ArrowFunctionExpression) {
     return true;
@@ -110,7 +107,7 @@ export function isStored(copy: TSESTree.Node, repeat: TSESTree.Node): boolean {
   if (parent.type === AST_NODE_TYPES.ReturnStatement) {
     return repeat.type !== AST_NODE_TYPES.ForOfStatement && innermostFunctionIs(parent, repeat);
   }
-  return isStoringCall(parent, copy);
+  return isStoringCall(parent, value);
 }
 
 function innermostFunctionIs(node: TSESTree.Node, fn: TSESTree.Node): boolean {

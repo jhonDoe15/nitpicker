@@ -2,19 +2,15 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { someNode } from '../../collections/costly-forms/repeated-runs.mts';
 import { contains, variableNamed, type SourceCode } from '../../typed/node-views.mts';
 import { unwrapped } from '../../typed/syntax-views.mts';
-import { isFixedTable, isPlainList } from './filtered-lists.mts';
-
-function rootName(node: TSESTree.Node): TSESTree.Node {
-  const value = unwrapped(node);
-  return value.type === AST_NODE_TYPES.MemberExpression ? rootName(value.object) : value;
-}
+import { isFixedTable } from './filtered-lists.mts';
+import { isPlainPath, pathRoot } from '../support/plain-paths.mts';
 
 function isOuterPartner(
   sourceCode: SourceCode,
   read: TSESTree.MemberExpression,
   area: TSESTree.Node,
 ): boolean {
-  const root = rootName(read.object);
+  const root = pathRoot(read.object);
   const definition =
     root.type === AST_NODE_TYPES.Identifier ? variableNamed(sourceCode, root)?.defs[0] : undefined;
   const written =
@@ -28,18 +24,17 @@ function isOuterPartner(
 
 export function indexedLists(
   sourceCode: SourceCode,
-  body: TSESTree.Node,
   index: string,
-  area: TSESTree.Node = body,
+  area: TSESTree.Node,
 ): TSESTree.Node[] {
   const found = new Map<string, TSESTree.Node>();
-  someNode(body, (node) => {
+  someNode(area, (node) => {
     if (
       node.type === AST_NODE_TYPES.MemberExpression &&
       node.computed &&
       node.property.type === AST_NODE_TYPES.Identifier &&
       node.property.name === index &&
-      isPlainList(node.object) &&
+      isPlainPath(node.object) &&
       isOuterPartner(sourceCode, node, area)
     ) {
       found.set(sourceCode.getText(unwrapped(node.object)), node.object);

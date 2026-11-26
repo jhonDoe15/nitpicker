@@ -70,6 +70,12 @@ function derivedFrom(sourceCode: SourceCode, first: TSESTree.Node, second: TSEST
   return initializerReads(sourceCode, first, second) || initializerReads(sourceCode, second, first);
 }
 
+function filterText(sourceCode: SourceCode, call: TSESTree.CallExpression): string {
+  return call.arguments
+    .map((argument) => sourceCode.getText(argument).replaceAll(/\s+/gu, ''))
+    .join();
+}
+
 export function filteredOneSide(
   sourceCode: SourceCode,
   first: TSESTree.Node,
@@ -80,14 +86,16 @@ export function filteredOneSide(
   }
   const firstFilter = filterOf(sourceCode, first);
   const secondFilter = filterOf(sourceCode, second);
-  if (firstFilter === undefined || secondFilter === undefined) {
-    return firstFilter === undefined ? (secondFilter === undefined ? undefined : second) : first;
+  if (firstFilter === undefined) {
+    return secondFilter === undefined ? undefined : second;
   }
-  const text = (call: TSESTree.CallExpression) =>
-    call.arguments.map((argument) => sourceCode.getText(argument).replaceAll(/\s+/gu, '')).join();
-  return firstFilter === secondFilter || text(firstFilter) === text(secondFilter)
-    ? undefined
-    : first;
+  if (secondFilter === undefined) {
+    return first;
+  }
+  const same =
+    firstFilter === secondFilter ||
+    filterText(sourceCode, firstFilter) === filterText(sourceCode, secondFilter);
+  return same ? undefined : first;
 }
 
 const TABLE_NAME = /^[A-Z][A-Z\d_]*$/u;
@@ -97,15 +105,5 @@ export function isFixedTable(sourceCode: SourceCode, node: TSESTree.Node): boole
   return (
     (value.type === AST_NODE_TYPES.Identifier && TABLE_NAME.test(value.name)) ||
     sourceOf(sourceCode, value).type === AST_NODE_TYPES.ArrayExpression
-  );
-}
-
-export function isPlainList(node: TSESTree.Node): boolean {
-  const value = unwrapped(node);
-  return (
-    value.type === AST_NODE_TYPES.Identifier ||
-    (value.type === AST_NODE_TYPES.MemberExpression &&
-      !value.computed &&
-      (value.object.type === AST_NODE_TYPES.ThisExpression || isPlainList(value.object)))
   );
 }

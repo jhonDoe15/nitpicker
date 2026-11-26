@@ -2,7 +2,8 @@ import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint
 import { calledMember, memberName } from '../../collections/costly-forms/repeated-runs.mts';
 import type { SourceCode } from '../../typed/node-views.mts';
 import { calleeNameOf, isFunction, unwrapped } from '../../typed/syntax-views.mts';
-import { filteredOneSide, isPlainList } from './filtered-lists.mts';
+import { filteredOneSide } from './filtered-lists.mts';
+import { isPlainPath } from '../support/plain-paths.mts';
 import { countedLoop, indexedLists } from './positional-reads.mts';
 
 type Pairing = { readonly node: TSESTree.Node; readonly filtered: TSESTree.Node };
@@ -28,7 +29,7 @@ function callbackPairing(
     return undefined;
   }
   const receiver = unwrapped(member.object);
-  for (const other of indexedLists(sourceCode, callback.body, index.name, callback)) {
+  for (const other of indexedLists(sourceCode, index.name, callback)) {
     const filtered = filteredOneSide(sourceCode, receiver, other);
     if (filtered !== undefined && sourceCode.getText(other) !== sourceCode.getText(receiver)) {
       return { node: call, filtered };
@@ -48,19 +49,19 @@ function zipPairing(sourceCode: SourceCode, call: TSESTree.CallExpression): Pair
 
 function loopPairing(sourceCode: SourceCode, loop: TSESTree.ForStatement): Pairing | undefined {
   const counted = countedLoop(loop);
-  if (counted === undefined || !isPlainList(counted.bound)) {
+  if (counted === undefined || !isPlainPath(counted.bound)) {
     return undefined;
   }
-  const lists = indexedLists(sourceCode, loop.body, counted.index, loop);
-  for (const [position, first] of lists.entries()) {
-    for (const second of lists.slice(position + 1)) {
-      const filtered = filteredOneSide(sourceCode, first, second);
-      if (filtered !== undefined) {
-        return { node: loop, filtered };
-      }
-    }
-  }
-  return undefined;
+  const lists = indexedLists(sourceCode, counted.index, loop);
+  const filtered = lists
+    .flatMap((first, position) => lists.slice(position + 1).map((second) => [first, second]))
+    .map(([first, second]) =>
+      first === undefined || second === undefined
+        ? undefined
+        : filteredOneSide(sourceCode, first, second),
+    )
+    .find((side) => side !== undefined);
+  return filtered === undefined ? undefined : { node: loop, filtered };
 }
 
 export const rule: TSESLint.RuleModule<'filteredPairing'> = {

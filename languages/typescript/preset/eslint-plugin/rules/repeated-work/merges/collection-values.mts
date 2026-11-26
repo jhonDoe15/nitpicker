@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { variableNamed, type SourceCode } from '../../typed/node-views.mts';
+import { chainOf, variableNamed, type SourceCode } from '../../typed/node-views.mts';
 import { unwrapped } from '../../typed/syntax-views.mts';
 
 const COLLECTIONS = new Set([
@@ -13,24 +13,18 @@ const COLLECTIONS = new Set([
 ]);
 const KEYED = new Set(['Map', 'ReadonlyMap', 'Record']);
 
-function typeName(node: TSESTree.TypeNode): string | undefined {
-  return node.type === AST_NODE_TYPES.TSTypeReference &&
+function typeName(node: TSESTree.TypeNode | undefined): string | undefined {
+  return node?.type === AST_NODE_TYPES.TSTypeReference &&
     node.typeName.type === AST_NODE_TYPES.Identifier
     ? node.typeName.name
     : undefined;
 }
 
 function isCollectionType(node: TSESTree.TypeNode | undefined): boolean {
-  if (node === undefined) {
-    return false;
-  }
-  if (node.type === AST_NODE_TYPES.TSArrayType) {
-    return true;
-  }
-  if (node.type === AST_NODE_TYPES.TSTypeOperator) {
-    return isCollectionType(node.typeAnnotation);
-  }
-  return COLLECTIONS.has(typeName(node) ?? '');
+  const inner = chainOf<TSESTree.TypeNode>(node, (current) =>
+    current.type === AST_NODE_TYPES.TSTypeOperator ? current.typeAnnotation : undefined,
+  ).at(-1);
+  return inner?.type === AST_NODE_TYPES.TSArrayType || COLLECTIONS.has(typeName(inner) ?? '');
 }
 
 function valueType(

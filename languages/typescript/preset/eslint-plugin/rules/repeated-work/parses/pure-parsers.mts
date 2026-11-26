@@ -5,7 +5,8 @@ import {
   someNode,
 } from '../../collections/costly-forms/repeated-runs.mts';
 import { variableNamed, type SourceCode } from '../../typed/node-views.mts';
-import { isFunction, type FunctionNode } from '../../typed/syntax-views.mts';
+import { isFunction, unwrapped, type FunctionNode } from '../../typed/syntax-views.mts';
+import { isJsonParse } from '../read-all/input-reads.mts';
 
 const PARSING_METHODS = new Set(['exec', 'match', 'matchAll', 'replace', 'replaceAll', 'split']);
 const TEXT_METHODS = new Set([
@@ -64,35 +65,6 @@ export function localFunction(
     : undefined;
 }
 
-function isJsonParse(call: TSESTree.CallExpression): boolean {
-  const { callee } = call;
-  return (
-    callee.type === AST_NODE_TYPES.MemberExpression &&
-    callee.object.type === AST_NODE_TYPES.Identifier &&
-    callee.object.name === 'JSON' &&
-    memberName(callee) === 'parse'
-  );
-}
-
-function callVerdict(
-  sourceCode: SourceCode,
-  call: TSESTree.CallExpression,
-  seen: ReadonlySet<FunctionNode>,
-): Verdict {
-  if (isJsonParse(call)) {
-    return { pure: true, parses: true };
-  }
-  const member = calledMember(call);
-  if (member !== undefined) {
-    const name = memberName(member) ?? '';
-    return { pure: TEXT_METHODS.has(name), parses: PARSING_METHODS.has(name) };
-  }
-  const fn = localFunction(sourceCode, call.callee);
-  return fn === undefined || seen.has(fn)
-    ? { pure: false, parses: false }
-    : parserVerdict(sourceCode, fn, new Set([...seen, fn]));
-}
-
 function readsOuterState(sourceCode: SourceCode, fn: FunctionNode, node: TSESTree.Node): boolean {
   if (node.type !== AST_NODE_TYPES.Identifier) {
     return false;
@@ -106,27 +78,52 @@ function readsOuterState(sourceCode: SourceCode, fn: FunctionNode, node: TSESTre
   const fixed =
     definition.type === DefinitionType.FunctionName ||
     (definition.type === DefinitionType.Variable && definition.parent.kind === 'const');
-  return !inside && !fixed;
+  return !(inside || fixed);
 }
 
-export function parserVerdict(
-  sourceCode: SourceCode,
-  fn: FunctionNode,
-  seen: ReadonlySet<FunctionNode> = new Set([fn]),
-): Verdict {
-  const impure = someNode(
-    fn.body,
-    (node) =>
-      EFFECTS.has(node.type) ||
-      readsOuterState(sourceCode, fn, node) ||
-      (node.type === AST_NODE_TYPES.CallExpression && !callVerdict(sourceCode, node, seen).pure),
-  );
-  const parses =
-    !impure &&
-    someNode(
-      fn.body,
-      (node) =>
-        node.type === AST_NODE_TYPES.CallExpression && callVerdict(sourceCode, node, seen).parses,
-    );
-  return { pure: !impure, parses };
+type Step = {
+  readonly pure: boolean;
+  readonly parses: boolean;
+  readonly local?: FunctionNode | undefined;
+};
+
+function callStep(sourceCode: SourceCode, call: TSESTree.CallExpression): Step {
+  if (isJsonParse(sourceCode, unwrapped(call.callee))) {
+    return { pure: true, parses: true };
+  }
+  const member = calledMember(call);
+  if (member !== undefined) {
+    const name = memberName(member) ?? '';
+    return { pure: TEXT_METHODS.has(name), parses: PARSING_METHODS.has(name) };
+  }
+  const local = localFunction(sourceCode, call.callee);
+  return { pure: local !== undefined, parses: false, local };
+}
+
+function bodySteps(sourceCode: SourceCode, fn: FunctionNode): Step[] {
+  const steps: Step[] = [];
+  someNode(fn.body, (node) => {
+    if (EFFECTS.has(node.type) || readsOuterState(sourceCode, fn, node)) {
+      steps.push({ pure: false, parses: false });
+    } else if (node.type === AST_NODE_TYPES.CallExpression) {
+      steps.push(callStep(sourceCode, node));
+    }
+    return false;
+  });
+  return steps;
+}
+
+export function parserVerdict(sourceCode: SourceCode, fn: FunctionNode): Verdict {
+  const pending = [fn];
+  const steps: Step[] = [];
+  for (const current of pending) {
+    const found = bodySteps(sourceCode, current);
+    const locals = found
+      .map((step) => step.local)
+      .filter((local): local is FunctionNode => local !== undefined && !pending.includes(local));
+    steps.push(...found);
+    pending.push(...new Set(locals));
+  }
+  const pure = steps.every((step) => step.pure);
+  return { pure, parses: pure && steps.some((step) => step.parses) };
 }

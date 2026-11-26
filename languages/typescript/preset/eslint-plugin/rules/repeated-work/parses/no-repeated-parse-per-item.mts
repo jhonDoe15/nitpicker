@@ -37,24 +37,41 @@ function sharedField(
     : undefined;
 }
 
+function parseStep(
+  sourceCode: SourceCode,
+  call: TSESTree.CallExpression,
+): { readonly parses: boolean; readonly argument: TSESTree.CallExpressionArgument } | undefined {
+  const fn = localFunction(sourceCode, call.callee);
+  const [argument] = call.arguments;
+  const verdict =
+    fn === undefined || argument === undefined || call.arguments.length !== 1
+      ? undefined
+      : parserVerdict(sourceCode, fn);
+  return verdict?.pure === true && argument !== undefined
+    ? { parses: verdict.parses, argument }
+    : undefined;
+}
+
 function parseChain(
   sourceCode: SourceCode,
   call: TSESTree.CallExpression,
 ): { readonly parses: boolean; readonly input: TSESTree.Node } | undefined {
-  const fn = localFunction(sourceCode, call.callee);
-  const [argument] = call.arguments;
-  if (fn === undefined || argument === undefined || call.arguments.length !== 1) {
-    return undefined;
+  const pending: TSESTree.CallExpression[] = [call];
+  const steps: { readonly parses: boolean; readonly argument: TSESTree.Node }[] = [];
+  for (const current of pending) {
+    const step = parseStep(sourceCode, current);
+    if (step === undefined) {
+      return undefined;
+    }
+    steps.push(step);
+    if (step.argument.type === AST_NODE_TYPES.CallExpression) {
+      pending.push(step.argument);
+    }
   }
-  const verdict = parserVerdict(sourceCode, fn);
-  if (!verdict.pure) {
-    return undefined;
-  }
-  if (argument.type !== AST_NODE_TYPES.CallExpression) {
-    return { parses: verdict.parses, input: argument };
-  }
-  const inner = parseChain(sourceCode, argument);
-  return inner === undefined ? undefined : { ...inner, parses: inner.parses || verdict.parses };
+  const last = steps.at(-1);
+  return last === undefined
+    ? undefined
+    : { parses: steps.some((step) => step.parses), input: last.argument };
 }
 
 function parsedField(

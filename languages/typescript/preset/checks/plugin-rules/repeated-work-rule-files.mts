@@ -1,6 +1,7 @@
 export const REPEATED_WORK_RULE_FILES = [
   'languages/typescript/preset/checks/plugin-rules/repeated-work-rule-files.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/support/loop-invariance.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/repeated-work/support/plain-paths.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/patterns/glob-calls.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/patterns/pattern-guards.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/patterns/no-pattern-compiled-in-loop.mjs',

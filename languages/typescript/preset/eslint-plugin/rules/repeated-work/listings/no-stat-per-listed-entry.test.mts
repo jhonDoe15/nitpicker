@@ -13,17 +13,25 @@ const ASYNC =
 tester.run('no-stat-per-listed-entry', rule, {
   valid: [
     ...cases(`
-export function f(dir: string) { for (const name of readdirSync(dir)) { if (statSync(dir + name).isDirectory()) use(name); } }
+export function f(dir: string) { for (const name of readdirSync(dir)) {
+  if (statSync(dir + name).isDirectory()) use(name); } }
 declare function readdirSync(d: string): string[];
 declare function statSync(p: string): { isDirectory(): boolean };
 declare function use(n: string): void;
 `),
-    `${SYNC}\nexport function f(dir: string) { for (const name of readdirSync(dir)) { if (statSync(join(dir, name, "package.json")).isFile()) use(name); } }\ndeclare function use(n: string): void;`,
-    `${SYNC}\nexport function walk(dir: string) { for (const entry of readdirSync(dir, { withFileTypes: true })) { if (entry.isDirectory()) walk(join(dir, entry.name)); } }`,
-    `${SYNC}\nexport function sizes(dir: string) { return readdirSync(dir).map((name) => statSync(join(dir, name)).size); }`,
-    `${SYNC}\nexport function f(dir: string) { for (const name of readdirSync(dir)) { const info = statSync(join(dir, name)); if (info.isFile()) use(info.mtimeMs); } }\ndeclare function use(n: number): void;`,
-    `${SYNC}\nexport function f(dir: string, names: string[]) { for (const name of names) { if (statSync(join(dir, name)).isDirectory()) use(name); } }\ndeclare function use(n: string): void;`,
-    `${SYNC}\nexport function f(dir: string, other: string) { for (const name of readdirSync(dir)) { if (statSync(other).isDirectory()) use(name); } }\ndeclare function use(n: string): void;`,
+    `${SYNC}\nexport function f(dir: string) { for (const name of readdirSync(dir)) {
+      if (statSync(join(dir, name, "package.json")).isFile()) use(name); } }\ndeclare function use(n: string): void;`,
+    `${SYNC}\nexport function walk(dir: string) { for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) walk(join(dir, entry.name)); } }`,
+    `${SYNC}\nexport function sizes(dir: string) {
+      return readdirSync(dir).map((name) => statSync(join(dir, name)).size); }`,
+    `${SYNC}\nexport function f(dir: string) { for (const name of readdirSync(dir)) {
+      const info = statSync(join(dir, name)); if (info.isFile()) use(info.mtimeMs); }
+        }\ndeclare function use(n: number): void;`,
+    `${SYNC}\nexport function f(dir: string, names: string[]) { for (const name of names) {
+      if (statSync(join(dir, name)).isDirectory()) use(name); } }\ndeclare function use(n: string): void;`,
+    `${SYNC}\nexport function f(dir: string, other: string) { for (const name of readdirSync(dir)) {
+      if (statSync(other).isDirectory()) use(name); } }\ndeclare function use(n: string): void;`,
   ],
   invalid: [
     {
@@ -39,7 +47,7 @@ declare function use(n: string): void;
       errors: [STAT('stat')],
     },
     {
-      code: "import fs from 'node:fs';\nexport function f(dir: string) { for (const name of fs.readdirSync(dir, 'utf8')) { if (fs.statSync(`${dir}/${name}`).isDirectory()) use(name); } }\ndeclare function use(n: string): void;",
+      code: "import fs from 'node:fs';\nexport function f(dir: string) { for (const name of fs.readdirSync(dir, 'utf8')) { if (fs.statSync(dir + '/' + name).isDirectory()) use(name); } }\ndeclare function use(n: string): void;",
       errors: [STAT('fs.statSync')],
     },
   ],

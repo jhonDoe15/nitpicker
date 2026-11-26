@@ -61,7 +61,7 @@ export const rule: TSESLint.RuleModule<'scanPerKey'> = {
             member.object,
             ...namesIn(predicate),
           ]) &&
-          !readsLoopState(sourceCode, predicate, repeat.node, predicate)
+          !readsLoopState(sourceCode, predicate, repeat.node)
         ) {
           context.report({
             node: call,

@@ -2,14 +2,10 @@ import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint
 import { memberName } from '../../collections/costly-forms/repeated-runs.mts';
 import { variableNamed, type SourceCode } from '../../typed/node-views.mts';
 import { isFsCall } from '../repeated-calls/call-shapes.mts';
-import { listedEntry } from './listed-entries.mts';
+import { calledName, listedEntry } from './listed-entries.mts';
 
 const STATS = new Set(['lstat', 'lstatSync', 'stat', 'statSync']);
 const KIND_TESTS = new Set(['isDirectory', 'isFile', 'isSymbolicLink']);
-
-function calledName(callee: TSESTree.Node): string | undefined {
-  return callee.type === AST_NODE_TYPES.Identifier ? callee.name : memberName(callee);
-}
 
 function outerValue(call: TSESTree.CallExpression): TSESTree.Node {
   return call.parent.type === AST_NODE_TYPES.AwaitExpression ? call.parent : call;

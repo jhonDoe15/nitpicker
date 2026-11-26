@@ -2,7 +2,8 @@ import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint
 import { variableNamed, type SourceCode } from '../../typed/node-views.mts';
 import { memberName, someNode } from '../../collections/costly-forms/repeated-runs.mts';
 import { invariantIn, openRepeat } from '../support/loop-invariance.mts';
-import { copiedSource, isPlainSource, isStored } from './copy-forms.mts';
+import { copiedSource, isStored } from './copy-forms.mts';
+import { isPlainPath } from '../support/plain-paths.mts';
 
 const MUTATORS = new Set([
   'add',
@@ -31,9 +32,11 @@ function isLiteralSource(sourceCode: SourceCode, source: TSESTree.Node): boolean
     return false;
   }
   const definition = variableNamed(sourceCode, source)?.defs[0];
-  const init =
-    definition?.node.type === AST_NODE_TYPES.VariableDeclarator ? definition.node.init : null;
-  return init !== null && LITERALS.has(init.type);
+  const declarator = definition?.node;
+  return (
+    declarator?.type === AST_NODE_TYPES.VariableDeclarator &&
+    LITERALS.has(declarator.init?.type ?? '')
+  );
 }
 
 function mutatedInside(
@@ -80,7 +83,7 @@ export const rule: TSESLint.RuleModule<'copyPerPass'> = {
       if (
         source === undefined ||
         repeat === undefined ||
-        !isPlainSource(source) ||
+        !isPlainPath(source) ||
         isLiteralSource(sourceCode, source) ||
         !invariantIn(sourceCode, source, repeat.node) ||
         mutatedInside(sourceCode, source, repeat.node) ||

@@ -8,7 +8,7 @@ import { innermostRepeat } from '../support/loop-invariance.mts';
 const LISTINGS = new Set(['readdir', 'readdirSync']);
 const ENTRY_METHODS = new Set(['filter', 'flatMap', 'forEach', 'map', 'some', 'every', 'find']);
 
-function calledName(callee: TSESTree.Node): string | undefined {
+export function calledName(callee: TSESTree.Node): string | undefined {
   return callee.type === AST_NODE_TYPES.Identifier ? callee.name : memberName(callee);
 }
 
