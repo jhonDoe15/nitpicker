@@ -12,7 +12,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 pub struct Types {
-    session: Session,
+    pub(crate) session: Session,
     program: HashSet<String>,
     file: String,
     offsets: Utf16,
@@ -68,7 +68,7 @@ impl Types {
         true
     }
 
-    fn answered<T: Default>(&mut self, answer: Result<T, String>) -> T {
+    pub(crate) fn answered<T: Default>(&mut self, answer: Result<T, String>) -> T {
         answer.unwrap_or_else(|error| {
             if std::env::var_os("NITPICKER_ENGINE_TRACE").is_some() {
                 eprintln!("{}: {}", self.file, error.lines().next().unwrap_or_default());
@@ -133,7 +133,7 @@ impl Types {
     }
 
     /// A question about one type, asked once for the run.
-    fn about<T: DeserializeOwned + Default>(&mut self, method: &'static str, kind: u64, parameters: serde_json::Value) -> T {
+    pub(crate) fn about<T: DeserializeOwned + Default>(&mut self, method: &'static str, kind: u64, parameters: serde_json::Value) -> T {
         if let Some(known) = self.answers.get(&(method, kind)) {
             return serde_json::from_value(known.clone()).unwrap_or_default();
         }
@@ -210,6 +210,11 @@ impl Types {
         &self.file
     }
 
+    /// Leaves the file to the ESLint-plugin rule when a question has no trustworthy answer.
+    pub fn refuse(&mut self, reason: &str) {
+        self.refused.get_or_insert_with(|| reason.to_string());
+    }
+
     /// The compiler's name for the node of this kind and extent (byte offsets of the engine's tree).
     pub fn handle_at(&mut self, kind: Option<u32>, start: u32, end: u32) -> Option<String> {
         let file = self.file.clone();
@@ -264,7 +269,7 @@ impl Types {
 }
 
 /// `isDeclarationFileName`: `.d.mts`, `.d.cts`, or a `.ts` name with `.d.` in it.
-fn is_declaration_file(path: &str) -> bool {
+pub fn is_declaration_file(path: &str) -> bool {
     let name = path.rsplit('/').next().unwrap_or(path);
     name.ends_with(".d.mts") || name.ends_with(".d.cts") || (name.ends_with(".ts") && name.contains(".d."))
 }

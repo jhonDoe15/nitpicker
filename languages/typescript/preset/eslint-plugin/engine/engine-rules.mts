@@ -45,6 +45,7 @@ export type EngineRule = {
 export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<string, EngineRule>([
   ['hover-test-needs-keyboard', {}],
   ['no-add-only-collection', {}],
+  ['no-array-spread-arguments', { needs: 'types' }],
   [
     'no-copied-constant',
     {
@@ -55,6 +56,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
       },
     },
   ],
+  ['no-dropped-delegate-result', { needs: 'types' }],
   ['no-external-executables-in-unit-tests', {}],
   [
     'no-internal-module-mocks',
@@ -66,6 +68,8 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
     },
   ],
   ['no-falsy-default', { needs: 'types' }],
+  ['no-forwarding-method-alias', { needs: 'types' }],
+  ['no-forwarding-wrapper', { needs: 'types' }],
   ['no-listen-on-all-interfaces', {}],
   ['no-mutating-method-in-domain', { needs: 'types' }],
   ['no-parameter-mutation', { needs: 'types' }],
@@ -80,8 +84,18 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
       }),
     },
   ],
+  ['no-shadowed-spread-key', { needs: 'types' }],
   ['no-silent-catch', {}],
   ['no-swapped-arguments', { needs: 'types' }],
+  [
+    'no-unhandled-void-promise',
+    {
+      needs: 'types',
+      facts: (_filename, options) => ({
+        runners: JSON.stringify(Reflect.get(Object(options[0]), 'runners') ?? []),
+      }),
+    },
+  ],
   ['no-wait-for-with-fake-timers', {}],
   [
     'preserve-error-cause',
