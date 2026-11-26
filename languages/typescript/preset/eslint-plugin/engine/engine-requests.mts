@@ -18,6 +18,10 @@ export function engineRuleName(ruleId: string): string {
   return pluginRuleName(ruleId) ?? ruleId;
 }
 
+export function isTypedOnEngine(ruleId: string): boolean {
+  return ENGINE_PLUGIN_RULES.get(pluginRuleName(ruleId) ?? '')?.typed === true;
+}
+
 function optionsOf(setting: unknown): readonly unknown[] {
   return Array.isArray(setting) ? setting.slice(1) : [];
 }

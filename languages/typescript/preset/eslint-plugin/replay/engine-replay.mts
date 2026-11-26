@@ -17,10 +17,18 @@ type Report = {
 type Replay = {
   readonly covered: ReadonlySet<string>;
   readonly rules: ReadonlySet<string>;
+  readonly typedCovered: ReadonlySet<string>;
+  readonly typedRules: ReadonlySet<string>;
   readonly reports: ReadonlyMap<string, readonly Report[]>;
 };
 
-const NONE: Replay = { covered: new Set(), rules: new Set(), reports: new Map() };
+const NONE: Replay = {
+  covered: new Set(),
+  rules: new Set(),
+  typedCovered: new Set(),
+  typedRules: new Set(),
+  reports: new Map(),
+};
 const replays = new Map<string, Replay>();
 function reportKey(file: string, ruleId: string): string {
   return JSON.stringify([file, ruleId]);
@@ -52,9 +60,12 @@ function readReplay(file: string): Replay {
       reports.set(key, [...(reports.get(key) ?? []), report]);
     }
   }
+  const strings = (field: string) => new Set(listOf(fieldOf(written, field)).map(String));
   return {
-    covered: new Set(listOf(fieldOf(written, 'files')).map(String)),
-    rules: new Set(listOf(fieldOf(written, 'rules')).map(String)),
+    covered: strings('files'),
+    rules: strings('rules'),
+    typedCovered: strings('typedFiles'),
+    typedRules: strings('typedRules'),
     reports,
   };
 }
@@ -73,7 +84,23 @@ export function engineCovers(
   context: Pick<Rule.RuleContext, 'cwd' | 'filename'>,
 ): boolean {
   const replay = replayOf();
-  return replay.rules.has(ruleId) && replay.covered.has(projectFile(context));
+  const covered = replay.typedRules.has(ruleId) ? replay.typedCovered : replay.covered;
+  return replay.rules.has(ruleId) && covered.has(projectFile(context));
+}
+
+function needsMissingProgram(
+  ruleId: string,
+  rule: Rule.RuleModule,
+  context: Rule.RuleContext,
+): boolean {
+  if (!replayOf().typedRules.has(ruleId)) {
+    return false;
+  }
+  const docs: unknown = rule.meta?.docs;
+  const program = fieldOf(context.sourceCode.parserServices, 'program');
+  return (
+    fieldOf(docs, 'requiresTypeChecking') === true && (program === undefined || program === null)
+  );
 }
 
 function locationOf({
@@ -96,7 +123,7 @@ export function replayedByEngine(
     ...rule,
     create(context) {
       if (!engineCovers(ruleId, context)) {
-        return rule.create(context);
+        return needsMissingProgram(ruleId, rule, context) ? {} : rule.create(context);
       }
       const reports = replayOf().reports.get(reportKey(projectFile(context), ruleId)) ?? [];
       return {

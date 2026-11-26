@@ -13,7 +13,8 @@ import {
   lintResultsOf,
   planOf,
 } from './plan/oxlint-shapes.mts';
-import { withEngineLint } from './run/engine-pass.mts';
+import { withEngineLint, withTypedCoverage } from './run/engine-pass.mts';
+import { ENGINE_FINDINGS_FILE } from '../../../../shared/engine/engine-findings-file.mts';
 import { mergeResults } from './run/merged-results.mts';
 import { type LintTiming, type StageRun, lintConfigs, settledBeside } from './run/stage-lint.mts';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
@@ -82,14 +83,14 @@ export async function lintWithOxlint({
     const directiveFiles = directiveFilesOf(options.projectRoot, files, plan.noInlineConfig);
     const { projectRoot, timeoutMs } = options;
     const { results, residual } = await withEngineLint(
-      { plan, projectRoot, environment, timeoutMs },
-      (engineEnvironment) =>
+      { plan, projectRoot, projectConfigPath, environment, timeoutMs },
+      (engine) =>
         lintUntilAccepted({
-          plan,
+          plan: withTypedCoverage(plan, engine.coverage),
           stage,
           projectRoot,
           runEslintCli,
-          environment: engineEnvironment,
+          environment: engine.environment,
           timeoutMs,
           neutralized: new Map([
             ...inlineConfig.neutralized,
@@ -176,7 +177,10 @@ async function lintAttempt({
   return lintBesideResidual({
     residual: () =>
       residualRun(residualRuns, translation.residual, () =>
-        residualResults(projectRoot, translation.residual, runEslintCli),
+        residualResults(projectRoot, translation.residual, {
+          runEslintCli,
+          replay: run.environment[ENGINE_FINDINGS_FILE],
+        }),
       ),
     translation,
     bridgedRules,
@@ -260,23 +264,43 @@ function bridgeRejectedRules(
   for (const ruleId of rejected) bridgedRules.add(ruleId);
 }
 
+function residualPairs(residual: readonly ResidualGroup[]): Set<string> {
+  return new Set(
+    residual.flatMap((group) =>
+      group.files.flatMap((file) => group.rules.map((rule) => JSON.stringify([file, rule]))),
+    ),
+  );
+}
+
 async function residualResults(
   projectRoot: string,
   residual: readonly ResidualGroup[],
-  runEslintCli: RunEslintCli,
+  {
+    runEslintCli,
+    replay,
+  }: { readonly runEslintCli: RunEslintCli; readonly replay: string | undefined },
 ): Promise<LintResult[]> {
   if (residual.length === 0) return [];
   const files = [...new Set(residual.flatMap((group) => group.files))].sort();
   const rules = [...new Set(residual.flatMap((group) => group.rules))].sort();
+  const pairs = residualPairs(residual);
+  const listed = new Set(files);
   const results = lintResultsOf(
     await runEslintCli(files, {
       NITPICKER_DIFF_ESLINT_ONLY_RULES: JSON.stringify(rules),
+      ...(replay === undefined ? {} : { [ENGINE_FINDINGS_FILE]: replay }),
     }),
   );
-  return results.map((result) => ({
-    filePath: path.relative(projectRoot, result.filePath).replaceAll('\\', '/'),
-    messages: result.messages.filter(
-      (message) => message.ruleId !== undefined && rules.includes(message.ruleId),
-    ),
-  }));
+  return results.map((result) => {
+    const filePath = path.relative(projectRoot, result.filePath).replaceAll('\\', '/');
+    return {
+      filePath,
+      messages: result.messages.filter(
+        (message) =>
+          message.ruleId !== undefined &&
+          rules.includes(message.ruleId) &&
+          (!listed.has(filePath) || pairs.has(JSON.stringify([filePath, message.ruleId]))),
+      ),
+    };
+  });
 }
