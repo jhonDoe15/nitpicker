@@ -16,6 +16,7 @@ export type EngineFinding = {
   readonly column: number;
   readonly message: string;
   readonly end?: { readonly line: number; readonly column: number };
+  readonly conditions?: readonly (readonly [string, string])[];
 };
 
 const PARSE_FAILURE_RULE = '!parse';
@@ -28,8 +29,15 @@ function cellsOf(row: unknown): readonly unknown[] {
   return Array.isArray(row) ? row : [];
 }
 
+function conditionsOf(cell: unknown): Pick<EngineFinding, 'conditions'> {
+  const conditions = cellsOf(cell).map((pair) => cellsOf(pair).map(String));
+  return conditions.length === 0
+    ? {}
+    : { conditions: conditions.map(([kind = '', value = '']) => [kind, value] as const) };
+}
+
 function findingOf(row: unknown): EngineFinding {
-  const [file, rule, line, column, message, endLine, endColumn] = cellsOf(row);
+  const [file, rule, line, column, message, endLine, endColumn, conditions] = cellsOf(row);
   if (
     typeof file !== 'string' ||
     typeof rule !== 'string' ||
@@ -41,7 +49,15 @@ function findingOf(row: unknown): EngineFinding {
       `nitpicker-engine wrote a row that is not a finding: ${JSON.stringify(row)}`,
     );
   }
-  return { file, rule, line, column, message, ...endOf(endLine, endColumn) };
+  return {
+    file,
+    rule,
+    line,
+    column,
+    message,
+    ...endOf(endLine, endColumn),
+    ...conditionsOf(conditions),
+  };
 }
 
 export function engineFindingOf(finding: unknown): EngineFinding {

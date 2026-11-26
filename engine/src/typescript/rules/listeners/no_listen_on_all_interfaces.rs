@@ -128,6 +128,6 @@ pub fn check(context: &mut Context) {
         }
     }
     for span in found {
-        context.report("no-listen-on-all-interfaces", span, MESSAGE.to_string());
+        context.report_range("no-listen-on-all-interfaces", span.start, Some(span.end), MESSAGE.to_string());
     }
 }

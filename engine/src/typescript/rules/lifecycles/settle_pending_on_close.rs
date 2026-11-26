@@ -119,11 +119,11 @@ pub fn check(context: &mut Context) {
             if !settled {
                 let name = binding.name.clone().unwrap_or_else(|| "undefined".to_string());
                 let closer = function_name(*first).unwrap_or_default();
-                found.push((binding.node.start(), format!("{name} keeps pending requests (callbacks or resolve and reject pairs), but {closer}() never settles them, so every caller still waiting hangs forever. Reject each entry with an error before clearing: `for (const entry of {name}.values()) {{ entry.reject(new Error(\"closed\")); }} {name}.clear();`, or hand {name} to a helper that does. An exception fits only when the entries are settled elsewhere before the scope closes.")));
+                found.push((binding.node.start(), binding.node.end(), format!("{name} keeps pending requests (callbacks or resolve and reject pairs), but {closer}() never settles them, so every caller still waiting hangs forever. Reject each entry with an error before clearing: `for (const entry of {name}.values()) {{ entry.reject(new Error(\"closed\")); }} {name}.clear();`, or hand {name} to a helper that does. An exception fits only when the entries are settled elsewhere before the scope closes.")));
             }
         }
     }
-    for (start, message) in found {
-        context.report_at("settle-pending-on-close", start, message);
+    for (start, end, message) in found {
+        context.report_range("settle-pending-on-close", start, Some(end), message);
     }
 }

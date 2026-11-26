@@ -115,7 +115,7 @@ function isProductionModule(filename: string, source: string): boolean {
   return !(TEST_SUPPORT.test(rootRelative) || layout.isTestFile(rootRelative));
 }
 
-function reachesProduction(filename: string, source: string): boolean {
+export function reachesProduction(filename: string, source: string): boolean {
   if (isProductionModule(filename, source)) {
     return true;
   }
@@ -133,12 +133,28 @@ function isProductionRequire(filename: string, node: TSESTree.CallExpression): b
   );
 }
 
-function isExemptTest(context: Context, filename: string): boolean {
-  const exemptTest = new RegExp(context.options[0]?.exemptPattern ?? DEFAULT_EXEMPT_PATTERN);
+function exemptPatternOf(options: readonly unknown[]): string {
+  const pattern: unknown = Reflect.get(Object(options[0]), 'exemptPattern');
+  return typeof pattern === 'string' ? pattern : DEFAULT_EXEMPT_PATTERN;
+}
+
+export function isExemptPath(
+  context: { readonly cwd: string; readonly options: readonly unknown[] },
+  filename: string,
+): boolean {
+  const exemptTest = new RegExp(exemptPatternOf(context.options));
   const projectFile = path.relative(context.cwd, filename).replaceAll('\\', '/');
   return (
     !(layout.isRunnerTestFile(projectFile) || layout.isRunnerTestFile(filename)) ||
     exemptTest.test(filename) ||
+    layout.isEndToEndTest(projectFile)
+  );
+}
+
+function isExemptTest(context: Context, filename: string): boolean {
+  const projectFile = path.relative(context.cwd, filename).replaceAll('\\', '/');
+  return (
+    isExemptPath(context, filename) ||
     isBrowserEndToEndTest({
       sources: context.sourceCode.ast.body.flatMap(statementSources),
       projectFile,

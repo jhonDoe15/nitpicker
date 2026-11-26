@@ -1,0 +1,33 @@
+import { jest as runner } from '@jest/globals';
+import { mock } from 'node:test';
+import mockRequire from 'mock-require';
+import td from 'testdouble';
+import quibble from 'quibble';
+import proxyquire from 'proxyquire';
+import esmock from 'esmock';
+import * as domain from '../domain.js';
+import * as os from 'node:os';
+
+vi.mock('../../logging/logger.js');
+vi.doMock('../collaborator.js');
+vi.mock(import('../collaborator.js'));
+vi['doMock']('../collaborator.js');
+jest.setMock('../collaborator.js', {});
+runner.mock('../../config.js');
+mock.module('../collaborator.js', { namedExports: {} });
+mockRequire('../collaborator.js', {});
+td.replace('../collaborator.js');
+await quibble.esm('../collaborator.js');
+proxyquire('../feature.js', { '../collaborator.js': {} });
+await esmock.strict('../feature.js', {}, { '../collaborator.js': {} });
+vi.spyOn(domain, 'leaf').mockReturnValue(1);
+vi.spyOn(os, 'hostname');
+
+vi.mock('undici');
+jest.fn('../collaborator.js');
+jest.mock('../collaborator.js'.length);
+const local = require('./local.js');
+local('../collaborator.js');
+jest['mock']('../collaborator.js');
+vi.spyOn(console, 'log');
+vi.spyOn(leaf, 'call');

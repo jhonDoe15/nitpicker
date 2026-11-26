@@ -1,10 +1,14 @@
 //! Lint rules on the shared parse. Ids, messages and positions are those of the ESLint-plugin rule of the same name.
 mod errors;
+mod events;
 mod lifecycles;
 mod listeners;
 mod modules;
 mod react_tests;
 pub mod support;
+mod test_assertions;
+mod test_runtime;
+mod time;
 pub mod testing_library;
 
 use super::ParsedFile;
@@ -27,16 +31,18 @@ pub struct Context<'a, 's> {
     findings: Vec<Reported>,
 }
 
-/// A finding, and where its range ends when the rule reports a range and not a point.
+/// A finding, where its range ends when the rule reports a range and not a point, and the policy questions the
+/// caller answers before it keeps the finding: each a kind of question and the value it is asked about.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Reported {
     pub finding: Finding,
     pub end: Option<(usize, usize)>,
+    pub conditions: Vec<(String, String)>,
 }
 
 impl From<Finding> for Reported {
     fn from(finding: Finding) -> Reported {
-        Reported { finding, end: None }
+        Reported { finding, end: None, conditions: Vec::new() }
     }
 }
 
@@ -67,32 +73,51 @@ impl<'a> Context<'a, '_> {
         self.report_range(rule, start, None, message);
     }
 
+    /// Line and 1-based UTF-16 column, as ESLint counts them: it drops a byte order mark before it counts.
     fn place(&self, offset: u32) -> (usize, usize) {
-        (self.file.lines.line(offset) as usize, self.file.lines.column_utf16(self.file.text, offset) as usize + 1)
+        let line = self.file.lines.line(offset) as usize;
+        let column = self.file.lines.column_utf16(self.file.text, offset) as usize + 1;
+        let mark = usize::from(line == 1 && self.file.text.starts_with('\u{feff}') && offset > 0);
+        (line, column - mark)
     }
 
     /// Reports from `start`, up to `end` when the rule reports a range and not a point.
     pub fn report_range(&mut self, rule: &str, start: u32, end: Option<u32>, message: String) {
+        self.report_when(rule, start, end, message, Vec::new());
+    }
+
+    /// Reports only if the caller answers yes to every condition, a question of policy the engine leaves to it.
+    pub fn report_when(&mut self, rule: &str, start: u32, end: Option<u32>, message: String, conditions: Vec<(String, String)>) {
         let (line, column) = self.place(start);
         let rule = if rule.contains('/') { rule.to_string() } else { format!("nitpicker/{rule}") };
         let finding = Finding { file: self.display.to_string(), line, column, rule, message, symbol: None };
-        self.findings.push(Reported { finding, end: end.map(|end| self.place(end)) });
+        self.findings.push(Reported { finding, end: end.map(|end| self.place(end)), conditions });
     }
 }
 
 pub type Rule = fn(&mut Context);
 
 /// Rules written against the ESTree-shaped view.
-const ON_VIEW: &[&str] = &["hover-test-needs-keyboard", "no-add-only-collection", "react-test-no-implementation-details", "settle-pending-on-close"];
+const ON_VIEW: &[&str] = &["hover-test-needs-keyboard", "no-add-only-collection", "no-copied-constant", "no-external-executables-in-unit-tests", "no-internal-module-mocks", "no-wait-for-with-fake-timers", "preserve-error-cause", "react-test-no-implementation-details", "report-module-load-effects", "require-error-listener", "settle-pending-on-close", "structured-catch-logging", "test-must-use-production-runtime", "time-unit-mismatch"];
 
 pub const ALL: &[(&str, Rule)] = &[
     ("hover-test-needs-keyboard", react_tests::hover_test_needs_keyboard::check),
     ("no-add-only-collection", lifecycles::no_add_only_collection::check),
+    ("no-copied-constant", test_assertions::no_copied_constant::check),
+    ("no-external-executables-in-unit-tests", test_runtime::no_external_executables_in_unit_tests::check),
+    ("no-internal-module-mocks", test_runtime::no_internal_module_mocks::check),
     ("no-listen-on-all-interfaces", listeners::no_listen_on_all_interfaces::check),
     ("no-production-console", modules::no_production_console::check),
     ("no-silent-catch", errors::no_silent_catch::check),
+    ("no-wait-for-with-fake-timers", test_runtime::no_wait_for_with_fake_timers::check),
+    ("preserve-error-cause", errors::preserve_error_cause::check),
     ("react-test-no-implementation-details", react_tests::no_implementation_details::check),
+    ("report-module-load-effects", modules::load_effects::check),
+    ("require-error-listener", events::require_error_listener::check),
     ("settle-pending-on-close", lifecycles::settle_pending_on_close::check),
+    ("structured-catch-logging", errors::logging::structured_catch_logging::check),
+    ("test-must-use-production-runtime", test_runtime::production_runtime::check),
+    ("time-unit-mismatch", time::units::check),
 ];
 
 fn known() -> impl Iterator<Item = (&'static str, Rule)> {
@@ -104,6 +129,11 @@ pub struct Selection {
     names: Vec<&'static str>,
     rules: Vec<Rule>,
     view: bool,
+}
+
+/// The names of `only` that are no rule of the engine.
+pub fn unknown(only: &[String]) -> Vec<&str> {
+    only.iter().map(String::as_str).filter(|wanted| !known().any(|(name, _)| name == *wanted)).collect()
 }
 
 pub fn selected(only: Option<&[String]>) -> Selection {
@@ -125,12 +155,17 @@ impl Selection {
 }
 
 fn lint_file(path: &str, display: &str, settings: &[String], selection: &Selection) -> Vec<Reported> {
-    let Ok(text) = std::fs::read_to_string(path) else { return Vec::new() };
+    let unparsed = || vec![Finding { file: display.to_string(), line: 1, column: 1, rule: "!parse".into(), message: String::new(), symbol: None }.into()];
+    let Ok(text) = std::fs::read_to_string(path) else { return unparsed() };
     super::with_parsed(path, &text, |file| {
-        if file.panicked {
-            return vec![Finding { file: display.to_string(), line: 1, column: 1, rule: "!parse".into(), message: String::new(), symbol: None }.into()];
+        if file.panicked || !file.errors.is_empty() {
+            return unparsed();
         }
-        let semantic = SemanticBuilder::new().with_build_nodes(true).build(file.program).semantic;
+        let built = SemanticBuilder::new().with_build_nodes(true).with_check_syntax_error(true).build(file.program);
+        if !built.diagnostics.is_empty() {
+            return unparsed();
+        }
+        let semantic = built.semantic;
         let view = selection.view.then(|| support::view::View::of(file.program.to_estree_json(true, true)));
         let scopes = view.as_ref().map(|view| support::scope::Scopes::of(&semantic, view));
         let estree = view.as_ref().zip(scopes.as_ref());
@@ -151,6 +186,9 @@ pub struct Listed {
 
 pub fn lint_files(files: &[Listed], rules: &Selection) -> Vec<Reported> {
     let mut findings: Vec<Reported> = files.par_iter().flat_map_iter(|file| lint_file(&file.path, &file.display, &file.settings, rules)).collect();
-    findings.sort();
+    findings.sort_by(|left, right| {
+        let (left, right) = (&left.finding, &right.finding);
+        left.file.cmp(&right.file).then(left.line.cmp(&right.line)).then(left.column.cmp(&right.column))
+    });
     findings
 }

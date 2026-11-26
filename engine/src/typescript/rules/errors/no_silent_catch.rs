@@ -29,6 +29,6 @@ pub fn check(context: &mut Context) {
         })
         .collect();
     for span in silent {
-        context.report("no-silent-catch", span, MESSAGE.to_string());
+        context.report_range("no-silent-catch", span.start, Some(span.end), MESSAGE.to_string());
     }
 }

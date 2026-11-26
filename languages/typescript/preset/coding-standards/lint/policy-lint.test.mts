@@ -1,6 +1,7 @@
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import { findEngine } from '../../../../../shared/engine/engine-binary.mts';
 import { createProject } from '../../../adapters/oxlint/test-support/oxlint-project.mts';
 import { lintPolicy } from './policy-lint.mts';
 
@@ -39,13 +40,13 @@ function project(sources: Readonly<Record<string, string>>): Project {
 
 type Project = { readonly root: string; readonly files: readonly string[] };
 
-async function reported({ root, files }: Project, nativeFrom: number) {
+async function reported({ root, files }: Project, nativeFrom: number, engine = 'off') {
   const results = await lintPolicy({
     root,
     policyRoot,
     files,
     nativeFrom,
-    environment: process.env,
+    environment: { ...process.env, NITPICKER_ENGINE: engine },
   });
   return results
     .filter((result) => result.messages.length > 0)
@@ -98,6 +99,22 @@ describe('coding-standards policy lint', () => {
     expect(native).toEqual(await reported(sample, Number.POSITIVE_INFINITY));
     expect(native.map(({ file }) => file)).toEqual(['src/main/parse.ts', 'src/main/shape.ts']);
   });
+
+  it.skipIf(findEngine(process.env) === undefined).each([
+    ['files the compiler accepts', SOURCES],
+    ['a file only the compiler rejects', REJECTED_BY_TYPESCRIPT],
+  ])(
+    'reports the same messages through the engine as through ESLint for %s',
+    async (_, sources) => {
+      const sample = project(sources);
+      const [engine, eslint] = await Promise.all([
+        reported(sample, Number.POSITIVE_INFINITY, String(findEngine(process.env))),
+        reported(sample, Number.POSITIVE_INFINITY),
+      ]);
+
+      expect(engine).toEqual(eslint);
+    },
+  );
 
   it('lints nothing for a project without code files', async () => {
     expect(await lintPolicy({ root: policyRoot, policyRoot, files: [], environment: {} })).toEqual(
