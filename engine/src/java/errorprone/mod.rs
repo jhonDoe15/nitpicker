@@ -107,6 +107,21 @@ mod locale_fix;
 mod futures;
 mod redundant;
 mod tokens;
+mod positions;
+mod testcode;
+mod arrays;
+mod array_values;
+mod misc_calls;
+mod branches;
+mod contracts;
+mod time_checks;
+mod decl_checks;
+mod undefined_equality;
+mod unnecessary_async;
+mod unused_nested;
+mod anonymous_class;
+mod modified_unused;
+mod return_from_void;
 mod unused;
 mod unused_fix;
 mod values;
@@ -117,7 +132,6 @@ mod unsafe_calls;
 mod target;
 mod numeric;
 mod varargs;
-mod arrays;
 mod imports;
 mod finals;
 mod classes3;
@@ -388,6 +402,30 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["ArgumentSelectionDefectChecker"], argsel::argument_selection_defect),
     (&["FloatCast"], casts::float_cast),
     (&["UnsafeReflectiveConstructionCast"], casts::unsafe_reflective_construction_cast),
+    (&["ArrayToString"], array_values::array_to_string),
+    (&["ArrayHashCode"], array_values::array_hash_code),
+    (&["EqualsNull"], misc_calls::equals_null),
+    (&["GetClassOnClass"], misc_calls::get_class_on_class),
+    (&["HashtableContains"], misc_calls::hashtable_contains),
+    (&["UnnecessaryTypeArgument"], misc_calls::unnecessary_type_argument),
+    (&["DuplicateBranches"], branches::duplicate_branches),
+    (&["IdentityBinaryExpression"], branches::identity_binary_expression),
+    (&["ComparisonContractViolated"], contracts::comparison_contract_violated),
+    (&["DistinctVarargsChecker"], contracts::distinct_varargs),
+    (&["UnnecessaryOptionalGet"], contracts::unnecessary_optional_get),
+    (&["CollectionUndefinedEquality"], undefined_equality::collection_undefined_equality),
+    (&["UnnecessaryAsync"], unnecessary_async::unnecessary_async),
+    (&["ReturnFromVoid"], return_from_void::return_from_void),
+    (&["UnnecessaryAnonymousClass"], anonymous_class::unnecessary_anonymous_class),
+    (&["ModifiedButNotUsed"], modified_unused::modified_but_not_used),
+    (&["IntLiteralCast"], decl_checks::int_literal_cast),
+    (&["PublicApiNamedStreamShouldReturnStream"], decl_checks::public_api_named_stream),
+    (&["StaticAssignmentInConstructor"], decl_checks::static_assignment_in_constructor),
+    (&["EqualsUnsafeCast"], decl_checks::equals_unsafe_cast),
+    (&["TimeUnitConversionChecker"], time_checks::time_unit_conversion),
+    (&["JavaTimeDefaultTimeZone"], time_checks::java_time_default_time_zone),
+    (&["JavaDurationGetSecondsGetNano"], time_checks::duration_get_seconds_get_nano),
+    (&["JavaDurationGetSecondsToToSeconds"], time_checks::duration_get_seconds_to_seconds),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
@@ -403,6 +441,7 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["MultipleTopLevelClasses"], lexical::multiple_top_level_classes),
     (&["DeduplicateConstants"], dedupe::deduplicate_constants),
     (&["FieldCanBeLocal"], fieldlocal::field_can_be_local),
+    (&["UnusedNestedClass"], unused_nested::unused_nested_class),
 ];
 
 pub struct ErrorProne;

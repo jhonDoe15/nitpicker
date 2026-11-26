@@ -154,3 +154,8 @@ pub fn replace_including_comments(context: &Context, member: Node, replacement: 
     }
     Fix::replace(start, member.end_byte(), replacement)
 }
+
+/// The name of the class a member declaration belongs to.
+pub fn owner_class(context: &Context, member: Node) -> Option<String> {
+    crate::java::types::scope::enclosing_type(context.file, context.resolver.scope, member)
+}
