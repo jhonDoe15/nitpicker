@@ -175,6 +175,7 @@
   "pmd/RecursiveMapUpdate": ["bug"],
   "pmd/RedundantFieldInitializer": ["simplification"],
   "pmd/RedundantStreamStep": ["simplification"],
+  "pmd/RegexCompiledInLoop": ["performance"],
   "pmd/RegexPartDefect": ["bug"],
   "pmd/RemoveByKeyDropsNewerValue": ["bug", "async"],
   "pmd/ReplaceWithWrongLiteralKind": ["bug"],

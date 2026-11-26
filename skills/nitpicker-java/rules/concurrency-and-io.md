@@ -135,6 +135,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Wrap the body of a task given to `scheduleAtFixedRate` or `scheduleWithFixedDelay` in a try that catches and logs
   `RuntimeException`, because one failed database or remote call otherwise cancels every later run without a log
   line (`pmd/ScheduledTaskStopsOnFailure`).
+- A constant regex used in a loop or a stream lambda is compiled once, in a `private static final Pattern`, not
+  by `matches`, `replaceAll` or `replaceFirst` on each element (`pmd/RegexCompiledInLoop`).
 - A `static` field or a singleton bean's field does not hold a `SimpleDateFormat`, `DecimalFormat`, `Calendar`,
   `Matcher`, `Cipher`, `Mac`, `BeanWrapper` or retry back-off: use `DateTimeFormatter`, a `Pattern` constant with
   `pattern.matcher(text)` per call, a per-call instance or a `ThreadLocal` (`pmd/SharedStatefulHelperField`).
