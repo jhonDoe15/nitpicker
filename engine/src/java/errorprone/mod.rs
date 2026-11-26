@@ -2,6 +2,7 @@
 mod doc;
 mod docparse;
 mod docref;
+pub mod fixes;
 mod annotated;
 mod docplaced;
 mod doctagged;
@@ -11,14 +12,22 @@ mod doctest;
 mod hierarchy;
 mod javadoc;
 mod members;
+mod fix_helpers;
 mod nullaway;
 pub use nullaway::unread_marks;
+mod equality_fix;
+mod nullness;
 mod operators;
 mod returns;
+mod namefixes;
+mod renames;
 mod names;
+mod typevars;
 mod naming;
 mod obsolete;
+mod obsolete_fix;
 mod simple;
+mod splitter_fix;
 mod assigned;
 mod signatures;
 mod statements;
@@ -30,14 +39,20 @@ mod immutable;
 mod immutable_known;
 mod keep;
 mod boxed;
+mod boxed_fixes;
+mod exposed_fixes;
+mod ignored_fix;
 mod interrupts;
 mod vars;
 mod mutability;
+mod mutability_fix;
 mod locale;
+mod locale_fix;
 mod futures;
 mod redundant;
 mod tokens;
 mod unused;
+mod unused_fix;
 mod values;
 
 use super::types::project::JavaProject;
@@ -67,6 +82,13 @@ impl Context<'_> {
             return;
         }
         self.report_always(check, offset, message);
+    }
+    /// Reports with Error Prone's "Did you mean" sentence for the check's suggested fixes.
+    pub fn report_fixed(&self, check: &'static str, matched: Node, offset: usize, message: &str, fixes: &[fixes::Fix]) {
+        if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == check)) || self.suppressed(check, matched) {
+            return;
+        }
+        self.report_always(check, offset, &format!("{message}{}", fixes::sentence(&self.file.text, fixes)));
     }
     /// Reports without looking for a suppression: some checks report from the file as a whole.
     pub fn report_always(&self, check: &'static str, offset: usize, message: &str) {

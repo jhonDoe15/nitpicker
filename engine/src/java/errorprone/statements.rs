@@ -1,5 +1,8 @@
 //! Checks on the shape of declarations and statements.
 use super::Context;
+use super::fix_helpers::{delete_with_leading_whitespace, remove_modifiers};
+use super::fixes::Fix;
+use super::members::printed_type;
 use super::hierarchy::{declared_method, super_methods};
 use super::members::{BODIES, is_method};
 use crate::engine::source::{children, named_children, parent};
@@ -22,7 +25,56 @@ pub fn multi_variable_declaration(context: &Context, node: Node) {
         return;
     }
     let around = if local { holder } else { parent(holder).filter(|_| holder.kind() == "enum_body_declarations").unwrap_or(holder) };
-    context.report("MultiVariableDeclaration", around, name_start(names[0]), "Variable declarations should declare only one variable");
+    let fix = Fix::replace(node.start_byte(), node.end_byte(), names.iter().map(|name| pretty_variable(context, node, *name)).collect::<String>());
+    context.report_fixed("MultiVariableDeclaration", around, name_start(names[0]), "Variable declarations should declare only one variable", &[fix]);
+}
+
+/// One variable of a declaration printed on its own, as javac prints a variable tree: annotations on lines of their own.
+fn pretty_variable(context: &Context, declaration: Node, declarator: Node) -> String {
+    let mut text = String::new();
+    let mut flags = Vec::new();
+    for part in crate::java::helpers::modifiers(declaration).map(children).unwrap_or_default() {
+        if matches!(part.kind(), "annotation" | "marker_annotation") {
+            let name = part.child_by_field_name("name").map(|name| context.text(name)).unwrap_or_default();
+            let arguments = part.child_by_field_name("arguments").map(|list| context.text(list).to_string()).unwrap_or_default();
+            text.push_str(&format!("@{name}{arguments}\n"));
+        } else {
+            flags.push(part.kind());
+        }
+    }
+    for flag in flags {
+        text.push_str(&format!("{flag} "));
+    }
+    let extra = declarator.child_by_field_name("dimensions").map_or(0, |dimensions| context.text(dimensions).matches('[').count());
+    let kind = declaration.child_by_field_name("type").map(|kind| printed_type(context, kind)).unwrap_or_default();
+    text.push_str(&format!("{kind}{} {}", "[]".repeat(extra), declarator.child_by_field_name("name").map_or("", |name| context.text(name))));
+    if let Some(value) = declarator.child_by_field_name("value") {
+        text.push_str(&format!(" = {}", printed_value(context, value)));
+    }
+    text.push(';');
+    text
+}
+
+/// The initializer as javac prints it where that differs from the source: a cast has no space before its operand.
+fn printed_value(context: &Context, value: Node) -> String {
+    let mut gaps = Vec::new();
+    crate::engine::source::walk(value, |node| {
+        if node.kind() == "cast_expression" {
+            let close = children(node).into_iter().find(|part| part.kind() == ")");
+            if let (Some(close), Some(operand)) = (close, node.child_by_field_name("value")) {
+                gaps.push((close.end_byte(), operand.start_byte()));
+            }
+        }
+    });
+    gaps.sort_unstable();
+    let mut text = String::new();
+    let mut at = value.start_byte();
+    for (start, end) in gaps {
+        text.push_str(&context.file.text[at..start]);
+        at = end;
+    }
+    text.push_str(&context.file.text[at..value.end_byte()]);
+    text
 }
 
 pub fn array_record_component(context: &Context, node: Node) {
@@ -51,8 +103,9 @@ pub fn return_at_the_end_of_void_function(context: &Context, node: Node) {
     };
     let Some(body) = node.child_by_field_name("body").filter(|_| void) else { return };
     let last = named_children(body).into_iter().filter(|part| !part.kind().ends_with("comment")).next_back();
-    if last.is_some_and(|last| last.kind() == "return_statement") {
-        context.report("ReturnAtTheEndOfVoidFunction", node, name_start(node), "`return;` is unnecessary at the end of void methods and constructors.");
+    if let Some(last) = last.filter(|last| last.kind() == "return_statement") {
+        let fix = Fix::replace(last.start_byte(), last.end_byte(), "");
+        context.report_fixed("ReturnAtTheEndOfVoidFunction", node, name_start(node), "`return;` is unnecessary at the end of void methods and constructors.", &[fix]);
     }
 }
 
@@ -94,11 +147,13 @@ pub fn protected_members_in_final_class(context: &Context, node: Node) {
     let Some(body) = node.child_by_field_name("body") else { return };
     let mut names: Vec<&str> = Vec::new();
     let mut first = None;
+    let mut fix = Fix::new();
     for member in children(body) {
         let field = member.kind() == "field_declaration";
         if !(field || is_method(member)) || !has_modifier(member, "protected") || context.suppressed(NAME, member) {
             continue;
         }
+        fix = remove_modifiers(fix, member, &["public", "protected", "private"]);
         if field {
             for declarator in declarators(member) {
                 first.get_or_insert(name_start(declarator));
@@ -113,7 +168,7 @@ pub fn protected_members_in_final_class(context: &Context, node: Node) {
         }
     }
     if let Some(at) = first {
-        context.report(NAME, node, at, &format!("Make members of final classes package-private: {}", names.join(", ")));
+        context.report_fixed(NAME, node, at, &format!("Make members of final classes package-private: {}", names.join(", ")), &[fix]);
     }
 }
 
@@ -163,9 +218,7 @@ fn semicolons_between_members(context: &Context, body: Node) {
         }
         let constant = part.kind() == "enum_constant";
         if let Some((at, _)) = current.filter(|(_, before)| !(*before && !constant)) {
-            for _ in &waiting {
-                context.report("UnnecessarySemicolon", body, at, SEMICOLON);
-            }
+            semicolons(context, body, at, &waiting);
         }
         waiting.clear();
         current = Some((
@@ -178,9 +231,14 @@ fn semicolons_between_members(context: &Context, body: Node) {
         ));
     }
     if let Some((at, false)) = current {
-        for _ in &waiting {
-            context.report("UnnecessarySemicolon", body, at, SEMICOLON);
-        }
+        semicolons(context, body, at, &waiting);
+    }
+}
+
+fn semicolons(context: &Context, body: Node, at: usize, places: &[usize]) {
+    for place in places {
+        let fix = delete_with_leading_whitespace(&context.file.text, *place, place + 1);
+        context.report_fixed("UnnecessarySemicolon", body, at, SEMICOLON, &[fix]);
     }
 }
 
@@ -205,12 +263,13 @@ pub fn unnecessary_semicolon(context: &Context, node: Node) {
         .into_iter()
         .filter(|statement| statement.kind() == ";")
     {
-        context.report(
-            "UnnecessarySemicolon",
-            node,
-            statement.start_byte(),
-            SEMICOLON,
-        );
+        let (start, end) = (statement.start_byte(), statement.end_byte());
+        let fix = if matches!(node.kind(), "block" | "constructor_body" | "switch_block_statement_group") {
+            delete_with_leading_whitespace(&context.file.text, start, end)
+        } else {
+            Fix::replace(start, end, "{}")
+        };
+        context.report_fixed("UnnecessarySemicolon", node, start, SEMICOLON, &[fix]);
     }
 }
 
@@ -329,10 +388,17 @@ pub fn redundant_throws(context: &Context, node: Node) {
             .map_or(first.start_byte(), |dot| dot.start_byte()),
         _ => first.start_byte(),
     };
-    context.report(
-        "RedundantThrows",
-        node,
-        at,
-        &format!("Redundant throws clause: {}", join("; ", &messages)),
-    );
+    let fix = delete_exceptions(context, clause, &thrown.iter().map(|(written, _, _)| *written).collect::<Vec<_>>(), &removed);
+    context.report_fixed("RedundantThrows", node, at, &format!("Redundant throws clause: {}", join("; ", &messages)), &[fix]);
+}
+
+/// Error Prone's `deleteExceptions`: the whole clause when every exception goes, else the clause rewritten without them.
+fn delete_exceptions(context: &Context, clause: Node, listed: &[Node], removed: &[usize]) -> Fix {
+    let end = listed[listed.len() - 1].end_byte();
+    if (0..listed.len()).all(|place| removed.contains(&place)) {
+        let keyword = children(clause).into_iter().find(|part| part.kind() == "throws").map_or(clause.start_byte(), |word| word.start_byte());
+        return Fix::replace(keyword - 1, end, "");
+    }
+    let kept: Vec<&str> = (0..listed.len()).filter(|place| !removed.contains(place)).map(|place| context.text(listed[place])).collect();
+    Fix::replace(listed[0].start_byte(), end, kept.join(", "))
 }

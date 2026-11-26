@@ -1,6 +1,7 @@
 //! AnnotationPosition: declaration annotations go before the modifiers, type annotations after them, and doc
 //! comments before both.
 use super::Context;
+use super::fixes::Fix;
 use super::tokens::{Tok, Token, tokens};
 use crate::engine::source::{children, parent};
 use crate::java::types::model::target;
@@ -144,6 +145,7 @@ fn check(context: &Context, declaration: Node, reported: Node, name: Option<&str
     let (start, end) = span;
     let found = tokens(&context.file.text, start, end.max(start));
     let dangling = orphaned(&found, name);
+    let dangling = dangling.map(|(at, text)| (at, text, context.file.text.as_bytes().get(at + text.len()) == Some(&b'\n')));
     let marked: Vec<&Token> = found.iter().filter(|token| token.kind == Tok::Modifier || (token.kind == Tok::Identifier && matches!(token.text, "sealed" | "non"))).collect();
     let first_modifier = marked.first().map_or(usize::MAX, |token| token.start);
     let last_modifier = marked.last().map_or(0, |token| token.end);
@@ -182,24 +184,42 @@ fn check(context: &Context, declaration: Node, reported: Node, name: Option<&str
         messages.push(format!("{joined} {is}, so should appear after modifiers and directly before the type."));
     }
     if !messages.is_empty() {
-        return context.report(CHECK, reported, at, &messages.join(" "));
+        let moved: Vec<Node> = move_before.iter().chain(&move_after).copied().collect();
+        let fix = moved.iter().fold(Fix::new(), |fix, annotation| fix.delete(annotation.start_byte(), annotation.end_byte()));
+        let (fix, javadoc) = match dangling {
+            Some(found) => remove_javadoc(found, fix),
+            None => (fix, String::new()),
+        };
+        let source = |listed: &[Node]| listed.iter().map(|annotation| context.text(*annotation)).collect::<Vec<_>>().join(" ");
+        let fix = if last_modifier == 0 {
+            fix.insert(start, format!("{javadoc}{} ", source(&moved)))
+        } else {
+            fix.insert(first_modifier, format!("{javadoc}{} ", source(&move_before))).insert(last_modifier, format!(" {} ", source(&move_after)))
+        };
+        return context.report_fixed(CHECK, reported, at, &messages.join(" "), &[fix]);
     }
-    if dangling && !documented(context, declaration) {
-        context.report(CHECK, reported, at, "Javadocs should appear before any modifiers or annotations.");
+    if let Some(found) = dangling.filter(|_| !documented(context, declaration)) {
+        let (fix, javadoc) = remove_javadoc(found, Fix::new());
+        context.report_fixed(CHECK, reported, at, "Javadocs should appear before any modifiers or annotations.", &[fix.insert(start, javadoc)]);
     }
 }
 
+/// Error Prone's removal of a misplaced doc comment, with the newline after it; the comment's text is what moves.
+fn remove_javadoc((at, text, newline): (usize, &str, bool), fix: Fix) -> (Fix, String) {
+    (fix.delete(at, at + text.len() + usize::from(newline)), text.to_string())
+}
+
 /// Whether a doc comment stands among the tokens before the declaration's name.
-fn orphaned(found: &[Token], name: Option<&str>) -> bool {
+fn orphaned<'f>(found: &[Token<'f>], name: Option<&str>) -> Option<(usize, &'f str)> {
     for token in found {
-        if token.comments.iter().any(|(_, text)| text.starts_with("/**")) {
-            return true;
+        if let Some(comment) = token.comments.iter().find(|(_, text)| text.starts_with("/**")) {
+            return Some(*comment);
         }
         if token.kind == Tok::Identifier && Some(token.text) == name {
-            return false;
+            return None;
         }
     }
-    false
+    None
 }
 
 /// Whether javac attaches a doc comment to the declaration: one among the comments before its first token.

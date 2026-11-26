@@ -1,5 +1,6 @@
 //! Checks on how things are named and imported.
-use super::Context;
+use super::fixes::Fix;
+use super::{Context, namefixes, typevars};
 use crate::engine::source::children;
 use tree_sitter::Node;
 
@@ -26,31 +27,27 @@ pub fn lowercase_terms(name: &str) -> Vec<String> {
     terms
 }
 
-fn upper_first(term: &str) -> String {
-    let mut letters = term.chars();
-    letters.next().map(|first| first.to_ascii_uppercase().to_string() + letters.as_str()).unwrap_or_default()
-}
-
 pub fn type_parameter_naming(context: &Context, node: Node) {
     if node.kind() != "type_parameter" {
         return;
     }
     let Some(name_node) = children(node).into_iter().find(|part| matches!(part.kind(), "type_identifier" | "identifier")) else { return };
     let name = context.text(name_node);
-    let mut letters = name.chars();
-    let single = letters.next().is_some_and(|first| first.is_ascii_uppercase()) && letters.all(|rest| rest.is_ascii_digit());
-    if single {
+    if typevars::valid_name(name) {
         return;
     }
     let message = if name.ends_with('T') {
-        if lowercase_terms(name).iter().map(|term| upper_first(term)).collect::<String>() == name {
-            return;
-        }
         format!("Type Parameters should be an UpperCamelCase name followed by the letter 'T'. {name} ends in T, but is not a valid UpperCamelCase name")
     } else {
         format!("Type Parameter {name} must be a single letter with an optional numeric suffix, or an UpperCamelCase name followed by the letter 'T'.")
     };
-    context.report("TypeParameterNaming", node, name_node.start_byte(), &message);
+    let Some(owner) = crate::engine::source::parent(node).and_then(crate::engine::source::parent) else { return };
+    let mut fixes = Vec::new();
+    if !typevars::non_class_name_with_t(name) {
+        fixes.push(typevars::rename(context, owner, node, name, &typevars::followed_with_t(name)));
+    }
+    fixes.push(typevars::rename(context, owner, node, name, &typevars::single_letter(context, owner, name)));
+    context.report_fixed("TypeParameterNaming", node, name_node.start_byte(), &message, &fixes);
 }
 
 pub fn wildcard_import(context: &Context, node: Node) {
@@ -275,9 +272,13 @@ pub fn unnecessarily_fully_qualified(context: &Context, node: Node) {
             continue;
         }
         let message = format!("The fully qualified name '{class}' is unambiguous to the compiler if imported, prefer using the name '{simple}'.");
+        let mut fix = uses.iter().fold(Fix::new(), |fix, (_, at)| fix.and(at.start_byte(), at.end_byte(), simple.as_str()));
+        if uses.iter().any(|(_, at)| meaning(context, *at, &simple).is_none()) {
+            fix = fix.with_imports();
+        }
         for (_, at) in uses {
             let dot = children(*at).into_iter().filter(|part| part.kind() == ".").next_back().map_or(at.start_byte(), |dot| dot.start_byte());
-            context.report("UnnecessarilyFullyQualified", *at, dot, &message);
+            context.report_fixed("UnnecessarilyFullyQualified", *at, dot, &message, std::slice::from_ref(&fix));
         }
     }
 }
@@ -299,7 +300,7 @@ fn visits(at: Node) -> usize {
 }
 
 /// The class a name or a dotted chain stands for, with the name as written.
-fn named_class(context: &Context, node: Node) -> Option<(String, String)> {
+pub(super) fn named_class(context: &Context, node: Node) -> Option<(String, String)> {
     if let Some(known) = context.named.borrow().get(&node.id()) {
         return known.clone();
     }
@@ -399,6 +400,16 @@ pub fn same_name_but_different(context: &Context, node: Node) {
             "The name `{written}` refers to [{}] within this file. It may be confusing to have the same name refer to multiple types. Consider qualifying them for clarity.",
             classes.join(", ")
         );
+        let mut imports = false;
+        let mut fix = Fix::new();
+        for (class, uses) in &row {
+            for at in uses {
+                fix = namefixes::qualify(context, fix, *at, class, &written, &mut imports);
+            }
+        }
+        if imports {
+            fix = fix.with_imports();
+        }
         for (_, uses) in row {
             for at in uses {
                 let offset = if CHAINS.contains(&at.kind()) {
@@ -406,7 +417,7 @@ pub fn same_name_but_different(context: &Context, node: Node) {
                 } else {
                     at.start_byte()
                 };
-                context.report("SameNameButDifferent", *at, offset, &message);
+                context.report_fixed("SameNameButDifferent", *at, offset, &message, std::slice::from_ref(&fix));
             }
         }
     }
@@ -502,13 +513,15 @@ pub fn different_name_but_same(context: &Context, node: Node) {
             if !visible || meanings.len() != 1 || BAD_NESTED.contains(&name) {
                 continue;
             }
+            let fix = sites.iter().fold(Fix::new(), |fix, site| namefixes::rename_site(context, fix, *site, name));
             for at in sites {
                 let offset = if CHAINS.contains(&at.kind()) {
                     children(at).into_iter().filter(|part| part.kind() == ".").next_back().map_or(at.start_byte(), |dot| dot.start_byte())
                 } else {
                     at.start_byte()
                 };
-                context.report_always("DifferentNameButSame", offset, DIFFERENT_NAME);
+                let message = format!("{DIFFERENT_NAME}{}", super::fixes::sentence(&context.file.text, std::slice::from_ref(&fix)));
+                context.report_always("DifferentNameButSame", offset, &message);
             }
             break;
         }
