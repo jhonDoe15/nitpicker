@@ -200,6 +200,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-overlapping-typescript-programs`).
 - Keep a value used only while one loop item is processed in a local of the loop body, not in a module-level or field
   map that never drops it: the map grows with the number of items (`nitpicker/no-per-item-cache-growth`).
+- Index an unchanging collection once (a `Map` by the compared value) instead of scanning it in a function called from
+  a loop or many places (`nitpicker/no-scan-per-call-over-fixed-collection`), and create a cache once for the unit its
+  answers hold for, not on every pass of an inner loop (`nitpicker/no-cache-per-inner-unit`).
 - Load `@typescript-eslint/parser` or `@typescript-eslint/eslint-plugin` when only the parser or only the plugin is
   used, not the whole `typescript-eslint` package with every rule definition
   (`nitpicker/no-aggregate-package-for-one-member`).

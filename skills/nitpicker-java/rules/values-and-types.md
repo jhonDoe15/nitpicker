@@ -183,6 +183,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   (`pmd/WorkBeforeEarlyExit`); and read and handle one file at a time instead of reading every file
   into a list that is walked once (`pmd/ReadAllBeforePass`). Walk a directory with `Files.find` or
   `Files.walkFileTree` when you need the kind or size of each entry (`pmd/StatPerListedEntry`).
+- Index an unchanging field collection once (a `Map` by the compared value, filled where the field is
+  filled) instead of scanning it in a method called from a loop or many places
+  (`pmd/ScanPerCallOverFixedCollection`), and create a cache once for the unit its answers hold for,
+  not on every pass of an inner loop (`pmd/CachePerInnerUnit`).
 - A `Collectors.toMap`, `toUnmodifiableMap`, `toConcurrentMap` value function and a `groupingBy`
   classifier never return `null` (they throw on it): filter the nulls first, map them
   (`Objects.toString`), or collect into a `HashMap` with `collect(HashMap::new, ..., Map::putAll)`
