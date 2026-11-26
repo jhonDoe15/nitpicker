@@ -91,6 +91,11 @@ impl Session {
         Ok(table)
     }
 
+    /// Whether the node table of a file is kept.
+    pub fn has_table(&self, path: &str) -> bool {
+        self.tables.contains_key(path)
+    }
+
     /// Forgets the node table of a file, for checks that visit each file once.
     pub fn release_table(&mut self, path: &str) {
         self.tables.remove(path);
