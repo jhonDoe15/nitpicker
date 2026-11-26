@@ -113,12 +113,13 @@ pub struct Flow<'u, 'c, 'a> {
     keys: HashMap<(usize, Kind), u32>,
     pub sites: Vec<Site<'a>>,
     collecting: bool,
+    settled: bool,
     copy: usize,
 }
 
 impl<'u, 'c, 'a> Flow<'u, 'c, 'a> {
     pub fn new(unit: &'u Unit<'c, 'a>, starts: &'u [Bits], ends: &'u [Bits]) -> Self {
-        Flow { unit, starts, ends, values: HashMap::new(), origins: Vec::new(), keys: HashMap::new(), sites: Vec::new(), collecting: false, copy: 0 }
+        Flow { unit, starts, ends, values: HashMap::new(), origins: Vec::new(), keys: HashMap::new(), sites: Vec::new(), collecting: false, settled: false, copy: 0 }
     }
 
     fn origin(&mut self, node: usize, kind: Kind, name: Option<&str>) -> u32 {
@@ -132,6 +133,9 @@ impl<'u, 'c, 'a> Flow<'u, 'c, 'a> {
 
     /// Whether every `return` of the body hands back a value known not to be null.
     pub fn never_null(&self, body: Node) -> bool {
+        if !self.settled {
+            return false;
+        }
         let mut returned = Vec::new();
         let mut pending = vec![body];
         while let Some(node) = pending.pop() {
@@ -327,7 +331,10 @@ impl<'u, 'c, 'a> Flow<'u, 'c, 'a> {
                 Exit::Jump(to) => sent.push((*to, store, true)),
                 Exit::Branch(_, holds, fails) => {
                     self.fade(block, &mut store);
-                    let known = unit.tests[block].as_ref().filter(|test| store[test.path].tag == NONNULL).and_then(|test| test.null_holds);
+                    let known = unit.tests[block]
+                        .as_ref()
+                        .filter(|test| store[test.path].tag == NONNULL && !unit.finder.all[test.path].volatile)
+                        .and_then(|test| test.null_holds);
                     let (mut held, mut failed) = (store.clone(), store);
                     if let Some(test) = &unit.tests[block] {
                         let shown = &unit.finder.all[test.path].shown;
@@ -355,6 +362,7 @@ impl<'u, 'c, 'a> Flow<'u, 'c, 'a> {
             for handler in blocks[block].catches.iter().flatten() {
                 sent.push((handler.block, quiet(&thrown), true));
             }
+            let mut changed: Vec<usize> = Vec::new();
             for (ordinal, (to, store, taken)) in sent.into_iter().enumerate() {
                 let key = (block, ordinal);
                 let at = arriving[to].iter().position(|(from, _)| *from == key);
@@ -365,6 +373,9 @@ impl<'u, 'c, 'a> Flow<'u, 'c, 'a> {
                     Some(at) => arriving[to][at].1 = store,
                     None => arriving[to].push((key, store)),
                 }
+                changed.push(to);
+            }
+            while let Some(to) = changed.pop() {
                 let mut input = (to == 0).then(|| start.clone());
                 for (_, store) in &arriving[to] {
                     join(&mut input, store);
@@ -372,14 +383,25 @@ impl<'u, 'c, 'a> Flow<'u, 'c, 'a> {
                 if let Some(input) = input.as_mut().filter(|_| split[to] && arriving[to].len() == 1) {
                     self.unnamed(to, input);
                 }
-                if input != inputs[to] {
-                    inputs[to] = input;
-                    if !pending.contains(&to) {
-                        pending.push_back(to);
+                if input == inputs[to] {
+                    continue;
+                }
+                if input.is_none() {
+                    for (next, from) in arriving.iter_mut().enumerate() {
+                        let before = from.len();
+                        from.retain(|((sender, _), _)| *sender != to);
+                        if from.len() != before {
+                            changed.push(next);
+                        }
                     }
+                }
+                inputs[to] = input;
+                if !pending.contains(&to) {
+                    pending.push_back(to);
                 }
             }
         }
+        self.settled = true;
         self.collecting = true;
         for block in 0..blocks.len() {
             if let Some(mut store) = inputs[block].clone() {

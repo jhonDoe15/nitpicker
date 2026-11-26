@@ -475,7 +475,7 @@ and 3.2 GB after a 31 s compile. The null pass runs once per file, a body nothin
 after a glance at its text, and what a method of another file does is worked out only when a call hands it a
 value that matters, then kept for the run.
 
-What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 237 findings, all the same):
+What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 244 findings, all the same):
 
 - Only `@CheckForNull`, or an annotation whose own declaration carries `@CheckForNull` (a nickname, as measured
   with `@TypeQualifierNickname` beside it), marks a method result or a field. `javax.annotation.Nullable` and
