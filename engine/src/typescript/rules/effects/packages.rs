@@ -44,7 +44,7 @@ const BUILT_IN_CALLS: [(&str, &[&str]); 7] = [
 ];
 const PUBLISH: &[&str] = &["publish", "publishMessage", "publishJSON"];
 const AMQP_PUBLISH: &[&str] = &["publish", "sendToQueue"];
-const MESSAGE_PACKAGES: [(&str, &[&str]); 9] = [
+pub const MESSAGE_PACKAGES: [(&str, &[&str]); 9] = [
     ("kafkajs", &["send", "sendBatch"]),
     ("amqplib", AMQP_PUBLISH),
     ("amqp-connection-manager", AMQP_PUBLISH),
@@ -56,7 +56,7 @@ const MESSAGE_PACKAGES: [(&str, &[&str]); 9] = [
     ("@azure/service-bus", &["sendMessages", "scheduleMessages"]),
 ];
 /// Broker clients that also make plain remote calls: (package, publishing commands, publishing methods).
-const BROKER_CLIENTS: [(&str, &[&str], &[&str]); 2] = [
+pub const BROKER_CLIENTS: [(&str, &[&str], &[&str]); 2] = [
     ("@aws-sdk/client-sqs", &["SendMessageCommand", "SendMessageBatchCommand"], &["sendMessage", "sendMessageBatch"]),
     ("@aws-sdk/client-sns", &["PublishCommand", "PublishBatchCommand"], &["publish", "publishBatch"]),
 ];

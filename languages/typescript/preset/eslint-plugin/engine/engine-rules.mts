@@ -95,6 +95,10 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-parameter-mutation', TYPED],
   ['no-remote-call-in-transaction', EFFECTS],
   ['no-remote-call-under-lock', EFFECTS],
+  ['no-retry-without-idempotency', EFFECTS],
+  ['no-dual-write', EFFECTS],
+  ['no-stale-retry-after-conflict', EFFECTS],
+  ['no-unisolated-job-loop', EFFECTS],
   [
     'no-production-console',
     {
