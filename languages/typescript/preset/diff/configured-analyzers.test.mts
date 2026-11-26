@@ -101,6 +101,6 @@ describe('the type check on a large project', () => {
       fieldOf(memory, 'perThousandFilesMegabytes'),
       fieldOf(memory, 'extensions'),
       typeof fieldOf(memory, 'roots'),
-    ]).toEqual([640, extensions, 'function']);
+    ]).toEqual([1000, extensions, 'function']);
   });
 });

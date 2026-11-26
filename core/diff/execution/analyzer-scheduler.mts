@@ -2,6 +2,7 @@ import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { FORCE_KILL_DELAY_MS, installShutdownHandlers } from './process.mts';
 import { runTaskGraph } from './graph/task-graph.mts';
+import { sharedMemoryOf } from './memory/memory-lease.mts';
 import { resolveMaxParallel } from '../../../shared/processes/machine-capacity.mts';
 import { readStandardInput } from '../../../shared/processes/standard-input.mts';
 import { fieldOf, fieldsOf } from '../../../shared/values/readers.mts';
@@ -31,6 +32,7 @@ async function schedule(): Promise<void> {
     applyEnvironment(fieldOf(input, 'environment'));
     const result = await runTaskGraph(fieldOf(input, 'tasks'), {
       maxParallel: resolveMaxParallel(process.env),
+      sharedMemory: sharedMemoryOf(process.env),
       signal: shutdownController.signal,
     });
     writePieces(compactJsonLines(result), (text) => process.stdout.write(text));

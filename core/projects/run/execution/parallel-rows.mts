@@ -4,6 +4,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { createWeightedSemaphore } from '../../../diff/execution/capacity.mts';
+import { startMemoryBroker } from '../../../diff/execution/memory/memory-broker.mts';
+import { admissionMemoryMegabytes } from '../../../../shared/processes/memory/node-heap.mts';
 import { projectFilePaths } from '../../../../shared/project-files/project-files.mts';
 import { projectHeading } from '../../report/console.mts';
 import { outcomeOf } from '../../report/outcome.mts';
@@ -124,6 +126,7 @@ type Pool = {
   readonly acquire: (row: ProjectRow) => Promise<() => void>;
   readonly ordered: InOrder;
   readonly resultsRoot: string;
+  readonly environment: NodeJS.ProcessEnv;
 };
 
 async function launchPooled(pool: Pool, row: ProjectRow, launch: Launch): Promise<Finished> {
@@ -152,7 +155,7 @@ async function runInPool(row: ProjectRow, index: number, pool: Pool): Promise<Pr
     label: row.project.path,
     job: jobOf(context, run, path.join(pool.resultsRoot, `${String(index)}.json`)),
     workerScript: context.cli.projectWorker ?? WORKER_SCRIPT,
-    environment: colorEnvironment(context.cli),
+    environment: pool.environment,
     progress: context.cli.progress,
   });
   const outcome = outcomeOfFinished(row, run, finished);
@@ -169,11 +172,13 @@ async function runRowsInParallel(
 ): Promise<readonly ProjectRow[]> {
   const semaphore = createWeightedSemaphore(capacity.slots);
   const resultsRoot = await mkdtemp(path.join(tmpdir(), 'nitpicker-projects-'));
+  const broker = await startMemoryBroker(admissionMemoryMegabytes());
   const pool: Pool = {
     context,
     acquire: (row) => semaphore.acquire(capacity.weightOf(row)),
     ordered: inOrder(),
     resultsRoot,
+    environment: { ...colorEnvironment(context.cli), ...broker.environment },
   };
   try {
     const settled = await Promise.allSettled(rows.map((row, index) => runInPool(row, index, pool)));
@@ -183,6 +188,7 @@ async function runRowsInParallel(
     }
     return settled.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
   } finally {
+    await broker.close();
     await rm(resultsRoot, { recursive: true, force: true });
   }
 }

@@ -13,14 +13,20 @@ import {
 } from '../../../../shared/processes/memory/node-heap.mts';
 import { memoryScaleOf as untypedMemoryScaleOf } from '../../../../languages/typescript/preset/diff/memory-scales.mts';
 
-const memoryScaleOf: (name: string) => { readonly perThousandFilesMegabytes: number } | undefined =
+const memoryScaleOf: (
+  name: string,
+) => { readonly perThousandFilesMegabytes: number; readonly baseMegabytes?: number } | undefined =
   untypedMemoryScaleOf;
 const GIB = 1024 ** 3;
 const LARGE_PROJECT_THOUSAND_FILES = 15.3;
 
 function estimated(name: string): AnalyzerTask {
-  const perThousand = memoryScaleOf(name)?.perThousandFilesMegabytes ?? 0;
-  return sized(name, Math.round(perThousand * LARGE_PROJECT_THOUSAND_FILES));
+  const scale = memoryScaleOf(name);
+  const perThousand = scale?.perThousandFilesMegabytes ?? 0;
+  return sized(
+    name,
+    Math.round((scale?.baseMegabytes ?? 0) + perThousand * LARGE_PROJECT_THOUSAND_FILES),
+  );
 }
 
 async function flushScheduling(): Promise<void> {
@@ -121,7 +127,10 @@ describe('a 15,300-file project on a 4-core, 10 GB budget', () => {
         { memory: 16 * GIB, defaultLimit: 2 * GIB },
         11_750,
       ),
-    ).toEqual({ NITPICKER_MAX_PARALLEL: '4', NODE_OPTIONS: '--max-old-space-size=11750' });
+    ).toEqual({
+      NITPICKER_MAX_PARALLEL: '4',
+      NODE_OPTIONS: '--max-old-space-size=11750 --max-semi-space-size=64',
+    });
   });
 });
 
@@ -164,9 +173,9 @@ describe('analyzer memory errors', () => {
     });
     const messages = report.findings.map((finding) => textOf(fieldOf(finding, 'message')));
     return Number(
-      /^(?:.* )?--max-old-space-size=(?<megabytes>\d+)$/u.exec(messages[0] ?? '')?.groups?.[
-        'megabytes'
-      ],
+      /^(?:.* )?--max-old-space-size=(?<megabytes>\d+) --max-semi-space-size=64$/u.exec(
+        messages[0] ?? '',
+      )?.groups?.['megabytes'],
     );
   }
 

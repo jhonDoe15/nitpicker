@@ -20,7 +20,7 @@ function pathsBaseOf(options: Readonly<Record<string, unknown>>): string | undef
   return typeof base === 'string' ? base : undefined;
 }
 
-function outermost(directories: readonly string[]): string[] {
+export function outermost(directories: readonly string[]): string[] {
   const unique = [...new Set(directories)];
   return unique.filter(
     (directory) =>

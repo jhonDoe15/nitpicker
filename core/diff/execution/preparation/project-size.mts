@@ -61,6 +61,24 @@ export function moduleAllowanceMs(
     : countModules(liveProjectRoot, scale.moduleFiles) * scale.perModuleMs;
 }
 
+type ProgramCheck = (liveProjectRoot: string) => boolean;
+
+function megabytesOf(scale: unknown, key: string): number {
+  const value = fieldOf(scale, key);
+  return typeof value === 'number' && value > 0 ? value : 0;
+}
+
+function isProgramCheck(value: unknown): value is ProgramCheck {
+  return typeof value === 'function';
+}
+
+function programMegabytes(scale: unknown, liveProjectRoot: string): number {
+  const holds = fieldOf(scale, 'holdsProgram');
+  return isProgramCheck(holds) && holds(liveProjectRoot)
+    ? megabytesOf(scale, 'programMegabytes')
+    : 0;
+}
+
 export function memoryEstimateMegabytes(
   analyzer: unknown,
   liveProjectRoot: string,
@@ -70,8 +88,13 @@ export function memoryEstimateMegabytes(
   if (scale === undefined) {
     return 0;
   }
+  const memoryScale = fieldOf(analyzer, 'memoryScale');
   const files = scaledFileCount(scale, liveProjectRoot, countFiles);
-  return Math.round((files / FILES_PER_STEP) * scale.perThousandFiles);
+  return Math.round(
+    megabytesOf(memoryScale, 'baseMegabytes') +
+      programMegabytes(memoryScale, liveProjectRoot) +
+      (files / FILES_PER_STEP) * scale.perThousandFiles,
+  );
 }
 
 export function scaledFileCount(

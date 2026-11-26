@@ -84,6 +84,11 @@
     },
     {
       "rule": "nitpicker/no-managed-resource-construction-outside-composition-roots",
+      "paths": ["core/diff/execution/memory/memory-broker.mts"],
+      "reason": "The memory broker is a per-run resource: the parallel project runner starts it for one --all run, passes its address to the project workers and closes it when the run ends; the server is unref'd so it never keeps the process alive."
+    },
+    {
+      "rule": "nitpicker/no-managed-resource-construction-outside-composition-roots",
       "paths": ["shared/logic/sync/decide-sync.mts"],
       "reason": "Lint rules have no composition root: the solver worker is started once, lazily, when a rule first asks a question that needs it, and unref'd so it never keeps the process alive."
     },
