@@ -2,6 +2,7 @@
 //! compiler's API server, opened for the project's tsconfig; a file outside that program is left to the
 //! ESLint-plugin rule, which the caller learns from a `!types` row.
 pub mod caller_objects;
+pub mod contracts;
 pub mod numbers;
 pub mod offsets;
 pub mod presence;
@@ -11,16 +12,21 @@ pub mod streams;
 pub mod time;
 pub mod types;
 pub mod unions;
+pub mod unknown;
+pub mod versions;
 
 use super::Rule;
 use super::arguments;
 use super::chunks;
 use super::collections;
+use super::contracts as contract_rules;
 use super::defaults;
 use super::delegation;
 use super::domain;
 use super::empty_lists;
+use super::entity_versions;
 use super::forwarding;
+use super::handlers;
 use super::number_input;
 use super::patterns;
 use super::presence as presence_rules;
@@ -29,10 +35,13 @@ use super::signatures;
 use super::spreads;
 use super::time_zones;
 use super::union_members;
+use super::unknown_types;
 
 pub const TYPED: &[(&str, Rule)] =
     &[
+    ("contract-infrastructure-type", contract_rules::contract_infrastructure_type::check),
     ("exhaustive-union-predicate", union_members::exhaustive_union_check),
+    ("handler-entity-type", handlers::handler_entity_type),
     ("no-accumulator-concat", collections::no_accumulator_concat::check),
     ("no-array-spread-arguments", spreads::no_array_spread_arguments::check),
     ("no-blank-number-coercion", number_input::no_blank_number_coercion::check),
@@ -52,6 +61,8 @@ pub const TYPED: &[(&str, Rule)] =
     ("no-swapped-arguments", arguments::no_swapped_arguments::check),
     ("no-unhandled-void-promise", promises::no_unhandled_void_promise::check),
     ("no-union-order-dependence", union_members::no_union_order_check),
+    ("no-unknown-in-domain", unknown_types::no_unknown_in_domain::check),
+    ("no-unversioned-orm-entity", entity_versions::no_unversioned_orm_entity::check),
 ];
 
 pub fn is_typed(name: &str) -> bool {
