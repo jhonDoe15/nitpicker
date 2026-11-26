@@ -1,3 +1,5 @@
+import { escapeRegExp } from '../../paths/glob.mts';
+
 const SINGLE_ITEM_FUNCTIONS =
   /(?<![\w:$.-])(?:fn:)?(?:string|lower-case|upper-case|starts-with|ends-with|contains|matches|normalize-space)\s*\(/gu;
 const ANCESTOR_UNIT = /ancestor(?:-or-self)?::CompilationUnit\s*\/\//gu;
@@ -19,6 +21,7 @@ const KEYWORDS = new Set([
   'satisfies',
   'not',
 ]);
+const SCAN_PREVIEW_LENGTH = 24;
 const PATH_CHARACTERS = /[\w:@./*$-]/u;
 const OPENING = new Set(['(', '[', '{']);
 const CLOSING = new Set([')', ']', '}']);
@@ -71,21 +74,21 @@ export function predicateScans(xpath: string): string[] {
     .filter(({ index }) => (depths[index] ?? 0) > 0 && startsAbsolutePath(xpath, index))
     .map(({ index }) => xpath.slice(index).split(/[\s\][)]/u)[0] ?? '')
     .filter((path) => path.includes('//'))
-    .map((path) => path.slice(0, 24));
+    .map((path) => path.slice(0, SCAN_PREVIEW_LENGTH));
   const ancestors = [...xpath.matchAll(ANCESTOR_UNIT)]
     .filter(({ index }) => (depths[index] ?? 0) > 0)
     .map(() => 'ancestor::CompilationUnit//');
   return [...absolute, ...ancestors];
 }
 
+const BRACKET = /[()[\]{}]/gu;
+
 function closingParenthesis(xpath: string, open: number): number {
   let depth = 0;
-  for (let index = open; index < xpath.length; index += 1) {
-    const character = xpath[index] ?? '';
-    depth += OPENING.has(character) ? 1 : 0;
-    depth -= CLOSING.has(character) ? 1 : 0;
+  for (const { 0: character, index } of xpath.slice(open).matchAll(BRACKET)) {
+    depth += OPENING.has(character) ? 1 : -1;
     if (depth === 0) {
-      return index;
+      return open + index;
     }
   }
   return -1;
@@ -108,7 +111,7 @@ function unguardedSteps(operand: string, xpath: string): string[] {
     .filter((step) => {
       const [parent = '', child = ''] = step.split('/');
       const guard = new RegExp(
-        `count\\(\\s*[^()]*${parent}\\s*/\\s*${child === '*' ? '\\*' : child}\\s*\\)\\s*(?:=|eq)\\s*1\\b`,
+        `count\\(\\s*[^()]*${escapeRegExp(parent)}\\s*/\\s*${escapeRegExp(child)}\\s*\\)\\s*(?:=|eq)\\s*1\\b`,
         'u',
       );
       return !guard.test(xpath);
@@ -117,7 +120,7 @@ function unguardedSteps(operand: string, xpath: string): string[] {
 
 function functionArguments(xpath: string): string[] {
   return [...xpath.matchAll(SINGLE_ITEM_FUNCTIONS)].flatMap((match) => {
-    const open = (match.index ?? 0) + match[0].length - 1;
+    const open = match.index + match[0].length - 1;
     const close = closingParenthesis(xpath, open);
     return close === -1 ? [] : [xpath.slice(open + 1, close)];
   });
@@ -127,18 +130,16 @@ function splitArguments(text: string): string[] {
   const flat = topLevelOf(text);
   const parts: string[] = [];
   let from = 0;
-  [...flat].forEach((character, index) => {
-    if (character === ',') {
-      parts.push(text.slice(from, index));
-      from = index + 1;
-    }
-  });
+  for (const { index } of flat.matchAll(/,/gu)) {
+    parts.push(text.slice(from, index));
+    from = index + 1;
+  }
   return [...parts, text.slice(from)];
 }
 
 function comparisonOperands(xpath: string): string[] {
   return [...xpath.matchAll(/\s(?:eq|ne)\s/gu)].flatMap((match) => {
-    const index = match.index ?? 0;
+    const { index } = match;
     const left = /([\w:@./*$-]+)$/u.exec(xpath.slice(0, index))?.[1] ?? '';
     const right = /^\s*([\w:@./*$-]+)(?!\s*[[(])/u.exec(xpath.slice(index + match[0].length));
     const rightText = right?.[1] ?? '';

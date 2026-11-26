@@ -11,35 +11,66 @@ export function nameOfCall(node: TSESTree.Node): string {
   return node.type === AST_NODE_TYPES.CallExpression ? (calleeNameOf(node.callee) ?? '') : '';
 }
 
-export function inTemp(context: SourceContext, node: TSESTree.Node, depth = 0): boolean {
-  const value = depth > MAX_DEPTH ? undefined : resolveConstant(context, node, depth);
-  if (value === undefined) {
-    return false;
-  }
-  const next = depth + 1;
-  switch (value.type) {
-    case AST_NODE_TYPES.AwaitExpression:
-      return inTemp(context, value.argument, next);
-    case AST_NODE_TYPES.TemplateLiteral:
-      return value.expressions.some((part) => inTemp(context, part, next));
-    case AST_NODE_TYPES.BinaryExpression:
-      return inTemp(context, value.left, next) || inTemp(context, value.right, next);
-    case AST_NODE_TYPES.ConditionalExpression:
-      return inTemp(context, value.consequent, next) || inTemp(context, value.alternate, next);
-    case AST_NODE_TYPES.CallExpression: {
-      const name = nameOfCall(value);
-      return (
-        TEMP_CREATORS.has(name) ||
-        (PATH_STEPS.has(name) && value.arguments.some((part) => inTemp(context, part, next)))
-      );
+type Pending = { readonly node: TSESTree.Node; readonly depth: number };
+
+export function* resolvedValues(
+  context: SourceContext,
+  node: TSESTree.Node,
+  operandsOf: (value: TSESTree.Node) => readonly TSESTree.Node[],
+  maxDepth: number,
+): Generator<TSESTree.Node> {
+  const pending: Pending[] = [{ node, depth: 0 }];
+  const seen = new Set<TSESTree.Node>();
+  for (const { node: current, depth } of pending) {
+    const value =
+      depth > maxDepth || seen.has(current) ? undefined : resolveConstant(context, current, depth);
+    seen.add(current);
+    if (value !== undefined) {
+      yield value;
+      for (const part of operandsOf(value)) {
+        pending.push({ node: part, depth: depth + 1 });
+      }
     }
-    default:
-      return false;
   }
+}
+
+function tempOperands(value: TSESTree.Node): readonly TSESTree.Node[] {
+  if (value.type === AST_NODE_TYPES.AwaitExpression) {
+    return [value.argument];
+  }
+  if (value.type === AST_NODE_TYPES.TemplateLiteral) {
+    return value.expressions;
+  }
+  if (value.type === AST_NODE_TYPES.BinaryExpression) {
+    return [value.left, value.right];
+  }
+  if (value.type === AST_NODE_TYPES.ConditionalExpression) {
+    return [value.consequent, value.alternate];
+  }
+  if (value.type === AST_NODE_TYPES.CallExpression && PATH_STEPS.has(nameOfCall(value))) {
+    return value.arguments;
+  }
+  return [];
+}
+
+function createsTemp(value: TSESTree.Node): boolean {
+  return value.type === AST_NODE_TYPES.CallExpression && TEMP_CREATORS.has(nameOfCall(value));
+}
+
+export function inTemp(context: SourceContext, node: TSESTree.Node): boolean {
+  return [...resolvedValues(context, node, tempOperands, MAX_DEPTH)].some(createsTemp);
 }
 
 export function scopeOf(node: TSESTree.Node, program: TSESTree.Node): TSESTree.Node {
   return enclosingFunction(node) ?? program;
+}
+
+function keyIs(property: TSESTree.Property, name: string): boolean {
+  const { key } = property;
+  if (key.type === AST_NODE_TYPES.Literal) {
+    return key.value === name;
+  }
+  return !property.computed && nameOf(key) === name;
 }
 
 export function propertyNamed(
@@ -48,9 +79,6 @@ export function propertyNamed(
 ): TSESTree.Property | undefined {
   return object.properties.find(
     (property): property is TSESTree.Property =>
-      property.type === AST_NODE_TYPES.Property &&
-      (property.computed
-        ? property.key.type === AST_NODE_TYPES.Literal && property.key.value === name
-        : (nameOf(property.key) ?? (property.key as TSESTree.Literal).value) === name),
+      property.type === AST_NODE_TYPES.Property && keyIs(property, name),
   );
 }

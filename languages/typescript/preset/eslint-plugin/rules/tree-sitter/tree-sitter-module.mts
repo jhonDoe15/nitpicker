@@ -43,11 +43,12 @@ export function isTreeSitterBinding(source: string): boolean {
   return BINDINGS.has(source);
 }
 
-export function grammarPackagesIn(text: string, source: boolean): string[] {
-  if (source) {
-    const match = GRAMMAR_PACKAGE.exec(text);
-    return match?.[1] === undefined ? [] : [match[1]];
-  }
+export function grammarPackagesInSource(text: string): string[] {
+  const match = GRAMMAR_PACKAGE.exec(text);
+  return match?.[1] === undefined ? [] : [match[1]];
+}
+
+export function grammarPackagesInWasm(text: string): string[] {
   const wasm = WASM_NAME.exec(text)?.[1];
   if (wasm === undefined) {
     return [];

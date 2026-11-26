@@ -16,22 +16,15 @@ const MIN_CODE_TOKENS = 20;
 
 const SCRIPT_FILE = /\.(?:js|mjs|cjs|ts)$/u;
 const DECLARATION_FILE = /\.d\.[cm]?ts$/u;
-const SKIPPED_PATH =
-  /(?:^|\/)(?:node_modules|vendor|third_party|test|tests|__tests__|fixtures?|__fixtures__)\/|\.(?:test|spec)\.[cm]?[jt]s$/u;
+const SKIPPED_FOLDER =
+  /(?:^|\/)(?:node_modules|vendor|third_party|tests?|__tests__|fixtures?|__fixtures__)\//u;
+const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]s$/u;
 const CODE_TOKEN = /\bfunction\b|\breturn\b|=>|\bclass\b|\bnew\b/gu;
 
 function lineShape(text: string): { count: number; longest: number } {
-  let count = 0;
-  let longest = 0;
-  let start = 0;
-  while (start <= text.length) {
-    const end = text.indexOf('\n', start);
-    const stop = end === -1 ? text.length : end;
-    longest = Math.max(longest, Buffer.byteLength(text.slice(start, stop)));
-    count += 1;
-    start = stop + 1;
-  }
-  return { count, longest };
+  const lines = text.split('\n');
+  const longest = lines.reduce((most, line) => Math.max(most, Buffer.byteLength(line)), 0);
+  return { count: lines.length, longest };
 }
 
 export function looksMinified(text: string): boolean {
@@ -65,7 +58,10 @@ export function minifiedBundleFindings(
 ): Finding[] {
   const candidates = files.filter(
     (file) =>
-      SCRIPT_FILE.test(file) && !DECLARATION_FILE.test(file) && !SKIPPED_PATH.test(`/${file}`),
+      SCRIPT_FILE.test(file) &&
+      !DECLARATION_FILE.test(file) &&
+      !SKIPPED_FOLDER.test(`/${file}`) &&
+      !TEST_FILE.test(file),
   );
   if (candidates.length === 0) {
     return [];

@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { nameOf } from '../typed/node-views.mts';
+import { depthFirst, nameOf } from '../typed/node-views.mts';
 import { unwrapped } from '../typed/syntax-views.mts';
 
 const LIST_METHODS = [
@@ -21,7 +21,7 @@ const STRICT_LIST_METHODS = LIST_METHODS.filter(
   (name) => name !== 'includes' && name !== 'indexOf',
 );
 
-export const SINGLE_SHAPE_MEMBERS = new Map<string, ReadonlySet<string>>([
+export const SINGLE_SHAPE_MEMBERS: ReadonlyMap<string, ReadonlySet<string>> = new Map([
   ['bundleDependencies', new Set(LIST_METHODS)],
   ['bundledDependencies', new Set(LIST_METHODS)],
   ['workspaces', new Set([...LIST_METHODS, 'packages'])],
@@ -58,18 +58,21 @@ export function isManifestName(node: TSESTree.Node): boolean {
   return name !== undefined && MANIFEST_NAME.test(name);
 }
 
-export function leavesOf(node: TSESTree.Node): TSESTree.Node[] {
+function alternatives(node: TSESTree.Node): TSESTree.Node[] {
   const plain = unwrapped(node);
   if (plain.type === AST_NODE_TYPES.ChainExpression) {
-    return leavesOf(plain.expression);
+    return [plain.expression];
   }
-  if (
-    plain.type === AST_NODE_TYPES.LogicalExpression &&
+  return plain.type === AST_NODE_TYPES.LogicalExpression &&
     (plain.operator === '||' || plain.operator === '??')
-  ) {
-    return [...leavesOf(plain.left), ...leavesOf(plain.right)];
-  }
-  return [plain];
+    ? [plain.left, plain.right]
+    : [];
+}
+
+export function leavesOf(node: TSESTree.Node): TSESTree.Node[] {
+  return [...depthFirst<TSESTree.Node>(node, alternatives)]
+    .filter((candidate) => alternatives(candidate).length === 0)
+    .map(unwrapped);
 }
 
 export function isEmptyList(node: TSESTree.Node): boolean {

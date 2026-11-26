@@ -1,13 +1,22 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { nameOf } from '../typed/node-views.mts';
-import { type FunctionNode } from '../typed/syntax-views.mts';
+import { isFunction, type FunctionNode } from '../typed/syntax-views.mts';
 
 const ITERATORS = new Set(['map', 'flatMap', 'forEach', 'filter']);
+const ALWAYS_GUARDS = new Set<AST_NODE_TYPES>([
+  AST_NODE_TYPES.LogicalExpression,
+  AST_NODE_TYPES.UnaryExpression,
+  AST_NODE_TYPES.AssignmentPattern,
+]);
 const GUARD_OPERATORS = new Set(['===', '!==', '==', '!=']);
 
-export function isCallback(
-  fn: FunctionNode,
-): fn is FunctionNode & { parent: TSESTree.CallExpression } {
+export type UseNode = TSESTree.Identifier | TSESTree.JSXIdentifier;
+
+type MappingCallback = FunctionNode & {
+  parent: TSESTree.CallExpression & { callee: TSESTree.MemberExpression };
+};
+
+export function isCallback(fn: FunctionNode): fn is MappingCallback {
   const { parent } = fn;
   return (
     parent.type === AST_NODE_TYPES.CallExpression &&
@@ -18,49 +27,44 @@ export function isCallback(
   );
 }
 
-export function isGuard(reference: TSESTree.Node): boolean {
+export function isGuard(reference: UseNode): boolean {
   const { parent } = reference;
-  if (parent === undefined) {
-    return false;
+  if (ALWAYS_GUARDS.has(parent.type)) {
+    return true;
   }
-  switch (parent.type) {
-    case AST_NODE_TYPES.IfStatement:
-    case AST_NODE_TYPES.ConditionalExpression:
-      return parent.test === reference;
-    case AST_NODE_TYPES.LogicalExpression:
-    case AST_NODE_TYPES.UnaryExpression:
-    case AST_NODE_TYPES.AssignmentPattern:
-      return true;
-    case AST_NODE_TYPES.BinaryExpression:
-      return GUARD_OPERATORS.has(parent.operator);
-    case AST_NODE_TYPES.MemberExpression:
-      return parent.object === reference && parent.optional;
-    case AST_NODE_TYPES.CallExpression:
-      return parent.callee === reference && parent.optional;
-    default:
-      return false;
+  if (
+    parent.type === AST_NODE_TYPES.IfStatement ||
+    parent.type === AST_NODE_TYPES.ConditionalExpression
+  ) {
+    return parent.test === reference;
   }
+  if (parent.type === AST_NODE_TYPES.BinaryExpression) {
+    return GUARD_OPERATORS.has(parent.operator);
+  }
+  if (parent.type === AST_NODE_TYPES.MemberExpression) {
+    return parent.object === reference && parent.optional;
+  }
+  return (
+    parent.type === AST_NODE_TYPES.CallExpression && parent.callee === reference && parent.optional
+  );
 }
 
-export function isUnchecked(reference: TSESTree.Node): boolean {
+export function isUnchecked(reference: UseNode): boolean {
   const { parent } = reference;
-  if (parent === undefined) {
-    return false;
-  }
   if (parent.type === AST_NODE_TYPES.MemberExpression) {
     return parent.object === reference && !parent.optional;
   }
   return (
     parent.type === AST_NODE_TYPES.CallExpression &&
-    parent.arguments.includes(reference as TSESTree.CallExpressionArgument)
+    parent.arguments.some((argument) => argument === reference)
   );
 }
 
-function isReturned(reference: TSESTree.Node): boolean {
+function isReturned(reference: UseNode): boolean {
   const { parent } = reference;
   return (
-    parent?.type === AST_NODE_TYPES.ReturnStatement ||
-    (parent?.type === AST_NODE_TYPES.ArrowFunctionExpression && parent.body === reference)
+    parent.type === AST_NODE_TYPES.ReturnStatement ||
+    (parent.type === AST_NODE_TYPES.ArrowFunctionExpression && parent.body === reference)
   );
 }
 
@@ -68,59 +72,64 @@ function collectedVariable(call: TSESTree.CallExpression): TSESTree.Identifier |
   let holder: TSESTree.Node = call;
   if (call.parent.type === AST_NODE_TYPES.SpreadElement) {
     const array = call.parent.parent;
-    if (array?.type !== AST_NODE_TYPES.ArrayExpression) {
+    if (array.type !== AST_NODE_TYPES.ArrayExpression) {
       return undefined;
     }
     holder = array;
   }
   const declarator = holder.parent;
-  return declarator?.type === AST_NODE_TYPES.VariableDeclarator &&
+  return declarator.type === AST_NODE_TYPES.VariableDeclarator &&
     declarator.init === holder &&
     declarator.id.type === AST_NODE_TYPES.Identifier
     ? declarator.id
     : undefined;
 }
 
+function mappingCallbackOf(reference: TSESLint.Scope.Reference): MappingCallback | undefined {
+  const member = reference.identifier.parent;
+  if (member.type !== AST_NODE_TYPES.MemberExpression || member.object !== reference.identifier) {
+    return undefined;
+  }
+  const call = member.parent;
+  if (call.type !== AST_NODE_TYPES.CallExpression || call.callee !== member) {
+    return undefined;
+  }
+  const [callback] = call.arguments;
+  return callback !== undefined && isFunction(callback) && isCallback(callback)
+    ? callback
+    : undefined;
+}
+
+function firstParameterUse(
+  sourceCode: Readonly<TSESLint.SourceCode>,
+  callback: MappingCallback,
+): UseNode | undefined {
+  const [first] = callback.params;
+  if (first?.type !== AST_NODE_TYPES.Identifier) {
+    return undefined;
+  }
+  const uses = sourceCode
+    .getDeclaredVariables(callback)
+    .find((candidate) => candidate.name === first.name)
+    ?.references.filter((use) => use.identifier !== first);
+  if (uses === undefined || uses.some((use) => isGuard(use.identifier))) {
+    return undefined;
+  }
+  return uses.find((use) => isUnchecked(use.identifier))?.identifier;
+}
+
 function laterUse(
   sourceCode: Readonly<TSESLint.SourceCode>,
   collected: TSESTree.Identifier,
-): TSESTree.Identifier | undefined {
+): UseNode | undefined {
   const variable = sourceCode
     .getDeclaredVariables(collected.parent)
     .find((candidate) => candidate.name === collected.name);
   for (const reference of variable?.references ?? []) {
-    const member = reference.identifier.parent;
-    const call = member?.parent;
-    if (
-      member?.type !== AST_NODE_TYPES.MemberExpression ||
-      member.object !== reference.identifier ||
-      call?.type !== AST_NODE_TYPES.CallExpression ||
-      call.callee !== member
-    ) {
-      continue;
-    }
-    const [callback] = call.arguments;
-    if (
-      callback === undefined ||
-      !('params' in callback) ||
-      !isCallback(callback as FunctionNode)
-    ) {
-      continue;
-    }
-    const [first] = callback.params;
-    if (first?.type !== AST_NODE_TYPES.Identifier) {
-      continue;
-    }
-    const uses = sourceCode
-      .getDeclaredVariables(callback)
-      .find((candidate) => candidate.name === first.name)
-      ?.references.filter((use) => use.identifier !== first);
-    if (uses?.some((use) => isGuard(use.identifier))) {
-      continue;
-    }
-    const found = uses?.find((use) => isUnchecked(use.identifier));
-    if (found?.identifier.type === AST_NODE_TYPES.Identifier) {
-      return found.identifier;
+    const callback = mappingCallbackOf(reference);
+    const found = callback === undefined ? undefined : firstParameterUse(sourceCode, callback);
+    if (found !== undefined) {
+      return found;
     }
   }
   return undefined;
@@ -130,11 +139,8 @@ export function returnedElementUse(
   sourceCode: Readonly<TSESLint.SourceCode>,
   fn: FunctionNode,
   references: readonly TSESLint.Scope.Reference[],
-): TSESTree.Identifier | undefined {
-  if (
-    !isCallback(fn) ||
-    nameOf((fn.parent.callee as TSESTree.MemberExpression).property) !== 'map'
-  ) {
+): UseNode | undefined {
+  if (!isCallback(fn) || nameOf(fn.parent.callee.property) !== 'map') {
     return undefined;
   }
   if (references.some((reference) => isGuard(reference.identifier))) {

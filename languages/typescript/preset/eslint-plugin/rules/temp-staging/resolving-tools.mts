@@ -4,6 +4,7 @@ import {
   stringValue,
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
+import { calleeNameOf } from '../typed/syntax-views.mts';
 
 const RESOLVING_TOOLS = new Set([
   'tsc',
@@ -47,11 +48,7 @@ export function runsResolvingTool(context: SourceContext, call: TSESTree.CallExp
   if (text === undefined) {
     return false;
   }
-  const words = SHELL_CALLS.has(
-    call.callee.type === AST_NODE_TYPES.Identifier
-      ? call.callee.name
-      : ((call.callee as TSESTree.MemberExpression).property as TSESTree.Identifier).name,
-  )
+  const words = SHELL_CALLS.has(calleeNameOf(call.callee) ?? '')
     ? text.trim().split(/\s+/u)
     : [text];
   const program = programName(words[0] ?? '');
