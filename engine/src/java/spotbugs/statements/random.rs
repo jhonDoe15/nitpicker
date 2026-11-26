@@ -15,7 +15,8 @@ fn report(context: &Context, at: Node, generator: &str) {
 
 fn report_in(context: &Context, at: Node, generator: &str, label: &str) {
     let message = format!("This random generator ({generator}) is predictable");
-    context.report_placed("PREDICTABLE_RANDOM", at, context.line(at), message, super::super::place::function(label), 2);
+    let place = super::super::place::function(label);
+    context.report_listed("PREDICTABLE_RANDOM", at, context.line(at), message, place, 2, vec![generator.to_string()]);
 }
 
 /// What a call or creation builds or hands out, when it is a predictable generator.

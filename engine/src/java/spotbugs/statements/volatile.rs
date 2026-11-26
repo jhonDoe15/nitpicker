@@ -86,5 +86,6 @@ pub fn check(context: &Context, node: Node, label: &str) {
     let at = node.parent().filter(|holder| holder.kind() == "expression_statement").unwrap_or(node);
     let message = format!("Increment of volatile field {}.{} in {label}", names::binary(context, &key.0), key.1);
     let place = super::super::place::member(context, &key.0, &key.1);
-    context.report_placed("VO_VOLATILE_INCREMENT", at, context.line(at), message, place, 2);
+    let arguments = vec![format!("{}.{}", names::binary(context, &key.0), key.1), label.to_string()];
+    context.report_listed("VO_VOLATILE_INCREMENT", at, context.line(at), message, place, 2, arguments);
 }

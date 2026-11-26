@@ -199,7 +199,7 @@ pub fn check(context: &Context, member: Node, nodes: &[Node], label: &str) {
                 _ => super::super::place::function(label),
             };
             let message = format!("{label} makes inefficient use of keySet iterator instead of entrySet iterator");
-            context.report_placed("WMI_WRONG_MAP_ITERATOR", at, context.line(at), message, place, 2);
+            context.report_listed("WMI_WRONG_MAP_ITERATOR", at, context.line(at), message, place, 2, vec![label.to_string()]);
         }
     }
 }

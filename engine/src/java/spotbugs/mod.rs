@@ -116,11 +116,16 @@ impl<'a> Context<'a> {
         let found = self.finding(pattern, at, line, message).map(|finding| Finding { symbol: Some(place), priority: Some(priority), ..finding });
         self.out.borrow_mut().extend(found);
     }
+    /// Reports a pattern as `report_placed` does, with the values SpotBugs lists with its message.
+    pub fn report_listed(&self, pattern: &'static str, at: Node, line: usize, message: String, place: String, priority: u8, arguments: Vec<String>) {
+        let found = self.finding(pattern, at, line, message).map(|finding| Finding { symbol: Some(place), priority: Some(priority), arguments: Some(arguments), ..finding });
+        self.out.borrow_mut().extend(found);
+    }
     fn finding(&self, pattern: &'static str, at: Node, line: usize, message: String) -> Option<Finding> {
         if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == pattern)) || self.suppressed(pattern, at) {
             return None;
         }
-        Some(Finding { file: self.file.path.clone(), line, column: 1, rule: pattern.to_string(), message, symbol: None, priority: None })
+        Some(Finding { file: self.file.path.clone(), line, column: 1, rule: pattern.to_string(), message, symbol: None, priority: None, arguments: None })
     }
     /// Whether a declaration around the node carries `@SuppressFBWarnings` naming the pattern, its prefix, or nothing.
     fn suppressed(&self, pattern: &str, node: Node) -> bool {

@@ -13,4 +13,7 @@ pub struct Finding {
     /// SpotBugs' priority of a finding, where it decides how severe the finding is.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub priority: Option<u8>,
+    /// The values SpotBugs lists with its message, where they are not the place alone.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arguments: Option<Vec<String>>,
 }

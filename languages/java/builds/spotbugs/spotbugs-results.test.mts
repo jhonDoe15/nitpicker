@@ -139,6 +139,24 @@ describe('spotbugsResultOf', () => {
     );
   });
 
+  it('lists the values the engine gives with the message', () => {
+    const finding = {
+      file: '/src/p/A.java',
+      rule: 'PREDICTABLE_RANDOM',
+      line: 5,
+      message: '',
+      symbol: 'function:p.A.a()',
+      priority: 2,
+      arguments: ['java.util.Random'],
+    };
+
+    expect(spotbugsResultOf(finding).message.arguments).toStrictEqual(['java.util.Random']);
+    expect(
+      spotbugsResultOf({ ...finding, arguments: undefined }).message.arguments,
+    ).toStrictEqual(['p.A.a()']);
+    expect(engineSpotbugsFindingOf(finding).arguments).toStrictEqual(['java.util.Random']);
+  });
+
   it('refuses a message it cannot read', () => {
     expect(() => resultOf('EI_EXPOSE_REP', 'something else')).toThrow(/cannot read/u);
     expect(() => resultOf('OTHER_PATTERN', 'x')).toThrow(/OTHER_PATTERN/u);

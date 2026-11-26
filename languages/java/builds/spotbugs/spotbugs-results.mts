@@ -1,5 +1,6 @@
 import path from 'node:path';
-import { fieldOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
+import { PLACED, type Placed } from './spotbugs-placed.mts';
 
 export type EngineSpotbugsFinding = {
   readonly file: string;
@@ -8,6 +9,7 @@ export type EngineSpotbugsFinding = {
   readonly message: string;
   readonly symbol: string | undefined;
   readonly priority?: number | undefined;
+  readonly arguments?: readonly string[] | undefined;
 };
 type LogicalLocation = {
   readonly name: string;
@@ -109,40 +111,6 @@ const SHAPES: Readonly<Record<string, Shape>> = {
   },
 };
 
-type Placed = { readonly text: string; readonly levels: Readonly<Record<number, string>> };
-
-const PLACED: Readonly<Record<string, Placed>> = {
-  DCN_NULLPOINTER_EXCEPTION: { text: 'NullPointerException caught', levels: { 2: 'note' } },
-  JLM_JSR166_LOCK_MONITORENTER: {
-    text: 'Synchronization performed on Lock',
-    levels: { 1: 'error' },
-  },
-  JLM_JSR166_UTILCONCURRENT_MONITORENTER: {
-    text: 'Synchronization performed on util.concurrent instance',
-    levels: { 2: 'error' },
-  },
-  PREDICTABLE_RANDOM: {
-    text: 'Predictable pseudorandom number generator',
-    levels: { 2: 'warning' },
-  },
-  VO_VOLATILE_INCREMENT: {
-    text: "An increment to a volatile field isn't atomic",
-    levels: { 2: 'warning' },
-  },
-  WMI_WRONG_MAP_ITERATOR: {
-    text: 'Inefficient use of keySet iterator instead of entrySet iterator',
-    levels: { 2: 'note' },
-  },
-  SF_SWITCH_FALLTHROUGH: {
-    text: 'Switch statement found where one case falls through to the next case',
-    levels: { 2: 'note' },
-  },
-  SF_SWITCH_NO_DEFAULT: {
-    text: 'Switch statement found where default case is missing',
-    levels: { 2: 'note' },
-  },
-};
-
 function withoutPackage(qualified: string, owner: string): string {
   const local = packageOf(owner);
   return local === '' ? qualified : qualified.slice(local.length + 1);
@@ -187,7 +155,7 @@ function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): Spotbug
   const file = path.basename(finding.file);
   return {
     ruleId: finding.rule,
-    message: { id: 'default', text: placed.text, arguments: [qualified] },
+    message: { id: 'default', text: placed.text, arguments: finding.arguments ?? [qualified] },
     level,
     locations: [
       {
@@ -242,6 +210,7 @@ export function spotbugsResultOf(finding: EngineSpotbugsFinding): SpotbugsResult
 export function engineSpotbugsFindingOf(value: unknown): EngineSpotbugsFinding {
   const symbol = fieldOf(value, 'symbol');
   const priority = fieldOf(value, 'priority');
+  const listed = fieldOf(value, 'arguments');
   return {
     file: String(fieldOf(value, 'file')),
     rule: String(fieldOf(value, 'rule')),
@@ -249,5 +218,6 @@ export function engineSpotbugsFindingOf(value: unknown): EngineSpotbugsFinding {
     message: String(fieldOf(value, 'message')),
     symbol: typeof symbol === 'string' ? symbol : undefined,
     priority: typeof priority === 'number' ? priority : undefined,
+    ...(Array.isArray(listed) ? { arguments: textsOf(listed) } : {}),
   };
 }

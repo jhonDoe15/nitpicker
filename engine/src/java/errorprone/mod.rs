@@ -205,7 +205,7 @@ impl Context<'_> {
             rule: check.to_string(),
             message: format!("[{check}] {message}"),
             symbol: None,
-            priority: None,
+            priority: None, arguments: None,
         });
     }
     /// Whether the node or a declaration around it carries `@SuppressWarnings` with the check's name or "all".
