@@ -4,6 +4,7 @@ import type { ResolvedRule } from './pmd-catalog.mts';
 export type EngineRule = {
   readonly name: string;
   readonly xpath: string;
+  readonly port: string;
   readonly message: string;
   readonly suppress: string;
   readonly properties: Readonly<Record<string, { readonly type: string; readonly value: string }>>;
@@ -13,6 +14,39 @@ export type EngineRule = {
 type RuleProperty = { readonly type: string; readonly value: string };
 
 const XPATH_RULE = 'net.sourceforge.pmd.lang.rule.xpath.XPathRule';
+const RULE_PACKAGE = 'net.sourceforge.pmd.lang.java.rule';
+const PORTED_RULES: ReadonlySet<string> = new Set(
+  [
+    'bestpractices.AbstractClassWithoutAbstractMethodRule',
+    'bestpractices.AvoidReassigningCatchVariablesRule',
+    'bestpractices.AvoidReassigningParametersRule',
+    'bestpractices.CheckResultSetRule',
+    'bestpractices.MissingOverrideRule',
+    'bestpractices.UnusedLocalVariableRule',
+    'bestpractices.UseCollectionIsEmptyRule',
+    'bestpractices.UseEnumCollectionsRule',
+    'errorprone.AssignmentToNonFinalStaticRule',
+    'errorprone.AvoidUsingOctalValuesRule',
+    'errorprone.CheckSkipResultRule',
+    'errorprone.CloneMethodMustImplementCloneableRule',
+    'errorprone.DetachedTestCaseRule',
+    'errorprone.IdempotentOperationsRule',
+    'errorprone.JUnitSpellingRule',
+    'errorprone.JUnitStaticSuiteRule',
+    'errorprone.ProperCloneImplementationRule',
+    'errorprone.SingleMethodSingletonRule',
+    'errorprone.UnnecessaryCaseChangeRule',
+    'errorprone.UselessOperationOnImmutableRule',
+    'performance.AddEmptyStringRule',
+    'performance.AppendCharacterWithCharRule',
+    'performance.RedundantFieldInitializerRule',
+    'performance.StringInstantiationRule',
+    'performance.UseIndexOfCharRule',
+    'performance.UselessStringValueOfRule',
+    'security.HardCodedCryptoKeyRule',
+    'security.InsecureCryptoIvRule',
+  ].map((rule) => `${RULE_PACKAGE}.${rule}`),
+);
 const QUERY = 'xpath';
 const SUPPRESS_QUERY = 'violationSuppressXPath';
 const SUPPRESS_REGEX = 'violationSuppressRegex';
@@ -77,14 +111,19 @@ export function ruleLevel(rule: ResolvedRule): 'error' | 'warning' | 'note' {
   return priority === WARNING_PRIORITY ? 'warning' : 'note';
 }
 
+function isPorted(rule: ResolvedRule): boolean {
+  return PORTED_RULES.has(rule.definition.attrs['class'] ?? '');
+}
+
 export function runsOnEngine(rule: ResolvedRule): boolean {
   const { attrs } = rule.definition;
   const properties = ruleProperties(rule);
+  const written =
+    attrs['class'] === XPATH_RULE && (properties.get(QUERY)?.value ?? '').trim() !== '';
   return (
-    attrs['class'] === XPATH_RULE &&
+    (written || isPorted(rule)) &&
     attrs['language'] === 'java' &&
     attrs['maximumLanguageVersion'] === undefined &&
-    (properties.get(QUERY)?.value ?? '').trim() !== '' &&
     (properties.get(SUPPRESS_REGEX)?.value ?? '') === ''
   );
 }
@@ -106,6 +145,7 @@ export function engineRule(
   return {
     name: rule.name,
     xpath: properties.get(QUERY)?.value ?? '',
+    port: isPorted(rule) ? (rule.definition.attrs['class'] ?? '') : '',
     message: ruleMessage(rule),
     suppress: properties.get(SUPPRESS_QUERY)?.value ?? '',
     properties: Object.fromEntries(

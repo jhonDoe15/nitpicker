@@ -86,7 +86,11 @@ export function mutatedOwner(
   const receiver = services.getTypeAtLocation(node.object);
   return partsOf(receiver)
     .flatMap((part) => ownersOf(checker.getApparentType(part).getProperty(method)))
-    .find((owner) => mutates(owner, method));
+    .filter((owner) => mutates(owner, method))
+    .reduce<string | undefined>(
+      (first, owner) => (first === undefined || owner < first ? owner : first),
+      undefined,
+    );
 }
 
 export function isArrayMutator(method: string): boolean {

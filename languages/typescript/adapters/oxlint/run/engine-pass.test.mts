@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { findEngine } from '../../../../../shared/engine/engine-binary.mts';
-import { createProject, presetModule } from '../test-support/oxlint-project.mts';
+import { createProject, lintProject, presetModule } from '../test-support/oxlint-project.mts';
 import { removedAfterAll, reportedLines, writeStubEngine } from '../test-support/engine-stub.mts';
 
 const STUB_MESSAGE = 'reported by the stub engine';
@@ -108,6 +108,66 @@ describe('plugin rules handed to the engine', () => {
 
       expect(fromEngine).toEqual(fromRules);
       expect(fromEngine.filter((line) => line.includes('no-silent-catch'))).toHaveLength(2);
+    },
+  );
+});
+
+const typedPolicy = [
+  `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};`,
+  `import { nitpickerRules } from ${presetModule('eslint-plugin/index.mjs')};`,
+  'export default [',
+  '  {',
+  "    files: ['src/**/*.ts'],",
+  '    languageOptions: {',
+  '      parser: tseslint.parser,',
+  "      parserOptions: { project: './tsconfig.json', tsconfigRootDir: import.meta.dirname },",
+  '    },',
+  '    plugins: { nitpicker: nitpickerRules },',
+  "    rules: { 'nitpicker/no-mutating-method-in-domain': 'error' },",
+  '  },',
+  '];',
+].join('\n');
+
+const mutating = [
+  'export function record(seen: Set<number>, when: Date, items: number[]): void {',
+  '  seen.add(1);',
+  '  when.setTime(0);',
+  '  items.push(1);',
+  '  // eslint-disable-next-line nitpicker/no-mutating-method-in-domain -- kept for the test',
+  "  seen['delete'](2);",
+  '}',
+].join('\n');
+
+describe('typed plugin rules handed to the engine', () => {
+  const typedRoot = createProject('nitpicker-engine-typed-', {
+    'policy.mjs': typedPolicy,
+    'package.json': JSON.stringify({ name: 'app' }),
+    'tsconfig.json': JSON.stringify({
+      compilerOptions: { strict: true, types: [], lib: ['ES2022'] },
+      include: ['src/**/*.ts'],
+    }),
+    'src/domain/record.ts': mutating,
+  });
+  removedAfterAll(typedRoot);
+
+  it.skipIf(findEngine(process.env) === undefined)(
+    'replays the findings without the residual ESLint pass',
+    async () => {
+      const results = await lintProject({
+        root: typedRoot,
+        patterns: ['src/**/*.ts'],
+        projectConfigName: 'tsconfig.json',
+      });
+      const lines = results.flatMap(({ messages }) =>
+        messages.map(({ ruleId, line, column, message }) =>
+          [line, column, ruleId, message.split(' changes')[0]?.split(', and ')[1]].join(' | '),
+        ),
+      );
+
+      expect(lines).toEqual([
+        '2 | 3 | nitpicker/no-mutating-method-in-domain | Set.add',
+        '3 | 3 | nitpicker/no-mutating-method-in-domain | Date.setTime',
+      ]);
     },
   );
 });

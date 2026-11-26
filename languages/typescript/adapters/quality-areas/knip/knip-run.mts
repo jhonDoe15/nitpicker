@@ -1,8 +1,10 @@
-import { unlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { parseJson } from '../../../../../shared/values/readers.mts';
-import { trackTemporaryPath } from '../../typed/tooling.mts';
+import { toolBinaryPath, trackTemporaryPath, untrackTemporaryPath } from '../../typed/tooling.mts';
 import {
   hasEncodedRegExp as untypedHasEncodedRegExp,
   revivedExpression as untypedRevivedExpression,
@@ -16,6 +18,7 @@ import type { ToolSettings } from '../../../preset/typed/head-policy-types.mts';
 import { readHeadPolicy } from '../../typed/head-policy.mts';
 import { runNodeTool } from '../typed/tooling.mts';
 import { type KnipLayer, layeredKnipConfig, writtenKnipConfig } from './knip-layers.mts';
+import { KNIP_JSON_REPORTER_VARIABLE, KNIP_REPORT_FILE_VARIABLE } from './knip-reporter.mts';
 
 const hasEncodedRegExp: (value: KnipConfig) => boolean = untypedHasEncodedRegExp;
 const revivedExpression: (value: KnipConfig) => string = untypedRevivedExpression;
@@ -25,6 +28,9 @@ const projectToolLayer: (
 ) => KnipLayer | undefined = untypedProjectToolLayer;
 
 const MANIFEST_GUARD = checkoutModuleUrl(new URL('manifest-guard.mjs', import.meta.url)).href;
+const FILE_REPORTER = fileURLToPath(
+  checkoutModuleUrl(new URL('knip-reporter.mjs', import.meta.url)),
+);
 
 function manifestGuard(manifestPath: string): string {
   const source = [
@@ -37,12 +43,21 @@ function isKnipReport(value: unknown): value is KnipReport {
   return typeof value === 'object' && value !== null;
 }
 
-function readKnipReport(text: string): KnipReport {
-  const report = parseJson(text);
+function readKnipReport(reportFile: string, logged: string): KnipReport {
+  if (statSync(reportFile, { throwIfNoEntry: false })?.isFile() !== true) {
+    const output = logged.trim();
+    throw new Error(`knip wrote no report${output.length === 0 ? '' : `; it printed: ${output}`}`);
+  }
+  const report = parseJson(readFileSync(reportFile, 'utf8'));
   if (!isKnipReport(report)) {
-    throw new TypeError('knip did not print a JSON object');
+    throw new TypeError('knip did not report a JSON object');
   }
   return report;
+}
+
+function jsonReporterPath(options: QualityAreaOptions): string {
+  const bin = toolBinaryPath('knip', { projectRoot: options.liveProjectRoot, bin: 'bin/knip.js' });
+  return path.join(path.dirname(bin), '..', 'dist', 'reporters', 'json.js');
 }
 
 const CONFIG_BASENAME = '.nitpicker-diff-knip';
@@ -71,16 +86,25 @@ export function knipReport(options: QualityAreaOptions, config: KnipConfig): Kni
   const file = knipConfigFile(options.projectRoot, config);
   trackTemporaryPath(file.path);
   writeFileSync(file.path, file.text);
+  const reportRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-knip-report-'));
+  trackTemporaryPath(reportRoot);
+  const reportFile = path.join(reportRoot, 'report.json');
   try {
     const result = runNodeTool({
       options,
       relativeToolPath: 'knip/bin/knip.js',
       nodeArguments: ['--import', manifestGuard(path.join(options.projectRoot, 'package.json'))],
-      arguments_: ['--config', file.path, '--reporter', 'json'],
+      arguments_: ['--config', file.path, '--reporter', FILE_REPORTER],
+      environment: {
+        [KNIP_JSON_REPORTER_VARIABLE]: jsonReporterPath(options),
+        [KNIP_REPORT_FILE_VARIABLE]: reportFile,
+      },
       acceptedStatuses: [0, 1],
     });
-    return readKnipReport(result.stdout);
+    return readKnipReport(reportFile, result.stdout);
   } finally {
     unlinkSync(file.path);
+    rmSync(reportRoot, { recursive: true, force: true });
+    untrackTemporaryPath(reportRoot);
   }
 }

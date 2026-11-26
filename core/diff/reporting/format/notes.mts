@@ -1,4 +1,7 @@
-import { TESTS_TIMED_OUT_RULE } from '../../../../shared/rules/finding-parts.mts';
+import {
+  TESTS_BASE_NOT_RUN_RULE,
+  TESTS_TIMED_OUT_RULE,
+} from '../../../../shared/rules/finding-parts.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 
@@ -30,6 +33,9 @@ const COUNTS_AS_NEW = [
 ].join(' ');
 
 function outcomeOf(failed: readonly ReportEntry[]): string {
+  if (failed.every(({ rule }) => rule === TESTS_BASE_NOT_RUN_RULE)) {
+    return 'were not run';
+  }
   const timedOut = failed.filter(({ rule }) => rule === TESTS_TIMED_OUT_RULE).length;
   if (timedOut === 0) {
     return 'fail';

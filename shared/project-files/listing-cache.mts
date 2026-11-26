@@ -3,6 +3,7 @@ import path from 'node:path';
 import { chainOf } from '../traversal.mts';
 import { byText } from '../text-order/by-text.mts';
 import type { TreeListing, TreeSources } from './project-files-types.mts';
+import { seededTree } from './seeded/seeded-trees.mts';
 
 const COARSE_RACY_WINDOW_MS = 1000;
 const FINE_RACY_WINDOW_MS = 50;
@@ -160,5 +161,5 @@ function cachedIn(
 }
 
 export function cachedTree(top: string, sources: TreeSources): TreeListing | undefined {
-  return cachedIn(trees, top, sources);
+  return seededTree(top) ?? cachedIn(trees, top, sources);
 }

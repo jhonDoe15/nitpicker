@@ -36,6 +36,7 @@ import { commentEntries } from './review-entries/comments/comment-entries.mts';
 import { fixedDelayEntry } from './review-entries/fixed-delay.mts';
 import { mutatingMethodEntry } from './review-entries/mutating-method.mts';
 import { delegateSkipsDefaultEntry } from './review-entries/wrappers/delegate-skips-default.mts';
+import { hiddenInheritedFieldEntry } from './review-entries/fields/hidden-inherited-field.mts';
 import { nullFallThroughEntry } from './review-entries/null-fall-through.mts';
 import { nullableReturnEntry } from './review-entries/nullable-return.mts';
 import { springContextEntry } from './review-entries/tests/spring-context.mts';
@@ -261,6 +262,7 @@ export function jvmNitpickerEntries(): RuleEntry[] {
     fixedDelayEntry(),
     mutatingMethodEntry(),
     delegateSkipsDefaultEntry(),
+    hiddenInheritedFieldEntry(),
     formatEntry('google'),
     formatEntry('palantir'),
     ...suppressionEntries(),
