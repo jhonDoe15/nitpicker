@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fieldOf, optionalText } from '../../../../../shared/values/readers.mts';
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
+import { optionOverrides } from '../../../typescript-api/typescript7-options.mts';
 import type { ProgramInputs } from '../program.mts';
 import type { ContextLayout, FileInfo } from '../typed/context-types.mts';
 import type { PackagesInfo } from '../workspace/workspace-types.mts';
@@ -45,6 +46,7 @@ export function engineProjectConfig(
     optionalText(fieldOf(options, 'baseUrl')) ??
     optionalText(fieldOf(options, 'pathsBasePath')) ??
     projectRoot;
+  const overrides = optionOverrides(options);
   return {
     extends: path.resolve(configPath),
     compilerOptions: {
@@ -56,6 +58,8 @@ export function engineProjectConfig(
       typeRoots: ts.getEffectiveTypeRoots(options, ts.sys) ?? [],
       ...(parsed.options.jsx === undefined ? { jsx: 'react-jsx' } : {}),
       paths: absolutePaths(options.paths ?? {}, pathsBase),
+      ...overrides?.set,
+      ...Object.fromEntries((overrides?.unset ?? []).map((option) => [option, null])),
     },
     files: rootNames,
     include: [],

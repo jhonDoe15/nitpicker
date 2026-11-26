@@ -1,4 +1,6 @@
+import { rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { typescript7Overrides } from '../../../adapters/typecheck/removed-options/typescript7-config.mts';
 import { runTypedChecks } from '../../../adapters/typed-engine/typed-checks.mts';
 import type { Environment } from '../../../../../shared/processes/environment.mts';
 import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
@@ -19,19 +21,51 @@ function unusedMethodOf(value: unknown): UnusedMethod {
   };
 }
 
+function withTypescript7Config<T>(configPath: string, run: (project: string) => T): T {
+  const overrides = typescript7Overrides(configPath);
+  if (overrides === undefined) {
+    return run(configPath);
+  }
+  const translated = path.join(
+    path.dirname(configPath),
+    `.nitpicker-typescript7-${String(process.pid)}.tsconfig.json`,
+  );
+  try {
+    writeFileSync(
+      translated,
+      JSON.stringify({
+        extends: `./${path.basename(configPath)}`,
+        compilerOptions: {
+          ...overrides.set,
+          ...Object.fromEntries(overrides.unset.map((option) => [option, null])),
+        },
+      }),
+    );
+  } catch {
+    return run(configPath);
+  }
+  try {
+    return run(translated);
+  } finally {
+    rmSync(translated, { force: true });
+  }
+}
+
 export function engineUnusedMethods(
   absoluteConfig: string,
   environment: Environment,
   ownRoot?: string,
 ): { readonly sourceRoot: string; readonly findings: UnusedMethod[] } | undefined {
-  const outcome = runTypedChecks({
-    project: absoluteConfig,
-    checks: [CHECK],
-    ...(ownRoot === undefined
-      ? {}
-      : { inputs: { [CHECK]: { ownRoot: ownRoot.replaceAll('\\', '/') } } }),
-    environment,
-  });
+  const outcome = withTypescript7Config(absoluteConfig, (project) =>
+    runTypedChecks({
+      project,
+      checks: [CHECK],
+      ...(ownRoot === undefined
+        ? {}
+        : { inputs: { [CHECK]: { ownRoot: ownRoot.replaceAll('\\', '/') } } }),
+      environment,
+    }),
+  );
   const sourceRoot = fieldOf(outcome.report, 'sourceRoot');
   const result = outcome.checks?.[CHECK];
   if (result === undefined || typeof sourceRoot !== 'string') {
