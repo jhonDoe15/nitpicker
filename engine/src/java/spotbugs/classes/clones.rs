@@ -70,9 +70,9 @@ pub fn check(context: &Context, shape: &Shape) {
     let open = !has_modifier(shape.class, "abstract");
     let clone = public_clone(context, shape);
     let classy = matches!(kind, "class_declaration" | "record_declaration") || anonymous;
-    if let Some(clone) = clone.filter(|clone| classy && open && clone.child_by_field_name("body").is_some()) {
+    if let Some(clone) = clone.filter(|clone| classy && open && (clone.child_by_field_name("body").is_some() || has_modifier(*clone, "native"))) {
         let label = names::method(context, &shape.own, clone, None);
-        let line = lines::method_start(context, clone);
+        let line = if has_modifier(clone, "native") { Some(0) } else { lines::method_start(context, clone) };
         let supered = holds(clone, &|node| calls_clone(context, node, true));
         if let Some(line) = line {
             if !cloneable && !super::singletons::throws_unsupported(context, clone) {

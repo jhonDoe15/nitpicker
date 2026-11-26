@@ -8,6 +8,7 @@ mod fields;
 mod handlers;
 mod held;
 mod flow;
+mod folds;
 mod known;
 mod lombok;
 mod mutable;
