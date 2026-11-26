@@ -14,6 +14,7 @@ import type { TestEnvironments } from '../eslint/typed/engine.mts';
 import { type LintEngineOptions, projectLayerValue, troubleshootingError } from './typed/tools.mts';
 import { type CollectedRun, spawnCollected } from '../oxlint/oxlint-process.mts';
 import { lintWithOxlint } from '../oxlint/oxlint-runner.mts';
+import { withRejectedFilesRelinted } from '../oxlint/run/compiler-rejections.mts';
 import {
   describeProcessEnd,
   failureDetail,
@@ -62,16 +63,23 @@ export async function runLintEngine({
     policyConfigPath,
     testEnvironments,
   });
-  const results =
-    lintEngine(options) === 'eslint'
-      ? await runEslintCli(invocation, options.patterns)
-      : await lintWithOxlint({
-          options,
-          environment: invocation.environment,
-          projectConfigPath,
-          runEslintCli: (patterns, extraEnvironment) =>
-            runEslintCli(invocation, patterns, extraEnvironment),
-        });
+  if (lintEngine(options) === 'eslint') {
+    return {
+      results: await runEslintCli(invocation, options.patterns),
+      crashes: invocation.crashes,
+    };
+  }
+  const linted = await lintWithOxlint({
+    options,
+    environment: invocation.environment,
+    projectConfigPath,
+    runEslintCli: (patterns, extraEnvironment) =>
+      runEslintCli(invocation, patterns, extraEnvironment),
+  });
+  const results = await withRejectedFilesRelinted(linted, {
+    projectRoot: options.projectRoot,
+    lintFiles: (patterns) => runEslintCli(invocation, patterns),
+  });
   return { results, crashes: invocation.crashes };
 }
 

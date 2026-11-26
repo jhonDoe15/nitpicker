@@ -45,6 +45,8 @@ struct Site<'c, 'a, 't> {
     method: Node<'t>,
     label: String,
     is_static: bool,
+    /// Private fields of the class that only ever hold a parameter.
+    held: HashSet<String>,
 }
 
 impl Site<'_, '_, '_> {
@@ -89,7 +91,11 @@ impl Site<'_, '_, '_> {
         }
         let mut kept = HashSet::new();
         for store in &found.stores {
-            let Item::Param(place, _) = store.item else { continue };
+            let place = match &store.item {
+                Item::Param(place, _) => *place,
+                Item::Field(source) if source.declaring == self.class && self.held.contains(&source.name) => usize::MAX,
+                _ => continue,
+            };
             if (store.own || self.is_static) && kept.insert((store.field.declaring.clone(), store.field.name.clone(), place)) {
                 self.stored(self.method, self.context.line(store.node), &store.field, &store.variable);
             }
@@ -211,7 +217,7 @@ fn record_members(context: &Context, class: Node, own: &str, nest: &[String]) {
                 && member.child_by_field_name("name").is_some_and(|name| context.text(name) == field.name)
                 && parameters(*member).is_empty()
         });
-        let site = Site { context, class: own, nest: nest.to_vec(), method: class, label: format!("{}.{}()", names::binary(context, own), field.name), is_static: false };
+        let site = Site { context, class: own, nest: nest.to_vec(), method: class, label: format!("{}.{}()", names::binary(context, own), field.name), is_static: false, held: HashSet::new() };
         if !explicit {
             site.returned(class, context.line(class), &field);
         }
@@ -229,6 +235,7 @@ pub fn exposed_representation(context: &Context, class: Node) {
     }
     let Some(own) = context.resolver.scope.names.get(&class.id()).cloned() else { return };
     let nest = enclosing_types(context.resolver.scope, class);
+    let held = super::held::parameter_fields(context, class, &own, &members(class));
     for member in members(class) {
         let kind = member.kind();
         if !matches!(kind, "method_declaration" | "constructor_declaration" | "compact_constructor_declaration") || !has_modifier(member, "public") {
@@ -240,7 +247,7 @@ pub fn exposed_representation(context: &Context, class: Node) {
         let label = if kind == "compact_constructor_declaration" { names::method(context, &own, class, None) } else { names::method(context, &own, member, None) };
         let outer = nest.get(1).filter(|_| kind == "constructor_declaration" && inner(class)).map(String::as_str);
         let label = if outer.is_some() { names::method(context, &own, member, outer) } else { label };
-        let site = Site { context, class: &own, nest: nest.clone(), method: member, label, is_static: has_modifier(member, "static") };
+        let site = Site { context, class: &own, nest: nest.clone(), method: member, label, is_static: has_modifier(member, "static"), held: held.clone() };
         site.check(&found);
         if let (true, Some(end)) = (kind == "compact_constructor_declaration", &found.end) {
             for component in parameters(class) {

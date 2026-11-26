@@ -1,5 +1,7 @@
 //! UnusedMethod: a method or constructor that nothing outside its file can reach and nothing inside it uses.
 use super::Context;
+use super::fix_helpers::replace_including_comments;
+use super::fixes::{Fix, sentence};
 use super::boxed::effectively_private;
 use super::hierarchy::{declared_method, formals, overrides};
 use super::keep::{METHODS, should_keep};
@@ -267,6 +269,73 @@ fn usages(context: &Context, root: Node, found: &mut [Candidate]) {
     });
 }
 
+/// The class a constructor belongs to.
+fn owner_of(constructor: Node) -> Option<Node> {
+    let mut at = constructor.parent();
+    while let Some(node) = at {
+        if TYPES.contains(&node.kind()) {
+            return Some(node);
+        }
+        at = node.parent();
+    }
+    None
+}
+
+fn members_of<'t>(class: Node<'t>) -> Vec<Node<'t>> {
+    let Some(body) = class.child_by_field_name("body") else { return Vec::new() };
+    let mut members = Vec::new();
+    for part in children(body) {
+        if part.kind() == "enum_body_declarations" {
+            members.extend(children(part));
+        } else {
+            members.push(part);
+        }
+    }
+    members
+}
+
+/// How many constructors the class has, the implicit ones included.
+fn constructor_count(context: &Context, class: Node) -> usize {
+    let explicit: Vec<Node> = members_of(class).into_iter().filter(|part| part.kind().ends_with("constructor_declaration")).collect();
+    if class.kind() != "record_declaration" {
+        return explicit.len().max(1);
+    }
+    let components: Vec<String> = class.child_by_field_name("parameters").map(named_children).unwrap_or_default().iter().map(|part| written_type(context, *part)).collect();
+    let canonical = explicit.iter().any(|part| part.kind() == "compact_constructor_declaration" || formals(*part).iter().map(|formal| written_type(context, *formal)).eq(components.iter().cloned()));
+    explicit.len() + usize::from(!canonical)
+}
+
+fn written_type(context: &Context, parameter: Node) -> String {
+    parameter.child_by_field_name("type").map(|kind| context.text(kind).split_whitespace().collect()).unwrap_or_default()
+}
+
+fn has_final_field(class: Node) -> bool {
+    class.kind() == "record_declaration" && class.child_by_field_name("parameters").is_some_and(|list| !named_children(list).is_empty())
+        || members_of(class).into_iter().any(|part| part.kind() == "field_declaration" && has_modifier(part, "final"))
+}
+
+fn constructor_fix(context: &Context, unused: &[&Candidate]) -> Option<Fix> {
+    let class = owner_of(unused[0].node)?;
+    let mut fix = Fix::new();
+    let all = constructor_count(context, class) == unused.len();
+    if all {
+        let last = unused[unused.len() - 1].node;
+        let name = class.child_by_field_name("name").map(|name| context.text(name)).unwrap_or_default();
+        fix = fix.insert(last.end_byte(), format!("private {name}() {{}}"));
+        if has_final_field(class) {
+            return None;
+        }
+    }
+    for candidate in unused {
+        fix = fix.merged(replace_including_comments(context, candidate.node, ""));
+    }
+    Some(fix)
+}
+
+fn report(context: &Context, at: usize, message: &str, fixes: &[Fix]) {
+    context.report_always(NAME, at, &format!("{message}{}", sentence(&context.file.text, fixes)));
+}
+
 pub fn unused_method(context: &Context, root: Node) {
     if root.kind() != "program" {
         return;
@@ -277,11 +346,14 @@ pub fn unused_method(context: &Context, root: Node) {
     for candidate in found.iter().filter(|candidate| !candidate.used) {
         let at = candidate.node.child_by_field_name("name").map_or(candidate.node.start_byte(), |name| name.start_byte());
         if candidate.name != "<init>" {
-            context.report_always(NAME, at, &format!("Method '{}' is never used.", candidate.name));
+            let fix = replace_including_comments(context, candidate.node, "");
+            report(context, at, &format!("Method '{}' is never used.", candidate.name), &[fix]);
         } else if !constructed.contains(&candidate.class) {
             constructed.push(candidate.class.clone());
             let simple = super::hierarchy::simple_name(&candidate.class);
-            context.report_always(NAME, at, &format!("Constructor '{simple}' is never used."));
+            let siblings: Vec<&Candidate> = found.iter().filter(|other| !other.used && other.name == "<init>" && other.class == candidate.class).collect();
+            let fixes: Vec<Fix> = constructor_fix(context, &siblings).into_iter().collect();
+            report(context, at, &format!("Constructor '{simple}' is never used."), &fixes);
         }
     }
 }

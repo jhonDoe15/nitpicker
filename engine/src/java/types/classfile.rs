@@ -33,7 +33,7 @@ enum Constant<'a> {
     Utf8(&'a [u8]),
     Class(u16),
     Text(u16),
-    Integer(u32),
+    Int(i32),
     Other,
 }
 
@@ -198,6 +198,8 @@ struct Attributes<'a> {
     inner: Vec<(u16, u16)>,
     exceptions: Vec<u16>,
     names: Vec<u16>,
+    /// From the code of a method: the name of each local variable that lives from the first instruction, by slot.
+    locals: Vec<(u16, u16)>,
     marks: u32,
     /// Constant pool entries of the strings in `containerOf` of `@Immutable`.
     held: Vec<u16>,
@@ -321,6 +323,35 @@ fn type_annotation<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u
     Some(Mark { target, index, path, name })
 }
 
+/// The parameter names javac reads from the local variable table of a method's code: one per parameter, `arg<n>`
+/// for a parameter the table does not name; empty without a table.
+fn local_names<'a>(locals: &[(u16, u16)], descriptor: &[u8], is_static: bool, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Vec<String> {
+    if locals.is_empty() {
+        return Vec::new();
+    }
+    let mut names = Vec::new();
+    let mut slot = u16::from(!is_static);
+    let mut at = 1;
+    while at < descriptor.len() && descriptor[at] != b')' {
+        let mut array = false;
+        while descriptor[at] == b'[' {
+            array = true;
+            at += 1;
+        }
+        let wide = !array && matches!(descriptor[at], b'J' | b'D');
+        if descriptor[at] == b'L' {
+            while at < descriptor.len() && descriptor[at] != b';' {
+                at += 1;
+            }
+        }
+        at += 1;
+        let found = locals.iter().find(|(register, _)| *register == slot).and_then(|(_, name)| utf8(*name));
+        names.push(found.map_or_else(|| format!("arg{}", names.len()), |name| String::from_utf8_lossy(name).into_owned()));
+        slot += if wide { 2 } else { 1 };
+    }
+    names
+}
+
 fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<Attributes<'a>> {
     let mut found = Attributes::default();
     for _ in 0..reader.u2()? {
@@ -405,6 +436,30 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
             for _ in 0..reader.u1()? {
                 found.names.push(reader.u2()?);
                 reader.skip(2)?;
+            }
+        } else if name == b"Code" {
+            reader.skip(4)?;
+            let code = reader.u4()? as usize;
+            reader.skip(code)?;
+            let handlers = reader.u2()? as usize;
+            reader.skip(handlers * 8)?;
+            for _ in 0..reader.u2()? {
+                let inner = utf8(reader.u2()?).unwrap_or_default();
+                let size = reader.u4()? as usize;
+                let finish = reader.at + size;
+                if inner == b"LocalVariableTable" {
+                    for _ in 0..reader.u2()? {
+                        let start = reader.u2()?;
+                        reader.skip(2)?;
+                        let name = reader.u2()?;
+                        reader.skip(2)?;
+                        let slot = reader.u2()?;
+                        if start == 0 {
+                            found.locals.push((slot, name));
+                        }
+                    }
+                }
+                reader.at = finish;
             }
         } else if name == b"Exceptions" {
             found.exceptions = (0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?;
@@ -589,7 +644,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 reader.skip(3)?;
                 pool.push(Constant::Other);
             }
-            3 => pool.push(Constant::Integer(reader.u4()?)),
+            3 => pool.push(Constant::Int(reader.u4()? as i32)),
             4 | 9 | 10 | 11 | 12 | 17 | 18 => {
                 reader.skip(4)?;
                 pool.push(Constant::Other);
@@ -638,17 +693,22 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         nickname(&found);
         let (signature, constant) = (found.signature, found.constant);
         let marks = std::mem::take(&mut found.type_marks);
+        let found_number = constant;
         if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == 0 {
             let fixed = constant.filter(|_| flags & ACC_STATIC != 0).map(|_| Vec::new());
             let constant = constant.and_then(|index| match pool.get(index as usize)? {
                 Constant::Text(text) => Some(String::from_utf8_lossy(utf8(*text)?).into_owned()),
-                Constant::Integer(value) if descriptor == b"Z" => Some((*value != 0).to_string()),
+                Constant::Int(value) if descriptor == b"Z" => Some((*value != 0).to_string()),
+                _ => None,
+            });
+            let number = found_number.and_then(|index| match pool.get(index as usize)? {
+                Constant::Int(value) => Some(*value),
                 _ => None,
             });
             let kind = Signature { text: descriptor, at: 0, written_bounds: Vec::new() }.kind()?;
             let generic = signature.and_then(|text| Signature { text, at: 0, written_bounds: Vec::new() }.kind()).unwrap_or_else(|| kind.clone());
             field_marks.push((fields.len(), marks, descriptor));
-            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, flags: member_flags(flags, &found) | if flags & 0x0040 != 0 { flag::VOLATILE } else { 0 } });
+            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, number, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, flags: member_flags(flags, &found) | if flags & 0x0040 != 0 { flag::VOLATILE } else { 0 } | if flags & 0x4000 != 0 { flag::ENUM } else { 0 } });
         }
     }
     let mut methods = Vec::new();
@@ -699,7 +759,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 varargs: flags & ACC_VARARGS != 0,
                 flags: member_flags(flags, &found),
                 throws,
-                names: found.names.iter().filter_map(|name| utf8(*name)).map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
+                names: if found.names.is_empty() { local_names(&found.locals, descriptor, flags & ACC_STATIC != 0, &utf8) } else { found.names.iter().filter_map(|name| utf8(*name)).map(|name| String::from_utf8_lossy(name).into_owned()).collect() },
                 detail: Detail {
                     access: flags & 0x0d3f,
                     annotations: found.annotations.iter().filter_map(|kind| annotation_name(kind)).collect(),
@@ -748,6 +808,9 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     let own_private = found.inner.iter().any(|(class, access)| access & ACC_PRIVATE != 0 && class_name(*class).as_deref() == Some(name.as_str()));
     if own_private {
         class_flags |= flag::PRIVATE;
+    }
+    if found.inner.iter().any(|(class, access)| access & 0x0004 != 0 && class_name(*class).as_deref() == Some(name.as_str())) {
+        class_flags = (class_flags & !flag::PUBLIC) | flag::PROTECTED;
     }
     let permitted: Option<Vec<String>> = found.permitted.map(|listed| listed.into_iter().filter_map(&class_name).collect());
     if permitted.is_some() {

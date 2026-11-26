@@ -4,7 +4,7 @@
 use super::fields::stored;
 use super::flow::{Item, trace};
 use super::mutable::mutable;
-use super::stores::{Held, immutable_value, stored_fixed};
+use super::stores::{Held, forgetting, immutable_value, stored_fixed};
 use super::Context;
 use super::order::{Rank, Visits};
 use crate::engine::finding::Finding;
@@ -88,14 +88,16 @@ pub fn gather(context: &Context) -> Vec<(Key, Fact)> {
         for store in values {
             let value = crate::java::types::expr::unwrap(store.value);
             let null = value.kind() == "null_literal";
-            let verdict = match stored_fixed(context, value, &key) {
+            let forgotten = context.literals.contains(&key.0);
+            let (held, settled) = forgetting(forgotten, || (stored_fixed(context, value, &key), immutable_value(context, value)));
+            let verdict = match held {
                 Held::Nothing => Verdict::Nothing,
                 Held::Loads(source) => Verdict::Loads(source),
                 Held::Fixed(true) => Verdict::Fixed,
                 Held::Fixed(false) => Verdict::Against,
             };
-            let kind = (!null).then(|| kind_of(context, value));
-            found.push((key.clone(), Fact { by: store.by, verdict, settled: immutable_value(context, value), null, kind }));
+            let kind = (!null && !forgotten).then(|| kind_of(context, value));
+            found.push((key.clone(), Fact { by: store.by, verdict, settled, null, kind }));
         }
     }
     found

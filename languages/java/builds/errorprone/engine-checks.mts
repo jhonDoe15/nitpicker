@@ -1,18 +1,8 @@
+import PORTED_CHECKS from '../../gradle/errorprone/engine-checks.json' with { type: 'json' };
 import { ownClasses, ownPackages, projectFlags, runsProcessors } from './engine-arguments.mts';
 
 export const NULL_AWAY = 'NullAway';
-export const ENGINE_CHECKS: readonly string[] = [
-  'ArrayRecordComponent',
-  'EmptyCatch',
-  'EnumOrdinal',
-  'EscapedEntity',
-  'InconsistentOverloads',
-  'JavaUtilDate',
-  'SuppressWarningsWithoutExplanation',
-  'SystemOut',
-  'TypeParameterUnusedInFormals',
-  NULL_AWAY,
-];
+export const ENGINE_CHECKS: readonly string[] = [...PORTED_CHECKS, NULL_AWAY];
 
 export type EngineChecks = {
   readonly checks: readonly string[];
@@ -21,6 +11,18 @@ export type EngineChecks = {
 
 const NONE: EngineChecks = { checks: [], packages: [] };
 const TEST_ONLY = '--test-only';
+export const TEST_SENSITIVE: readonly string[] = [
+  'CheckedExceptionNotThrown',
+  'ConstantPatternCompile',
+  'ExposedPrivateType',
+  'FutureReturnValueIgnored',
+  'InterruptedExceptionSwallowed',
+  'Interruption',
+  'NarrowCalculation',
+  'ReturnValueIgnored',
+  'StaticAssignmentOfThrowable',
+  'ThrowSpecificExceptions',
+];
 const MODULE_PATH = '--module-path';
 const CHECK_LEVEL = /^-Xep:(\w+)(?::(\w+))?$/u;
 const OFF = 'OFF';
@@ -53,8 +55,12 @@ export function engineChecksFor(head: readonly string[]): EngineChecks {
   }
   const elsewhere = head.includes(TEST_ONLY) || head.includes(MODULE_PATH);
   const packages = elsewhere ? [] : ownPackages(ownClasses(head));
+  const testOnly = head.includes(TEST_ONLY);
   const checks = ENGINE_CHECKS.filter(
-    (check) => !off.includes(check) && (check !== NULL_AWAY || packages.length > 0),
+    (check) =>
+      !off.includes(check) &&
+      (check !== NULL_AWAY || packages.length > 0) &&
+      !(testOnly && TEST_SENSITIVE.includes(check)),
   );
   return { checks, packages: checks.includes(NULL_AWAY) ? packages : [] };
 }

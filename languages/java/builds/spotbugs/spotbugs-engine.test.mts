@@ -52,8 +52,13 @@ describe('spotbugsOnEngine', () => {
       ),
     });
 
-    expect(added).toStrictEqual(['-omitVisitors', 'ConstructorThrow']);
+    expect(added.slice(0, 3)).toStrictEqual([
+      '-omitVisitors',
+      'ConstructorThrow,DontCatchNullPointerException,WrongMapIterator',
+      '-exclude',
+    ]);
     expect(sarifResults(plan).map((result) => fieldOf(result, 'ruleId'))).toStrictEqual([
+      'EI_EXPOSE_REP',
       'CT_CONSTRUCTOR_THROW',
     ]);
     const [start] = started;
@@ -65,7 +70,9 @@ describe('spotbugsOnEngine', () => {
       '--classpath',
       path.join(plan.reportDir, 'spotbugs-engine-classpath.txt'),
     ]);
-    expect(fieldOf(start?.environment, 'NP_SB_ONLY')).toBe('CT_CONSTRUCTOR_THROW');
+    expect(String(fieldOf(start?.environment, 'NP_SB_ONLY')).split(',')).toContain(
+      'WMI_WRONG_MAP_ITERATOR',
+    );
     expect(fieldOf(start?.environment, 'NITPICKER_JDK')).toBe(plan.javaHome);
     expect(readFileSync(path.join(plan.reportDir, 'spotbugs-engine-sources.txt'), 'utf8')).toBe(
       `${plan.sources[0] ?? ''}\n`,
@@ -104,7 +111,7 @@ describe('spotbugsOnEngine', () => {
     mkdirSync(path.join(processors, 'META-INF/services'), { recursive: true });
     writeFileSync(
       path.join(processors, 'META-INF/services/javax.annotation.processing.Processor'),
-      '',
+      'org.example.Processor\n',
     );
     writeFileSync(path.join(plan.reportDir, SPOTBUGS_ENGINE_SARIF), '{}');
     const started: Started[] = [];
@@ -120,6 +127,28 @@ describe('spotbugsOnEngine', () => {
     ).toStrictEqual([]);
     expect(spotbugsOnEngine({ ...plan, sources: [] }, environment, { run })).toStrictEqual([]);
     expect(started).toStrictEqual([]);
+  });
+
+  it('leaves the patterns that need the members Lombok writes to SpotBugs', () => {
+    const plan = planIn();
+    const lombok = path.join(plan.reportDir, 'lombok');
+    mkdirSync(path.join(lombok, 'META-INF/services'), { recursive: true });
+    writeFileSync(
+      path.join(lombok, 'META-INF/services/javax.annotation.processing.Processor'),
+      'lombok.launch.AnnotationProcessorHider$AnnotationProcessor\n',
+    );
+    const started: Started[] = [];
+    const run = engineWriting({ findings: [finding('CT_CONSTRUCTOR_THROW', THROWN)] }, started);
+
+    const added = spotbugsOnEngine({ ...plan, processorPath: [lombok] }, environment, { run });
+
+    expect(added.slice(0, 2)).toStrictEqual([
+      '-omitVisitors',
+      'ConstructorThrow,DontCatchNullPointerException',
+    ]);
+    const only = String(fieldOf(started[0]?.environment, 'NP_SB_ONLY')).split(',');
+    expect(only).toContain('CT_CONSTRUCTOR_THROW');
+    expect(only).not.toContain('WMI_WRONG_MAP_ITERATOR');
   });
 
   it('skips a detector whose patterns all run on the engine and filters out the others', () => {
