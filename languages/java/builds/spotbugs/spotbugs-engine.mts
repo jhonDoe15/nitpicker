@@ -31,6 +31,14 @@ const SPOTBUGS_RULES = '_SpotBugs';
 const WRONG_MAP_ITERATOR = 'WMI_WRONG_MAP_ITERATOR';
 const LOCK_MONITORENTER = 'JLM_JSR166_LOCK_MONITORENTER';
 const UTIL_MONITORENTER = 'JLM_JSR166_UTILCONCURRENT_MONITORENTER';
+const DEAD_STORES: readonly string[] = [
+  'DLS_DEAD_LOCAL_STORE',
+  'DLS_DEAD_LOCAL_STORE_SHADOWS_FIELD',
+  'DLS_DEAD_LOCAL_STORE_OF_NULL',
+  'DLS_DEAD_STORE_OF_CLASS_LITERAL',
+  'DLS_DEAD_LOCAL_INCREMENT_IN_RETURN',
+  'IP_PARAMETER_IS_DEAD_BUT_OVERWRITTEN',
+];
 export const ON_ENGINE: readonly string[] = [
   'CT_CONSTRUCTOR_THROW',
   'EI_EXPOSE_REP',
@@ -67,6 +75,7 @@ export const ON_ENGINE: readonly string[] = [
   'SS_SHOULD_BE_STATIC',
   'HSM_HIDING_METHOD',
   'NN_NAKED_NOTIFY',
+  ...DEAD_STORES,
 ];
 const LOMBOK_WRITES: readonly string[] = [
   'SING_',
@@ -75,6 +84,7 @@ const LOMBOK_WRITES: readonly string[] = [
   'MS_SHOULD_BE_FINAL',
   'MS_PKGPROTECT',
   'SS_',
+  ...DEAD_STORES,
 ];
 const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   MultipleInstantiationsOfSingletons: [
@@ -92,6 +102,7 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   DontCatchNullPointerException: ['DCN_NULLPOINTER_EXCEPTION'],
   WrongMapIterator: [WRONG_MAP_ITERATOR],
   BooleanReturnNull: ['NP_BOOLEAN_RETURN_NULL'],
+  FindDeadLocalStores: DEAD_STORES,
   FindJSR166LockMonitorenter: [
     LOCK_MONITORENTER,
     UTIL_MONITORENTER,

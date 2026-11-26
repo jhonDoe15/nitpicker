@@ -4,6 +4,7 @@ mod attributes;
 mod calls;
 mod classes;
 mod constructors;
+mod dead;
 mod equality;
 mod expose;
 mod fields;
@@ -216,6 +217,7 @@ const DETECTORS: &[Detector] = &[
     methods::methods as Detector,
     methods::method_patterns as Detector,
     attributes::should_be_static as Detector,
+    dead::dead_stores as Detector,
 ];
 
 #[derive(Default)]
