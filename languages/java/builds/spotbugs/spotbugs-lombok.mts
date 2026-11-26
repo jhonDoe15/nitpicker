@@ -87,14 +87,18 @@ function readProcessors(entry: string): string[] {
   return service === undefined ? [] : meaningfulLines(service);
 }
 
-function processorsOf(entry: string): string[] | Unreadable {
+function readable(read: () => string[]): string[] | Unreadable {
   try {
-    return readProcessors(entry);
+    return read();
   } catch (error) {
     return {
       unreadable: error instanceof Error ? error : new Error(String(error), { cause: error }),
     };
   }
+}
+
+function processorsOf(entry: string): string[] | Unreadable {
+  return readable(() => readProcessors(entry));
 }
 
 function writesFilesOnly(name: string): boolean {
@@ -136,13 +140,7 @@ export function declaredProcessorKind(coordinates: readonly string[]): Processor
 }
 
 function linesOf(config: string): string[] | Unreadable {
-  try {
-    return meaningfulLines(readFileSync(config, 'utf8'));
-  } catch (error) {
-    return {
-      unreadable: error instanceof Error ? error : new Error(String(error), { cause: error }),
-    };
-  }
+  return readable(() => meaningfulLines(readFileSync(config, 'utf8')));
 }
 
 function flag(value: string): Marked {

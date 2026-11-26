@@ -5,6 +5,10 @@ export type Placed = {
   readonly placement?: 'arguments';
 };
 
+export function placesByArguments(placed: Placed): boolean {
+  return placed.placement === 'arguments';
+}
+
 const ERROR = 'error';
 const WARNING = 'warning';
 const NOTE = 'note';
