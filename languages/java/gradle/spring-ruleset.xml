@@ -943,6 +943,33 @@ return //ClassDeclaration[ModifierList/Annotation[
   [not(ClassType[pmd-java:typeIs('java.util.concurrent.CompletableFuture')])]
 ]]></value></property></properties>
   </rule>
+  <rule name="SpringCacheKeyOmitsParameter" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Name every parameter this method reads in its @Cacheable key (both #customerId and #status, not only #customerId), or drop the key attribute so all parameters form the key: calls that differ only in a parameter the key leaves out share one cache entry, and the second caller gets the result cached for the first.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration[Block][not(pmd-java:modifiers() = ('static', 'private'))]
+  [ModifierList/Annotation[pmd-java:typeIs('org.springframework.cache.annotation.Cacheable')]
+     /AnnotationMemberList/MemberValuePair[@Name = 'key']/StringLiteral]
+  ! (let $method := .,
+         $key := string(($method/ModifierList/Annotation[pmd-java:typeIs('org.springframework.cache.annotation.Cacheable')]
+           /AnnotationMemberList/MemberValuePair[@Name = 'key']/StringLiteral/@ConstValue)[1]),
+         $parameters := $method/FormalParameters/FormalParameter,
+         $named := function($parameter) {
+           let $i := count($parameter/preceding-sibling::FormalParameter)
+           return matches($key, concat('#', $parameter/VariableId/@Name, '([^A-Za-z0-9_$]|$)'))
+             or matches($key, concat('#[pa]', string($i), '([^0-9]|$)'))
+         },
+         $read := function($parameter) {
+           exists($method/Block//VariableAccess[@Name = $parameter/VariableId/@Name]
+             [count(ancestor::ClassBody) = count($method/ancestor::ClassBody)])
+         }
+     return if (contains($key, '#root.args')
+                or (some $p in $parameters satisfies
+                      ($p/ClassType[pmd-java:typeIsExactly('java.lang.String')] and $named($p) and not($read($p)))))
+            then ()
+            else $parameters[not($named(.)) and $read(.)])
+]]></value></property></properties>
+  </rule>
   <rule name="SpringCacheWriteInTransaction" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Write the cache after the commit (in a TransactionSynchronization afterCommit callback, a @TransactionalEventListener, or the caller once the transactional call returns), or make the cache manager transaction-aware (TransactionAwareCacheManagerProxy, or transactionAware() on its builder). Written inside the transaction, the cache keeps a value that a rollback undoes, and an early evict lets a concurrent reader put the old value back.">
     <priority>2</priority>

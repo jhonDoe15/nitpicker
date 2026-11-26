@@ -195,6 +195,7 @@
   "pmd/SpringAnnotationBeforeProxy": ["bug", "spring"],
   "pmd/SpringAsyncExecutor": ["reliability", "spring", "async"],
   "pmd/SpringBeanCollectionState": ["bug", "spring"],
+  "pmd/SpringCacheKeyOmitsParameter": ["bug", "spring"],
   "pmd/SpringCacheWriteInTransaction": ["bug", "spring", "persistence"],
   "pmd/SpringComposedMapping": ["style", "spring"],
   "pmd/SpringConstructorInjection": ["maintainability", "spring"],

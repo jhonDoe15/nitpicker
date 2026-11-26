@@ -24,6 +24,7 @@ const BUILD_PLUGIN = { annotations: ENTITY_ANNOTATIONS, presets: ['spring'] };
 const KOTLIN_HALF_NOT_BUILT = 'the Kotlin half is not built yet';
 const SKIPPED = {
   SpringAnnotationBeforeProxy: KOTLIN_HALF_NOT_BUILT,
+  SpringCacheKeyOmitsParameter: KOTLIN_HALF_NOT_BUILT,
   SpringLockReleasedBeforeCommit: KOTLIN_HALF_NOT_BUILT,
   SpringWriteAfterCommitDropped: KOTLIN_HALF_NOT_BUILT,
   SpringPagedCollectionFetch: KOTLIN_HALF_NOT_BUILT,
