@@ -13,7 +13,7 @@ import { processorTool } from './maven-errorprone.mts';
 const enabled = process.env['NITPICKER_JAVA_E2E'] === '1';
 const maven = process.env['NITPICKER_MAVEN'];
 const GROUP = 'nitpicker.fixture.processors';
-const VERSION = `1.${String(Date.now())}`;
+const VERSION = `1.${String(process.pid)}`;
 const roots: string[] = [];
 
 afterAll(() => {
