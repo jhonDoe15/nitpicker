@@ -244,6 +244,15 @@ mod assert_order;
 mod mock_invocations;
 mod boxed_constructor;
 mod catch_fail;
+mod robolectric_shadow;
+mod test_parameter;
+mod truth_exactly;
+mod tree_kind_checks;
+mod inject_method_annotations;
+mod strong_byte_string;
+mod self_and_stream_calls;
+mod call_arguments;
+mod declaration_warnings;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -766,11 +775,33 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["UnnecessarilyVisible"], framework_methods::unnecessarily_visible),
     (&["DoNotClaimAnnotations"], framework_methods::do_not_claim_annotations),
     (&["UnsafeFinalization"], framework_methods::unsafe_finalization),
+    (&["TraditionalSwitchExpression"], declaration_warnings::traditional_switch_expression),
+    (&["TransientMisuse"], declaration_warnings::transient_misuse),
+    (&["RecordComponentOverride"], declaration_warnings::record_component_override),
+    (&["ToStringReturnsNull"], declaration_warnings::to_string_returns_null),
+    (&["SwigMemoryLeak"], declaration_warnings::swig_memory_leak),
+    (&["SystemConsoleNull"], declaration_warnings::system_console_null),
+    (&["PreconditionsCheckNotNullRepeated"], call_arguments::preconditions_check_not_null_repeated),
+    (&["PrimitiveArrayPassedToVarargsMethod"], call_arguments::primitive_array_passed_to_varargs_method),
+    (&["PrimitiveAtomicReference"], call_arguments::primitive_atomic_reference),
+    (&["ProtoDurationGetSecondsGetNano"], call_arguments::proto_duration_get_seconds_get_nano),
+    (&["ProtoTimestampGetSecondsGetNano"], call_arguments::proto_timestamp_get_seconds_get_nano),
+    (&["RethrowReflectiveOperationExceptionAsLinkageError"], self_and_stream_calls::rethrow_reflective_operation_exception),
+    (&["SuperCallToObjectMethod"], self_and_stream_calls::super_call_to_object_method),
+    (&["StreamToIterable"], self_and_stream_calls::stream_to_iterable),
+    (&["SelfAlwaysReturnsThis"], self_and_stream_calls::self_always_returns_this),
+    (&["QualifierOrScopeOnInjectMethod"], inject_method_annotations::qualifier_or_scope_on_inject_method),
+    (&["QualifierWithTypeUse"], inject_method_annotations::qualifier_with_type_use),
+    (&["PreferInstanceofOverGetKind"], tree_kind_checks::prefer_instanceof_over_get_kind),
+    (&["TruthContainsExactlyElementsInUsage"], truth_exactly::truth_contains_exactly_elements_in_usage),
+    (&["PreferTestParameter"], test_parameter::prefer_test_parameter),
+    (&["RobolectricShadowDirectlyOn"], robolectric_shadow::robolectric_shadow_directly_on),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
 /// leave the resolver with answers found in a different order.
 const FILE_CHECKS: &[(&[&str], Check)] = &[
+    (&["StronglyTypeByteString"], strong_byte_string::strongly_type_byte_string),
     (&["UnnecessaryBoxedVariable"], boxed::unnecessary_boxed_variable),
     (&["UnusedMethod"], unused_methods::unused_method),
     (&["NotJavadoc"], docplaced::not_javadoc),
