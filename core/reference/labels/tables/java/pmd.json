@@ -182,6 +182,7 @@
   "pmd/ReturnFromFinallyBlock": ["reliability"],
   "pmd/ReusableObjectPerCall": ["performance"],
   "pmd/ReversedAssignableCheck": ["bug"],
+  "pmd/ScheduledTaskStopsOnFailure": ["bug", "reliability", "async"],
   "pmd/SecretDigestEquals": ["bug", "security"],
   "pmd/SecretInLog": ["security"],
   "pmd/ServerOrContainerPerTest": ["tests", "performance"],

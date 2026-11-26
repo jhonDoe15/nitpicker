@@ -54,5 +54,10 @@
 ["requestscope/LeakyFilters.java", "MissingStaticMethodInNonInstantiatableClass", 13, 14],
 ["requestscope/LeakyFilters.java", "RequestThreadLocalNotCleared", 23, 13],
 ["requestscope/LeakyFilters.java", "RequestThreadLocalNotCleared", 34, 13],
-["requestscope/TidyFilters.java", "MissingStaticMethodInNonInstantiatableClass", 14, 14]
+["requestscope/TidyFilters.java", "MissingStaticMethodInNonInstantiatableClass", 14, 14],
+["schedules/Refreshers.java", "AvoidCatchingGenericException", 54, 22],
+["schedules/Refreshers.java", "AvoidCatchingGenericException", 61, 22],
+["schedules/Refreshers.java", "AvoidCatchingGenericException", 98, 18],
+["schedules/Refreshers.java", "ScheduledTaskStopsOnFailure", 46, 9],
+["schedules/Refreshers.java", "SpringDataNoFlush", 46, 45]
 ]
