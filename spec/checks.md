@@ -1060,6 +1060,12 @@ Operand depth recursion: `nitpicker/no-operand-depth-recursion` (production sour
 operator, a binary or infix node or an operand, and no parameter is named like a depth or limit or compared with one.
 The stack grows with the length of an operand chain, which generated code makes very long.
 
+Depth-only worklist: `nitpicker/no-depth-only-worklist` (production source, in `eslint-lint`) and
+`pmd/DepthOnlyWorklist` (Java, main sources) report a worklist loop that can append more than one item per turn and
+compares the depth of an item (a property, accessor or variable declared in the loop) with a limit, with no visited set
+or mark anywhere in the loop (`has`, `add`, `includes`, Java `contains`, `containsKey`, `add` or `put` on a `Set` or
+`Map`, `computeIfAbsent`). Tree children (`children`, `getChildren()`, TypeScript `forEachChild`) are not reported.
+
 Chunkwise stream text: `nitpicker/no-chunkwise-stream-text` (production source, in `eslint-lint`, type-aware) reports,
 inside a `'data'` listener or a `for await` loop over a stream whose chunk is a `Buffer`, `Uint8Array` or untyped
 stream chunk without `setEncoding`, string accumulation of the chunk (`text += chunk`, `chunk.toString()`), a

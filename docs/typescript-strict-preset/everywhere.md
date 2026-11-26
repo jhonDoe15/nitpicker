@@ -692,6 +692,14 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   length of an operand chain, and generated code (thousands of `+` operands, a long `else if` ladder) overflows it.
   Allowed form: walk the left-leaning chain in a loop and recurse only into the right operand, use an explicit stack,
   or pass a depth and stop with an ordinary error past a limit.
+- `nitpicker/no-depth-only-worklist`: a worklist loop (also over `this.name`) that can append more than one item per
+  iteration (a spread, more than one argument, two pushes, or a push inside an inner loop or callback), compares a
+  depth (`depth`, `level`, `hops`, `distance`: a property, or a variable declared in the loop) with a limit, and has no
+  set or mark anywhere in the loop (no `has`, `add`, `set` or `includes` on another collection, no
+  `item.visited = true`). A depth limit bounds how long one path is, not how many paths there are, so shared children
+  are expanded once per path. Children of a tree (`.children`, `.childNodes`, `getChildren()`, `forEachChild`, in the
+  pushed value or in the `for...of` loop around the push) are not reported. Allowed form: keep a `Set` of the items
+  already expanded and skip an item that is in it.
 - `nitpicker/no-chunkwise-stream-text` (needs the type checker): stream data decoded or matched one chunk at a time,
   so text or a message split across two chunks breaks. Inside a `'data'` listener (`on`, `once`, `addListener`,
   `prependListener`) or a `for await` loop over a stream, where the chunk is typed `Buffer`, `Uint8Array` or `ArrayBuffer`

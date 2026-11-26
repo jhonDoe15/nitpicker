@@ -40,6 +40,7 @@ import { rule as ruleNoCostlyCollectionForm } from '../rules/collections/costly-
 import { rule as ruleNoDataloaderBatchMismatch } from '../rules/dataloaders/no-dataloader-batch-mismatch.mts';
 import { rule as ruleNoDecidedCondition } from '../rules/decided/no-decided-condition.mts';
 import { rule as ruleNoDefaultExport } from '../rules/syntax/no-default-export.mts';
+import { rule as ruleNoDepthOnlyWorklist } from '../rules/worklists/no-depth-only-worklist.mts';
 import { rule as ruleNoDevDependencyInProduction } from '../rules/dependencies/no-dev-dependency-in-production.mts';
 import { rule as ruleNoDirectoryPassingExistenceCheck } from '../rules/urls/files/no-directory-passing-existence-check.mts';
 import { rule as ruleNoDisabledTlsVerification } from '../rules/security/tls/no-disabled-tls-verification.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/ass
 import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
 import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
 import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multiple-collection-joins.mts';
-import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -142,6 +142,7 @@ export const partRules = {
   'no-dataloader-batch-mismatch': ruleNoDataloaderBatchMismatch,
   'no-decided-condition': ruleNoDecidedCondition,
   'no-default-export': ruleNoDefaultExport,
+  'no-depth-only-worklist': ruleNoDepthOnlyWorklist,
   'no-dev-dependency-in-production': ruleNoDevDependencyInProduction,
   'no-directory-passing-existence-check': ruleNoDirectoryPassingExistenceCheck,
   'no-disabled-tls-verification': ruleNoDisabledTlsVerification,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-module-level-let': ruleNoModuleLevelLet,
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
   'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
-  'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
 };

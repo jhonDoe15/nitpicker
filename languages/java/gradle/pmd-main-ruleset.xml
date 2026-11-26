@@ -1192,6 +1192,46 @@ return //MethodCall[@MethodName = $keyCalls][*[1][pmd-java:typeIs('java.util.Map
       </property>
     </properties>
   </rule>
+  <rule name="DepthOnlyWorklist" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This worklist loop is bounded only by a depth limit and remembers nothing it has expanded. A depth limit bounds how long one path is, not how many paths there are: when items share children (a graph, not a tree), each item is expanded once per path that reaches it, so the work grows as the fan-out to the power of the depth and can run out of memory. Keep a Set of the items already expanded and skip an item that is in it (if (!expanded.add(item)) continue).">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $takes := ('poll', 'pop', 'removeFirst', 'removeLast', 'pollFirst', 'pollLast', 'remove'),
+    $appends := ('add', 'push', 'offer', 'addLast', 'addFirst', 'offerLast', 'offerFirst', 'addAll'),
+    $nesting := ('ForeachStatement', 'ForStatement', 'WhileStatement', 'DoStatement', 'LambdaExpression'),
+    $depthName := 'depth|level|hops|distance'
+return
+//WhileStatement
+  [let $loop := .,
+       $work := (.//MethodCall[@MethodName = $takes][ArgumentList/@Size = 0]
+                   /*[1][self::VariableAccess or self::FieldAccess]/@Name)[1],
+       $adds := .//MethodCall[@MethodName = $appends][*[1][self::VariableAccess or self::FieldAccess][@Name = $work]]
+   return exists($work)
+     and (count($adds) > 1
+          or exists($adds[@MethodName = 'addAll'])
+          or (some $add in $adds satisfies
+                exists($add/ancestor::*[local-name() = $nesting][. >> $loop])))
+     and exists(.//InfixExpression[@Operator = ('<', '<=', '>', '>=')]
+                  [*[self::VariableAccess][matches(@Name, $depthName, 'i')]
+                     [@Name = $loop//LocalVariableDeclaration/VariableDeclarator/VariableId/@Name]
+                   or *[self::FieldAccess][matches(@Name, $depthName, 'i')]
+                   or *[self::MethodCall][matches(@MethodName, $depthName, 'i')]])
+     and not(.//MethodCall[@MethodName = ('contains', 'containsKey', 'putIfAbsent', 'computeIfAbsent')]
+                [not(*[1][self::VariableAccess or self::FieldAccess][@Name = $work])])
+     and not(.//MethodCall[@MethodName = ('add', 'put')]
+                [*[1][pmd-java:typeIs('java.util.Set') or pmd-java:typeIs('java.util.Map')]]
+                [not(*[1][self::VariableAccess or self::FieldAccess][@Name = $work])])
+     and not(.//AssignmentExpression[*[1][self::FieldAccess]][*[2][self::BooleanLiteral][@True = true()]])
+     and not($adds//MethodCall[@MethodName = ('getChildren', 'getChildNodes', 'children', 'getChild')]
+             | $adds/ancestor::ForeachStatement[. >> $loop]/*[2]
+                 /descendant-or-self::MethodCall[@MethodName = ('getChildren', 'getChildNodes', 'children')]
+             | $adds//FieldAccess[@Name = 'children'])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="DestroyLeavesDescendants" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This destroys a process that the method started through a shell, a launcher or a script (sh, cmd, npm, npx, yarn, pnpm, gradlew.bat, mvnw.cmd, a .sh, .bat or .cmd file), after a wait with a deadline. destroy() and destroyForcibly() stop only that process; the real work runs in a child of it and keeps running, holding CPU, memory, files and ports, and may still write into a folder the caller is deleting. Destroy the descendants first: process.descendants().forEach(ProcessHandle::destroyForcibly), then the process itself, or start the executable directly without the wrapper.">
     <priority>3</priority>

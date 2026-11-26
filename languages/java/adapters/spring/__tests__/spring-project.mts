@@ -162,6 +162,7 @@ const REVIEW_RULES = new Set([
   'GrowingProcessArguments',
   'OperandDepthRecursion',
   'UnguardedCyclicRecursion',
+  'DepthOnlyWorklist',
   'DestroyLeavesDescendants',
   'HeadCutErrorOutput',
   'StderrAsFailure',

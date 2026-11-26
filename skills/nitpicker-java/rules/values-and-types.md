@@ -262,6 +262,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `getInterfaces()`) passes a visited `Set` or a depth limit down (`pmd/UnguardedCyclicRecursion`).
 - A walk over both operands of an expression (`getLeft()` and `getRight()`) loops over the left-leaning chain and
   recurses only into the right operand, or takes a depth limit (`pmd/OperandDepthRecursion`).
+- A worklist that can add several items per turn keeps a `Set` of the items already expanded
+  (`if (!expanded.add(item)) continue;`): a depth limit alone does not bound the number of paths
+  (`pmd/DepthOnlyWorklist`).
 - A public method or constructor does not wait a constant it cannot override
   (`pmd/UninjectableDelay`): `Thread.sleep(RETRY_DELAY_MS)` or `TimeUnit.SECONDS.sleep(...)` on a
   `private static final` makes a test wait it out. Take the delay as a parameter, or a field the constructor
