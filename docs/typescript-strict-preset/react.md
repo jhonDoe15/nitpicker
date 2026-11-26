@@ -142,6 +142,22 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   left alone. `react-x/purity` reports the other work started in render:
   `setTimeout`, `setInterval`, `requestAnimationFrame`, `fetch`, `window.addEventListener`,
   `new WebSocket(...)`, observers and storage.
+- **Server and client render the same markup** (`nitpicker/react-no-hydration-mismatch`,
+  report-only, only in a package that depends on `next`, `@remix-run/react`, `gatsby`, `vike`,
+  `vike-react`, `@astrojs/react`, `waku` or `@tanstack/react-start`). A ternary or `&&` that a
+  component renders (a JSX child or the value it returns) whose test checks `typeof window`,
+  `document`, `navigator`, `localStorage`, `sessionStorage` or `matchMedia` (also through a
+  module-level `const isBrowser = typeof window !== 'undefined'` made only of such tests joined by `&&`,
+  `||` or `!`) renders one thing on the server and another in the first client render: React reports a
+  hydration mismatch and renders that part again.
+  Render the same output on both and switch after mounting: `useSyncExternalStore(subscribe,
+getSnapshot, () => serverValue)` or state set in an effect. Not reported: a branch that renders a
+  portal (`createPortal`), a value in an attribute (`menuPortalTarget={...}`), an element with
+  `suppressHydrationWarning`, a local variable named like a browser global, branches that all render
+  nothing (`null`, `false`, `undefined`), tests in effects, handlers and nested functions, and a branch inside
+  another conditional branch (the outer condition may already be client-only, such as data fetched
+  after mount). Components loaded with `ssr: false` are not followed across files; mark such a finding
+  as an exception. `useState` and `useMemo` initial values that test the browser are not read.
 - **No double-escaped i18next values** (`nitpicker/react-i18next-escape-value`, needs
   `react-i18next` in `package.json`). A `t(...)` call (from `useTranslation()`, `i18next` or
   `i18n.t`) or a `<Trans values={{ ... }}>` that passes interpolation values and whose text React

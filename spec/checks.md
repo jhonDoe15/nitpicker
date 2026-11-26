@@ -165,6 +165,13 @@ imported from a router package),
 files are left alone; timers, `fetch`, `window` listeners, sockets and observers in render are reported by
 `react-x/purity`.
 
+React hydration: `nitpicker/react-no-hydration-mismatch` (production source in a package that depends on a
+server-rendering React framework, in `eslint-lint`, report-only) reports a ternary or `&&` rendered by a component (a
+JSX child or the returned value, in the component's own body) whose test checks `typeof window`, `document`,
+`navigator`, `localStorage`, `sessionStorage` or `matchMedia`, directly or through a module-level `const` made only of
+such tests. Portals, attributes, `suppressHydrationWarning`, shadowed globals, branches that render nothing, nested
+functions and branches inside another conditional branch are left alone.
+
 React i18next: `nitpicker/react-i18next-escape-value` (production source in a React project that depends on
 `react-i18next`, in `eslint-lint`) reports a `t(...)` or `<Trans values>` call that interpolates values into text React
 renders while no source file of the package sets `interpolation.escapeValue: false` and the call does not. The init

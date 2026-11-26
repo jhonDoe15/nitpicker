@@ -22,6 +22,9 @@ exception route in the message: write that form, don't work around the rule.
 - Render starts nothing: `navigate(...)`, `router.push(...)`, `document.addEventListener(...)` and
   `document.title = ...` go in a handler or an effect, and a redirect is rendered (`<Navigate to="/login" />`)
   (`nitpicker/react-no-render-side-effect`; timers, `fetch` and `window` listeners: `react-x/purity`).
+- In a server-rendered app (Next.js, Remix, Gatsby, Vike, Astro), render the same markup on the server and the
+  first client render: never `{typeof window !== 'undefined' && <Wide />}`; read the browser value with
+  `useSyncExternalStore(subscribe, getSnapshot, () => serverValue)` (`nitpicker/react-no-hydration-mismatch`).
 - A prop or state array is never sorted, reversed or spliced in place: `players.toSorted(byScore)`, not
   `players.sort(byScore)` (`react-x/immutability`).
 - With react-i18next, set `interpolation: { escapeValue: false }` at init (or per call) when `t()` values are

@@ -66,6 +66,7 @@ const REPORT_ONLY_RULES = new Set([
   'nitpicker/no-check-then-write',
   'nitpicker/no-sequential-independent-reads',
   'nitpicker/no-early-wait-on-started-work',
+  'nitpicker/react-no-hydration-mismatch',
 ]);
 
 export function normalizeEslintResults({
