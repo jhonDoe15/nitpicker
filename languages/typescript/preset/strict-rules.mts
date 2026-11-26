@@ -221,6 +221,7 @@ export const strictEslintRuleIds = [
   'nitpicker/require-go-collector-setting',
   'nitpicker/require-jvm-heap-goal',
   'nitpicker/no-unbatched-heavy-run',
+  'nitpicker/no-child-wait-after-local-work',
   'nitpicker/require-promise-reject',
   'nitpicker/require-test-process-timeout',
   'nitpicker/shorter-boolean-logic',

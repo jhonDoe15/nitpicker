@@ -74,6 +74,7 @@ export const productionGuardEntries: Record<string, Linter.RuleEntry> = {
   'nitpicker/require-go-collector-setting': 'error',
   'nitpicker/require-jvm-heap-goal': 'error',
   'nitpicker/no-unbatched-heavy-run': 'error',
+  'nitpicker/no-child-wait-after-local-work': 'error',
   'nitpicker/require-client-timeout': 'error',
   'nitpicker/time-unit-mismatch': 'error',
   'nitpicker/no-sync-node-api-in-async': 'error',

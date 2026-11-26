@@ -483,6 +483,11 @@ file listing spread whole into the arguments of a type-aware run (`tsc`, `tsgo`,
 `--type-aware`) that is not started from a loop, a parallel map or a pool. One program over every file grows with the
 project; the allowed form runs once per bounded batch.
 
+Child waits after local work: `nitpicker/no-child-wait-after-local-work` (production source, in `eslint-lint`) reports
+a statement that starts a child process (directly or through a function of the same file) after an in-process step
+whose result it does not read, when both results are later combined in one array. The parent holds the
+memory of its own step while the child runs; the allowed form runs the child step first.
+
 Unbounded waits: `pmd/UnboundedWait` (Java, main sources) reports `get()` or `join()` without a timeout on a
 `Future` or `CompletableFuture`, `Thread.join()` and `CountDownLatch.await()`, and
 `pmd/ReactorBlockWithoutTimeout` (with `reactor-core` on the compile classpath) reports `block()`,

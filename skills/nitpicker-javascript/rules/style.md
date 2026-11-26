@@ -364,6 +364,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Run a type-aware linter or compiler (`tsc`, `tsgo`, `tsgolint`, `--type-aware`) once per bounded batch of files (for
   example 500, each with the files that change the global scope), not once over every file of the project, whose
   program grows with the project (`nitpicker/no-unbatched-heavy-run`).
+- When a function combines in-process work with the result of a memory-heavy child process that does not depend on it,
+  start the child step first: the parent otherwise keeps the memory of its own work while the child runs
+  (`nitpicker/no-child-wait-after-local-work`).
 - Time values carry their unit in the name (`timeoutMs`, `ttlSeconds`) and meet only the same unit: convert
   once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
   `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time

@@ -2128,6 +2128,17 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `Promise.all` or a pool, or in a function of the same file called from one. Not reported: lists cut with `slice`,
   literal lists and other commands. Split the list into bounded batches and run once per batch; splitting only by
   command line length does not bound memory.
+- A function does not wait for a child process after in-process work the child does not read
+  (`nitpicker/no-child-wait-after-local-work`, production files). V8 does not give back the pages the in-process work
+  grew, so the parent sits at its high-water mark while the child runs and the machine holds both peaks at once (a
+  runner at 1.6 GB, 250 MB of it live, next to a 4.4 GB type-checker server; running the server first took the peak
+  from 6.72 GB to 5.49 GB with identical findings). Reported: in one function body, a `const` set from a call (awaited
+  or not) that starts a child process (`spawn`, `spawnSync`, `execFile`, `exec`, `fork`, execa and the like, directly
+  or in the body of a function of the same file) after a `const` set from a plain function call (not a method such as
+  `path.join` or `process.cwd`) that does not, when the child statement does not read the earlier binding and both
+  bindings are later put together in one array literal (`[...local, ...typed]`). Not reported: a child step that reads
+  the earlier result, results used apart or only gathered in an object, and two child steps. Run the child step first
+  and the in-process step after it.
 - Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and
   Python presets) have no TypeScript or JavaScript counterpart: nothing blocks a thread on a promise, and a promise
   that never settles is a missing deadline for `await`, which `nitpicker/require-client-timeout` and
