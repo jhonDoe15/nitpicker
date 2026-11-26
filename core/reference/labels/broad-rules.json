@@ -37,6 +37,7 @@
   "pmd/DefaultTimeZone",
   "pmd/LegacyCalendarApi",
   "pmd/LiteralsFirstInComparisons",
+  "pmd/LoopInvariantCopy",
   "pmd/NonExhaustiveSwitch",
   "pmd/SimpleDateFormatNeedsLocale",
   "pmd/SwitchStmtsShouldHaveDefault",

@@ -136,6 +136,7 @@
   "pmd/LogStringConcatenation": ["performance"],
   "pmd/LoggerForOtherClass": ["bug", "maintainability"],
   "pmd/LogicInversion": ["simplification"],
+  "pmd/LoopInvariantCopy": ["performance"],
   "pmd/LoopUpdateAwayFromExit": ["bug"],
   "pmd/LoopVariableUnused": ["bug"],
   "pmd/MapValueCastToNumber": ["bug"],

@@ -589,6 +589,11 @@ Java `RepeatedKeyedScan` (main PMD ruleset, #2210) reports `map.get(key).stream(
 enhanced `for` or iteration callback, where the key reads the loop element and the test reads
 nothing of it. The weaker ordered-comparison form is not reported, as in TypeScript.
 
+Java `LoopInvariantCopy` (main PMD ruleset, #2214, broad) reports a full copy of a collection, map
+or array declared outside a loop or iteration callback and not changed in it (`new ArrayList<>(x)`,
+`List.copyOf(x)`, `x.clone()`, `Arrays.copyOf(x, x.length)`), stored straight away (added, put,
+passed to a constructor, assigned to a field, returned from a `map` callback).
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

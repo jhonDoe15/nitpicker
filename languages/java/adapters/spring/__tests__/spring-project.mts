@@ -249,6 +249,7 @@ const REVIEW_RULES = new Set([
   'CopyConstructorSharesCollection',
   'ToMapDuplicateKey',
   'HashOrderInOrderedOutput',
+  'LoopInvariantCopy',
   'RepeatedKeyedScan',
   'ReplacingCollectionMerge',
   'FilteredPositionalPairing',

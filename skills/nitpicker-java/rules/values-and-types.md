@@ -171,6 +171,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   (`pmd/ReplacingCollectionMerge`).
 - Answer a question about the collection of a key once per key, not once per element that shares the
   key (`pmd/RepeatedKeyedScan`).
+- Share one read-only copy of a large collection across the elements of a loop instead of storing a
+  new copy per element (`pmd/LoopInvariantCopy`).
 - Do repeated work once: look a reflective member up by its constant name before the loop, not in it
   (`pmd/ConstantLookupInLoop`); test the kind of a level before you search its subtree while you climb
   a parent chain (`pmd/SubtreeSearchPerAncestor`); keep the result of `resolve(key)` in a local

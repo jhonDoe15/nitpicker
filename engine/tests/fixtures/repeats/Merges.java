@@ -1,5 +1,7 @@
 package repeats;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -60,5 +62,51 @@ public class Merges {
       System.out.println(fresh);
     }
     return all;
+  }
+
+  record Report(String finding, List<String> lines) {}
+
+  private final List<String> header = new ArrayList<>();
+
+  List<Report> reports(List<String> findings, List<String> sourceLines, Map<String, String> settings, String[] words) {
+    List<Report> reports = new ArrayList<>();
+    for (String finding : findings) {
+      reports.add(new Report(finding, new ArrayList<>(sourceLines)));
+    }
+    List<List<String>> copies = new ArrayList<>();
+    for (String finding : findings) {
+      copies.add(List.copyOf(sourceLines));
+      copies.add(new ArrayList<>(this.header));
+    }
+    List<Map<String, String>> maps = findings.stream().map(finding -> new HashMap<>(settings)).toList();
+    List<String[]> arrays = new ArrayList<>();
+    findings.forEach(finding -> arrays.add(Arrays.copyOf(words, words.length)));
+    System.out.println(maps.size() + arrays.size() + copies.size());
+    return reports;
+  }
+
+  List<Report> declines(List<String> findings, List<String> sourceLines) {
+    List<Report> reports = new ArrayList<>();
+    List<String> small = List.of("a", "b");
+    for (String finding : findings) {
+      List<String> own = new ArrayList<>(sourceLines);
+      own.add(finding);
+      reports.add(new Report(finding, own));
+      reports.add(new Report(finding, new ArrayList<>(small)));
+    }
+    List<String> growing = new ArrayList<>();
+    for (String finding : findings) {
+      growing.add(finding);
+      reports.add(new Report(finding, new ArrayList<>(growing)));
+    }
+    for (String finding : List.of("x", "y")) {
+      reports.add(new Report(finding, new ArrayList<>(sourceLines)));
+    }
+    for (int i = 0; i < 3; i++) {
+      reports.add(new Report(findings.get(i), new ArrayList<>(sourceLines)));
+    }
+    Report once = new Report("all", new ArrayList<>(sourceLines));
+    reports.add(once);
+    return reports;
   }
 }
