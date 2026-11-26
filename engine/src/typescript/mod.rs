@@ -1,4 +1,5 @@
 //! TypeScript and JavaScript front end: one oxc parse per file, shared by every check of this language.
+pub mod imports;
 pub mod lines;
 pub mod resolve;
 pub mod rules;
