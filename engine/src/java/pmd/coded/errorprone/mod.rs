@@ -1,7 +1,7 @@
 //! Ports of PMD's error prone rules written in Java.
 mod assignments;
 mod classes;
-mod expressions;
+pub mod expressions;
 mod nulls;
 mod statements;
 
