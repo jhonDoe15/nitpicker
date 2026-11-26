@@ -4,6 +4,7 @@ import { counterexampleOf } from './encoding/explain.mts';
 import { boolAtom, literalValue, numberAtom, vectorAtom } from './encoding/atoms.mts';
 import { isArithmeticOperator, isExactNumber, isIntegral } from './encoding/numbers.mts';
 import { solverContext } from './encoding/solver-context.mts';
+import { released, satisfiable, solverOf } from './encoding/solver-checks.mts';
 import { boundFacts, boundedModelOf } from './models/models.mts';
 import { foldTerm, isBooleanLiteral, isComparison, isLogical, isNot } from './terms.mts';
 import { required } from './typed/term-parts.mts';
@@ -14,12 +15,10 @@ import type {
   Z3,
   Z3Arith,
   Z3Bool,
-  Z3Solver,
   Z3Vector,
   Vector,
 } from './typed/solver-types.mts';
 import type { Term, Verdict } from './typed/term-types.mts';
-import type { CheckSatResult } from 'z3-solver';
 
 type Parts = {
   readonly node: Term;
@@ -219,26 +218,6 @@ function distinctLiterals(encoding: Encoding): Z3Bool[] {
   return literals.length > 1 ? [encoding.z3.Distinct(...literals)] : [];
 }
 
-function solverOf(z3: Z3, assertions: readonly Z3Bool[], resourceLimit: number): Z3Solver {
-  const solver = new z3.Solver();
-  solver.set('rlimit', resourceLimit);
-  solver.add(...assertions);
-  return solver;
-}
-
-async function satisfiable(
-  z3: Z3,
-  assertions: readonly Z3Bool[],
-  resourceLimit: number,
-): Promise<CheckSatResult> {
-  const solver = solverOf(z3, assertions, resourceLimit);
-  try {
-    return await solver.check();
-  } finally {
-    solver.release();
-  }
-}
-
 async function encoded(
   conditions: readonly Term[],
   query: Term,
@@ -292,11 +271,7 @@ export async function counterexample(
   const { resourceLimit = DEFAULT_RESOURCE_LIMIT } = options;
   const { z3, encoding, facts, asked } = await encoded(conditions, query, options);
   const solver = solverOf(z3, [...facts, z3.Not(asked)], resourceLimit);
-  try {
-    return (await solver.check()) === 'sat'
-      ? counterexampleOf(encoding, solver.model())
-      : undefined;
-  } finally {
-    solver.release();
-  }
+  return released(solver, (result) =>
+    result === 'sat' ? counterexampleOf(encoding, solver.model()) : undefined,
+  );
 }
