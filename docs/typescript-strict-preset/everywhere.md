@@ -354,6 +354,14 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   of the time of the walk. A stat whose `size` or `mtime` is read, a listing with options and a
   stat of another path are not reported. Allowed form: `readdirSync(dir, { withFileTypes: true })`
   and the entry's own `isDirectory()` and `isFile()`.
+- `nitpicker/no-filtered-positional-pairing`: a list filtered before it is paired by position with a
+  list that was not filtered the same way, in all production code (not in tests). It reports a
+  `map`, `flatMap`, `forEach`, `some` or `every` callback whose index reads `other[i]`, a counted
+  `for (let i = 0; i < list.length; i++)` loop that reads two lists at `[i]`, and `zip(a, b)`,
+  when one side is the result of `filter` (directly, through a `const`, or followed by `map`,
+  `slice`, `toSorted` or `toReversed`) and the other is not filtered with the same callback. After
+  the first dropped entry the positions no longer line up. Allowed forms: pair first and filter the
+  pairs, or keep a placeholder for the dropped entries.
 - `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
   walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
   `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,

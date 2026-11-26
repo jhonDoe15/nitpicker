@@ -30,6 +30,7 @@ export const productionGuardEntries: Record<string, Linter.RuleEntry> = {
   'nitpicker/no-repeated-call': 'error',
   'nitpicker/no-work-before-early-exit': 'error',
   'nitpicker/no-read-all-before-pass': 'error',
+  'nitpicker/no-filtered-positional-pairing': 'error',
   'nitpicker/no-stat-per-listed-entry': 'error',
   'nitpicker/no-repeated-parse-per-item': 'error',
   'nitpicker/no-loop-invariant-copy': 'error',

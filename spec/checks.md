@@ -571,6 +571,10 @@ function of the same file called on a shared field of every item of a loop (`mes
 `lstat` call per entry of a `readdir` listing made without `withFileTypes`, when only the entry's
 kind is read from it.
 
+`nitpicker/no-filtered-positional-pairing` (production source, in `eslint-lint`) reports a list that
+is filtered and then paired by position (an index callback, a counted loop, `zip`) with a list that
+was not filtered the same way.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

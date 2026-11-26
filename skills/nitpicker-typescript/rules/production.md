@@ -225,6 +225,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   need the value (`nitpicker/no-work-before-early-exit`).
 - Read and handle files one at a time (or through a bounded pool), not all into one array that a later
   loop walks once (`nitpicker/no-read-all-before-pass`).
+- Pair two lists by position before filtering either of them, never after
+  (`nitpicker/no-filtered-positional-pairing`).
 - List a directory with `{ withFileTypes: true }` and ask each entry its kind, instead of a `stat`
   call per entry (`nitpicker/no-stat-per-listed-entry`).
 - Parse a field that many items share (a message, a rule, a path) once per distinct value, not once

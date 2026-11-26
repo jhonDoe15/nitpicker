@@ -58,6 +58,7 @@ import { rule as ruleNoExpandingReplacementString } from '../rules/patterns/repl
 import { rule as ruleNoExternalExecutablesInUnitTests } from '../rules/test-runtime/processes/no-external-executables-in-unit-tests.mts';
 import { rule as ruleNoFalsyDefault } from '../rules/signatures/no-falsy-default.mts';
 import { rule as ruleNoFalsyErrorCheck } from '../rules/errors/falsy-errors/no-falsy-error-check.mts';
+import { rule as ruleNoFilteredPositionalPairing } from '../rules/repeated-work/pairings/no-filtered-positional-pairing.mts';
 import { rule as ruleNoFirstTestChargedSetup } from '../rules/test-runtime/lifecycle/no-first-test-charged-setup.mts';
 import { rule as ruleNoFixedSleepSynchronization } from '../rules/test-runtime/lifecycle/no-fixed-sleep-synchronization.mts';
 import { rule as ruleNoFloatEqualityInTests } from '../test-assertions/no-float-equality-in-tests.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoManyToManyCascadeRemove } from '../rules/persistence/no-m
 import { rule as ruleNoMismatchedPreconditionMessage } from '../rules/preconditions/no-mismatched-precondition-message.mts';
 import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
 import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
-import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -160,6 +160,7 @@ export const partRules = {
   'no-external-executables-in-unit-tests': ruleNoExternalExecutablesInUnitTests,
   'no-falsy-default': ruleNoFalsyDefault,
   'no-falsy-error-check': ruleNoFalsyErrorCheck,
+  'no-filtered-positional-pairing': ruleNoFilteredPositionalPairing,
   'no-first-test-charged-setup': ruleNoFirstTestChargedSetup,
   'no-fixed-sleep-synchronization': ruleNoFixedSleepSynchronization,
   'no-float-equality-in-tests': ruleNoFloatEqualityInTests,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-mismatched-precondition-message': ruleNoMismatchedPreconditionMessage,
   'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
   'no-module-level-let': ruleNoModuleLevelLet,
-  'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
 };
