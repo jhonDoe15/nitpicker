@@ -109,4 +109,20 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     text: 'equals() method does not check for null argument',
     levels: { 1: 'error', 2: 'warning' },
   },
+  PA_PUBLIC_PRIMITIVE_ATTRIBUTE: {
+    text: 'Primitive field is public',
+    levels: { 2: NOTE },
+  },
+  MS_SHOULD_BE_FINAL: {
+    text: "Field isn't final but should be",
+    levels: { 1: NOTE, 2: NOTE },
+  },
+  MS_PKGPROTECT: {
+    text: 'Field should be package protected',
+    levels: { 2: NOTE },
+  },
+  SS_SHOULD_BE_STATIC: {
+    text: 'Unread field: should this field be static?',
+    levels: { 2: NOTE },
+  },
 };

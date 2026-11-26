@@ -171,6 +171,10 @@ fn widened(index: &TypeIndex, facts: &Facts, key: &Key) -> bool {
 }
 
 impl Known {
+    /// The order SpotBugs visits the run's classes in, from the calls every file noted.
+    pub fn visits(&self, index: &TypeIndex) -> Visits {
+        Visits::of(index, &self.calls.lock().expect("calls"))
+    }
     pub fn note(&self, calls: HashMap<String, HashSet<String>>, facts: Vec<(Key, Fact)>, waiting: Vec<Waiting>) {
         let mut all = self.calls.lock().expect("calls");
         for (class, callees) in calls {

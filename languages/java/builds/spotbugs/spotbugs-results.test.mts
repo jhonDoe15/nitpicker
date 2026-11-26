@@ -254,6 +254,25 @@ describe('spotbugsResultOf', () => {
     expect(result.locations[0].logicalLocations[0].name).toBe('A.t');
   });
 
+  it('places a field finding in the directory of the package that holds its line', () => {
+    const result = spotbugsResultOf({
+      file: '/src/q/C.java',
+      rule: 'PA_PUBLIC_PRIMITIVE_ATTRIBUTE',
+      line: 4,
+      message: '',
+      symbol: 'member:p.A.d|q',
+      priority: 2,
+      arguments: ['p.A.d'],
+    });
+
+    expect(result.locations[0].physicalLocation.artifactLocation.uri).toBe('q/C.java');
+    expect(result.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'A.d',
+      kind: 'member',
+      fullyQualifiedName: 'p.A.d',
+    });
+  });
+
   it('refuses a message it cannot read', () => {
     expect(() => resultOf('EI_EXPOSE_REP', 'something else')).toThrow(/cannot read/u);
     expect(() => resultOf('OTHER_PATTERN', 'x')).toThrow(/OTHER_PATTERN/u);
