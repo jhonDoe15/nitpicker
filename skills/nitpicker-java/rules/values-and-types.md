@@ -176,6 +176,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `MathContext`, unless the divisor is always a power of ten (`pmd/BigDecimalExactDivide`).
 - Never put a side effect in `peek` or in a block-bodied `map` of a stream that ends in `count()` over a sized
   source: since Java 9 `count()` skips the pipeline, so use `forEach` and then `size()` (`pmd/PeekSkippedByCount`).
+- The argument of `orElse`, `getOrDefault` or `requireNonNullElse` is evaluated even when the value is present, so a
+  repository, JDBC, HTTP or messaging call, or a method that throws, goes into `orElseGet`, `orElseThrow` or
+  `computeIfAbsent`, never into the fallback argument (`pmd/EagerFallbackDoesIo`).
 - A `Collectors.toMap` over parsed text or request data (a split string, file lines, cookies, headers) has a merge
   function that says what a repeated key means, `toMap(Cookie::getName, Cookie::getValue, (first, second) -> first)`,
   or uses `groupingBy` (`pmd/ToMapDuplicateKey`).

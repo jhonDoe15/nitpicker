@@ -65,6 +65,7 @@
   "pmd/DoNotThrowExceptionInFinally": ["reliability"],
   "pmd/DontCallThreadRun": ["bug", "async"],
   "pmd/DontImportSun": ["maintainability"],
+  "pmd/EagerFallbackDoesIo": ["bug", "performance", "persistence"],
   "pmd/EmptyCatchBlock": ["reliability"],
   "pmd/EmptyFinalizer": ["simplification"],
   "pmd/EpochNarrowedToInt": ["bug"],
