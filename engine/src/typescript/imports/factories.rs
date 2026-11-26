@@ -3,6 +3,7 @@ use crate::typescript::ParsedFile;
 use oxc_ast::ast::{Class, Function, IdentifierReference, ImportDeclaration, ImportDeclarationSpecifier};
 use oxc_ast::ast::{JSXOpeningElement, JSXOpeningFragment, PropertyDefinition};
 use oxc_ast::ast::{TSEnumDeclaration, TSExternalModuleDeclaration, TSGlobalDeclaration, TSMethodSignature};
+use oxc_ast::ast::{Declaration, ExportDeclaration, TSImportEqualsDeclaration, TSModuleReference};
 use oxc_ast::ast::{TSNamespaceDeclaration, TSPropertySignature, VariableDeclaration};
 use oxc_ast_visit::{Visit, walk};
 use oxc_semantic::Semantic;
@@ -10,7 +11,9 @@ use oxc_syntax::reference::ReferenceId;
 use oxc_syntax::scope::{ScopeFlags, ScopeId};
 use oxc_syntax::symbol::SymbolId;
 use std::cell::Cell;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+
+const ALIAS_DEPTH: u32 = 16;
 
 /// The bindings the compiler counts as used beyond value references: the `React` that JSX elements and fragments
 /// reach, and the names in computed keys of type members, which it reads as values. References in an ambient
@@ -19,9 +22,12 @@ pub(super) struct Factories<'s, 'a> {
     semantic: &'s Semantic<'a>,
     used: HashSet<SymbolId>,
     ambient_reads: HashSet<ReferenceId>,
+    alias_reads: HashMap<ReferenceId, SymbolId>,
     scopes: Vec<ScopeId>,
     in_key: bool,
     ambient: u32,
+    alias: Option<SymbolId>,
+    exporting: bool,
 }
 
 impl<'s, 'a> Factories<'s, 'a> {
@@ -31,9 +37,12 @@ impl<'s, 'a> Factories<'s, 'a> {
             semantic,
             used: HashSet::new(),
             ambient_reads: HashSet::new(),
+            alias_reads: HashMap::new(),
             scopes: vec![root],
             in_key: false,
             ambient: 0,
+            alias: None,
+            exporting: false,
         };
         factories.visit_program(parsed.program);
         factories
@@ -52,14 +61,20 @@ impl<'s, 'a> Factories<'s, 'a> {
                 ImportDeclarationSpecifier::ImportDefaultSpecifier(default) => &default.local,
                 ImportDeclarationSpecifier::ImportNamespaceSpecifier(namespace) => &namespace.local,
             };
-            let Some(symbol) = local.symbol_id.get() else { return false };
-            let scoping = self.semantic.scoping();
-            self.used.contains(&symbol)
-                || scoping.get_resolved_reference_ids(symbol).iter().any(|id| {
-                    let flags = scoping.get_reference(*id).flags();
-                    !self.ambient_reads.contains(id) && (flags.is_read() || flags.is_write())
-                })
+            local.symbol_id.get().is_some_and(|symbol| self.is_used(symbol, 0))
         })
+    }
+
+    /// A use outside ambient code, where a use inside `import X = A.B` counts only when `X` itself is used.
+    fn is_used(&self, symbol: SymbolId, depth: u32) -> bool {
+        let scoping = self.semantic.scoping();
+        self.used.contains(&symbol)
+            || scoping.get_resolved_reference_ids(symbol).iter().any(|id| {
+                let flags = scoping.get_reference(*id).flags();
+                let value = !self.ambient_reads.contains(id) && (flags.is_read() || flags.is_write());
+                let alias_used = |alias: &SymbolId| depth < ALIAS_DEPTH && self.is_used(*alias, depth + 1);
+                value && self.alias_reads.get(id).is_none_or(alias_used)
+            })
     }
 
     fn ambient_if(&mut self, declare: bool, walk: impl FnOnce(&mut Self)) {
@@ -100,11 +115,28 @@ impl<'a> Visit<'a> for Factories<'_, 'a> {
 
     fn visit_identifier_reference(&mut self, it: &IdentifierReference<'a>) {
         let Some(id) = it.reference_id.get() else { return };
+        if let Some(alias) = self.alias {
+            self.alias_reads.insert(id, alias);
+        }
         if self.ambient > 0 {
             self.ambient_reads.insert(id);
         } else if let Some(symbol) = self.semantic.scoping().get_reference(id).symbol_id().filter(|_| self.in_key) {
             self.used.insert(symbol);
         }
+    }
+
+    fn visit_export_declaration(&mut self, it: &ExportDeclaration<'a>) {
+        self.exporting = matches!(it.declaration, Declaration::TSImportEqualsDeclaration(_));
+        walk::walk_export_declaration(self, it);
+        self.exporting = false;
+    }
+
+    fn visit_ts_import_equals_declaration(&mut self, it: &TSImportEqualsDeclaration<'a>) {
+        let entity = !matches!(it.module_reference, TSModuleReference::ExternalModuleReference(_));
+        let alias = it.id.symbol_id.get().filter(|_| entity && !self.exporting);
+        let outer = std::mem::replace(&mut self.alias, alias);
+        walk::walk_ts_import_equals_declaration(self, it);
+        self.alias = outer;
     }
 
     fn visit_variable_declaration(&mut self, it: &VariableDeclaration<'a>) {

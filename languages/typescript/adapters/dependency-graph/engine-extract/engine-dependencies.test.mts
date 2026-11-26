@@ -70,6 +70,16 @@ const SOURCES: Readonly<Record<string, string>> = {
     "import { A } from './a';\nnamespace N { declare const v: { [A.k]: number }; }\nexport const y = N;\n",
   's.ts': "import { A } from './a';\nenum F { Y = A.z }\nexport const y = F;\n",
   't.ts': "import { A } from './a';\ndeclare enum F { Y = require('./b') }\nexport const y = F;\n",
+  'v.ts':
+    "import { A } from './a';\nnamespace N { import X = A.B; export const z = 1; }\nexport {};\n",
+  'w.ts': "import { A } from './a';\nimport X = A.B;\nexport {};\n",
+  'x.ts': "import { A } from './a';\nimport X = A.B;\nexport const y = X;\n",
+  'y.ts': "import { A } from './a';\nimport X = A.B;\nimport Y = X.C;\nexport const y = Y;\n",
+  'z.ts':
+    "import { A } from './a';\nimport X = A.B;\nimport Y = X.C;\nexport const y: Y = null!;\n",
+  'v2.ts': "import { A } from './a';\nexport import X = A.B;\n",
+  'w2.ts':
+    "import { A } from './a';\nnamespace N { export import X = A.B; }\nexport const y = N;\n",
   'u.d.ts': "import { A } from './a';\nexport const y: { [A.k]: number };\nexport = A;\n",
 };
 
