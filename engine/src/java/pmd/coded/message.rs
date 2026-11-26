@@ -103,13 +103,18 @@ fn variable_name(ctx: &Ctx, node: u32) -> Option<String> {
     }
 }
 
+/// A receiver parameter (`Foo this`) that the grammar reads as a formal parameter.
+pub fn receiver(ctx: &Ctx, formal: u32) -> bool {
+    ctx.kid(formal, "VariableId").is_some_and(|id| ctx.text(id, "Name") == "this")
+}
+
 /// A method as PMD names it in messages: its name and the written types of its parameters.
 pub fn signature(ctx: &Ctx, method: u32) -> String {
     let mut out = ctx.text(method, "Name");
     out.push('(');
     let parameters = ctx
         .kid(method, "FormalParameters")
-        .map(|list| ctx.kids_named(list, "FormalParameter").collect::<Vec<_>>());
+        .map(|list| ctx.kids_named(list, "FormalParameter").filter(|formal| !receiver(ctx, *formal)).collect::<Vec<_>>());
     for (at, parameter) in parameters.unwrap_or_default().into_iter().enumerate() {
         if at > 0 {
             out.push_str(", ");

@@ -80,6 +80,16 @@
   "exclude": []
  },
  {
+  "name": "ConstructorCallsOverridableMethod",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.errorprone.ConstructorCallsOverridableMethodRule",
+  "message": "Overridable {0} called during object construction{1}",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
   "name": "DetachedTestCase",
   "xpath": "",
   "port": "net.sourceforge.pmd.lang.java.rule.errorprone.DetachedTestCaseRule",
@@ -114,6 +124,16 @@
   "xpath": "",
   "port": "net.sourceforge.pmd.lang.java.rule.errorprone.JUnitStaticSuiteRule",
   "message": "You have a suite() method that is not both public and static, so JUnit won't call it to get your TestSuite.  Is that what you wanted to do?",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "NonSerializableClass",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.errorprone.NonSerializableClassRule",
+  "message": "The field ''{0}'' of serializable class ''{1}'' is of non-serializable type ''{2}''.",
   "suppress": "",
   "properties": {},
   "include": [],
@@ -235,10 +255,40 @@
   "exclude": []
  },
  {
+  "name": "AvoidReassigningLoopVariables",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.AvoidReassigningLoopVariablesRule",
+  "message": "Avoid reassigning the loop control variable ''{0}''",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
   "name": "AvoidReassigningParameters",
   "xpath": "",
   "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.AvoidReassigningParametersRule",
   "message": "Avoid reassigning parameters such as ''{0}''",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "AvoidUsingHardCodedIP",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.AvoidUsingHardCodedIPRule",
+  "message": "Do not hard code the IP address ${variableName}",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "ForLoopCanBeForeach",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.ForLoopCanBeForeachRule",
+  "message": "This 'for' loop can be replaced by a 'foreach' loop",
   "suppress": "",
   "properties": {},
   "include": [],
@@ -295,10 +345,30 @@
   "exclude": []
  },
  {
+  "name": "PreserveStackTrace",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.PreserveStackTraceRule",
+  "message": "Thrown exception does not preserve the stack trace of exception ''{0}'' on all code paths",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
   "name": "PrimitiveWrapperInstantiation",
   "xpath": "",
   "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.PrimitiveWrapperInstantiationRule",
   "message": "Do not use `new {0}(...)`, prefer `{0}.valueOf(...)`",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "SimplifiableTestAssertion",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.SimplifiableTestAssertionRule",
+  "message": "Assertion may be simplified using {0}",
   "suppress": "",
   "properties": {},
   "include": [],
@@ -329,6 +399,16 @@
   "xpath": "",
   "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.UnusedPrivateFieldRule",
   "message": "Avoid unused private fields such as ''{0}''.",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "UnusedPrivateMethod",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.UnusedPrivateMethodRule",
+  "message": "Avoid unused private methods such as ''{0}''.",
   "suppress": "",
   "properties": {},
   "include": [],
@@ -415,6 +495,25 @@
   "exclude": []
  },
  {
+  "name": "GuardLogStatement",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.GuardLogStatementRule",
+  "message": "Pass values as placeholders (LOG.debug(\"user '{'}\", user)) and compute nothing in the arguments; guard the call with isDebugEnabled() only when an argument must be computed.",
+  "suppress": "./MethodCall[ArgumentList/*[1][self::StringLiteral]]\n  [not(ArgumentList/*[position() > 1][not(\n     self::VariableAccess or self::FieldAccess or self::ThisExpression or self::StringLiteral\n     or self::NumericLiteral or self::BooleanLiteral or self::CharLiteral or self::NullLiteral\n     or (self::MethodCall[ArgumentList[@Size = 0]]\n         [*[1][self::VariableAccess or self::FieldAccess or self::ThisExpression]]))])]",
+  "properties": {
+   "logLevels": {
+    "type": "",
+    "value": "trace,debug,finest,finer,fine"
+   },
+   "guardsMethods": {
+    "type": "",
+    "value": "isTraceEnabled,isDebugEnabled,isLoggable"
+   }
+  },
+  "include": [],
+  "exclude": []
+ },
+ {
   "name": "AddEmptyString",
   "xpath": "",
   "port": "net.sourceforge.pmd.lang.java.rule.performance.AddEmptyStringRule",
@@ -449,6 +548,16 @@
   "xpath": "",
   "port": "net.sourceforge.pmd.lang.java.rule.performance.ConsecutiveAppendsShouldReuseRule",
   "message": "StringBuffer (or StringBuilder).append is called consecutively without reusing the target variable.",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "ConsecutiveLiteralAppends",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.performance.ConsecutiveLiteralAppendsRule",
+  "message": "StringBuffer (or StringBuilder).append is called {0} consecutive times with literals. Use a single append with a single combined String.",
   "suppress": "",
   "properties": {},
   "include": [],
@@ -550,6 +659,16 @@
   "port": "net.sourceforge.pmd.lang.java.rule.multithreading.UnsynchronizedStaticFormatterRule",
   "message": "Static Formatter objects should be accessed in a synchronized manner",
   "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "SimplifyBooleanReturns",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.design.SimplifyBooleanReturnsRule",
+  "message": "Return the condition instead of branching to true or false: if (c) return true; return false; is return c;, and if (c) return true; return x; is return c || x;.",
+  "suppress": ".[not(ancestor::*[self::MethodDeclaration or self::LambdaExpression][1][self::MethodDeclaration]/PrimitiveType[@Kind = 'boolean'])]",
   "properties": {},
   "include": [],
   "exclude": []

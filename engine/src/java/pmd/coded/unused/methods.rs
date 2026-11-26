@@ -2,7 +2,7 @@
 use crate::java::pmd::coded::constants::{Const, const_value};
 use crate::java::pmd::coded::ctx::{Ctx, Hit};
 use crate::java::pmd::coded::hit_with;
-use crate::java::pmd::coded::message::signature;
+use crate::java::pmd::coded::message::{receiver, signature};
 use crate::java::types::model::{Method, Type};
 use std::collections::HashSet;
 
@@ -67,6 +67,7 @@ fn candidate(ctx: &Ctx, method: u32) -> Candidate {
         .kid(method, "FormalParameters")
         .map(|list| {
             ctx.kids_named(list, "FormalParameter")
+                .filter(|formal| !receiver(ctx, *formal))
                 .map(|formal| ctx.kid(formal, "VariableId").and_then(|id| ctx.type_of(id)).map(|kind| kind.erased()))
                 .collect()
         })
