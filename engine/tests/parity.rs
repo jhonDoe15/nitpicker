@@ -105,6 +105,11 @@ fn repeated_work_rules_report_what_pmd_reports() {
 }
 
 #[test]
+fn memory_growth_rules_report_what_pmd_reports() {
+    same_as_pmd("memory", "all");
+}
+
+#[test]
 fn rules_written_with_pmd_7_node_names_match_pmd() {
     same_as_pmd("pmd7names", "all");
 }

@@ -528,7 +528,10 @@ Whole-list JSON text: `nitpicker/no-whole-list-json-text` (production source, in
 filled in a loop) whose result is written with `writeFileSync`, `appendFileSync`, `writeSync` or a stream's `write`,
 and `JSON.parse(readFileSync(...))` read for such a list. Past about 512 million characters the string cannot be built
 and the output is lost; below it the text doubles the memory of the data. The allowed form writes and reads one
-element per line.
+element per line. Java has `WholeListJsonText` (main PMD ruleset): `Files.writeString` or `Files.write` of
+`ObjectMapper.writeValueAsString`, `String.join` or `Collectors.joining` over such a list, and
+`ObjectMapper.readValue(Files.readString(...))` into a collection; the allowed forms are `JsonGenerator`,
+`SequenceWriter` and `MappingIterator`.
 
 Copies walked once: `nitpicker/no-mapped-copy-for-single-pass` (production source, in `eslint-lint`) reports `map`,
 `filter`, `flatMap` or a spread copy of a list that grows with the input passed to a function of the same file that
@@ -544,7 +547,9 @@ JVM heap goals: `nitpicker/require-jvm-heap-goal` (production source, in `eslint
 started in a loop, a parallel map or a pool, or from a function called there, whose arguments or `JAVA_TOOL_OPTIONS`
 set a heap ceiling (`-Xmx`, `-XX:MaxRAMPercentage`) and no goal (`-XX:GCTimeRatio`, `-XX:SoftMaxHeapSize`,
 `-XX:MaxHeapFreeRatio`). Each such JVM grows to its ceiling and keeps it, so concurrent JVMs hold far more than their
-live data; the allowed form adds `-XX:GCTimeRatio=4` next to the ceiling.
+live data; the allowed form adds `-XX:GCTimeRatio=4` next to the ceiling. Java has `JvmHeapWithoutGoal` (main PMD
+ruleset) for a `ProcessBuilder`, `ProcessBuilder.command` or `Runtime.exec` command on `java`, and for
+`JAVA_TOOL_OPTIONS` or `JDK_JAVA_OPTIONS` put into `environment()`, in the same places.
 
 Unbatched heavy runs: `nitpicker/no-unbatched-heavy-run` (production source, in `eslint-lint`) reports a parameter or
 file listing spread whole into the arguments of a type-aware run (`tsc`, `tsgo`, `tsgolint`, `vue-tsc`,
@@ -565,7 +570,8 @@ second.
 Per-item caches: `nitpicker/no-per-item-cache-growth` (production source, in `eslint-lint`, a broad rule) reports a
 module-level or field `Map` or `WeakMap` that a loop fills with one entry per item and reads back only for the same
 item, when nothing removes the entries. The map grows with the number of items; the allowed form keeps the value in a
-local of the loop body or deletes the entry when the item is done.
+local of the loop body or deletes the entry when the item is done. Java has `PerItemCacheGrowth` (main PMD ruleset,
+also broad) for a private `HashMap`, `ConcurrentHashMap` or `WeakHashMap` field used only that way.
 
 Aggregate packages for one member: `nitpicker/no-aggregate-package-for-one-member` (production source, in
 `eslint-lint`) reports a `require`, dynamic `import` or static `import` of `typescript-eslint` used only through

@@ -1,0 +1,15 @@
+[
+["Caches.java", "ParameterMutation", 37, 7],
+["Caches.java", "PerItemCacheGrowth", 24, 7],
+["Caches.java", "PerItemCacheGrowth", 31, 44],
+["Caches.java", "PerItemCacheGrowth", 36, 7],
+["Exports.java", "WholeListJsonText", 18, 5],
+["Exports.java", "WholeListJsonText", 27, 5],
+["Exports.java", "WholeListJsonText", 35, 12],
+["Exports.java", "WholeListJsonText", 59, 5],
+["Workers.java", "JvmHeapWithoutGoal", 11, 7],
+["Workers.java", "JvmHeapWithoutGoal", 34, 12],
+["Workers.java", "JvmHeapWithoutGoal", 40, 9],
+["Workers.java", "JvmHeapWithoutGoal", 50, 7],
+["Workers.java", "JvmHeapWithoutGoal", 71, 7]
+]

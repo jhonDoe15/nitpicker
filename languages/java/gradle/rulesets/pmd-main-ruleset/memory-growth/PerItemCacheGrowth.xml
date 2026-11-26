@@ -1,0 +1,48 @@
+  <rule name="PerItemCacheGrowth" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This map field gets one entry per element of the loop, keyed by that element, and is read back only for the same element while nothing ever removes an entry, so it grows with every element the program sees and keeps them all. Keep the value in a local of the loop body, or remove the entry when the element is done.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $fills := ('put', 'putIfAbsent', 'computeIfAbsent'),
+    $reads := ('get', 'getOrDefault', 'containsKey'),
+    $steps := ('forEach', 'map', 'mapToInt', 'mapToLong', 'mapToDouble', 'mapToObj', 'flatMap', 'filter', 'peek',
+               'anyMatch', 'allMatch', 'noneMatch'),
+    $loopOf := function($access) {
+      $access/ancestor::*[self::ForeachStatement
+        or self::LambdaExpression[@Arity = 1][parent::ArgumentList/parent::MethodCall[@MethodName = $steps]]][1]
+    },
+    $element := function($loop) {
+      ($loop/LocalVariableDeclaration/VariableDeclarator/VariableId
+        | $loop/LambdaParameterList/LambdaParameter/VariableId)/@Name
+    },
+    $keyed := function($call, $name) {
+      exists($call/ArgumentList/*[1][self::VariableAccess[@Name = $name]
+        or self::MethodCall[ArgumentList/@Size = 0][*[1][self::VariableAccess[@Name = $name]]]])
+    }
+return
+//ClassBody/FieldDeclaration[pmd-java:modifiers() = 'private'][ClassType[pmd-java:typeIs('java.util.Map')]]
+  /VariableDeclarator[ConstructorCall[pmd-java:typeIsExactly('java.util.HashMap')
+    or pmd-java:typeIsExactly('java.util.concurrent.ConcurrentHashMap')
+    or pmd-java:typeIsExactly('java.util.WeakHashMap')]]
+  /(let $name := VariableId/@Name,
+        $accesses := ancestor::ClassBody[1]//*[self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression]]]
+          [@Name = $name],
+        $calls := $accesses/parent::MethodCall,
+        $loops := $accesses/$loopOf(.)
+    return
+      if (count($loops) = 1
+          and (every $access in $accesses satisfies
+                 exists($loopOf($access))
+                 and exists($access/parent::MethodCall[@MethodName = ($fills, $reads)][*[1] is $access]
+                   [$keyed(., $element($loops))]))
+          and count(distinct-values($calls/ArgumentList/*[1]
+            /string-join(descendant-or-self::*/concat(local-name(), ':', @Name, @MethodName), ' '))) = 1
+          and exists($calls[@MethodName = $reads]
+            | $calls[@MethodName = 'computeIfAbsent'][not(parent::ExpressionStatement)]))
+      then ($calls[@MethodName = $fills])[1]
+      else ())
+]]></value>
+      </property>
+    </properties>
+  </rule>
