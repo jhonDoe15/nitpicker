@@ -110,6 +110,26 @@
   "exclude": []
  },
  {
+  "name": "ImplicitSwitchFallThrough",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.errorprone.ImplicitSwitchFallThroughRule",
+  "message": "This switch case may be reached by fallthrough from the previous case",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "InvalidLogMessageFormat",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.errorprone.InvalidLogMessageFormatRule",
+  "message": "Invalid message format",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
   "name": "JUnitSpelling",
   "xpath": "",
   "port": "net.sourceforge.pmd.lang.java.rule.errorprone.JUnitSpellingRule",
@@ -379,6 +399,16 @@
   "xpath": "",
   "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.UnnecessaryVarargsArrayCreationRule",
   "message": "Unnecessary explicit array creation for varargs method call",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "UnusedAssignment",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.UnusedAssignmentRule",
+  "message": "The value assigned to this variable is never used or always overwritten",
   "suppress": "",
   "properties": {},
   "include": [],

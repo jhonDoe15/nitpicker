@@ -20,7 +20,6 @@ fn javac_name_covers(name: &str, rule: &str) -> bool {
             rule,
             "UnusedPrivateField" | "UnusedLocalVariable" | "UnusedPrivateMethod" | "UnusedFormalParameter" | "UnusedAssignment" | "SingularField"
         ),
-        "fallthrough" => rule == "ImplicitSwitchFallThrough",
         _ => false,
     }
 }
