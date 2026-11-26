@@ -775,6 +775,28 @@ that detector, except for Lombok modules: the engine does not see the static met
 On the six comparison code bases, SARIF results, same / missed / extra: jackson-databind 1 / 0 / 0, Guava
 8 / 0 / 0, the others 0.
 
+NN_NAKED_NOTIFY (#2263, `src/java/spotbugs/methods/notify.rs`, labs in `tests/fixtures/spotbugs/notify` and
+`lombok_notify`): SpotBugs reads the method's instructions in class-file order. A `synchronized` method, or any
+`monitorenter`, starts a watch. While watching, instructions that read nothing keep it going: constants, stores to
+locals and static fields, static calls, `new` with constant arguments, `iinc`, array creation, casts, non-capturing
+lambdas, branches and returns. Reading a local, `this`, a static field or a field starts a read; a field read keeps
+it going, and `notify()` or `notifyAll()` called with `invokevirtual` then is the call. Anything else during a read
+ends the watch until the next `monitorenter`: `Object o = lock;`, `int y = count;`, a call on `this`, an `if` on a
+parameter, `assert`. A notify call made without a read first (`"x".notify()`, `getLock().notify()`,
+`R.class.notify()`) is not counted, and the watch goes on. After the call, one `return` or jump may follow, and the
+end of the code reports it; in a block, a local load and `monitorexit` report it right away. Any other instruction
+after the call ends the watch, as does a second call. `super.notify()` (`invokespecial`) and calls on a value of an
+interface type (`invokeinterface`) do not count. There is one finding per method, at the first call reported, with
+priority 2, level `warning`, the line of the call's `(`, and the method as the argument. Inner class creation reads
+`this`; javac writes the value of a constant (also a `final` instance field set from a constant) and leaves out
+casts to a supertype and jumps to the next instruction, and copies `finally` blocks and instance initializers
+(into each constructor that does not call `this(...)`). Lombok's `@Synchronized` is a `synchronized` block on a
+field. The engine writes the instructions from the source (`methods/code.rs`, `values.rs`); code it does not follow
+(`switch` selectors, `try` with resources, `assert`, `yield`, unknown expressions) counts as a read. Every pattern of
+`FindNakedNotify` is on the engine, so SpotBugs no longer runs that detector.
+
+On the six comparison code bases: Nacos 5 / 0 / 0, the others 0.
+
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in

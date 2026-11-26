@@ -60,6 +60,7 @@ export const ON_ENGINE: readonly string[] = [
   'SE_BAD_FIELD',
   'SE_NO_SERIALVERSIONID',
   'HSM_HIDING_METHOD',
+  'NN_NAKED_NOTIFY',
 ];
 const LOMBOK_WRITES: readonly string[] = ['SING_', 'HSM_'];
 const DETECTORS: Readonly<Record<string, readonly string[]>> = {
@@ -74,6 +75,7 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   CloneIdiom: ['CN_IDIOM', 'CN_IDIOM_NO_SUPER_CALL', 'CN_IMPLEMENTS_CLONE_BUT_NOT_CLONEABLE'],
   ConstructorThrow: ['CT_CONSTRUCTOR_THROW'],
   FindHiddenMethod: ['HSM_HIDING_METHOD'],
+  FindNakedNotify: ['NN_NAKED_NOTIFY'],
   DontCatchNullPointerException: ['DCN_NULLPOINTER_EXCEPTION'],
   WrongMapIterator: [WRONG_MAP_ITERATOR],
   FindJSR166LockMonitorenter: [

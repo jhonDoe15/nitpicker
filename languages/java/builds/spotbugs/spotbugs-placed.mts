@@ -102,4 +102,5 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     levels: { 2: ERROR },
     placement: 'relative',
   },
+  NN_NAKED_NOTIFY: { text: 'Naked notify', levels: { 2: WARNING } },
 };
