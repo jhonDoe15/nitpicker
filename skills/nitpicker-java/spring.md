@@ -68,6 +68,9 @@ class, and annotations of your own that carry one of these or that an `@Aspect` 
 - A public service method that writes more than once (`save`, `delete`, a `@Modifying` query,
   `JdbcTemplate.update`), also through its private helpers, is `@Transactional` or runs the writes in
   `TransactionTemplate.execute`.
+- No `@Transactional`, `@Async`, cache, `@Retryable` or `@PreAuthorize` on `@PostConstruct`,
+  `afterPropertiesSet` or a `@Bean` `initMethod`: the proxy does not exist yet. Use
+  `@EventListener(ApplicationReadyEvent.class)`.
 - Write caches after the commit (`TransactionSynchronization.afterCommit`, a
   `@TransactionalEventListener`, or the caller), never inside a writing transaction: no Spring
   `Cache.put`/`evict`, `@CachePut`, Caffeine or Guava `put`/`invalidate`, or a map field filled with a

@@ -21,7 +21,9 @@ const ENTITY_ANNOTATIONS = ['Entity', 'MappedSuperclass', 'Embeddable'].map(
   (name) => `jakarta.persistence.${name}`,
 );
 const BUILD_PLUGIN = { annotations: ENTITY_ANNOTATIONS, presets: ['spring'] };
+const KOTLIN_HALF_NOT_BUILT = 'the Kotlin half is not built yet';
 const SKIPPED = {
+  SpringAnnotationBeforeProxy: KOTLIN_HALF_NOT_BUILT,
   SpringQueryConcatenation:
     'kotlin-source/SqlStringBuilding flags SQL built from runtime values on the same calls',
 };

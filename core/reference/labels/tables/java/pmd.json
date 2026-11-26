@@ -192,6 +192,7 @@
   "pmd/SimplifyConditional": ["simplification"],
   "pmd/SingularAndPluralMember": ["style"],
   "pmd/SortForExtreme": ["performance"],
+  "pmd/SpringAnnotationBeforeProxy": ["bug", "spring"],
   "pmd/SpringAsyncExecutor": ["reliability", "spring", "async"],
   "pmd/SpringBeanCollectionState": ["bug", "spring"],
   "pmd/SpringCacheWriteInTransaction": ["bug", "spring", "persistence"],
