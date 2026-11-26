@@ -4319,6 +4319,30 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="SortedRangeScan" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This loop walks a sorted set or map from the start only to find the first element between a lower and an upper bound, which costs one step per element below the range. Ask the sorted collection for the range instead: subSet(low, true, high, true), tailSet(low) or ceiling(low) on a NavigableSet, subMap or ceilingKey on a NavigableMap, all logarithmic.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $bounded := function($test, $element) {
+      $test/self::InfixExpression[@Operator = ('<', '<=', '>', '>=')]
+        [exists(.//VariableAccess[@Name = $element])]
+    }
+return
+//ForeachStatement
+  [*[2][pmd-java:typeIs('java.util.SortedSet')]
+   or *[2][self::MethodCall][@MethodName = ('keySet', 'navigableKeySet', 'entrySet')][ArgumentList/@Size = 0]
+     [*[1][pmd-java:typeIs('java.util.SortedMap')]]]
+  [let $element := LocalVariableDeclaration//VariableId/@Name,
+       $body := *[3]/(self::Block[count(*) = 1]/* | self::IfStatement)
+   return exists($body[self::IfStatement][count(*) = 2]
+     [*[1][self::InfixExpression][@Operator = '&&'][count(*) = 2][every $side in * satisfies $bounded($side, $element)]]
+     [*[2]/descendant-or-self::*[self::ReturnStatement or self::BreakStatement]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="SortForExtreme" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This stream is sorted only to take its first or last element, which costs a full sort. Take it in one pass with min(comparator) or max(comparator) on the stream, or Collections.min and Collections.max on a collection. An exception fits only for a stream that always stays a handful of items.">
     <priority>3</priority>

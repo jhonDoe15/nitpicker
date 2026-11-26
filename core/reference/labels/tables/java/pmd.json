@@ -198,6 +198,7 @@
   "pmd/SimplifyBooleanReturns": ["simplification"],
   "pmd/SimplifyConditional": ["simplification"],
   "pmd/SingularAndPluralMember": ["style"],
+  "pmd/SortedRangeScan": ["performance"],
   "pmd/SortForExtreme": ["performance"],
   "pmd/SpringAsyncExecutor": ["reliability", "spring", "async"],
   "pmd/SpringBeanCollectionState": ["bug", "spring"],

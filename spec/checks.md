@@ -594,6 +594,11 @@ or array declared outside a loop or iteration callback and not changed in it (`n
 `List.copyOf(x)`, `x.clone()`, `Arrays.copyOf(x, x.length)`), stored straight away (added, put,
 passed to a constructor, assigned to a field, returned from a `map` callback).
 
+Java `SortedRangeScan` (main PMD ruleset, #2312, Java only) reports an enhanced `for` over a
+`SortedSet` or the key set or entry set of a `SortedMap` whose body is only an `if` testing the
+element against a lower and an upper bound that returns or breaks on the first hit, and suggests
+`subSet`, `tailSet`, `ceiling` or `subMap`.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

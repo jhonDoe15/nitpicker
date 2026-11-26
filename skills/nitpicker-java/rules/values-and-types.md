@@ -173,6 +173,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   key (`pmd/RepeatedKeyedScan`).
 - Share one read-only copy of a large collection across the elements of a loop instead of storing a
   new copy per element (`pmd/LoopInvariantCopy`).
+- Ask a sorted set or map for a range (`subSet`, `tailSet`, `ceiling`, `subMap`) instead of walking it
+  from the start to the first element between two bounds (`pmd/SortedRangeScan`).
 - Do repeated work once: look a reflective member up by its constant name before the loop, not in it
   (`pmd/ConstantLookupInLoop`); test the kind of a level before you search its subtree while you climb
   a parent chain (`pmd/SubtreeSearchPerAncestor`); keep the result of `resolve(key)` in a local

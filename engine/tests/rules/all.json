@@ -813,6 +813,14 @@
   "properties": {}
  },
  {
+  "name": "SortedRangeScan",
+  "file": "pmd-main-ruleset.xml",
+  "xpath": "\nlet $bounded := function($test, $element) {\n      $test/self::InfixExpression[@Operator = ('<', '<=', '>', '>=')]\n        [exists(.//VariableAccess[@Name = $element])]\n    }\nreturn\n//ForeachStatement\n  [*[2][pmd-java:typeIs('java.util.SortedSet')]\n   or *[2][self::MethodCall][@MethodName = ('keySet', 'navigableKeySet', 'entrySet')][ArgumentList/@Size = 0]\n     [*[1][pmd-java:typeIs('java.util.SortedMap')]]]\n  [let $element := LocalVariableDeclaration//VariableId/@Name,\n       $body := *[3]/(self::Block[count(*) = 1]/* | self::IfStatement)\n   return exists($body[self::IfStatement][count(*) = 2]\n     [*[1][self::InfixExpression][@Operator = '&&'][count(*) = 2][every $side in * satisfies $bounded($side, $element)]]\n     [*[2]/descendant-or-self::*[self::ReturnStatement or self::BreakStatement]])]\n",
+  "message": "This loop walks a sorted set or map from the start only to find the first element between a lower and an upper bound, which costs one step per element below the range. Ask the sorted collection for the range instead: subSet(low, true, high, true), tailSet(low) or ceiling(low) on a NavigableSet, subMap or ceilingKey on a NavigableMap, all logarithmic.",
+  "suppress": "",
+  "properties": {}
+ },
+ {
   "name": "SortForExtreme",
   "file": "pmd-main-ruleset.xml",
   "xpath": "\nlet $sorted := function($call) {\n      $call/*[1][self::MethodCall[@MethodName = 'sorted'][*[1][pmd-java:typeIs('java.util.stream.Stream')]]]\n    },\n    $listed := function($call) {\n      $call/*[1][self::MethodCall[@MethodName = 'toList' and ArgumentList/@Size = 0\n                                  or @MethodName = 'collect' and ArgumentList/@Size = 1]][exists($sorted(.))]\n    }\nreturn //MethodCall[@MethodName = 'findFirst'][ArgumentList/@Size = 0][exists($sorted(.))]\n  | //MethodCall[@MethodName = 'get'][ArgumentList[@Size = 1]/NumericLiteral[@ValueAsInt = 0]][exists($listed(.))]\n  | //MethodCall[@MethodName = ('getFirst', 'getLast')][ArgumentList/@Size = 0][exists($listed(.))]\n",

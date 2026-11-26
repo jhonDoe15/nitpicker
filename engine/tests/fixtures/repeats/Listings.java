@@ -7,6 +7,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.NavigableSet;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.stream.Stream;
 
 public class Listings {
@@ -54,5 +58,45 @@ public class Listings {
     for (File file : folder.listFiles()) {
       System.out.println(file.getName());
     }
+  }
+
+  int firstBetween(NavigableSet<Integer> marks, int low, int high) {
+    for (int mark : marks) {
+      if (mark >= low && mark <= high) {
+        return mark;
+      }
+    }
+    return -1;
+  }
+
+  boolean anyBetween(TreeMap<Integer, String> marks, int low, int high) {
+    boolean found = false;
+    for (Map.Entry<Integer, String> mark : marks.entrySet()) {
+      if (mark.getKey() > low && mark.getKey() < high) {
+        found = true;
+        break;
+      }
+    }
+    return found;
+  }
+
+  int declines(TreeSet<Integer> marks, List<Integer> plain, int low, int high) {
+    for (int mark : plain) {
+      if (mark >= low && mark <= high) {
+        return mark;
+      }
+    }
+    for (int mark : marks) {
+      System.out.println(mark);
+      if (mark >= low && mark <= high) {
+        return mark;
+      }
+    }
+    for (int mark : marks) {
+      if (mark >= low && mark != high) {
+        return mark;
+      }
+    }
+    return marks.ceiling(low);
   }
 }
