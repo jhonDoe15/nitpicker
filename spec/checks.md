@@ -455,6 +455,12 @@ Staged project without parent node_modules: `nitpicker/require-staged-parent-nod
 `tsconfig*.json` or `package.json` or is the working folder of a spawned tool, when nothing links `node_modules` or sets
 `NODE_PATH`, `typeRoots`, `paths` or `--preserve-symlinks`. Packages hoisted to a parent `node_modules` are not
 found from the copy.
+Config file looked up in one folder: `nitpicker/no-single-folder-config-lookup` (production source, in `eslint-lint`)
+reports a check or read of `path.join(directory, name)` for a fixed config file name that tools also search for in the
+parent folders (`tsconfig.json`, `.eslintrc*`, `.prettierrc*`, `pyproject.toml`, ...) when its absence leads to a
+default and neither the function nor a same-file caller walks the parent folders. A package covered by a config
+higher up gets the default.
+
 Standard error as failure: `nitpicker/no-stderr-as-failure` (production source, in `eslint-lint`) and
 `pmd/StderrAsFailure` (Java, main sources) report a condition that fails a finished subprocess because its standard
 error is not empty, when the condition stands alone or is one side of `||` and its branch throws (or rejects, or

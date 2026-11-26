@@ -103,6 +103,8 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/reuse/reusable-object-per-call.mjs',
   'languages/typescript/preset/eslint-plugin/rules/config/env-reads.mjs',
   'languages/typescript/preset/eslint-plugin/rules/config/no-undefined-only-env-check.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/config/no-single-folder-config-lookup.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/config/walk-up-searches.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-props/react-components.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-props/no-runtime-exclusive-props-check.mjs',
   'languages/typescript/preset/eslint-plugin/rules/api-shape/no-singular-and-plural-prop.mjs',

@@ -2068,6 +2068,16 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   folder the project's `node_modules/@types` are not found. Not reported: a `typeRoots` key, a spread or a
   `compilerOptions` value that is not an object literal, text written as it is, and folders outside the temporary
   directory.
+- A tool's config file is not looked up in one folder only (`nitpicker/no-single-folder-config-lookup`, production
+  files). Reported: `existsSync`, `statSync`, `accessSync`, `stat`, `access`, `pathExists` or a `readFileSync` or
+  `readFile` in a `try` of `path.join(directory, name)` where the name is a fixed config file that the tool itself
+  searches for in the parent folders too (`tsconfig.json`, `jsconfig.json`, `.eslintrc*`, `eslint.config.*`,
+  `babel.config.*`, `.babelrc*`, `.prettierrc*`, `prettier.config.*`, `pyproject.toml`, `.editorconfig`), when a
+  missing file leads to a default (a ternary or `if` whose absent branch is a string, an object or array literal, a
+  constant in upper case or a `default...` value, or a `catch` that returns one). A package covered by a config in a
+  parent folder gets the default instead. Not reported: other names (`package.json`, lockfiles, `.git`), a directory
+  named for the repository root, and a function or a same-file caller that walks the parent folders (`dirname`,
+  `'..'`, `findUp`, `escalade`, or a helper named for ancestors, nearest or covering configs).
 - A finished child process is not judged by text on its standard error (`nitpicker/no-stderr-as-failure`,
   production files). Reported: an `if` or a ternary whose test (alone, or as one side of `||`) checks that the
   standard error is not empty (`stderr`, `stderr.length`, `stderr.length > 0`, `stderr !== ''`, also through

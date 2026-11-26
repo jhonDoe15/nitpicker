@@ -156,6 +156,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A tsconfig that `extends` another and is written to a temporary folder sets `compilerOptions.typeRoots` to the type
   roots of the original config: TypeScript derives the default from the folder of the config it opens
   (`nitpicker/require-moved-tsconfig-type-roots`).
+- Look for a tool's config file (`tsconfig.json`, `.eslintrc*`, `.prettierrc*`, `pyproject.toml`) in the parent
+  folders, up to the repository root, before falling back to a default: the tool searches upward too, so a package
+  covered by a workspace config gets the default otherwise (`nitpicker/no-single-folder-config-lookup`).
 - Decide whether a child process failed by its exit status (`status !== 0`, `exitCode`, the callback's `error`), not
   by text on its standard error, which also carries warnings and notices (`nitpicker/no-stderr-as-failure`).
 - Read `error` and `signal` of a `spawnSync` result before its `status`: a child that could not start, timed out or
