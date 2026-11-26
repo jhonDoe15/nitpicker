@@ -33,10 +33,10 @@ fn lint(arguments: &[&std::ffi::OsStr], name: &str) -> Vec<Row> {
     let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/typescript-typed-lint");
     let list = std::env::temp_dir().join(format!("nitpicker-engine-typed-lint-{name}-{}.tsv", std::process::id()));
     let out = std::env::temp_dir().join(format!("nitpicker-engine-typed-lint-{name}-{}.json", std::process::id()));
-    let lines: Vec<String> = ["src/domain/record.ts", "src/signatures/parameters.ts", "outside.ts"].iter().map(|file| format!("{}\t{file}", fixture.join(file).display())).collect();
+    let lines: Vec<String> = ["src/domain/record.ts", "src/signatures/parameters.ts", "src/defaults/fallbacks.ts", "src/arguments/calls.ts", "outside.ts"].iter().map(|file| format!("{}\t{file}", fixture.join(file).display())).collect();
     std::fs::write(&list, lines.join("\n")).expect("list");
     let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
-        .args(["typescript-lint", "--rules", "no-mutating-method-in-domain,no-parameter-mutation", "--files"])
+        .args(["typescript-lint", "--rules", "no-falsy-default,no-mutating-method-in-domain,no-parameter-mutation,no-swapped-arguments", "--files"])
         .arg(&list)
         .arg("--out")
         .arg(&out)
@@ -69,5 +69,5 @@ fn every_file_stays_with_the_plugin_without_the_compiler() {
     let missing = std::env::temp_dir().join("nitpicker-engine-no-such-compiler");
     let rows = lint(&[std::ffi::OsStr::new("--compiler"), missing.as_os_str()], "missing");
     let rules: Vec<&str> = rows.iter().map(|row| row[1].as_str().unwrap_or_default()).collect();
-    assert_eq!(rules, ["!types", "!types", "!types"]);
+    assert_eq!(rules, ["!types", "!types", "!types", "!types", "!types"]);
 }

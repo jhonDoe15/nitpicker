@@ -65,6 +65,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
       },
     },
   ],
+  ['no-falsy-default', { needs: 'types' }],
   ['no-listen-on-all-interfaces', {}],
   ['no-mutating-method-in-domain', { needs: 'types' }],
   ['no-parameter-mutation', { needs: 'types' }],
@@ -80,6 +81,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
     },
   ],
   ['no-silent-catch', {}],
+  ['no-swapped-arguments', { needs: 'types' }],
   ['no-wait-for-with-fake-timers', {}],
   [
     'preserve-error-cause',
