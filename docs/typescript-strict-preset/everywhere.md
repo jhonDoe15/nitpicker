@@ -2182,6 +2182,122 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   40 and cuts that go elsewhere. Cuts that
   can split a character are `nitpicker/no-surrogate-splitting-cut`. The Java preset has the same rule as
   `pmd/HeadCutErrorOutput`.
+- The TypeScript compiler API is given the real file name of its input (`nitpicker/require-compiler-file-name`,
+  production files). Reported: `ts.transpileModule` without `fileName` in its options (or with a string literal),
+  `ts.transpile` without a file name argument (or a literal), `ts.createSourceFile` and
+  `ts.createLanguageServiceSourceFile` with a literal file name, when the enclosing function has a parameter or local
+  named for a file name or path (`fileName`, `filename`, `file`, `path`, `filePath`, also with a one-letter prefix such
+  as `pFileName`). Without the name the compiler treats every input as the same file: relative imports resolve against
+  it (a file importing `./module` imports itself) and the extension picks TSX or the module format. Not reported: a
+  function with no file name to pass, options from a variable, a spread or a computed key, a name that is the
+  `node:path` module (`import` or `require`), a parameter typed `File`, a `ts` that is not the `typescript` module (a
+  parameter or local of that name), Babel, esbuild and SWC (not covered yet). `typescript` is found through `import`,
+  `import ts = require(...)`, `require` anywhere in the file, and destructuring of it.
+- A package.json field that npm accepts in several shapes is not read as only one of them
+  (`nitpicker/no-single-shape-manifest-field`, production files). Reported: a list member (`includes`, `map`,
+  `filter`, `forEach`, `some`, `every`, `find`, `reduce`, `flatMap`, `join`, `push`, `indexOf`, `length`) of
+  `bundleDependencies` or `bundledDependencies` (a list or `true`) or `workspaces` (a list or an object with
+  `packages`), `.packages` of `workspaces`, or a list method of `man` (a string or a list), read from a value
+  named `manifest`, `pkg`, `packageJson` (or ending in `Manifest` or `PackageJson`), from `JSON.parse` of a read of a
+  `package.json` file, or typed `PackageJson`, also through a variable, a destructured name
+  (`const { bundleDependencies } = pkg`) or `a || b` / `a ?? []`. A manifest in the other shape throws
+  `includes is not a function` or reads `undefined`. Not reported: code in the same function that checks the value
+  (`Array.isArray`, `typeof`, `instanceof`, `in`, a comparison with `true` or `false`, a call named `is...`, `has...`,
+  `assert...` or `ensure...` on it, or an assignment to the field), `workspaces?.packages ?? workspaces`, a manifest
+  whose declared type lists the field as an array, and other values. `bin`, `browser`, `exports` and `directories`
+  are not covered yet.
+- A project staged in a temporary folder keeps the `node_modules` of its parent folders
+  (`nitpicker/require-staged-parent-node-modules`, production files). Reported: a `mkdtemp` or `mkdtempSync` folder
+  that receives the entries of another folder (`symlink`, `cp` or `copyFile` in a `for...of` or `forEach`/`map` over
+  `readdir` of it) when, in the same function, a `tsconfig*.json` is written into it, or it follows `--tsconfig`, `-p`
+  or `--project` of a spawn call, or it is the `cwd` of a `spawn`, `exec`, `execFile`, `fork` or `execa` call that
+  starts a module-resolving tool (`tsc`, `eslint`, `oxlint`, `tsgolint`, `node`, `vite`, `webpack`, `rollup`, `esbuild`,
+  `jest`, `vitest`, or `npx` of one of them; a tool that is not a string literal is not known; `npm pack`, `tar` and
+  `git` are not).
+  Module resolution in the copy walks up from the temporary folder, so packages in a parent `node_modules` (a hoisted
+  workspace) are not found. Not reported: a function (or one of its callers in the file) that mentions `node_modules`,
+  `NODE_PATH`, `typeRoots`, `paths` or `--preserve-symlinks`, a `package.json` written alone, and a copy that is only
+  read.
+- A tsconfig that extends another and is written to a temporary folder sets `typeRoots`
+  (`nitpicker/require-moved-tsconfig-type-roots`, production files). Reported: an object literal with an `extends` key,
+  serialized with `JSON.stringify` and written with `writeFile` or `writeFileSync` under `os.tmpdir()` or a `mkdtemp`
+  folder (followed through `const` variables and `path.join`) as a file named `tsconfig*.json`, whose `compilerOptions`
+  has no `typeRoots` or `types` key or is missing. TypeScript derives the default `typeRoots` from the folder of the
+  config it opens, so from a temporary folder the project's `node_modules/@types` are not found. Not reported: a
+  `typeRoots` or `types` key, a spread or a `compilerOptions` value that is not an object literal, an `extends` that
+  is a literal starting with `./`, an object assigned to or passed to `Object.assign` later, other file names
+  (`.eslintrc.json`), text written as it is, and folders outside the temporary directory.
+- A tool's config file is not looked up in one folder only (`nitpicker/no-single-folder-config-lookup`, production
+  files). Reported: `existsSync`, `statSync`, `accessSync`, `stat`, `access`, `pathExists` or a `readFileSync` or
+  `readFile` in a `try` of `path.join(directory, name)` where the name is a fixed config file that the tool itself
+  searches for in the parent folders too (`tsconfig.json`, `jsconfig.json`, `.eslintrc*`, `eslint.config.*`,
+  `babel.config.*`, `.babelrc*`, `.prettierrc*`, `prettier.config.*`, `pyproject.toml`, `.editorconfig`), when a
+  missing file leads to a default: a ternary or `if` whose absent branch (or the `return` after an `if` that returns
+  the found file) is a file-name string, a non-empty object literal, a constant in upper case or a `default...`
+  value, or a `catch` that returns one; or that yields `undefined`, `null` or `false` while a same-file caller reads
+  it as `lookup(...) ?? default` or `|| default`. A package covered by a config in a parent folder gets the default
+  instead. Other strings, empty `{}` or `[]` and a result nobody defaults are not reported. Not reported: other names (`package.json`, lockfiles, `.git`), a directory
+  named for the repository root, and a function or a same-file caller that walks the parent folders (`dirname`,
+  `'..'`, `findUp`, `escalade`, or a helper named for ancestors, nearest or covering configs).
+- One failing input does not discard a whole batch (`nitpicker/no-all-or-nothing-batch`, production files).
+  Reported: `return`ed or stored `Promise.all(files.map(callback))` where the list is file paths (the result of
+  `readdir`, `glob`, `fastGlob` or `globby`, or a value named `files`, `paths`, `filePaths`, `fileNames`, `modules`,
+  `projects` or `packages`) and the callback (inline, or a function of the same file) calls `readFile`,
+  `readFileSync`, `JSON.parse` or the `parse` of an imported YAML, TOML, JSON5 or JavaScript parser (`yaml`,
+  `js-yaml`, `toml`, `@iarna/toml`, `smol-toml`, `json5`, `acorn`, `espree`, `esprima`, `@babel/parser`,
+  `@typescript-eslint/parser`, `@typescript-eslint/typescript-estree`) outside a `try` with a `catch` and without
+  `.catch(...)`. One unreadable or unparsable file rejects the call and loses every finished result. Not reported:
+  other `parse` calls (`Date.parse`, `url.parse`, `path.parse`, `schema.parse`), loops (`for...of`, `forEach`) and
+  `map` over a variable that is not a file list, Java (not covered yet), `Promise.allSettled`, callbacks that catch per input, a `Promise.all` inside a `try`, results that are not
+  collected, other collections and `throw` statements.
+- Keywords of a programming language are not matched with a regular expression over raw source text
+  (`nitpicker/no-keyword-regex-over-source`, production files). Reported: a regex (literal or `new RegExp` with a
+  literal pattern, also held in a `const`) whose pattern has a keyword (`case`, `import`, `class`, `require`,
+  `function`, `return` and similar) between word boundaries or followed by `\s` or `\(`, used with `match`,
+  `matchAll`, `replace`, `replaceAll`, `split`, `search`, `test` or `exec` on a variable named `source`,
+  `sourceText`, `sourceCode` or `sourceContent`, or on text read from a file whose literal name ends in a source
+  extension (`.java`, `.ts`, `.js`, `.py`, `.kt`, `.go`; also the last literal segment of `path.join(dir, 'A.java')`).
+  Comments, strings and text blocks match as well ("in this case" matches `case`). Not reported: other text, a
+  function that calls a masking helper (a name with `strip`, `mask` or `blank` followed by `Comment`, `String` or
+  `Literal`, `removeComments`, `tokenize`, `lex...`), a subject that comes from a call named `strip...`, `mask...`,
+  `blank...` or `parse...` (not `JSON.parse`), a `source` parameter of a function whose same-file calls all pass such
+  a value, and keywords that are not between word boundaries. A `parse` call elsewhere in the function (`JSON.parse`) hides nothing. The Java
+  preset has the same rule as `pmd/KeywordRegexOverSource`.
+- A tree-sitter field name must exist in the grammar (`nitpicker/no-unknown-tree-sitter-field`, production files).
+  Reported: in a module that imports `web-tree-sitter` or `tree-sitter`, a constant field name in
+  `childForFieldName("x")`, `childrenForFieldName("x")` or `cursor.currentFieldName === "x"` that no node type of the
+  grammar defines. The grammar comes from the `node-types.json` of the grammar package (`tree-sitter-java`, found
+  through the module's imports, a `tree-sitter-java.wasm` name or the nearest `package.json`) resolved from the linted
+  file; it is read from `src/` and from `src/` of the package's direct subfolders (`typescript/src`, `tsx/src`), and the
+  fields of all of them count. Where the node type is known from `node.type === "t"` (or `nodeType`), the field is
+  checked against the fields of type `t` only: inside an `if`, a ternary or `&&`, in a `case "t":` of
+  `switch (node.type)` (cases that fall through are all allowed), and after an early exit
+  `if (node.type !== "t") return;` in the same block. A cursor lookup is narrowed the same way
+  (`c.nodeType === "t" && c.currentFieldName === "x"`). The narrowing is dropped when the receiver is assigned between
+  the check and the lookup. A field name that does not exist is not an error in the API, it is an empty answer. Not reported: field names
+  from variables, modules for which no `node-types.json` can be found.
+- A tree walked with tree-sitter decides what an error node does (`nitpicker/require-tree-sitter-error-check`,
+  production files). Reported: in a module that imports `web-tree-sitter` or `tree-sitter`, a function that indexes
+  `children` or `namedChildren` (`node.children[0]`), maps them with a callback that reads the structure of each child,
+  or chains a member access directly on `childForFieldName(...)` (no `?.`), when neither the function nor a function in
+  the same file that calls or references it mentions `hasError`, `isError`, `isMissing` or the type `"ERROR"`. A parser
+  that recovers from errors puts an error node in place of any expected child, and the rest of the tree looks normal.
+  Exported functions are reported too: only a check in the function itself or in a same-file caller counts, an export
+  or a mention at the top level of the file does not (a top-level mention counts only when the top level of the file
+  has a check). Not reported: `?.` access, text-only reads.
+- A positional element is tested before use in plain JavaScript (`nitpicker/no-unchecked-positional-element`,
+  `.js`, `.mjs` and `.cjs` files without `@ts-check`). Reported: an element taken by position from an array that is a
+  property of a parameter (`({ children: [first] }) => ...`, or a `map`/`flatMap`/`forEach`/`filter` callback
+  `([, second]) => ...` over a member of a parameter) and passed to a call or read with `.` without a default and
+  without any test of it (`=== undefined`, `if`, `?.`, `??`, `&&`). A declaration `const [first] = param.items;` (the
+  array a member chain of a parameter, no computed member) is checked the same way, and so is an element that a `map`
+  callback returns untested when the mapped list is kept in a `const` (also spread into an array literal) and a later
+  `map`/`forEach`/`filter` callback over it passes its parameter to a call or reads it with `.` untested. A pattern
+  with two or more elements (`[start, end]`, `([key, value]) =>`) has its shape by construction and is not reported,
+  except `const [a, b] = param.children` (also `namedChildren`, `childNodes`), whose length the function does not
+  control. A pattern with a default (`{ paths: [b] } = {}`, `[first = x]`) is not reported. TypeScript reports this with
+  `noUncheckedIndexedAccess`; plain JavaScript has nothing. Not reported: `Object.entries` pairs, regular expression
+  results, tuples documented in the function's comment, literal arrays.
 - A finished child process is not judged by text on its standard error (`nitpicker/no-stderr-as-failure`,
   production files). Reported: an `if` or a ternary whose test (alone, or as one side of `||`) checks that the
   standard error is not empty (`stderr`, `stderr.length`, `stderr.length > 0`, `stderr !== ''`, also through

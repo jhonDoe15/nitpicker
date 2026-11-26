@@ -168,6 +168,7 @@ const REVIEW_RULES = new Set([
   'DepthOnlyWorklist',
   'DestroyLeavesDescendants',
   'HeadCutErrorOutput',
+  'KeywordRegexOverSource',
   'StderrAsFailure',
   'FutureWithoutException',
   'LogFormatArguments',

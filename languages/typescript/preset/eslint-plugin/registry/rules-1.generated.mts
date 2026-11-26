@@ -15,6 +15,7 @@ import { rule as ruleNoAccumulatingSpread } from '../rules/collections/no-accumu
 import { rule as ruleNoAccumulatorConcat } from '../rules/collections/no-accumulator-concat.mts';
 import { rule as ruleNoAddOnlyCollection } from '../rules/lifecycles/growth/no-add-only-collection.mts';
 import { rule as ruleNoAggregatePackageForOneMember } from '../rules/dependencies/no-aggregate-package-for-one-member.mts';
+import { rule as ruleNoAllOrNothingBatch } from '../rules/batches/no-all-or-nothing-batch.mts';
 import { rule as ruleNoAmbiguousLookupKey } from '../rules/lookup-keys/no-ambiguous-lookup-key.mts';
 import { rule as ruleNoArraySpreadArguments } from '../rules/collections/call-spreads/no-array-spread-arguments.mts';
 import { rule as ruleNoAssertionInLoop } from '../test-assertions/loop-assertions/no-assertion-in-loop.mts';
@@ -88,6 +89,7 @@ import { rule as ruleNoInternalModuleMocks } from '../rules/test-runtime/asserti
 import { rule as ruleNoInterpolatedLogMessage } from '../rules/logging/interpolation/no-interpolated-log-message.mts';
 import { rule as ruleNoIntervalPollingInTests } from '../rules/test-runtime/lifecycle/no-interval-polling-in-tests.mts';
 import { rule as ruleNoIoInLoop } from '../rules/loops/no-io-in-loop.mts';
+import { rule as ruleNoKeywordRegexOverSource } from '../rules/source-text/no-keyword-regex-over-source.mts';
 import { rule as ruleNoLazyRelationInLoop } from '../rules/effects/no-lazy-relation-in-loop.mts';
 import { rule as ruleNoListenOnAllInterfaces } from '../rules/listeners/no-listen-on-all-interfaces.mts';
 import { rule as ruleNoListingOrderInAssertions } from '../rules/test-runtime/listing-order/no-listing-order-in-assertions.mts';
@@ -96,8 +98,6 @@ import { rule as ruleNoLocalTimeZone } from '../rules/time/no-local-time-zone.mt
 import { rule as ruleNoLookupAsPresence } from '../rules/presence/lookups/no-lookup-as-presence.mts';
 import { rule as ruleNoLookupPerElement } from '../rules/concurrency/reactive/no-lookup-per-element.mts';
 import { rule as ruleNoLoopInvariantCopy } from '../rules/repeated-work/copies/no-loop-invariant-copy.mts';
-import { rule as ruleNoLossyJsonStringify } from '../rules/json-values/no-lossy-json-stringify.mts';
-import { rule as ruleNoLossyUtf8Decode } from '../rules/decoding/no-lossy-utf8-decode.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -117,6 +117,7 @@ export const partRules = {
   'no-accumulator-concat': ruleNoAccumulatorConcat,
   'no-add-only-collection': ruleNoAddOnlyCollection,
   'no-aggregate-package-for-one-member': ruleNoAggregatePackageForOneMember,
+  'no-all-or-nothing-batch': ruleNoAllOrNothingBatch,
   'no-ambiguous-lookup-key': ruleNoAmbiguousLookupKey,
   'no-array-spread-arguments': ruleNoArraySpreadArguments,
   'no-assertion-in-loop': ruleNoAssertionInLoop,
@@ -190,6 +191,7 @@ export const partRules = {
   'no-interpolated-log-message': ruleNoInterpolatedLogMessage,
   'no-interval-polling-in-tests': ruleNoIntervalPollingInTests,
   'no-io-in-loop': ruleNoIoInLoop,
+  'no-keyword-regex-over-source': ruleNoKeywordRegexOverSource,
   'no-lazy-relation-in-loop': ruleNoLazyRelationInLoop,
   'no-listen-on-all-interfaces': ruleNoListenOnAllInterfaces,
   'no-listing-order-in-assertions': ruleNoListingOrderInAssertions,
@@ -198,6 +200,4 @@ export const partRules = {
   'no-lookup-as-presence': ruleNoLookupAsPresence,
   'no-lookup-per-element': ruleNoLookupPerElement,
   'no-loop-invariant-copy': ruleNoLoopInvariantCopy,
-  'no-lossy-json-stringify': ruleNoLossyJsonStringify,
-  'no-lossy-utf8-decode': ruleNoLossyUtf8Decode,
 };

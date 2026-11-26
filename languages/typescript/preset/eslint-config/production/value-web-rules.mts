@@ -25,6 +25,7 @@ export const valueAndWebRules: Record<string, Linter.RuleEntry> = {
   'nitpicker/no-case-mixed-header-merge': 'error',
   'nitpicker/no-time-only-unique-name': 'error',
   'nitpicker/no-unguarded-json-parse': 'error',
+  'nitpicker/no-all-or-nothing-batch': 'error',
   'nitpicker/no-truncating-split-limit': 'error',
   'nitpicker/no-prototype-key-access': 'error',
   'nitpicker/no-inconsistent-comparator': 'error',

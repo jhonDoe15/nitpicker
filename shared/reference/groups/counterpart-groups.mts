@@ -22,6 +22,10 @@ export const GROUPS: readonly Group[] = [
     python: 'head-cut-error-output',
   },
   {
+    java: 'KeywordRegexOverSource',
+    typescript: 'nitpicker/no-keyword-regex-over-source',
+  },
+  {
     java: 'StderrAsFailure',
     typescript: 'nitpicker/no-stderr-as-failure',
     python: 'stderr-as-failure',

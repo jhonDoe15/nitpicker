@@ -1,3 +1,8 @@
+import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mts';
+import { rule as ruleNoUncheckedPositionalElement } from '../rules/positional-elements/no-unchecked-positional-element.mts';
+import { rule as ruleNoUncheckedResponseJson } from '../rules/response-json/no-unchecked-response-json.mts';
+import { rule as ruleNoUncheckedUrlSink } from '../rules/urls/links/no-unchecked-url-sink.mts';
+import { rule as ruleNoUnclearedSharedMock } from '../test-quality/shared-mocks/no-uncleared-shared-mock.mts';
 import { rule as ruleNoUnclearedTimeout } from '../rules/lifecycles/timers/no-uncleared-timeout.mts';
 import { rule as ruleNoUnclosedFileDescriptor } from '../rules/resources/descriptors/no-unclosed-file-descriptor.mts';
 import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mts';
@@ -23,6 +28,7 @@ import { rule as ruleNoUnionOrderDependence } from '../rules/union-order/no-unio
 import { rule as ruleNoUnisolatedJobLoop } from '../rules/jobs/no-unisolated-job-loop.mts';
 import { rule as ruleNoUnknownInDomain } from '../rules/boundaries/no-unknown-in-domain.mts';
 import { rule as ruleNoUnknownMainFolder } from '../rules/guards/no-unknown-main-folder.mts';
+import { rule as ruleNoUnknownTreeSitterField } from '../rules/tree-sitter/no-unknown-tree-sitter-field.mts';
 import { rule as ruleNoUnmappedException } from '../rules/errors/unmapped/no-unmapped-exception.mts';
 import { rule as ruleNoUnorderedQuery } from '../rules/queries/order/no-unordered-query.mts';
 import { rule as ruleNoUnownedAsyncAssertion } from '../test-assertions/unowned-async/no-unowned-async-assertion.mts';
@@ -82,24 +88,23 @@ import { rule as ruleReportModuleLoadEffects } from '../rules/modules/report-mod
 import { rule as ruleRequireAbortSignalForwarding } from '../rules/cancellation/abort-signal/require-abort-signal-forwarding.mts';
 import { rule as ruleRequireAtomicUpdates } from '../rules/wrapped/require-atomic-updates.mts';
 import { rule as ruleRequireClientTimeout } from '../rules/clients/require-client-timeout.mts';
+import { rule as ruleRequireCompilerFileName } from '../rules/compiler-api/require-compiler-file-name.mts';
 import { rule as ruleRequireErrorListener } from '../rules/events/require-error-listener.mts';
 import { rule as ruleRequireGoCollectorSetting } from '../rules/child-heaps/require-go-collector-setting.mts';
 import { rule as ruleRequireHttpTimeout } from '../rules/security/http/require-http-timeout.mts';
 import { rule as ruleRequireJvmHeapGoal } from '../rules/child-heaps/require-jvm-heap-goal.mts';
+import { rule as ruleRequireMovedTsconfigTypeRoots } from '../rules/temp-staging/require-moved-tsconfig-type-roots.mts';
 import { rule as ruleRequireProcessTimeout } from '../rules/processes/require-process-timeout.mts';
 import { rule as ruleRequirePromiseReject } from '../rules/promises/executors/require-promise-reject.mts';
+import { rule as ruleRequireStagedParentNodeModules } from '../rules/temp-staging/require-staged-parent-node-modules.mts';
 import { rule as ruleRequireTestProcessTimeout } from '../rules/test-runtime/processes/timeouts/require-test-process-timeout.mts';
-import { rule as ruleReusableObjectPerCall } from '../rules/reuse/reusable-object-per-call.mts';
-import { rule as ruleSettlePendingOnClose } from '../rules/lifecycles/pending/settle-pending-on-close.mts';
-import { rule as ruleShorterBooleanLogic } from '../rules/control/shorter-boolean-logic.mts';
-import { rule as ruleSimplerBooleanLogic } from '../rules/control/simpler-boolean-logic.mts';
-import { rule as ruleStrictBooleanExpressions } from '../rules/wrapped/strict-boolean-expressions.mts';
-import { rule as ruleStructuredCatchLogging } from '../rules/errors/structured-catch-logging.mts';
-import { rule as ruleTestMustUseProductionRuntime } from '../rules/test-runtime/assertions/test-must-use-production-runtime.mts';
-import { rule as ruleTestTsconfigPinsLibAndTypes } from '../rules/test-runtime/types/test-tsconfig-pins-lib-and-types.mts';
-import { rule as ruleTimeUnitMismatch } from '../rules/time/units/time-unit-mismatch.mts';
 
 export const partRules = {
+  'no-unbounded-query-array': ruleNoUnboundedQueryArray,
+  'no-unchecked-positional-element': ruleNoUncheckedPositionalElement,
+  'no-unchecked-response-json': ruleNoUncheckedResponseJson,
+  'no-unchecked-url-sink': ruleNoUncheckedUrlSink,
+  'no-uncleared-shared-mock': ruleNoUnclearedSharedMock,
   'no-uncleared-timeout': ruleNoUnclearedTimeout,
   'no-unclosed-file-descriptor': ruleNoUnclosedFileDescriptor,
   'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
@@ -125,6 +130,7 @@ export const partRules = {
   'no-unisolated-job-loop': ruleNoUnisolatedJobLoop,
   'no-unknown-in-domain': ruleNoUnknownInDomain,
   'no-unknown-main-folder': ruleNoUnknownMainFolder,
+  'no-unknown-tree-sitter-field': ruleNoUnknownTreeSitterField,
   'no-unmapped-exception': ruleNoUnmappedException,
   'no-unordered-query': ruleNoUnorderedQuery,
   'no-unowned-async-assertion': ruleNoUnownedAsyncAssertion,
@@ -184,20 +190,14 @@ export const partRules = {
   'require-abort-signal-forwarding': ruleRequireAbortSignalForwarding,
   'require-atomic-updates': ruleRequireAtomicUpdates,
   'require-client-timeout': ruleRequireClientTimeout,
+  'require-compiler-file-name': ruleRequireCompilerFileName,
   'require-error-listener': ruleRequireErrorListener,
   'require-go-collector-setting': ruleRequireGoCollectorSetting,
   'require-http-timeout': ruleRequireHttpTimeout,
   'require-jvm-heap-goal': ruleRequireJvmHeapGoal,
+  'require-moved-tsconfig-type-roots': ruleRequireMovedTsconfigTypeRoots,
   'require-process-timeout': ruleRequireProcessTimeout,
   'require-promise-reject': ruleRequirePromiseReject,
+  'require-staged-parent-node-modules': ruleRequireStagedParentNodeModules,
   'require-test-process-timeout': ruleRequireTestProcessTimeout,
-  'reusable-object-per-call': ruleReusableObjectPerCall,
-  'settle-pending-on-close': ruleSettlePendingOnClose,
-  'shorter-boolean-logic': ruleShorterBooleanLogic,
-  'simpler-boolean-logic': ruleSimplerBooleanLogic,
-  'strict-boolean-expressions': ruleStrictBooleanExpressions,
-  'structured-catch-logging': ruleStructuredCatchLogging,
-  'test-must-use-production-runtime': ruleTestMustUseProductionRuntime,
-  'test-tsconfig-pins-lib-and-types': ruleTestTsconfigPinsLibAndTypes,
-  'time-unit-mismatch': ruleTimeUnitMismatch,
 };

@@ -79,6 +79,11 @@
   "disable": ["mutation", "test-console"],
   "exceptions": [
     {
+      "rule": "pmd-xpath-rule-mistake",
+      "paths": ["languages/java/gradle/**"],
+      "reason": "The PMD rulesets nitpicker ships scan the file inside predicates in 12 rules; rewriting them is #2378."
+    },
+    {
       "rule": "exports",
       "paths": ["languages/typescript/preset/eslint-plugin/engine/engine-requests.mts"],
       "name": "isTypedOnEngine",

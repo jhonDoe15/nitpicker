@@ -372,6 +372,34 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Keep the end of a tool's output when an error message has to shorten it
   (`stderr.slice(-4000)`, or the start and the end with a marker between them): the cause is printed last
   (`nitpicker/no-head-cut-error-output`).
+- Pass the real file name to the TypeScript compiler API (`ts.transpileModule(source, { fileName, compilerOptions })`,
+  `ts.createSourceFile(fileName, ...)`) when you have it: the default name makes every input the same file and
+  relative imports resolve against it (`nitpicker/require-compiler-file-name`).
+- A `package.json` field npm accepts in several shapes (`bundleDependencies: true`, `workspaces: { packages }`,
+  `man` as a string) is checked with `Array.isArray` or `typeof` before a list member is read from it
+  (`nitpicker/no-single-shape-manifest-field`).
+- A project linked or copied into a temporary folder and used there (a tsconfig written, a resolving tool started with it as
+  `cwd`) is given the `node_modules` of its parent folders at the matching level, because module resolution walks up
+  from the temporary folder, or the tool runs in the project (`nitpicker/require-staged-parent-node-modules`).
+- A tsconfig that `extends` another and is written to a temporary folder sets `compilerOptions.typeRoots` to the type
+  roots of the original config: TypeScript derives the default from the folder of the config it opens
+  (`nitpicker/require-moved-tsconfig-type-roots`).
+- Look for a tool's config file (`tsconfig.json`, `.eslintrc*`, `.prettierrc*`, `pyproject.toml`) in the parent
+  folders, up to the repository root, before falling back to a default: the tool searches upward too, so a package
+  covered by a workspace config gets the default otherwise (`nitpicker/no-single-folder-config-lookup`).
+- Handle each input of a `Promise.all(files.map(...))` batch on its own (a `try` or `.catch` in the callback, or
+  `Promise.allSettled`): one unreadable or unparsable file must not discard the results of the others
+  (`nitpicker/no-all-or-nothing-batch`; only `Promise.all(files.map(...))` with `readFile`, `JSON.parse` or an imported
+  YAML/TOML/JSON5/JS parser is checked: `for...of`, `forEach` and Java are not covered yet).
+- Do not match a language keyword (`/\bcase\b/`) with a regex over raw source text: comments and strings match too.
+  Use a parser or a tokenizer, or strip comments and strings first (`nitpicker/no-keyword-regex-over-source`).
+- Use only field names that the grammar defines in `childForFieldName` and `childrenForFieldName`: an unknown name
+  is not an error, it returns nothing (`nitpicker/no-unknown-tree-sitter-field`).
+- A function that walks a tree-sitter tree decides what happens with error nodes: they stand in for any child, so
+  check `hasError`, `isError`, `isMissing` or the type `ERROR`, or skip the unit
+  (`nitpicker/require-tree-sitter-error-check`).
+- In plain JavaScript, test an element taken by position from an array of a parameter (`({ children: [first] }) =>`)
+  before passing it on or reading it: the array can be shorter (`nitpicker/no-unchecked-positional-element`).
 - Decide whether a child process failed by its exit status (`status !== 0`, `exitCode`, the callback's `error`), not
   by text on its standard error, which also carries warnings and notices (`nitpicker/no-stderr-as-failure`).
 - Read `error` and `signal` of a `spawnSync` result before its `status`: a child that could not start, timed out or

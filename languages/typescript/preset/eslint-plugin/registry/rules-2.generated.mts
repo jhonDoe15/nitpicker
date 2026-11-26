@@ -1,3 +1,5 @@
+import { rule as ruleNoLossyJsonStringify } from '../rules/json-values/no-lossy-json-stringify.mts';
+import { rule as ruleNoLossyUtf8Decode } from '../rules/decoding/no-lossy-utf8-decode.mts';
 import { rule as ruleNoMagicNumbers } from '../rules/wrapped/no-magic-numbers.mts';
 import { rule as ruleNoMalformedQueryText } from '../rules/query-text/no-malformed-query-text.mts';
 import { rule as ruleNoManagedResourceConstructionOutsideCompositionRoots } from '../rules/boundaries/no-managed-resource-construction-outside-composition-roots.mts';
@@ -67,6 +69,8 @@ import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-st
 import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
 import { rule as ruleNoShrinkingWorklistJoin } from '../rules/worklists/no-shrinking-worklist-join.mts';
 import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
+import { rule as ruleNoSingleFolderConfigLookup } from '../rules/config/no-single-folder-config-lookup.mts';
+import { rule as ruleNoSingleShapeManifestField } from '../rules/manifests/no-single-shape-manifest-field.mts';
 import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mts';
 import { rule as ruleNoSlashOnlyRedirectGuard } from '../rules/urls/requests/no-slash-only-redirect-guard.mts';
 import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
@@ -94,12 +98,10 @@ import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framewo
 import { rule as ruleNoUnanchoredAffixReplace } from '../rules/affixes/no-unanchored-affix-replace.mts';
 import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-writes.mts';
 import { rule as ruleNoUnbatchedHeavyRun } from '../rules/heavy-steps/no-unbatched-heavy-run.mts';
-import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mts';
-import { rule as ruleNoUncheckedResponseJson } from '../rules/response-json/no-unchecked-response-json.mts';
-import { rule as ruleNoUncheckedUrlSink } from '../rules/urls/links/no-unchecked-url-sink.mts';
-import { rule as ruleNoUnclearedSharedMock } from '../test-quality/shared-mocks/no-uncleared-shared-mock.mts';
 
 export const partRules = {
+  'no-lossy-json-stringify': ruleNoLossyJsonStringify,
+  'no-lossy-utf8-decode': ruleNoLossyUtf8Decode,
   'no-magic-numbers': ruleNoMagicNumbers,
   'no-malformed-query-text': ruleNoMalformedQueryText,
   'no-managed-resource-construction-outside-composition-roots':
@@ -170,6 +172,8 @@ export const partRules = {
   'no-shell-string-command': ruleNoShellStringCommand,
   'no-shrinking-worklist-join': ruleNoShrinkingWorklistJoin,
   'no-silent-catch': ruleNoSilentCatch,
+  'no-single-folder-config-lookup': ruleNoSingleFolderConfigLookup,
+  'no-single-shape-manifest-field': ruleNoSingleShapeManifestField,
   'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
   'no-slash-only-redirect-guard': ruleNoSlashOnlyRedirectGuard,
   'no-sql-string-building': ruleNoSqlStringBuilding,
@@ -197,8 +201,4 @@ export const partRules = {
   'no-unanchored-affix-replace': ruleNoUnanchoredAffixReplace,
   'no-unatomic-writes': ruleNoUnatomicWrites,
   'no-unbatched-heavy-run': ruleNoUnbatchedHeavyRun,
-  'no-unbounded-query-array': ruleNoUnboundedQueryArray,
-  'no-unchecked-response-json': ruleNoUncheckedResponseJson,
-  'no-unchecked-url-sink': ruleNoUncheckedUrlSink,
-  'no-uncleared-shared-mock': ruleNoUnclearedSharedMock,
 };
