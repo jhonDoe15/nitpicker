@@ -982,6 +982,19 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   collection (events, `actions$`, route parameters), which this rule leaves alone. Limits: a
   standalone `pipe()` composition and a `mergeMap` nested inside the projection are not followed,
   and without type information any name passed to `from()` counts as a collection.
+- Independent reads awaited one after another (`nitpicker/no-sequential-independent-reads`,
+  report-only): two or more `const x = await <read>` statements next to each other in one block, where
+  no later read uses an earlier result. A read is `fetch(url)` with no options or with an object
+  literal that has no `body` and a `method` of `GET` or `HEAD`, or a read of TypeORM, Prisma, Drizzle,
+  Kysely, Knex, Sequelize or MikroORM (`findMany`, `findUnique`, `count`, `find`, `findOne`,
+  `select().from()`, ...) in a project that depends on one. Start them together with
+  `Promise.all`. Not reported: a write, a guard (`if (!user) return`) or any other statement between
+  them, blocks inside a loop (`nitpicker/no-io-in-loop`) or a transaction callback, a client named like
+  a transaction (`tx`, `trx`, `manager`, `queryRunner`, a repository taken from a transaction scope), a
+  locking read (`.for('update')`, `.lock()`), and a read whose model, chain or variable names an
+  authorization or session check (one of the words `auth`, `authorization`, `authorize`, `permission`,
+  `session`, `membership`, `role`, `access`, `owner`, `ownership`, `allowed`, `policy`, `credential`,
+  `token`, `verify`, `guard` or `acl`), since its result may decide whether the next read runs.
 - Per-item I/O (`nitpicker/no-io-in-loop`): a database query or a remote request once per item of a
   loop (`for await` included) or an iteration callback (`map`, `forEach` of an array, a `Map` or a
   `Set`, `flatMap`, `filter`, `reduce`, `reduceRight`, `some`, `every`, `find`, `findIndex`,

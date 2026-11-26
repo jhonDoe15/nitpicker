@@ -40,6 +40,7 @@ import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/n
 import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mts';
 import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.mts';
 import { rule as ruleNoSendWithoutReturn } from '../rules/handlers/fall-through/no-send-without-return.mts';
+import { rule as ruleNoSequentialIndependentReads } from '../rules/waterfalls/no-sequential-independent-reads.mts';
 import { rule as ruleNoServerOrWorkerPerTest } from '../rules/test-runtime/processes/no-server-or-worker-per-test.mts';
 import { rule as ruleNoServiceLocator } from '../rules/service-locator/no-service-locator.mts';
 import { rule as ruleNoShadowedSpreadKey } from '../rules/spreads/no-shadowed-spread-key.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-u
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
 import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mts';
 import { rule as ruleNoUninjectableDelay } from '../rules/test-runtime/lifecycle/no-uninjectable-delay.mts';
-import { rule as ruleNoUnionOrderDependence } from '../rules/union-order/no-union-order-dependence.mts';
 
 export const partRules = {
   'no-nan-only-check': ruleNoNanOnlyCheck,
@@ -142,6 +142,7 @@ export const partRules = {
   'no-secret-in-log': ruleNoSecretInLog,
   'no-self-recursion': ruleNoSelfRecursion,
   'no-send-without-return': ruleNoSendWithoutReturn,
+  'no-sequential-independent-reads': ruleNoSequentialIndependentReads,
   'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
   'no-service-locator': ruleNoServiceLocator,
   'no-shadowed-spread-key': ruleNoShadowedSpreadKey,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
   'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
   'no-uninjectable-delay': ruleNoUninjectableDelay,
-  'no-union-order-dependence': ruleNoUnionOrderDependence,
 };

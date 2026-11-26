@@ -556,6 +556,12 @@ into one array that is then only walked once. `nitpicker/no-collected-stream-row
 for streamed rows. Java (`Files.readString`, `readAllBytes`, `readAllLines`, `ObjectMapper.readValue`),
 Kotlin, Python and Go follow in #2133.
 
+Sequential reads: `nitpicker/no-sequential-independent-reads` (production source, in `eslint-lint`, report-only) reports
+two or more adjacent `const x = await <read>` statements in one block where no later read uses an earlier result. Reads
+are `fetch` without a body (method `GET` or `HEAD`) and ORM reads of the project's ORM. A write, a guard or any other
+statement ends the run; loops, transaction callbacks, transaction-named clients, locking reads and reads named after an
+authorization or session check are left alone. The JavaScript preset runs the same rule.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a
