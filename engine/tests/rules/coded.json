@@ -1,0 +1,282 @@
+[
+ {
+  "name": "AssignmentToNonFinalStatic",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.errorprone.AssignmentToNonFinalStaticRule",
+  "message": "Possible unsafe assignment to non-final static field ''{0}'' in a constructor.",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "AvoidUsingOctalValues",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.errorprone.AvoidUsingOctalValuesRule",
+  "message": "Do not start a literal by 0 unless it's an octal value",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "CheckSkipResult",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.errorprone.CheckSkipResultRule",
+  "message": "Check the value returned by the skip() method of an InputStream to see if the requested number of bytes has been skipped.",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "CloneMethodMustImplementCloneable",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.errorprone.CloneMethodMustImplementCloneableRule",
+  "message": "clone() method should be implemented only if implementing Cloneable interface",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "DetachedTestCase",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.errorprone.DetachedTestCaseRule",
+  "message": "Probable detached JUnit test case.",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "IdempotentOperations",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.errorprone.IdempotentOperationsRule",
+  "message": "Avoid idempotent operations (like assigning a variable to itself).",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "JUnitSpelling",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.errorprone.JUnitSpellingRule",
+  "message": "You may have misspelled a JUnit framework method (setUp or tearDown)",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "JUnitStaticSuite",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.errorprone.JUnitStaticSuiteRule",
+  "message": "You have a suite() method that is not both public and static, so JUnit won't call it to get your TestSuite.  Is that what you wanted to do?",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "ProperCloneImplementation",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.errorprone.ProperCloneImplementationRule",
+  "message": "Object clone() should be implemented with super.clone()",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "SingleMethodSingleton",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.errorprone.SingleMethodSingletonRule",
+  "message": "Class contains multiple getInstance methods. Please review.",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "UnnecessaryCaseChange",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.errorprone.UnnecessaryCaseChangeRule",
+  "message": "Using equalsIgnoreCase() is cleaner than using toUpperCase/toLowerCase().equals().",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "UselessOperationOnImmutable",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.errorprone.UselessOperationOnImmutableRule",
+  "message": "The result of an operation on an immutable object is ignored",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "AvoidReassigningCatchVariables",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.AvoidReassigningCatchVariablesRule",
+  "message": "Avoid reassigning caught exception ''{0}''",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "AvoidReassigningParameters",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.AvoidReassigningParametersRule",
+  "message": "Avoid reassigning parameters such as ''{0}''",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "MissingOverride",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.MissingOverrideRule",
+  "message": "The method ''{0}'' is missing an @Override annotation.",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "UnusedLocalVariable",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.UnusedLocalVariableRule",
+  "message": "Avoid unused local variables such as ''{0}''.",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "UseCollectionIsEmpty",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.UseCollectionIsEmptyRule",
+  "message": "Substitute calls to size() == 0 (or size() != 0, size() > 0, size() < 1) with calls to isEmpty()",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "UseEnumCollections",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.UseEnumCollectionsRule",
+  "message": "This collection could be an {0}",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "AbstractClassWithoutAbstractMethod",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.AbstractClassWithoutAbstractMethodRule",
+  "message": "This abstract class does not have any abstract methods",
+  "suppress": "./ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass')]",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "CheckResultSet",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.CheckResultSetRule",
+  "message": "Always check the return of one of the navigation method (next,previous,first,last) of a ResultSet.",
+  "suppress": "self::MethodCall[@MethodName = 'next'][parent::DoStatement]\n  [let $name := string(*[1][self::VariableAccess]/@Name)\n   return $name != '' and exists(../preceding-sibling::IfStatement\n     [*[1][self::UnaryExpression[@Operator = '!']\n           [MethodCall[@MethodName = 'next'][*[1][self::VariableAccess][@Name = $name]]]]]\n     [*[2][self::ReturnStatement or self::ThrowStatement or self::ContinueStatement or self::BreakStatement\n           or self::Block/*[last()][self::ReturnStatement or self::ThrowStatement or self::ContinueStatement\n                                    or self::BreakStatement]]])]",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "AddEmptyString",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.performance.AddEmptyStringRule",
+  "message": "Do not add empty strings",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "AppendCharacterWithChar",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.performance.AppendCharacterWithCharRule",
+  "message": "Avoid appending characters as strings in StringBuffer.append.",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "RedundantFieldInitializer",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.performance.RedundantFieldInitializerRule",
+  "message": "Avoid using redundant field initializer for ''${variableName}''",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "StringInstantiation",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.performance.StringInstantiationRule",
+  "message": "Avoid instantiating String objects; this is usually unnecessary.",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "UseIndexOfChar",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.performance.UseIndexOfCharRule",
+  "message": "String.indexOf(char) is faster than String.indexOf(String).",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "UselessStringValueOf",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.performance.UselessStringValueOfRule",
+  "message": "No need to call String.valueOf to append to a string.",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "HardCodedCryptoKey",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.security.HardCodedCryptoKeyRule",
+  "message": "Do not use hard coded encryption keys",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "InsecureCryptoIv",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.security.InsecureCryptoIvRule",
+  "message": "Do not use hard coded initialization vector in crypto operations",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ }
+]

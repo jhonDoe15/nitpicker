@@ -298,8 +298,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   same kind. An initializer with an `await` is reported only when the test reads nothing but
   parameters and `const` names, since other state may change while it waits. Calls of project
   functions, `sort` and other changes in place, clocks and ids, a test that reads `x`, an initializer
-  that is a `?:`, `&&` or `||`, and an exit that calls a local function reading `x` are not reported. Allowed form: declare the value below the exit; keep it above only when its error must
-  be raised on the early path too.
+  that is a `?:`, `&&` or `||`, and an exit that calls a local function reading `x` are not reported. Inside a loop
+  body or an iteration callback it also reports a type checker query (`checker.getTypeAtLocation`,
+  `getSymbolAtLocation`, `getResolvedSignature`, `typeToString` and the like on a receiver named
+  `checker` or `typeChecker`) made before such an exit whose test makes no call other than `is...`
+  or `has...` guards on plain arguments (`if (!ts.isCallExpression(node)) continue;`): the query is paid for every
+  element the guard throws away. Allowed form: declare the value below the exit; keep it above only
+  when its error must be raised on the early path too.
 - `nitpicker/no-read-all-before-pass`: every input read into memory before a single pass over
   them, in all production code (not in tests). It reports a `const` array filled with one file read
   per element, `await Promise.all(xs.map((x) => readFile(x)))`, `xs.map((x) =>
@@ -311,6 +316,86 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   largest one. A literal list of inputs, an array that is returned, sorted, sized, indexed or passed
   on, and reads through a project function are not reported. Allowed forms: read and handle one input
   at a time, a bounded pool for parallel reads, or keep only what the pass needs from each input.
+- `nitpicker/no-accumulating-group-spread`: a group of a `Map` or object copied into a new array on
+  every step of a loop or iteration callback, in all production code (not in tests). It reports
+  `m.set(k, [...(m.get(k) ?? []), v])` and `o[k] = [...(o[k] ?? []), v]` (also with `||` and with
+  `...vs` after the spread) when the read and the write name the same target and the same key. A
+  group of n items then costs n²/2 element copies. A loop over a literal list, a spread of a
+  different list, a spread that is not the first element and a single write outside any loop are
+  not reported. Allowed form: get the group once and push onto it, creating it with `[v]` when it is
+  missing. `nitpicker/no-accumulating-spread` reports the same copy when the accumulator is a
+  variable; this rule is separate because oxlint's native port of that rule does not see groups.
+- `nitpicker/no-loop-invariant-copy`: a full copy of a value that does not change in a loop, stored
+  on every pass of it, in all production code (not in tests). It reports `[...shared]`,
+  `shared.slice()`, `Array.from(shared)`, `{ ...shared }`, `new Map(shared)`, `new Set(shared)`,
+  `structuredClone(shared)` and `Buffer.from(shared)` inside a loop body or an iteration callback
+  when `shared` is a name or a `this` or member path declared outside the loop, neither assigned
+  nor changed in place there (`push`, `set`, `sort` and the like), and the copy is stored: a property
+  of an object literal, the value of a member assignment, the argument of `push`, `unshift`, `set`,
+  `add` or of a constructor, or the result of the callback. Memory then grows with the number of
+  passes times the size of the value. A property counts as stored only when its object literal is
+  stored itself. A copy kept in a local, a copy of a literal, a value also handed to another call in
+  the loop (which may change it, so each copy is a snapshot), a loop over a literal list and a copy
+  with other elements next to the spread are not reported. Whether a
+  consumer changes its copy later is not visible, so this is a broad rule. Allowed forms: share one
+  read-only value, or copy once before the loop.
+- `nitpicker/no-repeated-parse-per-item`: the same kind of text parsed again for every item of a
+  list, in all production code (not in tests). It reports a call of a function of the same file
+  inside a loop body or an iteration callback whose argument is a field of the item that items
+  usually share (`message`, `rule`, `ruleId`, `tool`, `kind`, `type`, `code`, `category`), possibly through other such functions
+  (`splitRoute(oneLine(finding.message))`), when every function in the chain is a pure parse of its
+  argument: string methods, regular expressions, `split`, `slice` and `JSON.parse`, no assignment,
+  `await`, `this` or `new`, and no state read but its parameters, its own locals and `const` names
+  around it. At least one of them must parse (`split`, `replace`, `match`, `exec` or `JSON.parse`;
+  a regular expression used only with `test` gives a boolean and does not count). Each item then
+  runs the parse again and keeps its own copy of the result. Calls of imported functions, a loop that
+  already reads a `Map` by the same field, a loop over a literal list and other fields are not
+  reported. Allowed form:
+  parse each distinct value once and share the result through a `Map` kept for the loop.
+- `nitpicker/no-stat-per-listed-entry`: a directory listing followed by one file system call per
+  entry to learn its kind, in all production code (not in tests). It reports `statSync`,
+  `lstatSync`, `stat` or `lstat` (from `fs`, `node:fs`, `fs/promises` or `fs-extra`, optionally
+  awaited) on the entry's own path (`join(dir, name)`, `` `${dir}/${name}` `` or `dir + name`), inside a `for...of` loop or a `filter`, `map`, `flatMap`,
+  `forEach`, `some`, `every` or `find` callback over `readdirSync(dir)` or `await readdir(dir)`
+  called without an options object (directly or through a `const`), when only `isDirectory()`,
+  `isFile()` or `isSymbolicLink()` is read from the result. On a large tree the stat calls are most
+  of the time of the walk. A stat whose `size` or `mtime` is read, a listing with options and a
+  stat of another path (such as a file inside the entry) are not reported. Allowed form: `readdirSync(dir, { withFileTypes: true })`
+  and the entry's own `isDirectory()` and `isFile()`.
+- `nitpicker/no-filtered-positional-pairing`: a list filtered before it is paired by position with a
+  list that was not filtered the same way, in all production code (not in tests). It reports a
+  `map`, `flatMap`, `forEach`, `some` or `every` callback whose index reads `other[i]`, a counted
+  `for (let i = 0; i < list.length; i++)` loop that reads two lists at `[i]`, and `zip(a, b)`,
+  when one side is the result of `filter` (directly, through a `const`, or followed by `map`,
+  `slice`, `toSorted` or `toReversed`) and the other is not filtered with the same callback. After
+  the first dropped entry the positions no longer line up. Not reported: a partner whose initializer
+  reads the other list (built from it, so it lines up), a partner written at `[i]`, a partner
+  declared inside the callback or loop or reached through its element, and a constant table (an
+  `UPPER_CASE` name or an array literal). Allowed forms: pair first and filter the
+  pairs, or keep a placeholder for the dropped entries.
+- `nitpicker/no-replacing-collection-merge`: maps of collections merged by replacing the collection
+  of a key that an earlier source already filled, in all production code (not in tests). It reports
+  `all.set(key, values)` where `[key, values]` are the entries of the inner loop (`for (const [key,
+  values] of part)` or `part.forEach((values, key) => ...)`) of a loop over several sources, and
+  `Object.assign(all, part)` in a loop, when `all` is declared outside those loops as a `Map`,
+  `ReadonlyMap` or `Record` whose value type is an array, `Set`, `Map` or `Record`. With one key in
+  two sources, the values of the source merged last win, and with sources finishing in any order
+  the result changes from run to run. A target filled from one source, a target declared inside
+  the loop, an inner loop that also reads the target with `get` or `has` (the usual merge and
+  first-wins forms), scalar values and a merge of an object literal are not reported. Allowed form: get the
+  collection of the key and add to it, creating it when it is missing.
+- `nitpicker/no-repeated-keyed-scan`: the same scan of a collection repeated for every element that
+  shares its key, in all production code (not in tests). It reports `some`, `every`, `filter`,
+  `find`, `findIndex` or `findLast` with a callback, inside a loop body or an iteration callback,
+  on a collection read as `map.get(key)` (also with `?? []`, `?.` or through a `const`) when the
+  `map` does not change in the loop, the key is a field or call of the current element (not the
+  element itself, which is usually unique), and the callback reads nothing declared or changed in
+  the loop. Elements with the same key then repeat the same scan: with 10,000
+  elements of one key over a collection of 10,000 entries that is 100 million tests. A callback
+  that reads the element, a key that does not read it, a loop over the map's own keys (`keys()`,
+  `Object.keys`, a `Set`), a collection or map changed in the loop (`push`, `add`, `set` and the
+  like) and a map built in the loop are not reported. Allowed form: work the answer out once per key, before the loop or kept in a `Map` by
+  key.
 - `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
   walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
   `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,
@@ -685,6 +770,43 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `ref`: a chain ends), tree children (`children`, `body`, `left`, `right`),
   and parameters typed as syntax tree nodes (`ts.Node`, ESTree nodes) are left alone. Allowed form: pass a `Set` of
   visited values down and return when the value is in it (`if (seen.has(error)) return [];`), or a depth limit.
+- `nitpicker/no-operand-depth-recursion`: a function that calls itself on both operands of its parameter
+  (`node.left` and `node.right`, or `lhs` and `rhs`; also `this.name(...)`) when its text names an operator, a binary
+  or infix node or an operand (an expression walk, not a plain binary tree), and no parameter is named like a depth or
+  limit (`depth`, `level`, `limit`, `remaining`, `budget`) or compared with a limit. The call stack then grows with the
+  length of an operand chain, and generated code (thousands of `+` operands, a long `else if` ladder) overflows it.
+  Allowed form: walk the left-leaning chain in a loop and recurse only into the right operand, use an explicit stack,
+  or pass a depth and stop with an ordinary error past a limit.
+- `nitpicker/no-unguarded-recursion-entry`: a function that enters the same recursion as a sibling but skips the
+  sibling's re-entry guard. The sibling reads or writes a module-level or class-field `Set`, `Map`, `WeakSet` or
+  `WeakMap` keyed by its own parameter (`add`, `has`, `set`, `get`, `delete`); the reported function does not touch
+  that guard, does not call the guarded sibling itself, and calls a function of the same file that the guarded
+  sibling also calls and that calls both of them back. A turn that comes in through the unguarded entry is never
+  refused, so nested input redoes the whole recursion on every turn. Allowed form: check the same guard in every entry
+  point, or route the entry point through the guarded one.
+- `nitpicker/no-cache-after-guard-fallback`: a recursive function (directly, or through other functions of the file,
+  also when passed as a callback) that returns early when a guard `has` its parameter or refuses to `add` it, and later
+  `set`s the same parameter in another map. A deeper turn may have returned the fallback, so the stored answer may be
+  partial and what the cache holds depends on which caller asked first. A function that names a partial or incomplete
+  result (`partial`, `incomplete`, `provisional`, `truncated`, `cutShort`) is taken as handling it. Allowed form: do
+  not store an answer a refused turn fed into, or store it marked as partial.
+- `nitpicker/no-shrinking-worklist-join`: a worklist loop (`for...of` over an array it pushes to, or a `while` loop
+  that `pop`s or `shift`s it) that pushes a successor when a join into the stored state of that successor reports a
+  change (`join`, `merge`, `union`, `meet` or `widen` on `state.get(next)` or `state[next]`), while the transfer
+  removes facts depending on the facts it holds: in the loop body or a function of the file it calls with the state, a
+  copy of the state is cleared, or a key or value taken from the copy or the state is deleted (`delete`, `splice`, the
+  `delete` operator). A join never takes back what an earlier pass sent along the same edge, so the stored input keeps
+  an old, stronger fact. A fixed kill set (names that come from the node, as in liveness) only shrinks monotonically
+  and is not reported. Allowed form: keep the last output per edge and recompute the input of a node from all of them,
+  or make the transfer only add.
+- `nitpicker/no-depth-only-worklist`: a worklist loop (also over `this.name`) that can append more than one item per
+  iteration (a spread, more than one argument, two pushes, or a push inside an inner loop or callback), compares a
+  depth (`depth`, `level`, `hops`, `distance`: a property, or a variable declared in the loop) with a limit, and has no
+  set or mark anywhere in the loop (no `has`, `add`, `set` or `includes` on another collection, no
+  `item.visited = true`). A depth limit bounds how long one path is, not how many paths there are, so shared children
+  are expanded once per path. Children of a tree (`.children`, `.childNodes`, `getChildren()`, `forEachChild`, in the
+  pushed value or in the `for...of` loop around the push) are not reported. Allowed form: keep a `Set` of the items
+  already expanded and skip an item that is in it.
 - `nitpicker/no-chunkwise-stream-text` (needs the type checker): stream data decoded or matched one chunk at a time,
   so text or a message split across two chunks breaks. Inside a `'data'` listener (`on`, `once`, `addListener`,
   `prependListener`) or a `for await` loop over a stream, where the chunk is typed `Buffer`, `Uint8Array` or `ArrayBuffer`
@@ -982,6 +1104,32 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   collection (events, `actions$`, route parameters), which this rule leaves alone. Limits: a
   standalone `pipe()` composition and a `mergeMap` nested inside the projection are not followed,
   and without type information any name passed to `from()` counts as a collection.
+- Independent reads awaited one after another (`nitpicker/no-sequential-independent-reads`,
+  report-only): two or more `const x = await <read>` statements next to each other in one block, where
+  no later read uses an earlier result. A read is `fetch(url)` with no options or with an object
+  literal that has no `body` and a `method` of `GET` or `HEAD`, or a read of TypeORM, Prisma, Drizzle,
+  Kysely, Knex, Sequelize or MikroORM (`findMany`, `findUnique`, `count`, `find`, `findOne`,
+  `select().from()`, ...) in a project that depends on one. Start them together with
+  `Promise.all`. Not reported: a write, a guard (`if (!user) return`) or any other statement between
+  them, blocks inside a loop (`nitpicker/no-io-in-loop`) or a transaction callback, a client named like
+  a transaction (`tx`, `trx`, `manager`, `queryRunner`, a repository taken from a transaction scope), a
+  locking read (`.for('update')`, `.lock()`), and a read whose model, chain or variable names an
+  authorization or session check (one of the words `auth`, `authorization`, `authorize`, `permission`,
+  `session`, `membership`, `role`, `access`, `owner`, `ownership`, `allowed`, `policy`, `credential`,
+  `token`, `verify`, `guard` or `acl`), since its result may decide whether the next read runs.
+- Waits placed before independent work (`nitpicker/no-early-wait-on-started-work`, report-only, a broad
+  rule, needs type information): `const result = await task;` where `task` is a `Promise` held in a
+  `const` of the same block initialized by a call or `new` (work started earlier), and `result` is first
+  read three or more statements later, while the statements in between do work, do not mention `task`
+  and do not `return`, `throw`, `break` or `continue`. Work is a call other than a `get*`, `is*` or `has*`
+  accessor, `join`, a logging call (`log`, `trace`, `debug`, `info`, `warn`, `error`) or a call on
+  `console`, `logger`, `log`, `Math` or `JSON`. While the caller waits nothing else runs; move the wait to
+  where the result is first used. Not reported: an `await` of a call (`await load()` starts the work
+  itself), a thenable that is not a `Promise` (a query builder), a wait in a `try` block, a task whose
+  name has a word of a synchronization point (`lock`, `mutex`, `barrier`, `ready`, `init`, `shutdown`,
+  `flush`, `close`, `drain`, `limit`, `sleep`, `delay`, `wait`, `done`, `exit`, `end`, `finish`,
+  `complete`, `settled`, `stop` and their past forms) and a wait whose value is never read. Java has the same check as
+  `pmd/EarlyWaitOnStartedWork`.
 - Per-item I/O (`nitpicker/no-io-in-loop`): a database query or a remote request once per item of a
   loop (`for await` included) or an iteration callback (`map`, `forEach` of an array, a `Map` or a
   `Set`, `flatMap`, `filter`, `reduce`, `reduceRight`, `some`, `every`, `find`, `findIndex`,
@@ -2034,6 +2182,122 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   40 and cuts that go elsewhere. Cuts that
   can split a character are `nitpicker/no-surrogate-splitting-cut`. The Java preset has the same rule as
   `pmd/HeadCutErrorOutput`.
+- The TypeScript compiler API is given the real file name of its input (`nitpicker/require-compiler-file-name`,
+  production files). Reported: `ts.transpileModule` without `fileName` in its options (or with a string literal),
+  `ts.transpile` without a file name argument (or a literal), `ts.createSourceFile` and
+  `ts.createLanguageServiceSourceFile` with a literal file name, when the enclosing function has a parameter or local
+  named for a file name or path (`fileName`, `filename`, `file`, `path`, `filePath`, also with a one-letter prefix such
+  as `pFileName`). Without the name the compiler treats every input as the same file: relative imports resolve against
+  it (a file importing `./module` imports itself) and the extension picks TSX or the module format. Not reported: a
+  function with no file name to pass, options from a variable, a spread or a computed key, a name that is the
+  `node:path` module (`import` or `require`), a parameter typed `File`, a `ts` that is not the `typescript` module (a
+  parameter or local of that name), Babel, esbuild and SWC (not covered yet). `typescript` is found through `import`,
+  `import ts = require(...)`, `require` anywhere in the file, and destructuring of it.
+- A package.json field that npm accepts in several shapes is not read as only one of them
+  (`nitpicker/no-single-shape-manifest-field`, production files). Reported: a list member (`includes`, `map`,
+  `filter`, `forEach`, `some`, `every`, `find`, `reduce`, `flatMap`, `join`, `push`, `indexOf`, `length`) of
+  `bundleDependencies` or `bundledDependencies` (a list or `true`) or `workspaces` (a list or an object with
+  `packages`), `.packages` of `workspaces`, or a list method of `man` (a string or a list), read from a value
+  named `manifest`, `pkg`, `packageJson` (or ending in `Manifest` or `PackageJson`), from `JSON.parse` of a read of a
+  `package.json` file, or typed `PackageJson`, also through a variable, a destructured name
+  (`const { bundleDependencies } = pkg`) or `a || b` / `a ?? []`. A manifest in the other shape throws
+  `includes is not a function` or reads `undefined`. Not reported: code in the same function that checks the value
+  (`Array.isArray`, `typeof`, `instanceof`, `in`, a comparison with `true` or `false`, a call named `is...`, `has...`,
+  `assert...` or `ensure...` on it, or an assignment to the field), `workspaces?.packages ?? workspaces`, a manifest
+  whose declared type lists the field as an array, and other values. `bin`, `browser`, `exports` and `directories`
+  are not covered yet.
+- A project staged in a temporary folder keeps the `node_modules` of its parent folders
+  (`nitpicker/require-staged-parent-node-modules`, production files). Reported: a `mkdtemp` or `mkdtempSync` folder
+  that receives the entries of another folder (`symlink`, `cp` or `copyFile` in a `for...of` or `forEach`/`map` over
+  `readdir` of it) when, in the same function, a `tsconfig*.json` is written into it, or it follows `--tsconfig`, `-p`
+  or `--project` of a spawn call, or it is the `cwd` of a `spawn`, `exec`, `execFile`, `fork` or `execa` call that
+  starts a module-resolving tool (`tsc`, `eslint`, `oxlint`, `tsgolint`, `node`, `vite`, `webpack`, `rollup`, `esbuild`,
+  `jest`, `vitest`, or `npx` of one of them; a tool that is not a string literal is not known; `npm pack`, `tar` and
+  `git` are not).
+  Module resolution in the copy walks up from the temporary folder, so packages in a parent `node_modules` (a hoisted
+  workspace) are not found. Not reported: a function (or one of its callers in the file) that mentions `node_modules`,
+  `NODE_PATH`, `typeRoots`, `paths` or `--preserve-symlinks`, a `package.json` written alone, and a copy that is only
+  read.
+- A tsconfig that extends another and is written to a temporary folder sets `typeRoots`
+  (`nitpicker/require-moved-tsconfig-type-roots`, production files). Reported: an object literal with an `extends` key,
+  serialized with `JSON.stringify` and written with `writeFile` or `writeFileSync` under `os.tmpdir()` or a `mkdtemp`
+  folder (followed through `const` variables and `path.join`) as a file named `tsconfig*.json`, whose `compilerOptions`
+  has no `typeRoots` or `types` key or is missing. TypeScript derives the default `typeRoots` from the folder of the
+  config it opens, so from a temporary folder the project's `node_modules/@types` are not found. Not reported: a
+  `typeRoots` or `types` key, a spread or a `compilerOptions` value that is not an object literal, an `extends` that
+  is a literal starting with `./`, an object assigned to or passed to `Object.assign` later, other file names
+  (`.eslintrc.json`), text written as it is, and folders outside the temporary directory.
+- A tool's config file is not looked up in one folder only (`nitpicker/no-single-folder-config-lookup`, production
+  files). Reported: `existsSync`, `statSync`, `accessSync`, `stat`, `access`, `pathExists` or a `readFileSync` or
+  `readFile` in a `try` of `path.join(directory, name)` where the name is a fixed config file that the tool itself
+  searches for in the parent folders too (`tsconfig.json`, `jsconfig.json`, `.eslintrc*`, `eslint.config.*`,
+  `babel.config.*`, `.babelrc*`, `.prettierrc*`, `prettier.config.*`, `pyproject.toml`, `.editorconfig`), when a
+  missing file leads to a default: a ternary or `if` whose absent branch (or the `return` after an `if` that returns
+  the found file) is a file-name string, a non-empty object literal, a constant in upper case or a `default...`
+  value, or a `catch` that returns one; or that yields `undefined`, `null` or `false` while a same-file caller reads
+  it as `lookup(...) ?? default` or `|| default`. A package covered by a config in a parent folder gets the default
+  instead. Other strings, empty `{}` or `[]` and a result nobody defaults are not reported. Not reported: other names (`package.json`, lockfiles, `.git`), a directory
+  named for the repository root, and a function or a same-file caller that walks the parent folders (`dirname`,
+  `'..'`, `findUp`, `escalade`, or a helper named for ancestors, nearest or covering configs).
+- One failing input does not discard a whole batch (`nitpicker/no-all-or-nothing-batch`, production files).
+  Reported: `return`ed or stored `Promise.all(files.map(callback))` where the list is file paths (the result of
+  `readdir`, `glob`, `fastGlob` or `globby`, or a value named `files`, `paths`, `filePaths`, `fileNames`, `modules`,
+  `projects` or `packages`) and the callback (inline, or a function of the same file) calls `readFile`,
+  `readFileSync`, `JSON.parse` or the `parse` of an imported YAML, TOML, JSON5 or JavaScript parser (`yaml`,
+  `js-yaml`, `toml`, `@iarna/toml`, `smol-toml`, `json5`, `acorn`, `espree`, `esprima`, `@babel/parser`,
+  `@typescript-eslint/parser`, `@typescript-eslint/typescript-estree`) outside a `try` with a `catch` and without
+  `.catch(...)`. One unreadable or unparsable file rejects the call and loses every finished result. Not reported:
+  other `parse` calls (`Date.parse`, `url.parse`, `path.parse`, `schema.parse`), loops (`for...of`, `forEach`) and
+  `map` over a variable that is not a file list, Java (not covered yet), `Promise.allSettled`, callbacks that catch per input, a `Promise.all` inside a `try`, results that are not
+  collected, other collections and `throw` statements.
+- Keywords of a programming language are not matched with a regular expression over raw source text
+  (`nitpicker/no-keyword-regex-over-source`, production files). Reported: a regex (literal or `new RegExp` with a
+  literal pattern, also held in a `const`) whose pattern has a keyword (`case`, `import`, `class`, `require`,
+  `function`, `return` and similar) between word boundaries or followed by `\s` or `\(`, used with `match`,
+  `matchAll`, `replace`, `replaceAll`, `split`, `search`, `test` or `exec` on a variable named `source`,
+  `sourceText`, `sourceCode` or `sourceContent`, or on text read from a file whose literal name ends in a source
+  extension (`.java`, `.ts`, `.js`, `.py`, `.kt`, `.go`; also the last literal segment of `path.join(dir, 'A.java')`).
+  Comments, strings and text blocks match as well ("in this case" matches `case`). Not reported: other text, a
+  function that calls a masking helper (a name with `strip`, `mask` or `blank` followed by `Comment`, `String` or
+  `Literal`, `removeComments`, `tokenize`, `lex...`), a subject that comes from a call named `strip...`, `mask...`,
+  `blank...` or `parse...` (not `JSON.parse`), a `source` parameter of a function whose same-file calls all pass such
+  a value, and keywords that are not between word boundaries. A `parse` call elsewhere in the function (`JSON.parse`) hides nothing. The Java
+  preset has the same rule as `pmd/KeywordRegexOverSource`.
+- A tree-sitter field name must exist in the grammar (`nitpicker/no-unknown-tree-sitter-field`, production files).
+  Reported: in a module that imports `web-tree-sitter` or `tree-sitter`, a constant field name in
+  `childForFieldName("x")`, `childrenForFieldName("x")` or `cursor.currentFieldName === "x"` that no node type of the
+  grammar defines. The grammar comes from the `node-types.json` of the grammar package (`tree-sitter-java`, found
+  through the module's imports, a `tree-sitter-java.wasm` name or the nearest `package.json`) resolved from the linted
+  file; it is read from `src/` and from `src/` of the package's direct subfolders (`typescript/src`, `tsx/src`), and the
+  fields of all of them count. Where the node type is known from `node.type === "t"` (or `nodeType`), the field is
+  checked against the fields of type `t` only: inside an `if`, a ternary or `&&`, in a `case "t":` of
+  `switch (node.type)` (cases that fall through are all allowed), and after an early exit
+  `if (node.type !== "t") return;` in the same block. A cursor lookup is narrowed the same way
+  (`c.nodeType === "t" && c.currentFieldName === "x"`). The narrowing is dropped when the receiver is assigned between
+  the check and the lookup. A field name that does not exist is not an error in the API, it is an empty answer. Not reported: field names
+  from variables, modules for which no `node-types.json` can be found.
+- A tree walked with tree-sitter decides what an error node does (`nitpicker/require-tree-sitter-error-check`,
+  production files). Reported: in a module that imports `web-tree-sitter` or `tree-sitter`, a function that indexes
+  `children` or `namedChildren` (`node.children[0]`), maps them with a callback that reads the structure of each child,
+  or chains a member access directly on `childForFieldName(...)` (no `?.`), when neither the function nor a function in
+  the same file that calls or references it mentions `hasError`, `isError`, `isMissing` or the type `"ERROR"`. A parser
+  that recovers from errors puts an error node in place of any expected child, and the rest of the tree looks normal.
+  Exported functions are reported too: only a check in the function itself or in a same-file caller counts, an export
+  or a mention at the top level of the file does not (a top-level mention counts only when the top level of the file
+  has a check). Not reported: `?.` access, text-only reads.
+- A positional element is tested before use in plain JavaScript (`nitpicker/no-unchecked-positional-element`,
+  `.js`, `.mjs` and `.cjs` files without `@ts-check`). Reported: an element taken by position from an array that is a
+  property of a parameter (`({ children: [first] }) => ...`, or a `map`/`flatMap`/`forEach`/`filter` callback
+  `([, second]) => ...` over a member of a parameter) and passed to a call or read with `.` without a default and
+  without any test of it (`=== undefined`, `if`, `?.`, `??`, `&&`). A declaration `const [first] = param.items;` (the
+  array a member chain of a parameter, no computed member) is checked the same way, and so is an element that a `map`
+  callback returns untested when the mapped list is kept in a `const` (also spread into an array literal) and a later
+  `map`/`forEach`/`filter` callback over it passes its parameter to a call or reads it with `.` untested. A pattern
+  with two or more elements (`[start, end]`, `([key, value]) =>`) has its shape by construction and is not reported,
+  except `const [a, b] = param.children` (also `namedChildren`, `childNodes`), whose length the function does not
+  control. A pattern with a default (`{ paths: [b] } = {}`, `[first = x]`) is not reported. TypeScript reports this with
+  `noUncheckedIndexedAccess`; plain JavaScript has nothing. Not reported: `Object.entries` pairs, regular expression
+  results, tuples documented in the function's comment, literal arrays.
 - A finished child process is not judged by text on its standard error (`nitpicker/no-stderr-as-failure`,
   production files). Reported: an `if` or a ternary whose test (alone, or as one side of `||`) checks that the
   standard error is not empty (`stderr`, `stderr.length`, `stderr.length > 0`, `stderr !== ''`, also through
@@ -2070,6 +2334,105 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `--`), argument lists with a spread, and shell commands with a pipe, a
   redirection or a list (`git log | head -5`). Allowed forms: `spawn` with the output read as a stream, `stdio` set
   to a file descriptor, or a tool that writes its report to a file.
+- A list that grows with the input is not turned into one string before it is written or after it is read
+  (`nitpicker/no-whole-list-json-text`, production files). A string holds at most about 512 million characters: past
+  that `JSON.stringify` and `join` throw `RangeError: Invalid string length` and the output is lost exactly when it is
+  largest, and below it the process holds the whole text next to the objects (500 MB of JSON for 360,000 findings
+  peaks at 2.0 GB, against 0.45 GB read one record per line). Reported: `JSON.stringify(x)` or `x.join(...)` whose
+  result (alone, in a template or a `+`, or through a `const`) is the data of `writeFileSync`, `writeFile`,
+  `appendFileSync`, `appendFile`, `writeSync` or a `.write(...)` call, when `x` is a list that grows with the input: a
+  name or field whose last word is `findings`, `results`, `files`, `rows`, `entries`, `items`, `records`, `issues`,
+  `diagnostics`, `violations`, `lines` or `paths`, an empty array filled with `push` in a loop, an object or array
+  that holds one of those, or `map`, `filter`, `flatMap`, `sort` and the like of one; and
+  `JSON.parse(readFileSync(...))` (or an awaited `readFile`) whose result is read through such a field. Not reported:
+  a value of fixed shape (a summary, a config, a `const` set to an object literal or a string), a list cut with
+  `slice` first, and an array literal of fixed items. Write one element per line (JSON Lines) or in batches, and read
+  the file back line by line.
+- A list that grows with the input is not mapped into a new array only to be walked once
+  (`nitpicker/no-mapped-copy-for-single-pass`, production files). The copy and every object in it stay alive next to
+  the original until the walk ends, long enough to reach the old generation: with 360,000 findings each report file
+  added 100 to 300 MB to the process. Reported: `list.map(...)`, `list.filter(...)`, `list.flatMap(...)` or
+  `[...list]` passed straight to a function of the same file whose parameter is read exactly once, as the source of a
+  `for...of` loop, in `yield*` or in `Readable.from`, when `list` grows with the input (the same lists as
+  `nitpicker/no-whole-list-json-text`). Not reported: a copy that is stored, sorted, read twice or returned, a
+  parameter walked inside another loop or callback, a list cut with `slice` first, and functions from other files. Map
+  each item as it is consumed: a generator over the list, or the mapping inside the loop.
+- A long-running Go-built server or checker is started with a collector setting
+  (`nitpicker/require-go-collector-setting`, production files). With Go's default `GOGC=100` the heap grows to twice
+  its live size before each collection, which is gigabytes for a server that keeps a whole program in memory (the
+  TypeScript 7 API server peaked at 4.6 GB with a live heap of 3.0 to 3.6 GB, and at 4.2 GB with `GOGC=50`, same wall
+  time). Reported: `spawn`, `spawnSync`, `execFile`, `execFileSync` and execa calls whose command is `tsgo`,
+  `tsgolint` or `gopls` (a literal, a path ending in one of them or in the `@typescript/native-preview` package, or a
+  binding named like `tsgoPath`), or whose arguments include `--api` while the command is a binding or a `tsc` path,
+  when the options pass no `env`, or an `env` object without `GOGC` or `GOMEMLIMIT` (`env: process.env`, a spread of
+  `process.env` alone or a key set to `undefined` does not count). Not reported: `--version` and `--help` runs,
+  options or an `env` the rule cannot read (a parameter, another spread). Pass `env: { ...process.env, GOGC:
+  process.env.GOGC ?? '50' }`.
+- JVMs started in a loop or pool get a heap goal next to their heap ceiling (`nitpicker/require-jvm-heap-goal`,
+  production files). A ceiling is not a size: with the default throughput goal a JVM grows its heap toward `-Xmx` or
+  `-XX:MaxRAMPercentage` instead of collecting, and does not give it back, so several at once hold far more than their
+  live data (4.0 GB for about 1.6 GB of live data on a 15 GB machine). Reported: `spawn`, `spawnSync`, `execFile`,
+  `execFileSync` and execa calls on `java` (a literal or a path ending in `java` or `java.exe`, or a binding named
+  like `javaPath`) whose argument array sets `-Xmx`, `-XX:MaxRAMPercentage=` or `-XX:MaxRAM=` and none of
+  `-XX:GCTimeRatio=`, `-XX:SoftMaxHeapSize=` or `-XX:MaxHeapFreeRatio=`, and any child whose `env` sets such a ceiling
+  without a goal in `JAVA_TOOL_OPTIONS`, `JDK_JAVA_OPTIONS` or `_JAVA_OPTIONS`, when the call sits in a loop, in a
+  callback given to `map`, `forEach`, `flatMap`, `Promise.all`, `pMap`, `mapLimit` or a `limit` function, or in a
+  function of the same file called from one. Not reported: a JVM started once per run, argument arrays with a spread
+  (arguments from user configuration), and arrays with an element the rule cannot read whose name looks like a flag
+  (`goalFlag`, `jvmArgs`); the ceiling and the goal count together across the arguments and the options variables. Add
+  `-XX:GCTimeRatio=4` (or `-XX:SoftMaxHeapSize` with ZGC) next to the ceiling.
+- A whole file list that grows with the project is not handed to one type-aware run
+  (`nitpicker/no-unbatched-heavy-run`, production files). A type-aware linter or compiler builds one program over
+  every file it gets, so its memory grows with the project: 5.4 GB for a 4,400-file web app, against under 2 GB for
+  runs of at most 500 files with identical findings. Reported: a spread of a function parameter named like a file list
+  (`files`, `paths`, `allProjectFiles`) or of a file listing or glob result (as in
+  `nitpicker/no-growing-process-arguments`) in the argument array of `spawn`, `spawnSync`, `execFile`, `execFileSync`
+  or execa, when the command is `tsc`, `tsgo`, `tsgolint` or `vue-tsc` or the arguments include `--type-aware`,
+  `--type-check` or `--typecheck`, and the call does not sit in a loop, in a callback given to `map`, `forEach`,
+  `Promise.all` or a pool, or in a function of the same file called from one. Not reported: lists cut with `slice`,
+  literal lists and other commands. Split the list into bounded batches and run once per batch; splitting only by
+  command line length does not bound memory.
+- A function does not wait for a child process after in-process work the child does not read
+  (`nitpicker/no-child-wait-after-local-work`, production files). V8 does not give back the pages the in-process work
+  grew, so the parent sits at its high-water mark while the child runs and the machine holds both peaks at once (a
+  runner at 1.6 GB, 250 MB of it live, next to a 4.4 GB type-checker server; running the server first took the peak
+  from 6.72 GB to 5.49 GB with identical findings). Reported: in one function body, a `const` set from a call (awaited
+  or not) that starts a child process (`spawn`, `spawnSync`, `execFile`, `exec`, `fork`, execa and the like, directly
+  or in the body of a function of the same file) after a `const` set from a plain function call (not a method such as
+  `path.join` or `process.cwd`) that does not, when the child statement does not read the earlier binding and both
+  bindings are later put together in one array literal (`[...local, ...typed]`). Not reported: a child step that reads
+  the earlier result, results used apart or only gathered in an object, and two child steps. Run the child step first
+  and the in-process step after it.
+- A second TypeScript program is not built while the first is still in use
+  (`nitpicker/no-overlapping-typescript-programs`, production files). A program holds its syntax trees, binder symbols
+  and checker caches; while a binding still reads it, a full collection cannot free it, so the process needs room for
+  both, and on a machine with less memory than the heap limit it is killed. Reported: a call to `createProgram`,
+  `createWatchProgram`, `createLanguageService` or `createSemanticDiagnosticsBuilderProgram` imported from
+  `typescript` (namespace, default or named import) when an earlier such call in the same function was bound to a
+  variable that is read after it, before that variable is reassigned, directly or through a `const` set from its
+  `getTypeChecker()`. Not reported: a first program last read before the second build, builds in separate functions,
+  and functions of the same name from other packages. Read what you need from the first program before building the
+  second, or build each in its own function that returns plain data.
+- A long-lived map does not get one entry per loop item that is only read for that item
+  (`nitpicker/no-per-item-cache-growth`, production files, a broad rule). Each item adds an entry used only while that
+  item is processed, but the map lives as long as its owner, so memory grows with the number of items instead of
+  staying at the size of one (0.8 GB of token lists in one typed lint run). A `WeakMap` does not help when its keys
+  stay reachable from the same long-lived owner. Reported: `cache.set(key, value)` inside a `for...of` or `for...in`
+  loop, where `cache` is a module-level `const` or a class field initialised to an empty `new Map()` or `new
+  WeakMap()`, `key` reads the loop variable, a `cache.get(...)` with the same key follows in the same iteration, and
+  every other use of the map is inside that loop and none of them is `delete` or `clear`. Not reported: a map read or
+  handed on outside the loop (a lookup table), exported, reassigned or returned, a function-local map, and a loop over
+  an array literal. The cost only matters when the loop is long and the cached value is large; keep the value in a
+  local of the loop body, or delete the entry once the item is done.
+- A whole tool package is not loaded to use one member that ships as its own package
+  (`nitpicker/no-aggregate-package-for-one-member`, production files). `typescript-eslint` loads its parser, its
+  plugin and every rule definition; loading it to use only the parser costs about 0.5 CPU seconds more than
+  `@typescript-eslint/parser`, once per project in a monorepo run. Reported: `require`, a `createRequire(...)`
+  function, `await import(...)` and a static `import` of `typescript-eslint` whose result is used only through
+  `parser` (load `@typescript-eslint/parser`) or only through `plugin` (load `@typescript-eslint/eslint-plugin`): read
+  as a member of the call, destructured, imported by name, or a binding read only through that member. Not reported:
+  two or more members used, a binding used whole, and type-only imports. Load the member's package, resolved from the
+  location of the aggregate package when it is not a direct dependency.
 - Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and
   Python presets) have no TypeScript or JavaScript counterpart: nothing blocks a thread on a promise, and a promise
   that never settles is a missing deadline for `await`, which `nitpicker/require-client-timeout` and

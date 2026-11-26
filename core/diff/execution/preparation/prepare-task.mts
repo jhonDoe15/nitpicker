@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mts';
+import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
 import { type Invocation, validateAnalyzer, validateInvocation } from '../validation/analyzers.mts';
 import type { CarriedTask, TaskCheckpoint } from '../tasks.mts';
 import {
@@ -51,13 +52,25 @@ export type PreparedTask = {
 };
 
 const DEFAULT_ANALYZER_TIMEOUT_MS = 5 * 60 * 1000;
+const DEFAULT_PER_THOUSAND_FILES_MS = 60 * 1000;
+
+function deadlineScale(analyzer: Record<string, unknown>): ReturnType<typeof deadlineScaleOf> {
+  const own = deadlineScaleOf(analyzer);
+  if (own !== undefined || typeof analyzer['timeoutMs'] === 'number') {
+    return own;
+  }
+  return {
+    perThousandFiles: DEFAULT_PER_THOUSAND_FILES_MS,
+    extensions: textsOf(fieldOf(analyzer['memoryScale'], 'extensions')),
+  };
+}
 
 function sizeAllowanceMs(
   analyzer: Record<string, unknown>,
   liveProjectRoot: string,
   countFiles: FileCounter,
 ): number {
-  const scale = deadlineScaleOf(analyzer);
+  const scale = deadlineScale(analyzer);
   if (analyzer['configuredTimeout'] === true || scale === undefined) {
     return 0;
   }

@@ -3,6 +3,7 @@ import { SECURITY_TIME_RULE_FILES } from './security-time-rule-files.mts';
 import { VALUE_WEB_RULE_FILES } from './value-web-rule-files.mts';
 import { TEXT_PATH_NUMBER_RULE_FILES } from './text-path-number-rule-files.mts';
 import { REPEATED_WORK_RULE_FILES } from './repeated-work-rule-files.mts';
+import { RECURSION_RULE_FILES } from './recursion-rule-files.mts';
 
 export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/checks/plugin-rules/plugin-rule-files.mjs',
@@ -103,6 +104,8 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/reuse/reusable-object-per-call.mjs',
   'languages/typescript/preset/eslint-plugin/rules/config/env-reads.mjs',
   'languages/typescript/preset/eslint-plugin/rules/config/no-undefined-only-env-check.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/config/no-single-folder-config-lookup.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/config/walk-up-searches.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-props/react-components.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-props/no-runtime-exclusive-props-check.mjs',
   'languages/typescript/preset/eslint-plugin/rules/api-shape/no-singular-and-plural-prop.mjs',
@@ -225,6 +228,22 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/processes/arguments/list-sources.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/wrappers/no-wrapper-only-timeout.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/messages/no-head-cut-error-output.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/compiler-api/require-compiler-file-name.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/manifests/manifest-fields.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/manifests/no-single-shape-manifest-field.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/temp-staging/require-staged-parent-node-modules.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/temp-staging/temp-paths.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/temp-staging/resolving-tools.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/temp-staging/require-moved-tsconfig-type-roots.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/source-text/no-keyword-regex-over-source.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/source-text/source-text-views.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/tree-sitter/field-narrowing.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/tree-sitter/grammar-fields.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/tree-sitter/no-unknown-tree-sitter-field.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/tree-sitter/require-tree-sitter-error-check.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/tree-sitter/tree-sitter-module.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/positional-elements/no-unchecked-positional-element.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/positional-elements/positional-usage.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/results/no-stderr-as-failure.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/results/stderr-sources.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/results/no-status-only-spawn-check.mjs',
@@ -275,4 +294,5 @@ export const PLUGIN_RULE_FILES = [
   ...VALUE_WEB_RULE_FILES,
   ...TEXT_PATH_NUMBER_RULE_FILES,
   ...REPEATED_WORK_RULE_FILES,
+  ...RECURSION_RULE_FILES,
 ];

@@ -1,0 +1,65 @@
+  <rule name="LoopInvariantCopy" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This stores a new full copy of a collection or array on every pass of this loop or callback, although the copied value does not change in it, so memory grows with the number of passes times its size. Share one read-only value (List.copyOf made once before the loop, an unmodifiable view) or copy once before the loop. The cost only matters when both the loop and the copied value can be large.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $iterations := ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'flatMap', 'peek', 'mapToObj'),
+    $copies := ('ArrayList', 'LinkedList', 'HashMap', 'LinkedHashMap', 'TreeMap', 'HashSet', 'LinkedHashSet', 'TreeSet',
+      'ArrayDeque', 'CopyOnWriteArrayList'),
+    $changes := ('add', 'addAll', 'put', 'putAll', 'remove', 'removeIf', 'removeAll', 'retainAll', 'clear', 'set', 'sort',
+      'replaceAll', 'compute', 'computeIfAbsent', 'computeIfPresent', 'merge', 'offer', 'push', 'poll', 'pop', 'addFirst',
+      'addLast', 'putIfAbsent'),
+    $source := function($copy) {
+      ($copy/self::ConstructorCall[ClassType/@SimpleName = $copies][ArgumentList/@Size = 1]/ArgumentList/*[1]
+          [pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]
+      | $copy/self::MethodCall[@MethodName = 'copyOf'][ArgumentList/@Size = 1]
+          [*[1][self::TypeExpression][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]
+          /ArgumentList/*[1]
+      | $copy/self::MethodCall[@MethodName = 'copyOf'][ArgumentList/@Size = 2]
+          [*[1][self::TypeExpression][pmd-java:typeIs('java.util.Arrays')]]
+          [ArgumentList/*[2][self::FieldAccess][@Name = 'length']/*[1]/@Name = ArgumentList/*[1]/@Name]
+          /ArgumentList/*[1]
+      | $copy/self::MethodCall[@MethodName = 'clone'][ArgumentList/@Size = 0]
+          [*[1][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]/*[1])
+        [self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression]]]
+    },
+    $stored := function($copy) {
+      exists($copy/parent::ArgumentList/parent::ConstructorCall[not(ClassType/@SimpleName = $copies)]
+        | $copy/parent::ArgumentList/parent::MethodCall[@MethodName = ('add', 'put', 'offer', 'push', 'addFirst',
+            'addLast', 'putIfAbsent', 'of', 'entry')]
+        | $copy/parent::AssignmentExpression[*[2] is $copy][*[1][self::FieldAccess or self::ArrayAccess]]
+        | $copy/parent::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('map', 'mapToObj')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]
+        | $copy/parent::ReturnStatement[ancestor::LambdaExpression[1][parent::ArgumentList/parent::MethodCall
+            [@MethodName = ('map', 'mapToObj')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]])
+    },
+    $small := function($pass) {
+      exists($pass/self::ForeachStatement/*[2][self::MethodCall[@MethodName = ('of', 'asList')] or self::ArrayAllocation])
+        or exists($pass/self::ForStatement/*[2][self::InfixExpression]/*[2][self::NumericLiteral])
+    }
+return
+//(ConstructorCall | MethodCall)[$stored(.)]
+  [let $copy := ., $from := $source(.),
+       $name := $from/@Name,
+       $pass := ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
+         or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]][1],
+       $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
+       $declared := ($scope//VariableDeclarator[VariableId/@Name = $name]
+         | ancestor::ClassBody[1]/FieldDeclaration/VariableDeclarator[VariableId/@Name = $name])[1]
+   return exists($from) and exists($pass) and not($small($pass))
+     and empty($pass//VariableId[@Name = $name])
+     and empty($pass//AssignmentExpression[*[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess][@Name = $name]])
+     and empty($pass//MethodCall[@MethodName = $changes][*[1][self::VariableAccess or self::FieldAccess][@Name = $name]])
+     and empty($pass//UnaryExpression[@Operator = ('++', '--')]//*[@Name = $name])
+     and empty($pass//ArgumentList/*[self::VariableAccess or self::FieldAccess][@Name = $name][not(../.. is $copy)])
+     and not(empty($scope//VariableDeclarator[VariableId/@Name = $name] | $scope//FormalParameter[VariableId/@Name = $name])
+       and exists($pass//MethodCall[empty(*[1][not(self::ArgumentList)]) or *[1][self::ThisExpression]]))
+     and empty($declared/*[2][self::ArrayInitializer or self::ArrayAllocation[ArrayInitializer]
+       or self::MethodCall[@MethodName = ('of', 'asList')]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

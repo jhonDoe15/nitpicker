@@ -356,6 +356,15 @@ ${HELD_STRUCTURE_NOTE}
 
     expect(report.toolErrors).toEqual([error]);
   });
+  it('keeps the memory report of a shard whose analyzers were killed', () => {
+    const fixture = createFixture();
+    const memory = { tool: 'memory', snapshot: 'head', message: '2 analyzers were killed' };
+    writeShard(fixture.inputRoot, 0, { tools: ['first'], toolErrors: [memory] });
+
+    const report = aggregate({ ...fixture, analyzers: [analyzer('first')], shardCount: 1 });
+
+    expect(report.toolErrors).toEqual([memory]);
+  });
   it('rejects a missing shard instead of silently reducing analyzer coverage', () => {
     const fixture = createFixture();
     const analyzers = [analyzer('a'), analyzer('b')];

@@ -4,6 +4,9 @@ import { unwrapped } from '../../typed/syntax-views.mts';
 import { someNode } from '../../collections/costly-forms/repeated-runs.mts';
 import { isEarlyExit, isSettledAcrossAwait } from './early-guards.mts';
 import { isCostly, isPureWork } from './pure-work.mts';
+import { isGuardTest, isTypeQuery } from './type-queries.mts';
+import { innermostRepeat } from '../support/loop-invariance.mts';
+import { isSettled } from '../repeated-calls/call-shapes.mts';
 
 const BRANCHING = new Set<string>([
   AST_NODE_TYPES.ConditionalExpression,
@@ -49,14 +52,17 @@ export const rule: TSESLint.RuleModule<'workBeforeExit'> = {
         const readLater = (variableNamed(sourceCode, declarator.id)?.references ?? []).some(
           (reference) => !reference.init && reference.isRead(),
         );
+        const { init } = declarator;
+        const typeQuery = isTypeQuery(init) && innermostRepeat(declaration) !== undefined;
         if (
           readLater &&
           isEarlyExit(sourceCode, next, name) &&
-          isCostly(sourceCode, declarator.init) &&
-          isPureWork(sourceCode, declarator.init) &&
-          (!awaits(declarator.init) ||
-            (next?.type === AST_NODE_TYPES.IfStatement &&
-              isSettledAcrossAwait(sourceCode, next.test)))
+          (typeQuery
+            ? isGuardTest(next.test)
+            : isSettled(next.test) &&
+              isCostly(sourceCode, init) &&
+              isPureWork(sourceCode, init) &&
+              (!awaits(init) || isSettledAcrossAwait(sourceCode, next.test)))
         ) {
           context.report({ node: declarator, messageId: 'workBeforeExit', data: { name } });
         }

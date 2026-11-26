@@ -26,10 +26,14 @@ NP_XPATH_RULES=tests/rules/all.json JAVA_HOME=<jdk 21> target/release/nitpicker-
   --rules _XPath --classpath <file with one jar or class folder per line, absolute paths> --out report.json
 ```
 
-`tests/rules/all.json` holds the 342 XPath rules a Java run sends to PMD (name, message, query, properties):
-the 241 XPath rules of the Java rulesets and the 101 built-in PMD XPath rules those rulesets switch on, with
+`tests/rules/all.json` holds the 353 XPath rules a Java run sends to PMD (name, message, query, properties):
+the 252 XPath rules of the Java rulesets and the 101 built-in PMD XPath rules those rulesets switch on, with
 their property overrides. `parity/rules-from-rulesets.py <rulesets dir> <pmd-java jar> <out.json>` writes it
 and prints the built-in rules PMD implements in Java, which the engine does not run.
+
+PMD selects nothing for an element name it has no node type for, without an error. A unit test parses every
+query of the Java rulesets and fails on a name missing from `tests/rules/pmd-node-names.txt`, the concrete
+node types of PMD 7.16.0's Java tree.
 
 Other switches: `NP_XPATH_ONLY=<rule,rule>` runs some rules, `NP_XPATH_STATS=<file>` writes time
 and findings per rule, `NP_SLOW=<ms>` prints the files slower than that, `NP_DBG=1` prints each type question
@@ -45,7 +49,10 @@ on (`NITPICKER_JDK`), and takes PMD's `--suppress-marker` from `NP_SUPPRESS_MARK
 as `pmd-engine.sarif` next to `pmd.sarif` and join PMD's findings when the reports are read.
 
 - A file the grammar cannot read in full (`syntaxErrorFiles` in the report) goes back to PMD with the XPath
-  rules that cover it, and the engine's findings in it are dropped.
+  rules that cover it, and the engine's findings in it are dropped. Grammar gaps in valid Java are masked before
+  parsing, keeping every byte in place (`src/java/grammar.rs`): an annotation before `...`, a qualified record
+  pattern, and a NUL character in a string, text block, character literal or comment, where the grammar would
+  stop. A NUL in code leaves the file broken.
 - The engine's findings in a file PMD could not read are dropped: PMD reports none there.
 - A project's own PMD ruleset stays with PMD as it is.
 - PMD runs every rule, as before, when `NITPICKER_ENGINE=off`, when there is no engine binary for the
@@ -62,10 +69,11 @@ written as `errorprone-engine.json` next to `errorprone.json`, in the same shape
 are read. The engine skips the checks a run did not select. A library class counts as checked by NullAway the way
 NullAway decides it: `@NullMarked` on the class, a class around it or its `package-info`, `@NullUnmarked` to
 switch it off again. A source set compiled with a module path keeps NullAway on Error Prone, because a module
-can carry `@NullMarked` too and the engine does not read that. The engine reads a class file's
-nullness from declaration annotations only; when NullAway relied on a checked class file that carries type
-annotations (JSpecify's `@Nullable` is written that way), the report says `nullAwayUnsure` and the run leaves
-NullAway to Error Prone for that source set.
+can carry `@NullMarked` too and the engine does not read that. A class file's nullness comes from its
+declaration annotations and from its type annotations (JSpecify's `@Nullable` is written that way): a mark on
+the type itself makes a field, a result or a parameter nullable, one on a variable arity parameter's elements
+lets each argument be null, and one on its array lets the array be null. A parameter list printed in a message
+shows the type annotations the way javac prints them.
 
 - The other ported checks stay with Error Prone: it ends their messages with a `Did you mean ...?` sentence
   made from its suggested fix, which the engine does not write yet.
@@ -133,7 +141,8 @@ Measured with all 342 rules on 4 cores (findings: same / missed / extra):
 
 The first three rows were measured before the lookup caches of #2064; the Elasticsearch row after them and after
 #2121 and #2122. The two Elasticsearch rows the engine leaves out are wrong PMD findings: PMD leaves the type of
-two lambdas unfinished and `RetryInTest` then matches them (#2125). The PMD-shaped trees of all 5,106 files have
+two lambdas unfinished and `RetryInTest` then matched them; the rule now asks `typeIsExactly` for lambdas and
+method references (#2125). The PMD-shaped trees of all 5,106 files have
 the same node names in the same places as PMD's but for one (`module-info.java`).
 
 On the whole Elasticsearch tree (18,155 files, 3.3M lines) with the 130 rules of the first set the engine takes
@@ -312,7 +321,7 @@ purpose, and its source is not read. A finding carries the SpotBugs pattern name
 
 Done: `EI_EXPOSE_REP`, `MS_EXPOSE_REP`, `EI_EXPOSE_REP2` and `EI_EXPOSE_STATIC_REP2` (#2098) and
 `CT_CONSTRUCTOR_THROW` (#2112), together 76% of what SpotBugs with FindSecBugs reports on the seven code bases
-below. The rest is planned in #2097.
+below, and the statement patterns of #2113 (see "Statement patterns"). The rest is planned in #2097.
 
 `tests/expected/spotbugs.json` holds what SpotBugs reported for the compiled `tests/fixtures/spotbugs`; each
 fixture folder is one experiment on SpotBugs' behaviour. `parity/spotbugs/run.sh` runs SpotBugs the way a Java
@@ -344,6 +353,23 @@ Exposed representation, 12 differences (7,696 same):
   them in a subclass of the class with the field. Small classes of the same shape do not reproduce them.
 
 Constructor throw: no differences (1,707 same).
+
+Measured again on 2026-11-26 with every pattern of this section and the statement patterns (13 patterns), on the
+five libraries, Nacos at its current commit, mall (Spring Boot with Lombok) and the Kafka `generator` module: all
+the same except 2 getters of Nacos' protobuf-generated `TrafficPolicy` the engine reports alone (visiting order
+among classes that call each other). The 4 `Delay$Builder` getters are explained by the class-literal rule below.
+Elasticsearch could not be built for this run.
+
+A class whose `Class` object the code names anywhere (`X.class`, a logger made from it, or an `assert`, which reads
+the class literal of its top-level class) loses what SpotBugs learned about the types stored in its fields
+(`literals`): a field declared with an unchangeable type is no longer reported for the one changeable type stored
+in it, and of the `c ? a : b` table only the rows that compare the two producers by name (`List.of()` against
+`List.copyOf(x)`, two `unmodifiableList(...)` calls) turn to changeable.
+
+A private field that holds nothing but parameters, stored in a constructor (or any static field), counts as a
+parameter when another field is given its value (`held`): `other = raw` is reported as `EI_EXPOSE_REP2` with the
+variable `?`. One store of anything else, in any method or constructor, ends it; a field stored only in instance
+methods never counts.
 
 What SpotBugs counts as "an exception can leave the constructor", as measured (`tests/fixtures/spotbugs/ctor_*`):
 a `throw` or `assert` the handler around it does not take; a call to a method that declares exceptions; a call
@@ -423,60 +449,166 @@ outer instance of an inner class is `this$N` and a record component its own name
 
 `src/java/spotbugs/nulls/` follows values through a method on the flow graph of `src/java/flow/`: a backward
 pass finds where a value is dereferenced whichever way the flow goes, a forward pass carries what is known about
-each local variable and field. Measured on Elasticsearch `server` (4 cores), where SpotBugs reports 647 findings
-of the three patterns (87% of its 746 null findings):
+each local variable and field. Compared with SpotBugs on seven code bases (same / missed / extra, the three
+patterns together):
+
+| Code base | Same | Missed | Extra |
+| --- | --- | --- | --- |
+| commons-lang, guava | 0 | 0 | 0 |
+| jackson-databind | 5 | 0 | 0 |
+| mybatis-3 | 1 | 0 | 0 |
+| javaparser-core | 6 | 0 | 0 |
+| Nacos | 13 | 0 | 0 |
+| Elasticsearch `server` | 616 | 31 | 69 |
+
+On Elasticsearch `server` by pattern:
 
 | Pattern | Same | Missed | Extra |
 | --- | --- | --- | --- |
-| `NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE` | 485 | 61 | 11 |
-| `NP_NULL_ON_SOME_PATH` | 92 | 9 | 11 |
+| `NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE` | 524 | 22 | 62 |
+| `NP_NULL_ON_SOME_PATH` | 92 | 9 | 7 |
 | `NP_ALWAYS_NULL` | 0 | 0 | 0 |
 
-With the three patterns the run takes 18.0 s, 67 CPU s and 0.58 GB at its peak on that code base, 8.0 s and
-30 CPU s more than the other five patterns alone; SpotBugs with all its patterns takes 249 s, 417 CPU s and
-3.2 GB after a 31 s compile. The callee summaries are worked out once per class, not once per file, and whether
-a method is overridden is looked up over every class of the run: both are still to be made cheaper.
+The engine with all its SpotBugs patterns takes about 22 s wall, 75 CPU s and 0.64 GB at its peak on that code
+base (4 cores), 5 s more than without the work across files; SpotBugs with all its patterns takes 249 s, 417 CPU s
+and 3.2 GB after a 31 s compile. The null pass runs once per file, a body nothing in which can be null is skipped
+after a glance at its text, and what a method of another file does is worked out only when a call hands it a
+value that matters, then kept for the run.
 
-What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 229 findings, all the same):
+What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 237 findings, all the same):
 
 - Only `@CheckForNull`, or an annotation whose own declaration carries `@CheckForNull` (a nickname, as measured
   with `@TypeQualifierNickname` beside it), marks a method result or a field. `javax.annotation.Nullable` and
   other annotations named `Nullable` that are not such nicknames do nothing. The
   mark is inherited from an overridden method, and a record component hands it to its accessor and field.
+- A few JDK methods count as returning null (`File.list` and `listFiles`, `Path.getFileName`, `getParent` and
+  `getRoot`, `Reference.get`, `ReferenceQueue.poll`, `Files.probeContentType` and a few more), looked up by the
+  receiver's class and then the classes and interfaces above it. `src/java/spotbugs/nulls/jdk-nulls.tsv` holds
+  them, the JDK methods that never return null and the JDK parameters SpotBugs takes as dereferenced; it was
+  made by calling every public method of `java.base` in lab code and reading what SpotBugs reported.
 - A value that only may be null is reported where it is dereferenced, as long as it is dereferenced whichever
   way the flow goes from where it arose. `return` and `throw` are ways without a dereference; an exception
   thrown by a call is not a way. A value that is certainly null (from `null`, or on the null side of a test)
   stays reportable past a split.
 - A dereference is a call on the value, a field or array access, unboxing, `synchronized`, `throw`, the iterable
-  of a `for`, a `switch` on it, and handing it to a method of the same file that dereferences that parameter on
-  every way through (static, private, final or not overridden; followed through further calls).
-- What is known of a field of `this` ends at a call on `this` (also `super.` and `this(...)`), a call or
-  constructor handed `this` and a `synchronized` block;
+  of a `for`, a `switch` on it, and handing it to a method that dereferences that parameter on every way through
+  (static, private, final or not overridden; followed through further calls, in this file, in other files of the
+  run, and in the JDK table).
+- A method whose every return gives a value never null (a new object, a string, or a call to such a method, in
+  this file, another file or the JDK) makes the null side of a test of its result impossible, so nothing on that
+  side is reported. Other files are worked out in two rounds: the first knows nothing of calls into further
+  files, the second uses the first; a third round changes nothing on the code bases above.
+- What is known of a `final` field stays known across calls. What is known of another field of `this` ends at a
+  call on `this` (also `super.` and `this(...)`), a call or constructor handed `this` and a `synchronized` block;
   the field then counts as read again at that point. A `volatile` field is read anew each time.
 - The test of an `assert` is run, and past any `assert` a value that only may be null is no longer reported.
 - Lambda bodies are never reported; anonymous classes, constructors, initializers and field initializers are.
 - Several results of one method dereferenced on one line make one finding.
 
-Differences on Elasticsearch `server`, 92:
+Differences on Elasticsearch `server`, 100:
 
-- Handed to a method that dereferences it, about 68 missed: the method is in another file or in the JDK. A
-  rule sees the other files of a run only as outlines without bodies, so this needs a pass over the whole
-  project that records which parameters each method dereferences; SpotBugs has such a list for the JDK built in.
+- `Path.getFileName()` and `Path.getParent()` dereferenced, 47 extra: SpotBugs reports them in lab code, in
+  Nacos, and in an Elasticsearch class analysed alone, but not when the Elasticsearch classes are analysed
+  together; which classes turn it off is still being narrowed down.
 - A value arising after several null tests in a row, 6 extra: SpotBugs drops it (a field then gets
   `NP_NULL_ON_SOME_PATH_MIGHT_BE_INFEASIBLE`). The experiments show three tests in a row are enough, and that
   calls, other branches, loops and tests of method results in between each weaken it by a different amount; no
   rule tried so far fits both the experiments and this code base, so none is built in.
-- A method of the same file that dereferences its parameter, 3 extra: SpotBugs did not use that knowledge,
-  probably because of the order it visits classes in.
 - A helper that always throws, 2 extra: SpotBugs knows the call does not return.
 - `switch` with `case null`, 1 extra.
-- Not looked at one by one yet: 9 extra and 2 missed of `NP_NULL_ON_SOME_PATH`, 1 line that differs.
+- Not looked at one by one yet: 31 missed and 13 extra. One known cause among them is which calls end what is
+  known of a field that is not `final`: lab code shows a call handed `this` keeps it when the method returns a
+  value and writes no field, and ends it when the method returns nothing, is abstract or inherited, or is one of
+  a few JDK methods (`getClass`, `notifyAll`, a collection's `add` or `put`, `StringBuilder.append`). Not built
+  in yet.
 
 Not rebuilt yet: `NP_NULL_PARAM_DEREF` and its variants, `NP_GUARANTEED_DEREF`,
 `NP_NULL_ON_SOME_PATH_EXCEPTION`, `NP_NULL_ON_SOME_PATH_MIGHT_BE_INFEASIBLE`, `NP_LOAD_OF_KNOWN_NULL_VALUE`, the
 `RCN_` family, `NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE`, `NP_BOOLEAN_RETURN_NULL` and
 `NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT`. Other code bases are not compared yet.
 
+
+### Statement patterns
+
+Patterns that look at single statements or at one method's switches (`src/java/spotbugs/statements/`), measured on
+the same seven code bases (same / missed / extra, all seven together):
+
+| Pattern | Findings |
+| --- | --- |
+| `DCN_NULLPOINTER_EXCEPTION` | 26 / 0 / 0 |
+| `JLM_JSR166_UTILCONCURRENT_MONITORENTER`, `JLM_JSR166_LOCK_MONITORENTER` | 35 / 0 / 0 |
+| `PREDICTABLE_RANDOM` (FindSecBugs) | 41 / 0 / 0 |
+| `VO_VOLATILE_INCREMENT` | 22 / 0 / 0 |
+| `WMI_WRONG_MAP_ITERATOR` | 33 / 0 / 0 |
+| `SF_SWITCH_FALLTHROUGH`, `SF_SWITCH_NO_DEFAULT` | 52 / 0 / 0 |
+
+With these the engine takes 13.2 s wall, 46.6 CPU s and 0.6 GB on Elasticsearch `server`, 10.2 s on Nacos.
+
+What was measured (fixtures `tests/fixtures/spotbugs/stmt_*`):
+
+- Lock patterns use the type a field was given, not its declared type. SpotBugs forgets those types for a class
+  whose class literal (`X.class`) appears anywhere in the analysed code, and an `assert` reads the class literal
+  of its top-level class; the declared type is used then. A parameter typed by a type variable is never reported.
+- `PREDICTABLE_RANDOM`: `new Random(...)`, `ThreadLocalRandom.current()`, `Math.random()`, also inside lambdas, and
+  every constructor of a class that extends `java.util.Random` (at `super(...)`, or at the constructor or class
+  line when the call is implicit).
+- `VO_VOLATILE_INCREMENT`: `++`, `--`, `+= 1`, `-= 1` (only `+= 1` for `long`) and `f = f + 1` on a volatile
+  `int` or `long` instance field, when the value is not used.
+- `WMI_WRONG_MAP_ITERATOR`: a `get(key)` on the map whose `keySet()` produced the key (enhanced `for`, an
+  iterator's `next()`), not for `TreeMap`'s sorted siblings, `EnumMap` or `ConcurrentHashMap`; once per method
+  and map field, plus once for all local maps.
+- The switch patterns read the compiled switch, so the cases are laid out the way javac emits them: a `break`
+  at the very end emits nothing, pending jumps join the `break` that follows, a block that declares variables
+  ends on its closing brace, a loop's back jump counts as running on, `finally` and `synchronized` end in a
+  rethrow, and a jump that lands on a loop's back jump becomes a jump back. A fall through is reported when a
+  method has fewer than 4 of them in all its switches, or one stores a field the next case stores again. The
+  default is missing when the code before the default jump target runs on into it and no forward jump goes
+  further; a loop's back jump counts too when javac emits a table with holes (they jump to the default). A last
+  `case null -> {}` in a pattern switch is a fall through for SpotBugs.
+
+Each of these findings carries what SpotBugs' SARIF names (#2418, `src/java/spotbugs/place.rs`): the method,
+the field (a map field for the map-iterator pattern) or the local, and the priority that sets the SARIF level
+(`JLM_JSR166_LOCK_MONITORENTER` is priority 1, the others 2). A finding in a field initializer or an initializer
+block is named once for each constructor that does not start with `this(...)`, or for the static initializer;
+a finding inside a lambda names the lambda's method. `tests/expected/spotbugs-places.json` holds the places
+SpotBugs' SARIF gives for the fixtures, and the SARIF results of real runs match SpotBugs' on all seven code bases.
+
+Not done: `REC_CATCH_EXCEPTION` needs the checked exceptions each `try` block can throw and the rule for its
+priority (most findings are low priority and hidden at `-medium`); it is left for a later batch (#2262).
+
+### Lombok
+
+SpotBugs skips the members Lombok writes, because Lombok marks them with `@lombok.Generated` (unless a
+`lombok.config` sets `lombok.addLombokGeneratedAnnotation = false`). The engine reads source and does not see
+them either, so only what Lombok changes in hand-written code matters (`tests/fixtures/spotbugs/lombok`):
+
+- A constructor parameter marked with Lombok's `@NonNull` makes the constructor start with a null check that
+  throws: `CT_CONSTRUCTOR_THROW` on the line of the parameter, after a `this(...)` call that already throws.
+- A `@SneakyThrows` constructor lets nothing out of its body; field initializers still count.
+- A class without a hand-written constructor whose constructors Lombok writes (`@Data`, `@Value`, `@Builder`,
+  `@AllArgsConstructor`, `@NoArgsConstructor`, `@RequiredArgsConstructor`, `@SuperBuilder`) has no constructor
+  SpotBugs reports.
+- An annotation is Lombok's when its name is imported from `lombok` or `lombok.experimental`, one by one or with
+  `*`; a single-type import of the same name from another package wins over `import lombok.*`. A varargs parameter
+  marked `@NonNull` is checked like any other.
+
+With `--lombok` (real runs pass it for a module whose only code-changing processor is Lombok), the type model
+also knows what Lombok writes that the lock and map-iterator patterns need (#2400, `src/java/types/lombok.rs`):
+
+- The getters and setters of `@Getter`, `@Setter`, `@Data` and `@Value` on a class or a field (`isX` for a
+  `boolean`, `AccessLevel.NONE` turns one off, no setter for a final field or under `@Value`, a hand-written
+  method of the same name, in any case, and arity or varargs wins). `AccessLevel` sets the method's access.
+  `@Accessors` on the field, else on the class, sets `fluent`, `chain` (a setter that returns the object) and
+  `prefix` (a field without one of the prefixes gets none); a `lombok.config` that changes accessor names
+  (`lombok.accessors.fluent`, `prefix`, `capitalization`, `lombok.getter.noIsPrefix`) runs SpotBugs alone.
+- `val` and `var` from Lombok take the type of their value, like Java's `var`.
+
+Real runs decide Lombok from the processors javac uses (#2402): the declared `annotationProcessorPaths` when a
+build lists them, else the `META-INF/services` entry of each classpath jar, read without unpacking the jar.
+Processors that only write new files (AutoService, AutoValue, Dagger, Immutables, MapStruct, Hibernate's
+metamodel, Spring's configuration processors and others) are left out. The `@Generated` mark is read the way
+Lombok reads `lombok.config`: from the outermost file to the nearest, with `clear`, `import` and
+`config.stopBubbling`; a module where it is off runs SpotBugs alone.
 
 ## Names the compiler makes up
 

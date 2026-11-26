@@ -22,6 +22,10 @@ export const GROUPS: readonly Group[] = [
     python: 'head-cut-error-output',
   },
   {
+    java: 'KeywordRegexOverSource',
+    typescript: 'nitpicker/no-keyword-regex-over-source',
+  },
+  {
     java: 'StderrAsFailure',
     typescript: 'nitpicker/no-stderr-as-failure',
     python: 'stderr-as-failure',
@@ -31,24 +35,49 @@ export const GROUPS: readonly Group[] = [
     python: 'status-only-spawn-check',
   },
   {
+    java: 'ConstantLookupInLoop',
     typescript: 'nitpicker/no-constant-lookup-in-loop',
     python: 'constant-lookup-in-loop',
   },
   {
+    java: 'SubtreeSearchPerAncestor',
     typescript: 'nitpicker/no-subtree-search-per-ancestor',
     python: 'subtree-search-per-ancestor',
   },
   {
+    java: 'RepeatedCall',
     typescript: 'nitpicker/no-repeated-call',
     python: 'repeated-call',
   },
   {
+    java: 'WorkBeforeEarlyExit',
     typescript: 'nitpicker/no-work-before-early-exit',
     python: 'work-before-early-exit',
   },
   {
+    java: 'ReadAllBeforePass',
     typescript: 'nitpicker/no-read-all-before-pass',
     python: 'read-all-before-pass',
+  },
+  {
+    java: 'StatPerListedEntry',
+    typescript: 'nitpicker/no-stat-per-listed-entry',
+  },
+  {
+    java: 'FilteredPositionalPairing',
+    typescript: 'nitpicker/no-filtered-positional-pairing',
+  },
+  {
+    java: 'ReplacingCollectionMerge',
+    typescript: 'nitpicker/no-replacing-collection-merge',
+  },
+  {
+    java: 'RepeatedKeyedScan',
+    typescript: 'nitpicker/no-repeated-keyed-scan',
+  },
+  {
+    java: 'LoopInvariantCopy',
+    typescript: 'nitpicker/no-loop-invariant-copy',
   },
   {
     java: 'SurrogateSplittingCut',
@@ -268,4 +297,10 @@ export const GROUPS: readonly Group[] = [
     python: 'mutating-method-in-domain',
     go: 'go-rules/mutating-method-in-domain',
   },
+  { java: 'OperandDepthRecursion', typescript: 'nitpicker/no-operand-depth-recursion' },
+  { java: 'UnguardedCyclicRecursion', typescript: 'nitpicker/no-unguarded-cyclic-recursion' },
+  { java: 'UnguardedRecursionEntry', typescript: 'nitpicker/no-unguarded-recursion-entry' },
+  { java: 'ShrinkingWorklistJoin', typescript: 'nitpicker/no-shrinking-worklist-join' },
+  { java: 'CacheAfterGuardFallback', typescript: 'nitpicker/no-cache-after-guard-fallback' },
+  { java: 'DepthOnlyWorklist', typescript: 'nitpicker/no-depth-only-worklist' },
 ];

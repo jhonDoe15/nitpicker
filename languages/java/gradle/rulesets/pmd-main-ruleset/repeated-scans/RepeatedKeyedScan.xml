@@ -1,0 +1,34 @@
+  <rule name="RepeatedKeyedScan" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This scans the collection looked up by the key of the current element with a test that reads nothing of the element, so every element with the same key repeats the same scan. Work the answer out once per key (before the loop, or kept in a Map by key) and read it here.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $iterations := ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch',
+      'mapToObj', 'mapToInt', 'mapToLong'),
+    $lookup := function($node, $element) {
+      exists($node/self::MethodCall[@MethodName = ('get', 'getOrDefault')][*[1][pmd-java:typeIs('java.util.Map')]]
+        [ArgumentList/*[1]/descendant-or-self::VariableAccess[@Name = $element]])
+    }
+return
+//MethodCall[@MethodName = ('anyMatch', 'allMatch', 'noneMatch', 'filter')][ArgumentList/@Size = 1]
+  [*[1][self::MethodCall][@MethodName = ('stream', 'parallelStream')][ArgumentList/@Size = 0]]
+  [let $pass := ancestor::*[self::ForeachStatement
+         or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]][1],
+       $element := ($pass/self::ForeachStatement/LocalVariableDeclaration//VariableId
+         | $pass/self::LambdaExpression/LambdaParameterList//VariableId)/@Name,
+       $source := *[1]/*[1],
+       $test := ArgumentList/*[1]
+   return count($element) = 1
+     and ($lookup($source, $element)
+       or exists($source[self::VariableAccess]
+         [let $name := @Name
+          return exists($pass//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name]
+            [*[2][$lookup(., $element)]])]))
+     and (exists($test[self::LambdaExpression][empty(.//VariableAccess[@Name = $element])])
+       or exists($test[self::MethodReference][not(*[1][self::VariableAccess][@Name = $element])]))]
+]]></value>
+      </property>
+    </properties>
+  </rule>

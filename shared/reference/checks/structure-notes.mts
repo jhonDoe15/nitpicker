@@ -127,6 +127,11 @@ export const STRUCTURE_NOTES: Readonly<Record<string, RuleNote>> = {
     'Build output is generated, so committing it creates noise and merge conflicts.',
     'Remove the folder from version control and add it to `.gitignore`.',
   ],
+  'committed-minified-bundle': [
+    'A tracked `.js`, `.mjs`, `.cjs` or `.ts` file of at least 20 KB that looks minified (an average line over 500 characters, or one line holding over 90% of the bytes), outside build output, `node_modules`, vendored and test folders.',
+    'Analyzers treat a minified bundle as code: it slows every run by orders of magnitude and produces findings nobody can act on.',
+    'Move the file out of the source root, load it as a dependency, or exclude it in the layout.',
+  ],
   'migration-order': [
     'A migration the change adds that sorts before the newest migration on the base branch, or an Alembic or Django migration that forks the history.',
     'A database that already ran the newer migration skips the older one or refuses to start.',
@@ -151,6 +156,16 @@ export const STRUCTURE_NOTES: Readonly<Record<string, RuleNote>> = {
     "A Rust binary crate that runs work on several threads (`rayon`, `threadpool`, `tokio` with the multi-thread runtime, or `std::thread` in its own or its path dependencies' sources) and is built for a `*-musl` target, with no `#[global_allocator]` for that target.",
     "musl's allocator takes one lock for every allocation, so threads that allocate queue behind each other: a lint run took 13.4 s on the musl build against 1.3 s on the glibc build of the same code.",
     'Declare a global allocator that scales across threads for the musl target (`#[cfg(target_env = "musl")] #[global_allocator] static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;`). An exception fits when the binary is single-threaded in practice or does not allocate on its hot path.',
+  ],
+  'lint-check-suppressed-everywhere': [
+    "A Checkstyle `<suppress>` that matches every file (no `lines` or `columns`) for a module the project's Checkstyle configuration enables, or a PMD ruleset that includes a rule and excludes every file or sets `violationSuppressRegex` to `.*`.",
+    'The check still runs on every file and can never report anything, so it only costs time.',
+    'Remove the module from the configuration instead of filtering its output.',
+  ],
+  'pmd-xpath-rule-mistake': [
+    'A project-owned PMD XPath rule that scans from the document root inside a predicate (a `//X` path or `ancestor::CompilationUnit//` in `[...]`; a cheap `/CompilationUnit/X` child path is not reported, and node names are not checked against the grammar yet), or applies a single-item function or `eq`/`ne` to an unguarded `FormalParameters/FormalParameter`, `ArgumentList/*`, `ClassBody/*` or `Block/*` path.',
+    'A root scan inside a predicate is evaluated again for every candidate node; a single-item function over several nodes is a type error, so PMD skips the rule for that file without failing the build.',
+    'Bind the nodes once or walk from the candidate; pick one node with `[1]`, guard with `count(...) = 1`, or compare with `=`.',
   ],
   'unused-dependency': [
     'A dependency in `package.json` that nothing imports or runs.',

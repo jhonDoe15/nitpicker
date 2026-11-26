@@ -6,11 +6,18 @@ const RELATIVE_SPECIFIER =
   /(?:\bfrom\s*|\bimport\s*\(\s*|^\s*import\s*)(['"])(\.{1,2}\/[^'"]+)\1/gmu;
 const SCRIPT_FILE = /\.[cm]?[jt]sx?$/u;
 
+const COMMENT = /\/\*[\s\S]*?\*\/|^[ \t]*\/\/[^\n]*/gmu;
+const NON_NEWLINE = /[^\n]/gu;
+
+function blankComments(text: string): string {
+  return text.replaceAll(COMMENT, (match) => match.replaceAll(NON_NEWLINE, ' '));
+}
+
 type VisitedFile = { readonly contents: string; readonly imports: readonly string[] };
 type Visit = (relativePath: string) => VisitedFile;
 
 export function importedFiles(relativePath: string, source: string, root: string): string[] {
-  return [...source.matchAll(RELATIVE_SPECIFIER)]
+  return [...blankComments(source).matchAll(RELATIVE_SPECIFIER)]
     .map((match) => match[2] ?? '')
     .map((name) => path.resolve(root, path.dirname(relativePath), name.split(/[?#]/u)[0] ?? ''))
     .filter((absolute) => existsSync(absolute) && statSync(absolute).isFile())

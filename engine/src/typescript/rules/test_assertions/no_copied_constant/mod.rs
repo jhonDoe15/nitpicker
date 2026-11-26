@@ -74,7 +74,7 @@ pub fn check(context: &mut Context) {
         let Outcome::Leaves(found) = leaves(&root, &own, &key) else {
             let file = context.display().to_string();
             let rule = "!parse".to_string();
-            let finding = Finding { file, line: 1, column: 1, rule, message: String::new(), symbol: None };
+            let finding = Finding { file, line: 1, column: 1, rule, message: String::new(), symbol: None, priority: None };
             context.findings.push(finding.into());
             return;
         };

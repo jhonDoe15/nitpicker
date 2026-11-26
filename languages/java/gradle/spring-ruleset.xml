@@ -775,6 +775,29 @@ return
     or (pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass'))]
 ]]></value></property></properties>
   </rule>
+  <rule name="SpringAnnotationBeforeProxy" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Move this work to an @EventListener(ApplicationReadyEvent.class) method or an ApplicationRunner, where the annotation applies: @PostConstruct, afterPropertiesSet and a @Bean initMethod run on the raw bean before Spring wraps it in its proxy, so @Transactional, @Async, @Cacheable, @CachePut, @CacheEvict, @Retryable and @PreAuthorize do nothing on them.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $beans := //MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]
+      /AnnotationMemberList/MemberValuePair[@Name = 'initMethod']]
+return //MethodDeclaration
+  [ModifierList/Annotation[pmd-java:typeIs('jakarta.annotation.PostConstruct') or pmd-java:typeIs('javax.annotation.PostConstruct')]
+   or (@Name = 'afterPropertiesSet' and @Arity = 0
+       and ancestor::ClassDeclaration[1][pmd-java:typeIs('org.springframework.beans.factory.InitializingBean')])
+   or (@Arity = 0 and (let $name := string(@Name), $owner := string(ancestor::ClassDeclaration[1]/@SimpleName)
+       return some $bean in $beans satisfies
+         ($bean/ClassType/@SimpleName = $owner
+          and $bean/ModifierList/Annotation/AnnotationMemberList/MemberValuePair[@Name = 'initMethod']
+            //StringLiteral/@ConstValue = $name)))]
+  /ModifierList/Annotation[some $t in ('org.springframework.transaction.annotation.Transactional',
+      'jakarta.transaction.Transactional', 'javax.transaction.Transactional',
+      'org.springframework.scheduling.annotation.Async', 'org.springframework.cache.annotation.Cacheable',
+      'org.springframework.cache.annotation.CachePut', 'org.springframework.cache.annotation.CacheEvict',
+      'org.springframework.retry.annotation.Retryable', 'org.springframework.security.access.prepost.PreAuthorize')
+    satisfies pmd-java:typeIs($t)]
+]]></value></property></properties>
+  </rule>
   <rule name="SpringStartupCleanup" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Release what this startup method already started when this call fails: put the call in a try and shut the event loops, executors or servers down in its catch before rethrowing, or in a finally. Spring does not call @PreDestroy on a bean whose startup failed, so the started threads keep the JVM running and the application hangs instead of exiting.">
     <priority>2</priority>
@@ -920,6 +943,33 @@ return //ClassDeclaration[ModifierList/Annotation[
   [not(ClassType[pmd-java:typeIs('java.util.concurrent.CompletableFuture')])]
 ]]></value></property></properties>
   </rule>
+  <rule name="SpringCacheKeyOmitsParameter" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Name every parameter this method reads in its @Cacheable key (both #customerId and #status, not only #customerId), or drop the key attribute so all parameters form the key: calls that differ only in a parameter the key leaves out share one cache entry, and the second caller gets the result cached for the first.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration[Block][not(pmd-java:modifiers() = ('static', 'private'))]
+  [ModifierList/Annotation[pmd-java:typeIs('org.springframework.cache.annotation.Cacheable')]
+     /AnnotationMemberList/MemberValuePair[@Name = 'key']/StringLiteral]
+  ! (let $method := .,
+         $key := string(($method/ModifierList/Annotation[pmd-java:typeIs('org.springframework.cache.annotation.Cacheable')]
+           /AnnotationMemberList/MemberValuePair[@Name = 'key']/StringLiteral/@ConstValue)[1]),
+         $parameters := $method/FormalParameters/FormalParameter,
+         $named := function($parameter) {
+           let $i := count($parameter/preceding-sibling::FormalParameter)
+           return matches($key, concat('#', $parameter/VariableId/@Name, '([^A-Za-z0-9_$]|$)'))
+             or matches($key, concat('#[pa]', string($i), '([^0-9]|$)'))
+         },
+         $read := function($parameter) {
+           exists($method/Block//VariableAccess[@Name = $parameter/VariableId/@Name]
+             [count(ancestor::ClassBody) = count($method/ancestor::ClassBody)])
+         }
+     return if (contains($key, '#root.args')
+                or (some $p in $parameters satisfies
+                      ($p/ClassType[pmd-java:typeIsExactly('java.lang.String')] and $named($p) and not($read($p)))))
+            then ()
+            else $parameters[not($named(.)) and $read(.)])
+]]></value></property></properties>
+  </rule>
   <rule name="SpringCacheWriteInTransaction" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Write the cache after the commit (in a TransactionSynchronization afterCommit callback, a @TransactionalEventListener, or the caller once the transactional call returns), or make the cache manager transaction-aware (TransactionAwareCacheManagerProxy, or transactionAware() on its builder). Written inside the transaction, the cache keeps a value that a rollback undoes, and an early evict lets a concurrent reader put the old value back.">
     <priority>2</priority>
@@ -1055,6 +1105,18 @@ return
   [*[1][pmd-java:typeIs('java.util.Map')][$field(.)]][$fromWrite(.)][$inTransaction(.)]
 ]]></value></property></properties>
   </rule>
+  <rule name="SpringLockReleasedBeforeCommit" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Move the lock to a caller around the transactional call, or lock in the database with @Version or a @Lock(PESSIMISTIC_WRITE) query, instead of synchronized on this @Transactional method: the monitor is released when the method returns and the proxy commits after that, so a second thread can take the lock and still read the rows from before the commit.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration[pmd-java:modifiers() = 'synchronized'][not(pmd-java:modifiers() = ('static', 'private'))]
+  [ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')
+      or pmd-java:typeIs('jakarta.transaction.Transactional') or pmd-java:typeIs('javax.transaction.Transactional')]
+     [not(AnnotationMemberList/MemberValuePair[@Name = 'readOnly'][not(BooleanLiteral[@True = false()])])]
+     [not(AnnotationMemberList/MemberValuePair[@Name = ('propagation', 'value')]
+        //*[@Name = ('NOT_SUPPORTED', 'NEVER', 'SUPPORTS')])]]
+]]></value></property></properties>
+  </rule>
   <rule name="SpringMultiWriteWithoutTransaction" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Put @Transactional on this method, or run its writes inside TransactionTemplate.execute. It writes to the database more than once outside a transaction, so when a later write fails the earlier ones stay committed.">
     <priority>2</priority>
@@ -1143,6 +1205,7 @@ return
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+  [not(../Annotation[pmd-java:typeIs('org.springframework.transaction.event.TransactionalEventListener')])]
   /AnnotationMemberList/MemberValuePair[@Name = 'propagation'][.//*[@Name = 'REQUIRES_NEW']]
 ]]></value></property></properties>
   </rule>
@@ -1484,6 +1547,28 @@ return
   //((MethodCall | MethodReference)[$write(.)] | MethodCall[$queryLike(.)]
     | MethodCall[matches(@MethodName, '^set\p{Lu}')][*[1][self::VariableAccess][$loaded(.)]]
     | AssignmentExpression[*[1][self::FieldAccess][*[1][self::VariableAccess][$loaded(.)]]])
+]]></value></property></properties>
+  </rule>
+  <rule name="SpringWriteAfterCommitDropped" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Move this write into a new transaction, @Transactional(propagation = Propagation.REQUIRES_NEW) on the listener, or listen with phase = TransactionPhase.BEFORE_COMMIT: an after-commit @TransactionalEventListener still joins the finished transaction, so the write is never committed and no error is raised.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration
+  [ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.event.TransactionalEventListener')]
+     [not(AnnotationMemberList/MemberValuePair[@Name = 'phase']//*[@Name = 'BEFORE_COMMIT'])]]
+  [not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')][AnnotationMemberList/MemberValuePair[@Name = 'propagation']//*[@Name = ('REQUIRES_NEW', 'NOT_SUPPORTED')]])]
+  [ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+   or not(ancestor::ClassDeclaration[1]/ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')][AnnotationMemberList/MemberValuePair[@Name = 'propagation']//*[@Name = ('REQUIRES_NEW', 'NOT_SUPPORTED')]])]
+  [not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.scheduling.annotation.Async')])]
+  [not(ancestor::ClassDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.scheduling.annotation.Async')]])]
+  /Block//MethodCall[not(ancestor::LambdaExpression or ancestor::AnonymousClassDeclaration)]
+    [(*[1][pmd-java:typeIs('org.springframework.data.jpa.repository.JpaRepository')]
+        and matches(@MethodName, '^(save|delete|insert|update|remove)([A-Z0-9_]|$)'))
+     or (*[1][pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager')]
+        and @MethodName = ('persist', 'merge', 'remove'))
+     or (*[1][pmd-java:typeIs('org.springframework.jdbc.core.JdbcOperations')
+              or pmd-java:typeIs('org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations')]
+        and @MethodName = ('update', 'batchUpdate'))]
 ]]></value></property></properties>
   </rule>
   <rule name="SpringDataBatchOfOne" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
@@ -1872,6 +1957,29 @@ return
 //MethodCall[@MethodName = ('stream', 'forEach', 'iterator', 'spliterator')]
   [*[1][pmd-java:typeIs('org.springframework.beans.factory.ObjectProvider')]]
 | //ForeachStatement[*[2][pmd-java:typeIs('org.springframework.beans.factory.ObjectProvider')]]
+]]></value></property></properties>
+  </rule>
+  <rule name="SpringPagedCollectionFetch" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Load a page of ids first and fetch the collection for those ids in a second query (where o.id in :ids), or load it with @BatchSize or @Fetch(FetchMode.SUBSELECT): a paged query that fetches a collection cannot be limited in SQL, so Hibernate reads every matching row and cuts the page in memory (HHH90003004).">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration
+  [FormalParameters/FormalParameter/ClassType[pmd-java:typeIs('org.springframework.data.domain.Pageable')
+     or pmd-java:typeIs('org.springframework.data.domain.Limit')]
+   or ClassType[pmd-java:typeIs('org.springframework.data.domain.Slice')]]
+  /ModifierList/Annotation
+    [(pmd-java:typeIs('org.springframework.data.jpa.repository.Query')
+      and not(AnnotationMemberList/MemberValuePair[@Name = 'nativeQuery']/BooleanLiteral[@True = true()])
+      and matches(lower-case(string-join(AnnotationMemberList/MemberValuePair[@Name = 'value']
+            //StringLiteral/@ConstValue, ' ')), 'join\s+fetch\s'))
+     or (pmd-java:typeIs('org.springframework.data.jpa.repository.EntityGraph')
+      and AnnotationMemberList/MemberValuePair[@Name = 'attributePaths'])]
+|
+//MethodCall[@MethodName = ('setMaxResults', 'setFirstResult')]
+  /descendant::MethodCall[@MethodName = ('createQuery', 'createSelectionQuery')][1]
+    [*[1][pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager')
+          or pmd-java:typeIs('org.hibernate.query.QueryProducer')]]
+    [matches(lower-case(string-join(ArgumentList/*[1]/descendant-or-self::StringLiteral/@ConstValue, ' ')), 'join\s+fetch\s')]
 ]]></value></property></properties>
   </rule>
   <rule name="SpringQueryConcatenation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"

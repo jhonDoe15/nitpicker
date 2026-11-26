@@ -1,0 +1,324 @@
+[
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-parameter-mutation",
+  4,
+  3,
+  "`seen.add` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  4,
+  14
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  4,
+  3,
+  "domain/ code does not mutate values, and Set.add changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  4,
+  11
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-parameter-mutation",
+  5,
+  3,
+  "`when.setTime` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  5,
+  18
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  5,
+  3,
+  "domain/ code does not mutate values, and Date.setTime changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  5,
+  15
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  6,
+  3,
+  "domain/ code does not mutate values, and Date.setUTCHours changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  6,
+  19
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-parameter-mutation",
+  7,
+  3,
+  "`items.push` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  7,
+  16
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  9,
+  16,
+  "domain/ code does not mutate values, and Array.push changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  9,
+  26
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  11,
+  3,
+  "domain/ code does not mutate values, and Set.delete changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  11,
+  17
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-parameter-mutation",
+  12,
+  3,
+  "`keys.delete` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  12,
+  19
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  12,
+  3,
+  "domain/ code does not mutate values, and Map.delete changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  12,
+  14
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  13,
+  3,
+  "domain/ code does not mutate values, and Uint8Array.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  13,
+  24
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  14,
+  3,
+  "domain/ code does not mutate values, and URLSearchParams.append changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  14,
+  31
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  15,
+  3,
+  "domain/ code does not mutate values, and Map.clear changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  15,
+  34
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-parameter-mutation",
+  21,
+  58,
+  "`seen.add` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  21,
+  71
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  21,
+  58,
+  "domain/ code does not mutate values, and Set.add changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  21,
+  68
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  18,
+  5,
+  "`record.id` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  18,
+  20
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  27,
+  3,
+  "`items.push` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  27,
+  19
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  32,
+  3,
+  "`table[…]` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  32,
+  17
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  34,
+  3,
+  "`counts[…]` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  34,
+  14
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  52,
+  3,
+  "`options.length` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  52,
+  23
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  53,
+  3,
+  "`nested.retry.count` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  53,
+  25
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  54,
+  3,
+  "`(o as { a: number }).a` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  54,
+  29
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  58,
+  3,
+  "`Object.assign(o, …)` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  58,
+  32
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  59,
+  3,
+  "`Object.assign(inner.box, …)` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  59,
+  40
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  64,
+  3,
+  "`o.size` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  64,
+  13
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  66,
+  3,
+  "`next.push` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  66,
+  18
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  70,
+  3,
+  "`options.size` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  70,
+  19
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  71,
+  3,
+  "`partial.size` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  71,
+  19
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  79,
+  3,
+  "`items` is passed to `collect`, which changes it in place, so the caller's value changes. Pass a copy (`[...items]` or `{ ...items }`), or make `collect` return a new value.",
+  79,
+  22
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  84,
+  3,
+  "`copy.inner.size` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  84,
+  22
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  90,
+  3,
+  "domain/ code does not mutate values, and Map.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  90,
+  12
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  114,
+  3,
+  "`rows[0]!.push` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  114,
+  21
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  115,
+  3,
+  "`bytes[…]` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  115,
+  15
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  116,
+  3,
+  "`set.add` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  116,
+  15
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  116,
+  3,
+  "domain/ code does not mutate values, and Set.add changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  116,
+  10
+ ],
+ [
+  "outside.ts",
+  "!types",
+  1,
+  1,
+  ""
+ ]
+]

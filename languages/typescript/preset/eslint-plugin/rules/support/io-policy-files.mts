@@ -26,6 +26,8 @@ export const IO_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/loops/concurrent-batches.mjs',
   'languages/typescript/preset/eslint-plugin/rules/loops/loop-shapes.mjs',
   'languages/typescript/preset/eslint-plugin/rules/loops/no-io-in-loop.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/waterfalls/no-sequential-independent-reads.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/waterfalls/read-calls.mjs',
   'languages/typescript/preset/eslint-plugin/rules/queries/soft-delete/columns.mjs',
   'languages/typescript/preset/eslint-plugin/rules/queries/soft-delete/no-unfiltered-soft-delete-read.mjs',
   'languages/typescript/preset/eslint-plugin/rules/queries/soft-delete/read-mentions.mjs',

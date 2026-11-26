@@ -55,6 +55,8 @@ pub struct Type {
     pub value: Option<Value>,
     #[serde(default, rename = "intrinsicName")]
     pub intrinsic_name: Option<String>,
+    #[serde(default)]
+    pub target: Option<u64>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -177,6 +179,23 @@ impl Server {
         parameters["snapshot"] = json!(self.snapshot);
         parameters["project"] = json!(project.id);
         self.read(method, parameters)
+    }
+
+    /// Many questions of one method in one exchange, answers in the order of the questions.
+    pub fn answer_many<T: for<'de> Deserialize<'de>>(&mut self, project: &Project, method: &str, parameters: Vec<Value>) -> Result<Vec<T>, String> {
+        let payloads: Vec<Vec<u8>> = parameters
+            .into_iter()
+            .map(|mut parameters| {
+                parameters["snapshot"] = json!(self.snapshot);
+                parameters["project"] = json!(project.id);
+                parameters.to_string().into_bytes()
+            })
+            .collect();
+        self.channel
+            .request_many(method, &payloads)?
+            .iter()
+            .map(|body| serde_json::from_slice(if body.is_empty() { b"null" } else { body }).map_err(|error| format!("{method}: {error}")))
+            .collect()
     }
 
     /// Any other method of the server, for questions that have no wrapper yet.

@@ -20,6 +20,7 @@
       "languages/typescript/adapters/entry-points-runner.mts",
       "languages/typescript/adapters/eslint-wrapper.config.mts",
       "languages/typescript/adapters/dependency-graph/cruiser-hooks/register.mts",
+      "languages/typescript/adapters/dependency-graph/engine-extract/engine-hooks.mts",
       "languages/typescript/adapters/oxlint/oxlint-bridge.mts",
       "languages/typescript/adapters/oxlint/oxlint-plan.mts",
       "languages/typescript/adapters/test-runners/mocha/mocha-files.config.mts",
@@ -75,8 +76,19 @@
     "languages/typescript/preset/test-runtime/fixtures/**",
     "engine/tests/fixtures/**"
   ],
-  "disable": ["coverage", "crap", "mutation"],
+  "disable": ["mutation", "test-console"],
   "exceptions": [
+    {
+      "rule": "pmd-xpath-rule-mistake",
+      "paths": ["languages/java/gradle/**"],
+      "reason": "The PMD rulesets nitpicker ships scan the file inside predicates in 12 rules; rewriting them is #2378."
+    },
+    {
+      "rule": "exports",
+      "paths": ["languages/typescript/preset/eslint-plugin/engine/engine-requests.mts"],
+      "name": "isTypedOnEngine",
+      "reason": "The oxlint engine pass loads this module through a dynamic import of its checkout URL (adapters/oxlint/run/engine-pass.mts, REQUESTS_MODULE) and checks the export by name, so no static import exists."
+    },
     {
       "rule": "nitpicker/no-process-access-outside-composition-root",
       "paths": ["languages/typescript/preset/test-environment/jest/read-jest-config.mts"],
@@ -170,9 +182,25 @@
       "rule": "nitpicker/no-module-level-mutable-state",
       "paths": [
         "languages/typescript/preset/eslint-plugin/replay/engine-replay.mts",
-        "shared/engine/engine-findings-file.mts"
+        "shared/engine/engine-findings-file.mts",
+        "shared/project-files/seeded/seeded-trees.mts"
       ],
-      "reason": "Deliberate per-process singleton: the ESLint config entry point names the engine's findings file once for the lint process, and the rule objects, which ESLint creates per file with no way to hand them a value, read it from here."
+      "reason": "Deliberate per-process singleton: the ESLint config entry point names a file once for the lint process (the engine's findings, or the lint stage's file listing), and the rule objects, which ESLint and oxlint create with no way to hand them a value, read it from here."
+    },
+    {
+      "rule": "nitpicker/no-default-export",
+      "paths": ["languages/typescript/adapters/quality-areas/knip/knip-reporter.mts"],
+      "reason": "knip loads this module by path as a custom reporter and calls its default export."
+    },
+    {
+      "rule": "nitpicker/no-production-console",
+      "paths": ["languages/typescript/adapters/quality-areas/knip/knip-reporter.mts"],
+      "reason": "Entry point inside the knip process: it captures what knip's own JSON reporter writes to stdout, so the report reaches the adapter through a file the project's code cannot write to."
+    },
+    {
+      "rule": "nitpicker/no-process-access-outside-composition-root",
+      "paths": ["languages/typescript/adapters/quality-areas/knip/knip-reporter.mts"],
+      "reason": "Entry point inside the knip process: knip passes a reporter no options of ours, so the report file and knip's JSON reporter path come from the environment the adapter sets."
     },
     {
       "rule": "nitpicker/no-process-access-outside-composition-root",

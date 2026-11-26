@@ -1,0 +1,3 @@
+[
+["c/StaticLabel.java", "MissingOverride", 10, 19, "The method 'label()' is missing an @Override annotation."]
+]

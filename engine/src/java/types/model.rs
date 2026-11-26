@@ -11,6 +11,8 @@ pub enum Type {
     Variable(String),
     /// An unbounded wildcard argument: stands for the bound of the parameter it fills.
     Wildcard,
+    /// A bounded wildcard argument, kept only where types are printed: `true` for `? super`.
+    Bounded(bool, Box<Type>),
     Null,
 }
 
@@ -25,6 +27,7 @@ impl Type {
             Type::Array(element) => format!("{}[]", element.name()),
             Type::Null => "null".to_string(),
             Type::Wildcard => OBJECT.to_string(),
+            Type::Bounded(_, bound) => bound.name(),
         }
     }
     /// The same type without type arguments. Variables are expected to be replaced before this.
@@ -33,6 +36,7 @@ impl Type {
             Type::Class(name, _) => Type::class(name.split('&').next().unwrap_or(name)),
             Type::Array(element) => Type::Array(Box::new(element.erased())),
             Type::Variable(_) | Type::Wildcard => Type::class(OBJECT),
+            Type::Bounded(_, bound) => bound.erased(),
             other => other.clone(),
         }
     }
@@ -43,6 +47,7 @@ impl Type {
                 Type::Class(name.clone(), arguments.iter().map(|argument| argument.substitute(map)).collect())
             }
             Type::Array(element) => Type::Array(Box::new(element.substitute(map))),
+            Type::Bounded(lower, bound) => Type::Bounded(*lower, Box::new(bound.substitute(map))),
             other => other.clone(),
         }
     }
@@ -58,7 +63,7 @@ impl Type {
         match self {
             Type::Variable(_) => true,
             Type::Class(_, arguments) => arguments.iter().any(Type::mentions_variable),
-            Type::Array(element) => element.mentions_variable(),
+            Type::Array(element) | Type::Bounded(_, element) => element.mentions_variable(),
             _ => false,
         }
     }
@@ -145,8 +150,8 @@ pub mod flag {
     pub const NULL_MARKED: u32 = 1 << 24;
     /// A class or a package carries an annotation named `NullUnmarked`.
     pub const NULL_UNMARKED: u32 = 1 << 25;
-    /// A class file with type annotations on the class or a member: nullness written that way is not read.
-    pub const TYPE_MARKS: u32 = 1 << 26;
+    /// A variable arity method whose array itself may be null (`Object @Nullable ...`).
+    pub const NULLABLE_VARARGS: u32 = 1 << 26;
     /// An annotation type that is itself a scope annotation (`@Scope`, `@ScopeAnnotation`).
     pub const SCOPE_ANNOTATION: u32 = 1 << 27;
     /// An annotation type that is itself a qualifier (`@Qualifier`, `@BindingAnnotation`).
@@ -262,6 +267,10 @@ pub struct Detail {
     /// Full names of the annotations on the method, and on each parameter, with `.` before a member class.
     pub annotations: Vec<String>,
     pub parameter_annotations: Vec<Vec<String>>,
+    /// The parameter types as javac prints them when they carry type annotations from a class file; empty otherwise.
+    pub marked: String,
+    /// Each parameter position and type path that carries a type-use annotation named `Nullable`, from a class file.
+    pub nullable_types: Vec<(u8, Vec<(u8, u8)>)>,
 }
 
 /// Where an annotation type may be used, as bits of `ClassInfo::targets`, from its `@Target`.

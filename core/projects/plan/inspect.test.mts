@@ -98,6 +98,29 @@ describe('inspectRepository', () => {
     expect(found.undeclared).toEqual([{ path: 'tools/py', origin: 'Python project' }]);
   });
 
+  it('derives the source roots of a workspace package that keeps its code at the package root', () => {
+    const found = planned({
+      'package.json': '{"workspaces":["packages/*"]}',
+      'packages/lib/package.json': MANIFEST,
+      'packages/lib/src/a.ts': 'export {};\n',
+      'packages/app/package.json': '{"name":"app","version":"1.0.0","main":"./index.tsx"}',
+      'packages/app/index.tsx': 'export {};\n',
+      'packages/app/components/button.tsx': 'export {};\n',
+      'packages/configured/package.json': MANIFEST,
+      'packages/configured/nitpicker.config.json': '{"layout":{"sourceRoots":["lib"]}}',
+      'packages/configured/lib/a.ts': 'export {};\n',
+    });
+
+    expect(
+      found.projects.map(({ path: p, derivedSourceRoots }) => [p, derivedSourceRoots]),
+    ).toEqual([
+      ['packages/app', ['.']],
+      ['packages/configured', undefined],
+      ['packages/lib', undefined],
+    ]);
+    expect(found.projects[0]?.overlay?.settings).toEqual({ layout: { sourceRoots: ['.'] } });
+  });
+
   it('keeps a repository without a workspace one project and names its nested projects', () => {
     const { root } = git.createGitRepository(
       {

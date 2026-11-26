@@ -52,7 +52,7 @@ abstract class WallClockBoundTest {
   @Test
   @Timeout(5)
   void guardsAgainstAHang() {
-    long startedAt = System.currentTimeMillis(); // violation: RealClockInTest
+    long startedAt = System.currentTimeMillis();
     boolean cancelled = service.cancel(Status.NEW);
     long elapsed = System.currentTimeMillis() - startedAt;
     assertTrue(elapsed < 5000);

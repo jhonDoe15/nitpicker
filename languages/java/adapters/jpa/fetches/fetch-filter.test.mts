@@ -2,7 +2,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { COLLECTION_FETCH_RULE, withCrossedFetches as filterUntyped } from './fetch-filter.mts';
+import {
+  COLLECTION_FETCH_RULE,
+  PAGED_FETCH_RULE,
+  withCrossedFetches as filterUntyped,
+} from './fetch-filter.mts';
 import { SOURCES } from './test-support/fetch-sources.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../../typed/java-values.mts';
 
@@ -81,5 +85,37 @@ describe('withCrossedFetches', () => {
     ];
 
     expect(kept(others)).toEqual(['OrderRepository.java:23', 'Orders.kt:3', 'Missing.java:1']);
+  });
+});
+
+describe('withCrossedFetches for paged queries', () => {
+  it.each([
+    ['a @Query that fetches a collection next to a to-one relation', 4],
+    ['an @EntityGraph of an element collection', 10],
+  ])('keeps %s', (_name, line) => {
+    expect(kept([candidate('PagedRepository.java', line, PAGED_FETCH_RULE)])).toEqual([
+      `PagedRepository.java:${String(line)}`,
+    ]);
+  });
+
+  it.each([
+    ['a @Query that fetches only a to-one relation', 7],
+    ['an @EntityGraph of a to-one relation', 13],
+    ['a query on an entity the sources do not declare', 16],
+  ])('drops %s', (_name, line) => {
+    expect(kept([candidate('PagedRepository.java', line, PAGED_FETCH_RULE)])).toEqual([]);
+  });
+
+  it('reads the entity when a plain class of the project has the same name', () => {
+    expect(kept([candidate('PagedRepository.java', 4, PAGED_FETCH_RULE)])).toEqual([
+      'PagedRepository.java:4',
+    ]);
+    expect(kept([candidate('OrderRepository.java', 9)])).toEqual(['OrderRepository.java:9']);
+  });
+
+  it('keeps a single collection that the crossed-collection rule would drop', () => {
+    expect(kept([candidate('OrderRepository.java', 12, PAGED_FETCH_RULE)])).toEqual([
+      'OrderRepository.java:12',
+    ]);
   });
 });

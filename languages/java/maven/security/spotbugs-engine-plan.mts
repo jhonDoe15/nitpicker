@@ -1,12 +1,13 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { filesEndingWith } from '../../../../shared/filesystem.mts';
-import { type CompilerSettings, compilerOf } from '../errorprone/compiler-types.mts';
+import { type CompilerSettings, compilerOf } from '../compile-sets/compiler-types.mts';
 import {
   type SpotbugsEnginePlan,
   spotbugsOnEngine,
   withoutSpotbugsEngineReport,
 } from '../../builds/spotbugs/spotbugs-engine.mts';
+import { declaredProcessorKind } from '../../builds/spotbugs/spotbugs-lombok.mts';
 import { jdkHome } from '../programs/jdk-home.mts';
 import {
   type GeneratedLocation,
@@ -56,8 +57,17 @@ const PROCESSOR_OPTIONS = new Set([
   '--processor-module-path',
 ]);
 
-function processorPath(compiler: CompilerSettings, compileClasspath: readonly string[]): string[] {
-  return compiler.proc === 'none' ? [] : [...compileClasspath];
+function processorsOf(
+  compiler: CompilerSettings,
+  compileClasspath: readonly string[],
+): Pick<SpotbugsEnginePlan, 'processorPath' | 'processors'> {
+  if (compiler.proc === 'none') {
+    return { processorPath: [], processors: 'none' };
+  }
+  if (compiler.processorPaths !== undefined && compiler.processorPaths.length > 0) {
+    return { processorPath: [], processors: declaredProcessorKind(compiler.processorPaths) };
+  }
+  return { processorPath: [...compileClasspath] };
 }
 
 export function spotbugsEnginePlan({
@@ -84,8 +94,7 @@ export function spotbugsEnginePlan({
   );
   const declaredProcessors =
     compiler.proc !== 'none' &&
-    ((compiler.processorPaths?.length ?? 0) > 0 ||
-      compiler.compilerArgs.some((argument) => PROCESSOR_OPTIONS.has(argument)));
+    compiler.compilerArgs.some((argument) => PROCESSOR_OPTIONS.has(argument));
   if (!compiled || declaredProcessors) {
     return undefined;
   }
@@ -93,7 +102,7 @@ export function spotbugsEnginePlan({
     reportDir,
     sources: sources.map(({ file }) => file).sort(),
     classpath: auxiliary,
-    processorPath: processorPath(compiler, compileClasspath),
+    ...processorsOf(compiler, compileClasspath),
     javaHome,
   };
 }

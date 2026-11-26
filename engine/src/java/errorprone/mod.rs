@@ -58,7 +58,6 @@ mod timeunit;
 mod members;
 mod fix_helpers;
 mod nullaway;
-pub use nullaway::unread_marks;
 mod equality_fix;
 mod nullness;
 mod flow_nullness;
@@ -273,6 +272,7 @@ impl Context<'_> {
             rule: check.to_string(),
             message: format!("[{check}] {message}"),
             symbol: None,
+            priority: None,
         });
     }
     /// Whether the node or a declaration around it carries `@SuppressWarnings` with the check's name or "all".

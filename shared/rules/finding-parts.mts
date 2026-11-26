@@ -6,7 +6,12 @@ export const TESTS_FAILED_RULE = 'tests-failed';
 export const TESTS_NOT_RUN_RULE = 'tests-not-run';
 export const TESTS_FAILED_SKIPPED_RULE = 'tests-failed-skipped';
 export const TESTS_TIMED_OUT_RULE = 'tests-timed-out';
-export const TESTS_UNMEASURED_RULES: string[] = [TESTS_FAILED_RULE, TESTS_TIMED_OUT_RULE];
+export const TESTS_BASE_NOT_RUN_RULE = 'tests-not-run-on-base';
+export const TESTS_UNMEASURED_RULES: string[] = [
+  TESTS_FAILED_RULE,
+  TESTS_TIMED_OUT_RULE,
+  TESTS_BASE_NOT_RUN_RULE,
+];
 export const TESTS_FAILED_RULES: string[] = [...TESTS_UNMEASURED_RULES, TESTS_FAILED_SKIPPED_RULE];
 export const TOOL_SKIPPED_RULE = 'tool-skipped';
 export const MODULE_BUILD_FAILED_RULE = 'module-build-failed';

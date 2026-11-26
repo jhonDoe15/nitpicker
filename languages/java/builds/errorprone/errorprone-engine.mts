@@ -105,8 +105,7 @@ function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
   if (unparsed.length > 0) {
     throw new Error(`it could not read ${unparsed[0] ?? ''}`);
   }
-  const unsure = fieldOf(report, 'nullAwayUnsure') === true;
-  const checks = selected.checks.filter((check) => check !== NULL_AWAY || !unsure);
+  const { checks } = selected;
   const diagnostics = engineDiagnostics(reportedRows(report, checks, set.head));
   writeFileSync(
     file,

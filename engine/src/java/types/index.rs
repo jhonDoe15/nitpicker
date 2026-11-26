@@ -29,6 +29,8 @@ pub struct TypeIndex {
     lineages: std::sync::RwLock<HashMap<String, std::sync::Arc<Vec<String>>>>,
     /// Per class, whether NullAway takes its code as checked.
     checked: std::sync::RwLock<HashMap<String, bool>>,
+    /// Per method name and number of parameters: the source classes that declare such an instance method.
+    declaring: OnceLock<HashMap<(String, usize), Vec<String>>>,
     settled: bool,
     /// The classes of the source files that the class path holds too.
     compiled: HashSet<String>,
@@ -36,6 +38,8 @@ pub struct TypeIndex {
     pub source_classes: usize,
     /// Packages whose methods must have their result used, each with its subpackages: the outermost source packages.
     pub checked_packages: Vec<String>,
+    /// The sources were compiled with Lombok: see `Options::lombok`.
+    pub lombok: bool,
 }
 
 /// The class names of an archive, with where each one is.
@@ -500,14 +504,30 @@ impl TypeIndex {
     /// Whether a known class below `class`, from the run's sources or already read from the class path, declares
     /// an instance method of that name and parameter count.
     pub fn overridden_in_sources(&self, class: &str, name: &str, parameters: usize) -> bool {
-        self.classes.values().any(|slot| match slot {
-            Slot::Ready(other) => {
-                other.name != class
-                    && other.methods.iter().any(|method| method.name == name && method.parameters.len() == parameters && !method.is_static)
-                    && self.is_subtype(&other.name, class)
+        if !self.settled {
+            let found = self.declaring_in_sources();
+            return found.get(&(name.to_string(), parameters)).is_some_and(|found| self.overrides(found, class));
+        }
+        let declaring = self.declaring.get_or_init(|| self.declaring_in_sources());
+        declaring.get(&(name.to_string(), parameters)).is_some_and(|found| self.overrides(found, class))
+    }
+
+    fn overrides(&self, declaring: &[String], class: &str) -> bool {
+        declaring.iter().any(|other| other != class && self.is_subtype(other, class))
+    }
+
+    fn declaring_in_sources(&self) -> HashMap<(String, usize), Vec<String>> {
+        let mut found: HashMap<(String, usize), Vec<String>> = HashMap::new();
+        for slot in self.classes.values() {
+            let Slot::Ready(class) = slot else { continue };
+            let mut seen = HashSet::new();
+            for method in class.methods.iter().filter(|method| !method.is_static) {
+                if seen.insert((method.name.as_str(), method.parameters.len())) {
+                    found.entry((method.name.clone(), method.parameters.len())).or_default().push(class.name.clone());
+                }
             }
-            Slot::Later(..) => false,
-        })
+        }
+        found
     }
 
     /// Whether every supertype up to the roots is known, so a negative subtype answer can be trusted.

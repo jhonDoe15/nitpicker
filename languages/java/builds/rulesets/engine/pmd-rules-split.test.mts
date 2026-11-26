@@ -4,6 +4,7 @@ import { onlyFiles, renderedRuleset } from './pmd-render.mts';
 import { engineRule, portablePattern, ruleLevel, runsOnEngine } from './pmd-rule-parts.mts';
 
 const XPATH = 'net.sourceforge.pmd.lang.rule.xpath.XPathRule';
+const PORTED = 'net.sourceforge.pmd.lang.java.rule.bestpractices.MissingOverrideRule';
 const HEAD = '<ruleset name="demo" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">';
 
 function query(name: string, xpath: string, extra = ''): string {
@@ -41,6 +42,8 @@ const FILES: Readonly<Record<string, string>> = {
     '<rule ref="/rules/own.xml/Own"><properties><property name="limit"><value>9</value></property></properties></rule>',
     '</ruleset>',
   ].join(''),
+  'category/java/ported.xml': `${HEAD}<rule name="Ported" language="java" class="${PORTED}" message="ported {0}"/></ruleset>`,
+  '/rules/ported.xml': `${HEAD}<rule ref="category/java/ported.xml"/><rule ref="category/java/demo.xml/Coded"/></ruleset>`,
   '/rules/renaming.xml': `${HEAD}<rule ref="/rules/own.xml/Own" name="Mine"/></ruleset>`,
 };
 
@@ -96,10 +99,19 @@ describe('engine rules', () => {
     expect(main.rules.filter(runsOnEngine).map(({ name }) => name)).toEqual(['Shipped', 'Own']);
   });
 
+  it('sends a rule written in Java to its port on the engine by its PMD class', () => {
+    const ported = resolved('/rules/ported.xml');
+    expect(ported.rules.filter(runsOnEngine).map((rule) => engineRule(rule, ported))).toMatchObject(
+      [{ name: 'Ported', xpath: '', port: PORTED, message: 'ported {0}' }],
+    );
+    expect(engineRule(named('Shipped'), main).port).toBe('');
+  });
+
   it('writes a rule with the outermost message, level and property values', () => {
     expect(engineRule(named('Shipped'), main)).toEqual({
       name: 'Shipped',
       xpath: '//A',
+      port: '',
       message: 'shipped, reworded',
       suppress: '',
       properties: { limit: { type: 'Integer', value: '7' } },

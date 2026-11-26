@@ -9,6 +9,7 @@ use crate::typescript::types::server::Symbol;
 use crate::typescript::types::tables::kind as K;
 use crate::typescript::types::tables::{node_flags, symbol_flags};
 use std::collections::HashSet;
+use std::rc::Rc;
 
 struct State<'f> {
     path: &'f str,
@@ -310,6 +311,7 @@ fn visit(analysis: &mut Analysis, state: &mut State, node: u32) -> Result<(), St
 fn imported_names(analysis: &mut Analysis, path: &str, table: &NodeTable) -> Result<(HashSet<String>, HashSet<String>), String> {
     let mut names = analysis.registry.names.clone();
     let mut namespaces = HashSet::new();
+    let mut locals = Vec::new();
     for statement in table.listed(ROOT, "statements").into_iter().filter(|statement| table.kind(*statement) == K::IMPORT_DECLARATION) {
         let Some(clause) = table.child(statement, "importClause") else { continue };
         let bindings = table.child(clause, "namedBindings");
@@ -317,14 +319,60 @@ fn imported_names(analysis: &mut Analysis, path: &str, table: &NodeTable) -> Res
             namespaces.extend(table.child(namespace, "name").map(|name| text(table, name)));
         }
         let named = bindings.filter(|bindings| table.kind(*bindings) == K::NAMED_IMPORTS).map(|bindings| table.listed(bindings, "elements")).unwrap_or_default();
-        let locals = table.child(clause, "name").into_iter().chain(named.into_iter().filter_map(|element| table.child(element, "name")));
-        for local in locals.collect::<Vec<_>>() {
-            if target_of(analysis, path, table, local)?.is_some() {
-                names.insert(text(table, local));
-            }
+        locals.extend(table.child(clause, "name").into_iter().chain(named.into_iter().filter_map(|element| table.child(element, "name"))));
+    }
+    symbols_ahead(analysis, path, table, &locals)?;
+    for local in locals {
+        if target_of(analysis, path, table, local)?.is_some() {
+            names.insert(text(table, local));
         }
     }
     Ok((names, namespaces))
+}
+
+fn may_name_target(state: &State, identifier: u32) -> bool {
+    let table = state.table;
+    let parent = table.parent(identifier);
+    if parent.is_some_and(|parent| table.kind(parent) == K::SHORTHAND_PROPERTY_ASSIGNMENT && table.child(parent, "name") == Some(identifier)) {
+        return false;
+    }
+    let name = text(table, identifier);
+    state.names.contains(&name)
+        || state.namespaces.contains(&name)
+        || parent.is_some_and(|parent| {
+            table.kind(parent) == K::PROPERTY_ACCESS_EXPRESSION && {
+                let root = leftmost(table, parent);
+                table.kind(root) == K::IDENTIFIER && state.namespaces.contains(&text(table, root))
+            }
+        })
+}
+
+fn walked(table: &NodeTable) -> Vec<u32> {
+    let mut nodes = Vec::new();
+    let mut pending = vec![ROOT];
+    while let Some(node) = pending.pop() {
+        nodes.push(node);
+        if !is_skipped_subtree(table.kind(node)) {
+            let children: Vec<u32> = table.children(node).filter(|child| table.flags(*child) & node_flags::REPARSED == 0).collect();
+            pending.extend(children.into_iter().rev());
+        }
+    }
+    nodes
+}
+
+fn symbols_ahead(analysis: &mut Analysis, path: &str, table: &NodeTable, identifiers: &[u32]) -> Result<(), String> {
+    let handles: Vec<String> = identifiers.iter().map(|node| table.handle(*node, path)).collect();
+    if analysis.session.symbols_ahead(&handles).is_err() {
+        return Ok(());
+    }
+    let found: Vec<Rc<Symbol>> = handles.iter().filter_map(|handle| analysis.session.known_symbol_at(handle).flatten()).collect();
+    let _ = analysis.session.aliased_ahead(found.iter().map(|symbol| &**symbol));
+    Ok(())
+}
+
+fn ask_ahead(analysis: &mut Analysis, state: &State, nodes: &[u32]) -> Result<(), String> {
+    let identifiers: Vec<u32> = nodes.iter().copied().filter(|node| state.table.kind(*node) == K::IDENTIFIER && may_name_target(state, *node)).collect();
+    symbols_ahead(analysis, state.path, state.table, &identifiers)
 }
 
 pub fn collect(analysis: &mut Analysis) -> Result<(), String> {
@@ -334,13 +382,10 @@ pub fn collect(analysis: &mut Analysis) -> Result<(), String> {
         let table = analysis.table(&path)?;
         let (names, namespaces) = imported_names(analysis, &path, &table)?;
         let mut state = State { path: &path, table: &table, role, package_dir, names, namespaces, consumed: HashSet::new() };
-        let mut pending = vec![ROOT];
-        while let Some(node) = pending.pop() {
+        let nodes = walked(&table);
+        ask_ahead(analysis, &state, &nodes)?;
+        for node in nodes {
             visit(analysis, &mut state, node)?;
-            if !is_skipped_subtree(table.kind(node)) {
-                let children: Vec<u32> = table.children(node).filter(|child| table.flags(*child) & node_flags::REPARSED == 0).collect();
-                pending.extend(children.into_iter().rev());
-            }
         }
     }
     Ok(())
