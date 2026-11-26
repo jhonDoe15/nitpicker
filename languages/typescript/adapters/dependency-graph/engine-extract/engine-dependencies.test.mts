@@ -50,6 +50,27 @@ const SOURCES: Readonly<Record<string, string>> = {
     '',
   ].join('\n'),
   'd.ts': "import { a } from './a';\nnamespace Inner { export const b = a; }\n",
+  'e.ts': "export = { a: require('./b') };\n",
+  'f.ts': "import './a';\nexport = require('./b');\n",
+  'g.ts': "import { A } from './a';\nexport = A;\n",
+  'h.ts': "import { A } from './a';\nimport B from './b';\nexport = { k: A.k, b: B };\n",
+  'i.ts': "import { A } from './a';\ndeclare const x: { [A.k]: number };\nexport const y = x;\n",
+  'j.ts': "import { A } from './a';\ndeclare enum F { Y = A.z }\nexport const y = F.Y;\n",
+  'k.ts':
+    "import { A } from './a';\ndeclare namespace N { const v: { [A.k]: number }; }\nexport const y = N;\n",
+  'l.ts':
+    "import { A } from './a';\ndeclare class C { [A.k]: number; m(): void }\nexport const y = C;\n",
+  'm.ts':
+    "import { A } from './a';\ndeclare module 'x' { const v: { [A.k]: number }; }\nexport {};\n",
+  'n.ts': "import { A } from './a';\ndeclare global { var v: { [A.k]: number }; }\nexport {};\n",
+  'o.ts':
+    "import { A } from './a';\nconst x: { [A.k]: number } = { [A.k]: 1 };\nexport const y = x;\n",
+  'p.ts': "import { A } from './a';\nclass C { declare [A.k]: number }\nexport const y = C;\n",
+  'r.ts':
+    "import { A } from './a';\nnamespace N { declare const v: { [A.k]: number }; }\nexport const y = N;\n",
+  's.ts': "import { A } from './a';\nenum F { Y = A.z }\nexport const y = F;\n",
+  't.ts': "import { A } from './a';\ndeclare enum F { Y = require('./b') }\nexport const y = F;\n",
+  'u.d.ts': "import { A } from './a';\nexport const y: { [A.k]: number };\nexport = A;\n",
 };
 
 const folder = mkdtempSync(path.join(tmpdir(), 'nitpicker-import-extract-'));
@@ -94,6 +115,21 @@ describe('import extraction on the engine', () => {
     },
   );
 
+  it.skipIf(!hasEngine)('leaves files with an import phase to dependency-cruiser', () => {
+    const phased: Readonly<Record<string, string>> = {
+      'phased-defer.ts': "import defer * as ns from './a';\nexport const y = ns;\n",
+      'phased-source.ts': "import source x from './b';\nexport const y = x;\n",
+      'phased-call.ts': "export const y = import.defer('./a');\n",
+    };
+    for (const [file, text] of Object.entries(phased)) writeFileSync(path.join(folder, file), text);
+    const extraction = engineExtraction(
+      { baseDirectory: folder, files: Object.keys(phased) },
+      { ...process.env, [ENGINE_SWITCH]: 'required' },
+    );
+
+    expect(Object.keys(phased).filter((file) => extraction.has(file))).toEqual([]);
+  });
+
   it('reads the engine lines and leaves the unread files to dependency-cruiser', () => {
     const text = [
       JSON.stringify({ file: 'a.ts', dependencies: [['./b', 'import-type-only']], kept: [] }),
@@ -118,6 +154,13 @@ describe('import extraction on the engine', () => {
         },
       ],
     ]);
+  });
+
+  it('checks for the engine when it is required, even with no file to extract', () => {
+    const environment = { ...process.env, NITPICKER_ENGINE: 'off', [ENGINE_SWITCH]: 'required' };
+    expect(() => engineExtraction({ baseDirectory: folder, files: [] }, environment)).toThrow(
+      'no engine binary',
+    );
   });
 
   it('refuses a dependency kind it does not know', () => {

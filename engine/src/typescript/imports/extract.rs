@@ -10,6 +10,8 @@ use oxc_ast_visit::{Visit, walk};
 use oxc_span::GetSpan;
 use serde_json::{Value, json};
 
+const PHASED: &str = "an import with a phase (defer or source), which the compiler lists differently";
+
 /// One dependency as `[module, kind]`, where the kind names the shape dependency-cruiser gives it.
 type Found = (String, &'static str);
 
@@ -18,6 +20,10 @@ pub(super) fn dependencies(parsed: &ParsedFile) -> Result<Vec<Value>, String> {
     let body = &parsed.program.body;
     if body.iter().any(has_string_names) {
         return Err("module export names written as strings, which the JavaScript reader refuses".to_string());
+    }
+    let phased = |statement: &Statement| matches!(statement, Statement::ImportDeclaration(it) if it.phase.is_some());
+    if body.iter().any(phased) {
+        return Err(PHASED.to_string());
     }
     for statement in body {
         if let Statement::ImportDeclaration(import) = statement {
@@ -49,8 +55,11 @@ pub(super) fn dependencies(parsed: &ParsedFile) -> Result<Vec<Value>, String> {
         }
     }
     found.extend(directives::of(parsed.text)?);
-    let mut nested = Nested { found: Vec::new(), failed: false };
+    let mut nested = Nested { found: Vec::new(), failed: false, phased: false };
     nested.visit_program(parsed.program);
+    if nested.phased {
+        return Err(PHASED.to_string());
+    }
     if nested.failed {
         return Err("a module name the engine cannot carry".to_string());
     }
@@ -111,6 +120,7 @@ fn has_braces(import: &ImportDeclaration, parsed: &ParsedFile) -> bool {
 struct Nested {
     found: Vec<(u32, u32, Found)>,
     failed: bool,
+    phased: bool,
 }
 
 impl Nested {
@@ -153,6 +163,7 @@ impl<'a> Visit<'a> for Nested {
     }
 
     fn visit_import_expression(&mut self, it: &ImportExpression<'a>) {
+        self.phased |= it.phase.is_some();
         self.push(it, literal_text(Some(&it.source)), "dynamic-import");
         walk::walk_import_expression(self, it);
     }

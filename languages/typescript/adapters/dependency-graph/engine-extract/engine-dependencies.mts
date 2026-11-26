@@ -87,13 +87,21 @@ function runIn(folder: string, binary: string, { baseDirectory, files }: Extract
   const list = path.join(folder, 'files.tsv');
   const out = path.join(folder, 'out.jsonl');
   const listed = files.filter((file) => !LIST_BREAKS.test(file));
-  writeFileSync(list, listed.map((file) => `${path.resolve(baseDirectory, file)}\t${file}\n`).join(''));
-  const { status, stderr } = runEngineSync(['typescript-import-extract', '--files', list, '--out', out], {
-    binary,
-    timeoutMs: TIME_LIMIT_MS,
-  });
+  writeFileSync(
+    list,
+    listed.map((file) => `${path.resolve(baseDirectory, file)}\t${file}\n`).join(''),
+  );
+  const { status, stderr } = runEngineSync(
+    ['typescript-import-extract', '--files', list, '--out', out],
+    {
+      binary,
+      timeoutMs: TIME_LIMIT_MS,
+    },
+  );
   if (status !== 0) {
-    throw new Error(`typescript-import-extract ended with status ${String(status)}: ${stderr.trim()}`);
+    throw new Error(
+      `typescript-import-extract ended with status ${String(status)}: ${stderr.trim()}`,
+    );
   }
   return readFileSync(out, 'utf8');
 }
@@ -102,12 +110,13 @@ export function engineExtraction(
   request: Extraction,
   environment: Environment = process.env,
 ): Map<string, EngineExtraction> {
-  if (environment[ENGINE_SWITCH] === 'off' || request.files.length === 0) return new Map();
+  if (environment[ENGINE_SWITCH] === 'off') return new Map();
   const binary = findEngine(environment);
   if (binary === undefined) {
     checkNotRequired(environment, 'there is no engine binary');
     return new Map();
   }
+  if (request.files.length === 0) return new Map();
   const folder = mkdtempSync(path.join(tmpdir(), 'nitpicker-import-graph-'));
   try {
     return readExtraction(runIn(folder, binary, request));

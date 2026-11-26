@@ -1,20 +1,16 @@
 //! The `[module, dynamic]` pairs dependency-cruiser finds again when it reads a file as JavaScript after the
 //! transpile: a TypeScript dependency without such a pair is pre-compilation only. The compiler leaves out type-only
-//! imports and re-exports, imports whose bindings no value uses, `import x = require()` (which it does not emit for
-//! ECMAScript modules) and everything in an ambient (`declare`) context.
+//! imports and re-exports, imports whose bindings no value uses, `import x = require()` and `export =` (which it does
+//! not emit for ECMAScript modules) and everything in an ambient (`declare`) context.
 use super::extract::{first_argument, literal_text};
+use super::factories::Factories;
 use crate::typescript::ParsedFile;
 use oxc_ast::ast::{ArrayExpressionElement, CallExpression, Class, Expression, ExpressionStatement, Function};
-use oxc_ast::ast::{ImportDeclaration, ImportDeclarationSpecifier, ImportExpression, JSXOpeningElement, JSXOpeningFragment};
-use oxc_ast::ast::{PropertyDefinition, Statement, TSExternalModuleDeclaration, TSGlobalDeclaration, VariableDeclaration};
-use oxc_ast::ast::{IdentifierReference, TSMethodSignature, TSNamespaceDeclaration, TSPropertySignature};
+use oxc_ast::ast::{ImportExpression, PropertyDefinition, Statement, TSEnumDeclaration, TSExportAssignment};
+use oxc_ast::ast::{TSExternalModuleDeclaration, TSGlobalDeclaration, TSNamespaceDeclaration, VariableDeclaration};
 use oxc_ast_visit::{Visit, walk};
-use oxc_semantic::Semantic;
-use oxc_syntax::scope::{ScopeFlags, ScopeId};
-use std::cell::Cell;
-use oxc_syntax::symbol::SymbolId;
+use oxc_syntax::scope::ScopeFlags;
 use serde_json::{Value, json};
-use std::collections::HashSet;
 
 type Kept = Vec<(String, bool)>;
 
@@ -42,13 +38,11 @@ pub(super) fn transpiled(parsed: &ParsedFile) -> Result<Vec<Value>, String> {
         return Err("a JSX factory pragma".to_string());
     }
     let semantic = parsed.semantic();
-    let root = semantic.scoping().root_scope_id();
-    let mut factories = Factories { semantic: &semantic, used: HashSet::new(), scopes: vec![root], in_key: false };
-    factories.visit_program(parsed.program);
+    let factories = Factories::of(&semantic, parsed);
     let mut calls = Calls { kept: Vec::new(), failed: false };
     for statement in &parsed.program.body {
         let emitted = match statement {
-            Statement::ImportDeclaration(import) => import_is_emitted(import, &semantic, &factories.used),
+            Statement::ImportDeclaration(import) => factories.emits(import),
             Statement::ExportAllDeclaration(export) => !export.export_kind.is_type(),
             Statement::ExportFromDeclaration(export) => {
                 !export.export_kind.is_type() && export.specifiers.iter().any(|specifier| !specifier.export_kind.is_type())
@@ -87,89 +81,8 @@ fn has_factory_pragma(parsed: &ParsedFile) -> bool {
     })
 }
 
-fn import_is_emitted(import: &ImportDeclaration, semantic: &Semantic, factories: &HashSet<SymbolId>) -> bool {
-    let Some(specifiers) = &import.specifiers else { return true };
-    if import.import_kind.is_type() {
-        return false;
-    }
-    specifiers.iter().any(|specifier| {
-        let local = match specifier {
-            ImportDeclarationSpecifier::ImportSpecifier(named) if named.import_kind.is_type() => return false,
-            ImportDeclarationSpecifier::ImportSpecifier(named) => &named.local,
-            ImportDeclarationSpecifier::ImportDefaultSpecifier(default) => &default.local,
-            ImportDeclarationSpecifier::ImportNamespaceSpecifier(namespace) => &namespace.local,
-        };
-        let Some(symbol) = local.symbol_id.get() else { return false };
-        factories.contains(&symbol)
-            || semantic.scoping().get_resolved_references(symbol).any(|reference| {
-                let flags = reference.flags();
-                flags.is_read() || flags.is_write()
-            })
-    })
-}
-
-/// The bindings the compiler counts as used beyond value references: the `React` that JSX elements and fragments
-/// reach, and the names in computed keys of type members, which it reads as values.
-struct Factories<'s, 'a> {
-    semantic: &'s Semantic<'a>,
-    used: HashSet<SymbolId>,
-    scopes: Vec<ScopeId>,
-    in_key: bool,
-}
-
-impl Factories<'_, '_> {
-    fn reach(&mut self) {
-        let Some(&scope) = self.scopes.last() else { return };
-        if let Some(symbol) = self.semantic.scoping().find_binding(scope, "React".into()) {
-            self.used.insert(symbol);
-        }
-    }
-}
-
-impl<'a> Visit<'a> for Factories<'_, 'a> {
-    fn visit_jsx_opening_element(&mut self, it: &JSXOpeningElement<'a>) {
-        self.reach();
-        walk::walk_jsx_opening_element(self, it);
-    }
-
-    fn visit_ts_property_signature(&mut self, it: &TSPropertySignature<'a>) {
-        self.in_key = it.computed;
-        self.visit_property_key(&it.key);
-        self.in_key = false;
-        if let Some(annotation) = &it.type_annotation {
-            self.visit_ts_type_annotation(annotation);
-        }
-    }
-
-    fn visit_ts_method_signature(&mut self, it: &TSMethodSignature<'a>) {
-        self.in_key = it.computed;
-        self.visit_property_key(&it.key);
-        self.in_key = false;
-        walk::walk_ts_method_signature(self, it);
-    }
-
-    fn visit_identifier_reference(&mut self, it: &IdentifierReference<'a>) {
-        let scoping = self.semantic.scoping();
-        if let Some(symbol) = it.reference_id.get().and_then(|id| scoping.get_reference(id).symbol_id()).filter(|_| self.in_key) {
-            self.used.insert(symbol);
-        }
-    }
-
-    fn visit_jsx_opening_fragment(&mut self, _: &JSXOpeningFragment) {
-        self.reach();
-    }
-
-    fn enter_scope(&mut self, _: ScopeFlags, scope: &Cell<Option<ScopeId>>) {
-        let current = self.scopes.last().copied();
-        self.scopes.extend(scope.get().or(current));
-    }
-
-    fn leave_scope(&mut self) {
-        self.scopes.pop();
-    }
-}
-
-/// `require()`, `import()` and AMD dependency lists outside ambient declarations.
+/// `require()`, `import()` and AMD dependency lists outside ambient declarations and `export =`, which the compiler
+/// drops for ECMAScript modules.
 struct Calls {
     kept: Kept,
     failed: bool,
@@ -243,6 +156,12 @@ impl<'a> Visit<'a> for Calls {
     fn visit_ts_namespace_declaration(&mut self, it: &TSNamespaceDeclaration<'a>) {
         self.unless_ambient(it.declare, |this| walk::walk_ts_namespace_declaration(this, it));
     }
+
+    fn visit_ts_enum_declaration(&mut self, it: &TSEnumDeclaration<'a>) {
+        self.unless_ambient(it.declare, |this| walk::walk_ts_enum_declaration(this, it));
+    }
+
+    fn visit_ts_export_assignment(&mut self, _: &TSExportAssignment<'a>) {}
 
     fn visit_ts_external_module_declaration(&mut self, _: &TSExternalModuleDeclaration<'a>) {}
 

@@ -2,6 +2,7 @@
 //! parser finds, and which of those survive the transpile to JavaScript, which marks the rest pre-compilation only.
 mod directives;
 mod extract;
+mod factories;
 mod kept;
 
 use rayon::prelude::*;
