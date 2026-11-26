@@ -113,16 +113,29 @@ function bodySteps(sourceCode: SourceCode, fn: FunctionNode): Step[] {
   return steps;
 }
 
+function unseenLocals(found: readonly Step[], seen: Set<FunctionNode>): FunctionNode[] {
+  const fresh: FunctionNode[] = [];
+  for (const { local } of found) {
+    if (local !== undefined && !seen.has(local)) {
+      seen.add(local);
+      fresh.push(local);
+    }
+  }
+  return fresh;
+}
+
 export function parserVerdict(sourceCode: SourceCode, fn: FunctionNode): Verdict {
+  const seen = new Set([fn]);
   const pending = [fn];
   const steps: Step[] = [];
   for (const current of pending) {
     const found = bodySteps(sourceCode, current);
-    const locals = found
-      .map((step) => step.local)
-      .filter((local): local is FunctionNode => local !== undefined && !pending.includes(local));
-    steps.push(...found);
-    pending.push(...new Set(locals));
+    for (const step of found) {
+      steps.push(step);
+    }
+    for (const local of unseenLocals(found, seen)) {
+      pending.push(local);
+    }
   }
   const pure = steps.every((step) => step.pure);
   return { pure, parses: pure && steps.some((step) => step.parses) };

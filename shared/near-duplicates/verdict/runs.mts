@@ -1,4 +1,5 @@
 import { leavesRun } from '../canonical/effects.mts';
+import { cellAt, suffixTable, type Table } from '../align/lists.mts';
 import { alignLists, alignPair } from '../align/align.mts';
 import type { Alignment } from '../align/align.mts';
 import { createState } from '../align/state.mts';
@@ -38,21 +39,10 @@ function* cells<Row, Column>(
   }
 }
 
-function runLengths(
-  left: readonly number[],
-  right: readonly number[],
-): { readonly table: Int32Array; readonly width: number } {
-  const width = right.length + 1;
-  const table = new Int32Array((left.length + 1) * width);
-  const columns = [...right.keys()].toReversed();
-  for (const i of [...left.keys()].toReversed()) {
-    const key = left[i];
-    const row = i * width;
-    for (const j of columns) {
-      table[row + j] = key === right[j] ? (table[row + width + j + 1] ?? 0) + 1 : 0;
-    }
-  }
-  return { table, width };
+function runLengths(left: readonly number[], right: readonly number[]): Table {
+  return suffixTable(left, right, (table, width, i, j) =>
+    left[i] === right[j] ? cellAt(table, (i + 1) * width + j + 1) + 1 : 0,
+  );
 }
 
 function commonStretches(leftBlock: KeyedBlock, rightBlock: KeyedBlock): Stretch[] {
@@ -66,13 +56,11 @@ function commonStretches(leftBlock: KeyedBlock, rightBlock: KeyedBlock): Stretch
   const { table, width } = runLengths(left, right);
   const stretches: Stretch[] = [];
   const columns = [...right.keys()];
-  for (const i of left.keys()) {
-    for (const j of columns) {
-      const length = table[i * width + j] ?? 0;
-      const maximal = i === 0 || j === 0 || left[i - 1] !== right[j - 1];
-      if (maximal && length >= THRESHOLDS.minRunStatements) {
-        stretches.push({ i, j, length: Math.min(length, THRESHOLDS.maxRunWindow) });
-      }
+  for (const [i, j] of cells(left.keys(), columns)) {
+    const length = cellAt(table, i * width + j);
+    const maximal = i === 0 || j === 0 || left[i - 1] !== right[j - 1];
+    if (maximal && length >= THRESHOLDS.minRunStatements) {
+      stretches.push({ i, j, length: Math.min(length, THRESHOLDS.maxRunWindow) });
     }
   }
   return stretches;
