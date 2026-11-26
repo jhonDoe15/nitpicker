@@ -141,6 +141,14 @@ function placeName(kind: string, qualified: string, owner: string): string {
   return qualified.slice(qualified.lastIndexOf('.', open) + 1);
 }
 
+function relativeName(qualified: string, place: string): string {
+  const at = place.lastIndexOf('@');
+  const local = at === -1 ? '' : packageOf(place.slice(at + 1));
+  return local !== '' && packageOf(classOf(qualified)) === local
+    ? qualified.slice(local.length + 1)
+    : qualified;
+}
+
 function placedNameOf(
   finding: EngineSpotbugsFinding,
   placed: Placed,
@@ -148,6 +156,9 @@ function placedNameOf(
 ): string {
   if (placed.placement === 'arguments') {
     return finding.arguments?.[1] ?? qualified;
+  }
+  if (placed.placement === 'relative') {
+    return relativeName(qualified, finding.symbol ?? '');
   }
   return placed.classNamed?.includes(finding.priority ?? 0)
     ? withoutPackage(qualified, owner)
@@ -162,7 +173,8 @@ function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): Spotbug
     throw new Error(`the engine wrote a ${finding.rule} finding nitpicker cannot place: ${place}`);
   }
   const kind = place.slice(0, colon);
-  const qualified = place.slice(colon + 1);
+  const at = placed.placement === 'relative' ? place.lastIndexOf('@') : -1;
+  const qualified = place.slice(colon + 1, at === -1 ? undefined : at);
   const owner = ownerOf(kind, qualified);
   const subject = placed.placement === 'arguments' ? (finding.arguments?.[0] ?? owner) : owner;
   const directory = packageOf(subject).replaceAll('.', '/');
