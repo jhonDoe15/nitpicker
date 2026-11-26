@@ -152,15 +152,36 @@ pub mod flag {
     pub const NULL_UNMARKED: u32 = 1 << 25;
     /// A variable arity method whose array itself may be null (`Object @Nullable ...`).
     pub const NULLABLE_VARARGS: u32 = 1 << 26;
+    /// An annotation type that is itself a scope annotation (`@Scope`, `@ScopeAnnotation`).
+    pub const SCOPE_ANNOTATION: u32 = 1 << 27;
+    /// An annotation type that is itself a qualifier (`@Qualifier`, `@BindingAnnotation`).
+    pub const QUALIFIER_ANNOTATION: u32 = 1 << 28;
+    /// An annotation type with `@Retention(RUNTIME)`.
+    pub const RUNTIME_RETENTION: u32 = 1 << 29;
+    /// An annotation type with `@Retention(SOURCE)`.
+    pub const SOURCE_RETENTION: u32 = 1 << 30;
+    /// A field or parameter with `@CompileTimeConstant`.
+    pub const COMPILE_TIME_CONSTANT: u32 = 1 << 31;
 
     pub const IMMUTABLE_NAME: &str = "com.google.errorprone.annotations.Immutable";
     pub const IMMUTABLE_PARAMETER_NAME: &str = "com.google.errorprone.annotations.ImmutableTypeParameter";
+
+    /// The bits `@Retention` gives for the constant it names.
+    pub fn of_retention(constant: &str) -> u32 {
+        match constant {
+            "RUNTIME" => RUNTIME_RETENTION,
+            "SOURCE" => SOURCE_RETENTION,
+            _ => 0,
+        }
+    }
 
     /// The bits an annotation gives, by its full name with `.` between a class and its member class.
     pub fn of_annotation(name: &str) -> u32 {
         match name {
             "com.google.auto.value.AutoValue" => return AUTO_VALUE,
             "com.google.auto.value.AutoValue.Builder" | "com.google.auto.value.AutoBuilder" => return AUTO_BUILDER,
+            "javax.inject.Scope" | "jakarta.inject.Scope" | "com.google.inject.ScopeAnnotation" => return SCOPE_ANNOTATION,
+            "javax.inject.Qualifier" | "jakarta.inject.Qualifier" | "com.google.inject.BindingAnnotation" => return QUALIFIER_ANNOTATION,
             "dagger.Component.Builder"
             | "dagger.Subcomponent.Builder"
             | "dagger.producers.ProductionComponent.Builder"
@@ -170,6 +191,7 @@ pub mod flag {
         let exact = match name {
             "com.google.errorprone.annotations.CanIgnoreReturnValue" => MAY_IGNORE,
             IMMUTABLE_NAME => IMMUTABLE,
+            "com.google.errorprone.annotations.CompileTimeConstant" => COMPILE_TIME_CONSTANT,
             _ => 0,
         };
         exact | match name.rsplit('.').next().unwrap_or(name) {
@@ -307,6 +329,12 @@ pub struct ClassInfo {
     /// For a class read from a class file: the annotation classes on its members that may be nicknames for
     /// `@CheckForNull`.
     pub null_nicknames: Vec<String>,
+    /// For an annotation type read from source: the modifiers its `@IncompatibleModifiers` lists, as constant names.
+    pub incompatible: Vec<String>,
+    /// Full names of the annotations on the class itself, with `.` before a member class.
+    pub class_annotations: Vec<String>,
+    /// The reason a `@DoNotMock` on the class gives: its value, or the annotation's default.
+    pub do_not_mock: Option<String>,
 }
 
 const SETTER_STARTS: &[&str] =

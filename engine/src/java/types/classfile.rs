@@ -204,6 +204,8 @@ struct Attributes<'a> {
     marks: u32,
     /// Constant pool entries of the strings in `containerOf` of `@Immutable`.
     held: Vec<u16>,
+    /// Constant names listed by `@IncompatibleModifiers`.
+    incompatible: Vec<&'a [u8]>,
     /// Positions of the type parameters with `@ImmutableTypeParameter`.
     strict: Vec<u8>,
     annotations: Vec<&'a [u8]>,
@@ -213,6 +215,8 @@ struct Attributes<'a> {
     nullable_parameters: u64,
     contract: Option<u16>,
     starts: bool,
+    /// `@DoNotMock` on the class: the constant pool index of its value, when it has one.
+    do_not_mock: Option<Option<u16>>,
     type_marks: Vec<Mark>,
 }
 
@@ -255,12 +259,17 @@ fn enum_names<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u8]>, 
 }
 
 /// Reads one annotation: its type descriptor, and for `@Target` the element types it lists.
-fn annotation<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u8]>, targets: &mut Option<u16>) -> Option<&'a [u8]> {
+fn annotation<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u8]>, targets: &mut Option<u16>, retention: &mut u32) -> Option<&'a [u8]> {
     let kind = utf8(reader.u2()?)?;
     let target = kind == b"Ljava/lang/annotation/Target;";
+    let retained = kind == b"Ljava/lang/annotation/Retention;";
     for _ in 0..reader.u2()? {
         reader.skip(2)?;
-        if target {
+        if retained {
+            let mut names = Vec::new();
+            enum_names(reader, utf8, &mut names)?;
+            *retention |= names.iter().filter_map(|name| std::str::from_utf8(name).ok()).fold(0, |bits, name| bits | flag::of_retention(name));
+        } else if target {
             let mut names = Vec::new();
             enum_names(reader, utf8, &mut names)?;
             let bits = names.iter().filter_map(|name| std::str::from_utf8(name).ok()).fold(0, |bits, name| bits | super::model::target::bit(name));
@@ -288,6 +297,23 @@ fn skip_annotation(reader: &mut Reader) -> Option<u16> {
         skip_element(reader)?;
     }
     Some(kind)
+}
+
+/// Reads one annotation: the index of its type descriptor and, when its first element is a string, that string's index.
+fn read_annotation(reader: &mut Reader) -> Option<(u16, Option<u16>)> {
+    let kind = reader.u2()?;
+    let mut text = None;
+    for position in 0..reader.u2()? {
+        reader.skip(2)?;
+        let before = reader.at;
+        if reader.u1()? == b's' && position == 0 {
+            text = Some(reader.u2()?);
+        } else {
+            reader.at = before;
+            skip_element(reader)?;
+        }
+    }
+    Some((kind, text))
 }
 
 /// The constant pool entries of the strings an element holds, alone or in an array.
@@ -366,7 +392,9 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
         } else if name == b"RuntimeVisibleAnnotations" || name == b"RuntimeInvisibleAnnotations" {
             for _ in 0..reader.u2()? {
                 let begin = reader.at;
-                let kind = annotation(reader, utf8, &mut found.targets)?;
+                let (_, text) = read_annotation(reader)?;
+                reader.at = begin;
+                let kind = annotation(reader, utf8, &mut found.targets, &mut found.marks)?;
                 if kind == b"Lcom/google/errorprone/annotations/Immutable;" {
                     reader.at = begin + 2;
                     for _ in 0..reader.u2()? {
@@ -376,6 +404,16 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                             skip_element(reader)?;
                         }
                     }
+                }
+                if kind == b"Lcom/google/errorprone/annotations/IncompatibleModifiers;" {
+                    reader.at = begin + 2;
+                    for _ in 0..reader.u2()? {
+                        reader.skip(2)?;
+                        enum_names(reader, utf8, &mut found.incompatible)?;
+                    }
+                }
+                if kind == b"Lcom/google/errorprone/annotations/DoNotMock;" {
+                    found.do_not_mock = Some(text);
                 }
                 found.deprecated |= kind == b"Ljava/lang/Deprecated;";
                 found.marks |= annotation_name(kind).map_or(0, |name| flag::of_annotation(&name));
@@ -854,5 +892,8 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         targets: found.targets,
         setter_like,
         null_nicknames,
+        incompatible: found.incompatible.iter().map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
+        class_annotations: found.annotations.iter().filter_map(|kind| annotation_name(kind)).collect(),
+        do_not_mock: found.do_not_mock.map(|text| text.and_then(utf8).map_or_else(|| "Create a real instance instead".to_string(), |text| String::from_utf8_lossy(text).into_owned())),
     })
 }

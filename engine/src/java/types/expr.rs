@@ -1094,7 +1094,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// The function type of a functional interface type: parameter types and return type.
-    fn function_type(&self, target: &Type) -> Option<(Vec<Type>, Type)> {
+    pub fn function_type(&self, target: &Type) -> Option<(Vec<Type>, Type)> {
         let (declaring, method) = self.index.functional_method(&target.name())?;
         let map = self.index.member_map(target, &declaring.name);
         Some((method.generic_parameters.iter().map(|kind| kind.substitute(&map)).collect(), method.generic_returns.substitute(&map)))

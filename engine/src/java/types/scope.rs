@@ -640,10 +640,34 @@ impl<'a> Resolver<'a> {
         })
     }
 
+    /// The bits of the `@Retention` of an annotation type.
+    fn retention(&self, declaration: Node) -> u32 {
+        if declaration.kind() != "annotation_type_declaration" {
+            return 0;
+        }
+        let Some(holder) = super::super::helpers::modifiers(declaration) else { return 0 };
+        let mut bits = 0;
+        for annotation in children(holder).into_iter().filter(|part| part.kind() == "annotation") {
+            let Some(name) = annotation.child_by_field_name("name") else { continue };
+            if self.class_name(declaration, self.file.text_of(name)).as_deref() != Some("java.lang.annotation.Retention") {
+                continue;
+            }
+            let Some(arguments) = annotation.child_by_field_name("arguments") else { continue };
+            let mut last = None;
+            crate::engine::source::walk(arguments, |part| {
+                if part.kind() == "identifier" {
+                    last = Some(part);
+                }
+            });
+            bits |= last.map_or(0, |constant| super::model::flag::of_retention(self.file.text_of(constant)));
+        }
+        bits
+    }
+
     fn class_flags(&self, declaration: Node) -> u32 {
         use super::model::flag;
         let has = super::super::helpers::has_modifier;
-        let mut bits = self.marks(declaration);
+        let mut bits = self.marks(declaration) | self.retention(declaration);
         if super::super::helpers::annotation_names(self.file, declaration).iter().any(|name| name.rsplit('.').next() == Some("CheckForNull")) {
             bits |= flag::CHECK_FOR_NULL;
         }
@@ -720,6 +744,7 @@ impl<'a> Resolver<'a> {
             })
             .collect();
         let (container_of, immutable_parameters) = self.immutable_marks(declaration);
+        let (class_annotations, do_not_mock) = self.class_marks(declaration);
         ClassInfo {
             name,
             superclass: parent.as_ref().map(Type::name),
@@ -743,7 +768,67 @@ impl<'a> Resolver<'a> {
             immutable_parameters,
             setter_like: false,
             null_nicknames: Vec::new(),
+            incompatible: if kind == "annotation_type_declaration" { self.incompatible_modifiers(declaration) } else { Vec::new() },
+            class_annotations,
+            do_not_mock,
         }
+    }
+
+    /// The constant names `@IncompatibleModifiers` lists on an annotation type, in the order written.
+    fn incompatible_modifiers(&self, declaration: Node) -> Vec<String> {
+        let mut found = Vec::new();
+        let annotations = super::super::helpers::modifiers(declaration).map(children).unwrap_or_default();
+        for annotation in annotations.into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation")) {
+            let written = annotation.child_by_field_name("name").map(|name| self.file.text_of(name)).unwrap_or_default();
+            if self.class_name(declaration, written).as_deref() != Some("com.google.errorprone.annotations.IncompatibleModifiers") {
+                continue;
+            }
+            let Some(list) = annotation.child_by_field_name("arguments") else { continue };
+            for argument in children(list).into_iter().filter(|part| part.is_named() && !part.kind().ends_with("comment")) {
+                let (key, value) = match argument.kind() {
+                    "element_value_pair" => (argument.child_by_field_name("key").map(|key| self.file.text_of(key)), argument.child_by_field_name("value")),
+                    _ => (Some("value"), Some(argument)),
+                };
+                let Some(value) = value.filter(|_| matches!(key, Some("value" | "modifier"))) else { continue };
+                crate::engine::source::walk(value, |part| {
+                    let name = match part.kind() {
+                        "identifier" if part.parent().is_none_or(|up| up.kind() != "field_access") => Some(part),
+                        "field_access" => part.child_by_field_name("field"),
+                        _ => None,
+                    };
+                    found.extend(name.map(|name| self.file.text_of(name).to_string()));
+                });
+            }
+        }
+        found
+    }
+
+    /// The full names of the annotations on a class declaration, and the reason its `@DoNotMock` gives.
+    fn class_marks(&self, declaration: Node) -> (Vec<String>, Option<String>) {
+        let holder = super::super::helpers::modifiers(declaration);
+        let marks = holder.map(children).unwrap_or_default().into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation"));
+        let mut names = Vec::new();
+        let mut reason = None;
+        for mark in marks {
+            let Some(written) = mark.child_by_field_name("name") else { continue };
+            let text = self.file.text_of(written);
+            let full = self.class_name(declaration, text).unwrap_or_else(|| text.to_string());
+            if full == "com.google.errorprone.annotations.DoNotMock" {
+                let literal = |node: Node| self.file.text_of(node).trim_matches('"').to_string();
+                let value = mark.child_by_field_name("arguments").and_then(|list| {
+                    children(list).into_iter().find_map(|part| match part.kind() {
+                        "string_literal" => Some(literal(part)),
+                        "element_value_pair" if part.child_by_field_name("key").is_some_and(|key| self.file.text_of(key) == "value") => {
+                            part.child_by_field_name("value").filter(|value| value.kind() == "string_literal").map(literal)
+                        }
+                        _ => None,
+                    })
+                });
+                reason = Some(value.unwrap_or_else(|| "Create a real instance instead".to_string()));
+            }
+            names.push(full);
+        }
+        (names, reason)
     }
 
     /// What `containerOf` of the class's `@Immutable` names, and the type parameters with `@ImmutableTypeParameter`.
@@ -1039,7 +1124,9 @@ impl<'a> Resolver<'a> {
         let own = Type::class(&info.name);
         info.setter_like = info.methods.iter().any(|method| !method.is_static && super::model::setter_name(&method.name) && method.returns != own);
         if matches!(declaration.kind(), "class_declaration" | "enum_declaration") && !info.methods.iter().any(|method| method.name == "<init>") {
-            info.methods.push(plain("<init>", Vec::new(), Type::Primitive("void")));
+            let has = super::super::helpers::has_modifier;
+            let access = if declaration.kind() == "enum_declaration" || has(declaration, "private") { 2 } else if has(declaration, "public") { 1 } else if has(declaration, "protected") { 4 } else { 0 };
+            info.methods.push(Method { detail: super::model::Detail { access, ..Default::default() }, ..plain("<init>", Vec::new(), Type::Primitive("void")) });
         }
         if declaration.kind() == "enum_declaration" {
             let own = Type::class(&info.name);

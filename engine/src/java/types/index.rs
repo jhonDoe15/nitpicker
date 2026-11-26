@@ -156,6 +156,12 @@ impl TypeIndex {
         matches!(self.classes.get(name), Some(Slot::Ready(_)))
     }
 
+    /// The names of the member classes declared directly in a class, in no particular order.
+    pub fn nested(&self, outer: &str) -> Vec<String> {
+        let prefix = format!("{outer}.");
+        self.classes.keys().filter(|name| name.strip_prefix(prefix.as_str()).is_some_and(|rest| !rest.contains('.'))).cloned().collect()
+    }
+
     pub fn get(&self, name: &str) -> Option<&ClassInfo> {
         match self.classes.get(name)? {
             Slot::Ready(class) => Some(class),
