@@ -575,6 +575,10 @@ Java `StatPerListedEntry` (main PMD ruleset, #2070) reports a loop or stream ove
 `length`, `lastModified`) on the entry, and points to `Files.find` or `Files.walkFileTree`, which
 pass the attributes along.
 
+Java `FilteredPositionalPairing` (main PMD ruleset, #2129, label bug) reports two lists read with
+one index of a counting `for` loop where one came from `stream().filter(...)` or had `removeIf` and
+the other was not filtered.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

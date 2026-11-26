@@ -164,6 +164,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `filter(...).findFirst().isPresent()` or `filter(...).count() > 0`, and `size()` or `isEmpty()` on
   the source instead of on a `toList()` or `new ArrayList<>(source)` copy
   (`pmd/RedundantStreamStep`).
+- Pair two lists by index before you filter either of them, or filter both the same way: after the first
+  dropped entry the positions no longer line up (`pmd/FilteredPositionalPairing`).
 - Do repeated work once: look a reflective member up by its constant name before the loop, not in it
   (`pmd/ConstantLookupInLoop`); test the kind of a level before you search its subtree while you climb
   a parent chain (`pmd/SubtreeSearchPerAncestor`); keep the result of `resolve(key)` in a local

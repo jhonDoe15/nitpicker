@@ -1456,6 +1456,36 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="FilteredPositionalPairing" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This list is filtered before it is paired by index with another list that was not filtered the same way, so after the first dropped entry the positions no longer line up. Pair first and filter the pairs, or keep a placeholder for the dropped entries.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $filtered := function($name, $scope) {
+      exists($scope//VariableDeclarator[VariableId/@Name = $name]/*[2]/descendant-or-self::MethodCall[@MethodName = 'filter']
+          [*[1]/descendant-or-self::MethodCall[@MethodName = ('stream', 'parallelStream')]]
+        | $scope//MethodCall[@MethodName = 'removeIf'][*[1][self::VariableAccess][@Name = $name]])
+    }
+return
+//ForStatement[ForInit//VariableId]
+  [let $index := ForInit//VariableId/@Name
+   return count(distinct-values(*[last()]//MethodCall[@MethodName = 'get'][ArgumentList/@Size = 1]
+     [ArgumentList/*[1][self::VariableAccess][@Name = $index]]/*[1][self::VariableAccess]/@Name)) > 1]
+  /*[last()]//MethodCall[@MethodName = 'get'][ArgumentList/@Size = 1]
+    [ArgumentList/*[1][self::VariableAccess][@Name = ancestor::ForStatement[1]/ForInit//VariableId/@Name]]
+    [let $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][1],
+         $index := ArgumentList/*[1]/@Name,
+         $loop := ancestor::ForStatement[ForInit//VariableId/@Name = $index][1],
+         $name := *[1][self::VariableAccess]/@Name,
+         $others := distinct-values($loop/*[last()]//MethodCall[@MethodName = 'get'][ArgumentList/@Size = 1]
+           [ArgumentList/*[1][self::VariableAccess][@Name = $index]]/*[1][self::VariableAccess]/@Name[. != $name])
+     return exists($name) and $filtered($name, $scope)
+       and (some $other in $others satisfies not($filtered($other, $scope)))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="FirstElementOfMaybeEmpty" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="The first element is read after only a null check. A value that is not null can still be empty: a parser result, a header list or a query returns an empty list, array or string, and get(0), [0], charAt(0) or iterator().next() then throws IndexOutOfBoundsException, ArrayIndexOutOfBoundsException, StringIndexOutOfBoundsException or NoSuchElementException on that one input. Test emptiness instead of, or as well as, null: if (init != null &amp;&amp; !init.isEmpty()), values.length &gt; 0 &amp;&amp; values[0] == LIMIT, !text.isEmpty() &amp;&amp; text.charAt(0) == ''#''. Right code is not reported: a method that tests the value''s emptiness, length, size or content anywhere (isEmpty, size, length, startsWith or equals with a literal, a for-each over it), a value built in the method (List.of, an array literal), and a read inside a loop.">
     <priority>3</priority>
