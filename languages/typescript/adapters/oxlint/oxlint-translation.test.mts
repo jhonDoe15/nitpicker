@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -240,11 +240,10 @@ describe('eslintShapedResults', () => {
       neutralized: new Map(),
     };
     const labels = [{ span: { offset: 20, length: 11 } }];
-    const results = eslintShapedResults(
-      stage,
-      [{ filename: 'a.ts', labels, ...diagnostic }],
+    const results = eslintShapedResults(stage, [{ filename: 'a.ts', labels, ...diagnostic }], {
       naming,
-    );
+      listed: ['a.ts'],
+    });
     return firstOf(firstOf(results).messages).message;
   }
 
@@ -258,17 +257,45 @@ describe('eslintShapedResults', () => {
     ).toBe("'Math.random' is restricted from being used. Use crypto.randomUUID().");
   });
 
-  it('rejects a reported file outside the stage', () => {
+  it('leaves out a reported file outside the stage that no listed file links to', () => {
     const naming = {
-      ruleNames: new Map<string, string>(),
+      ruleNames: new Map([['eslint/no-debugger', 'no-debugger']]),
       messageIdOf: () => undefined,
       ruleMessages: {},
       neutralized: new Map(),
     };
-    const diagnostic = { filename: '../a.ts', code: 'eslint(no-debugger)', message: 'x' };
-    expect(() => eslintShapedResults(stage, [diagnostic], naming)).toThrow(
-      'oxlint reported a file outside its stage: ../a.ts',
-    );
+    const outside = { filename: '../a.ts', code: 'eslint(no-debugger)', message: 'x' };
+    const inside = { filename: 'a.ts', code: 'eslint(no-debugger)', message: 'y' };
+    const results = eslintShapedResults(stage, [outside, inside], { naming, listed: ['a.ts'] });
+
+    expect(results.map(({ filePath, messages }) => [filePath, messages.length])).toEqual([
+      ['a.ts', 1],
+    ]);
+  });
+
+  it('reports a file oxlint names by its real path once under every listed link to it', () => {
+    const target = mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-linked-'));
+    writeFileSync(path.join(target, 'b.ts'), 'debugger;\n');
+    symlinkSync(path.join(target, 'b.ts'), path.join(stage, 'b.ts'));
+    const naming = {
+      ruleNames: new Map([['eslint/no-debugger', 'no-debugger']]),
+      messageIdOf: () => undefined,
+      ruleMessages: {},
+      neutralized: new Map(),
+    };
+    const labels = [{ span: { offset: 0, length: 9 } }];
+    const diagnostic = { code: 'eslint(no-debugger)', message: 'debugger', labels };
+    const filename = path.join(realpathSync(target), 'b.ts');
+    const both = [
+      { filename, ...diagnostic },
+      { filename: 'b.ts', ...diagnostic },
+    ];
+    const results = eslintShapedResults(stage, both, { naming, listed: ['a.ts', 'b.ts'] });
+    rmSync(target, { recursive: true, force: true });
+
+    expect(
+      results.map(({ filePath, messages }) => [filePath, messages.map(({ ruleId }) => ruleId)]),
+    ).toEqual([['b.ts', ['no-debugger']]]);
   });
 
   it('leaves the generic help of other rules out', () => {
