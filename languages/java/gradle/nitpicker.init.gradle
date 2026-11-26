@@ -668,19 +668,62 @@ allprojects {
                     new File(initScriptDir, javaStyle == 'none'
                         ? 'checkstyle-suppressions-unformatted.xml' : 'checkstyle-suppressions.xml').absolutePath]
                 def baseConfig = configFile
+                def onEngine = [] as Set
+                def engineReport = null
+                exclude { element -> onEngine.contains(element.file) }
                 inputs.dir(new File(initScriptDir, 'rules'))
                 doFirst {
                     def directory = new File(reportDir.get().asFile, 'checkstyle-guards/' + task.name)
                     directory.mkdirs()
                     def output = new File(directory, 'checkstyle.xml')
                     def plan = new File(directory, 'plan.json')
+                    def guards = ['checkstyle-all.xml'] + (task.name == 'checkstyleMain' ? ['checkstyle-main.xml'] : [])
                     plan.text = groovy.json.JsonOutput.toJson([
                         source: baseConfig.absolutePath,
                         output: output.absolutePath,
-                        files: ['checkstyle-all.xml'] + (task.name == 'checkstyleMain' ? ['checkstyle-main.xml'] : []),
+                        files: guards,
                     ])
                     writeRules('checkstyle-guards', plan)
                     configFile = output
+                    onEngine.clear()
+                    engineReport = new File(directory, 'checkstyle-engine.xml')
+                    def sources = task.source.files.collect { it.absoluteFile }
+                    def list = new File(directory, 'files.txt')
+                    list.setText(sources.collect { it.path }.join('\n'), 'UTF-8')
+                    def left = new File(directory, 'left.txt')
+                    def enginePlan = new File(directory, 'engine-plan.json')
+                    enginePlan.text = groovy.json.JsonOutput.toJson([
+                        config: output.absolutePath,
+                        bundled: new File(nitpickerCheckstyleConfig.get().asFile.parentFile, 'google_checks.xml').absolutePath,
+                        guards: guards,
+                        files: list.absolutePath,
+                        engineReport: engineReport.absolutePath,
+                        left: left.absolutePath,
+                        version: pinned.checkstyle,
+                    ])
+                    writeRules('checkstyle-engine', enginePlan)
+                    if (!engineReport.isFile() || !left.isFile()) {
+                        engineReport = null
+                        return
+                    }
+                    def unparsed = left.readLines('UTF-8').findAll { it }.collect { new File(it) } as Set
+                    onEngine.addAll(sources.findAll { !unparsed.contains(it) })
+                    if (unparsed.isEmpty()) {
+                        def report = task.reports.xml.outputLocation.get().asFile
+                        report.parentFile.mkdirs()
+                        java.nio.file.Files.copy(engineReport.toPath(), report.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                        throw new StopExecutionException()
+                    }
+                }
+                doLast {
+                    if (engineReport != null) {
+                        def plan = new File(engineReport.parentFile, 'merge-plan.json')
+                        plan.text = groovy.json.JsonOutput.toJson([
+                            report: task.reports.xml.outputLocation.get().asFile.absolutePath,
+                            engineReport: engineReport.absolutePath,
+                        ])
+                        writeRules('checkstyle-merge', plan)
+                    }
                 }
             }
         }
