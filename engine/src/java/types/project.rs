@@ -90,6 +90,7 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>, 
                         if with_members {
                             resolver.members(*node, &mut info);
                             resolver.lombok_members(*node, &mut info);
+                            resolver.slf4j_field(*node, &mut info);
                         }
                         info
                     })
