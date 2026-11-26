@@ -177,6 +177,7 @@
   "pmd/RegexPartDefect": ["bug"],
   "pmd/RemoveByKeyDropsNewerValue": ["bug", "async"],
   "pmd/ReplaceWithWrongLiteralKind": ["bug"],
+  "pmd/RequestThreadLocalNotCleared": ["bug", "reliability", "security"],
   "pmd/RetryInTest": ["tests"],
   "pmd/ReturnFromFinallyBlock": ["reliability"],
   "pmd/ReusableObjectPerCall": ["performance"],

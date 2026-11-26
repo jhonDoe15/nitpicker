@@ -3836,6 +3836,66 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="RequestThreadLocalNotCleared" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This servlet filter stores a value in a ThreadLocal (set) or in the logging context (MDC.put, ThreadContext.put) while it handles a request, and the class never removes it. Server threads are pooled and reused, so the value is still there when the thread serves the next request: the next user reads the previous tenant, locale or security context, and the log lines of unrelated requests carry the old values. Remove the value in a finally block that wraps chain.doFilter: threadLocal.remove(), MDC.remove(key), a set or put that restores the saved previous value, or use try (var ignored = MDC.putCloseable(key, value)). An exception fits a value that is meant to live as long as the thread and is cleared by another class.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $helper := '^(remove|clear|reset|unset|cleanup|cleanUp|release|restore|close|detach|end|pop)\w*$',
+    $kv := function($cls, $k) {
+      let $init := $cls/FieldDeclaration[pmd-java:modifiers() = 'static'][pmd-java:modifiers() = 'final']
+                     /VariableDeclarator[VariableId/@Name = $k/self::*[self::VariableAccess or self::FieldAccess]/@Name]
+                     /StringLiteral
+      return if ($k/self::StringLiteral) then string($k/@Image)
+             else if (exists($init)) then string($init[1]/@Image) else ''
+    },
+    $mdcRemoved := function($cls, $key) {
+      let $v := $kv($cls, $key) return
+      exists($cls//MethodCall[pmd-java:matchesSig('org.slf4j.MDC#remove(_)')
+                              or pmd-java:matchesSig('org.apache.logging.log4j.ThreadContext#remove(_)')
+                              or ((pmd-java:matchesSig('org.slf4j.MDC#put(_,_)')
+                                   or pmd-java:matchesSig('org.apache.logging.log4j.ThreadContext#put(_,_)'))
+                                  and exists(ancestor::FinallyClause))]
+               [$v = '' or $kv($cls, ArgumentList/*[1]) = '' or $kv($cls, ArgumentList/*[1]) = $v])
+    },
+    $mdcCleared := function($cls) {
+      exists($cls//MethodCall[pmd-java:matchesSig('org.slf4j.MDC#clear()')
+                              or pmd-java:matchesSig('org.slf4j.MDC#putCloseable(_,_)')
+                              or pmd-java:matchesSig('org.slf4j.MDC#setContextMap(_)')
+                              or pmd-java:matchesSig('org.apache.logging.log4j.ThreadContext#removeAll(_)')
+                              or pmd-java:matchesSig('org.apache.logging.log4j.ThreadContext#clearAll()')
+                              or pmd-java:matchesSig('org.apache.logging.log4j.ThreadContext#clearMap()')])
+    },
+    $tlCleared := function($cls, $recv) {
+      let $n := string($recv/@Name), $q := string($recv/TypeExpression/ClassType/@SimpleName) return
+        exists($cls//MethodCall[@MethodName = 'remove'][ArgumentList/@Size = 0][string(*[1]/@Name) = $n])
+        or exists($cls//MethodCall[@MethodName = 'set'][ArgumentList/@Size = 1][exists(ancestor::FinallyClause)]
+                    [string(*[1]/@Name) = $n])
+        or exists($cls//MethodCall[@MethodName = 'set'][ArgumentList/NullLiteral][string(*[1]/@Name) = $n])
+        or ($q != '' and exists($cls//MethodCall[matches(@MethodName, $helper)]
+                                  [*[1][self::TypeExpression/ClassType/@SimpleName = $q]]))
+    }
+return
+for $m in //ClassDeclaration[pmd-java:typeIs('jakarta.servlet.Filter') or pmd-java:typeIs('javax.servlet.Filter')
+                             or pmd-java:typeIs('org.springframework.web.filter.OncePerRequestFilter')]
+            /ClassBody/MethodDeclaration[@Name = ('doFilter', 'doFilterInternal')][FormalParameters/@Size = 3]
+return
+  (let $cls := $m/parent::ClassBody return
+     $m//MethodCall[@MethodName = 'set'][ArgumentList/@Size = 1][empty(ArgumentList/NullLiteral)]
+       [empty(ancestor::FinallyClause)]
+       [*[1][self::VariableAccess or self::FieldAccess][pmd-java:typeIs('java.lang.ThreadLocal')]]
+       [not($tlCleared($cls, *[1]))])
+  |
+  (let $cls := $m/parent::ClassBody return
+     $m//MethodCall[pmd-java:matchesSig('org.slf4j.MDC#put(_,_)')
+                    or pmd-java:matchesSig('org.apache.logging.log4j.ThreadContext#put(_,_)')]
+       [empty(ancestor::FinallyClause)]
+       [not($mdcCleared($cls)) and not($mdcRemoved($cls, ArgumentList/*[1]))])
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ReusableObjectPerCall" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Build this once and reuse it: once built it is safe to share between threads, and building it costs far more than using it. Keep it in a static final constant, a final field set in the constructor, or a @Bean.">
     <priority>2</priority>

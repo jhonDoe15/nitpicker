@@ -50,5 +50,9 @@
 ["parallel/Totals.java", "ParallelStreamSharedMutation", 19, 42],
 ["parallel/Totals.java", "ParallelStreamSharedMutation", 25, 44],
 ["parallel/Totals.java", "ParallelStreamSharedMutation", 30, 38],
-["parallel/Totals.java", "ParameterMutation", 94, 41]
+["parallel/Totals.java", "ParameterMutation", 94, 41],
+["requestscope/LeakyFilters.java", "MissingStaticMethodInNonInstantiatableClass", 13, 14],
+["requestscope/LeakyFilters.java", "RequestThreadLocalNotCleared", 23, 13],
+["requestscope/LeakyFilters.java", "RequestThreadLocalNotCleared", 34, 13],
+["requestscope/TidyFilters.java", "MissingStaticMethodInNonInstantiatableClass", 14, 14]
 ]

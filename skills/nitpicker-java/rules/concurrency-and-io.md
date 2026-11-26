@@ -129,6 +129,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Futures: never start and wait in the same step: `map(id -> supplyAsync(...)).map(CompletableFuture::join)`
   and `supplyAsync(...).join()` run one task at a time. Collect the futures with `toList()` first, then join
   them in a second pipeline (`pmd/FutureJoinedWhereStarted`).
+- Clear every `ThreadLocal` value and `MDC` key a servlet filter sets: call `remove()` or `MDC.remove(key)` in a
+  `finally` around `chain.doFilter`, or use `MDC.putCloseable`, because pooled server threads carry the value into
+  the next request (`pmd/RequestThreadLocalNotCleared`).
 - A `static` field or a singleton bean's field does not hold a `SimpleDateFormat`, `DecimalFormat`, `Calendar`,
   `Matcher`, `Cipher`, `Mac`, `BeanWrapper` or retry back-off: use `DateTimeFormatter`, a `Pattern` constant with
   `pattern.matcher(text)` per call, a per-call instance or a `ThreadLocal` (`pmd/SharedStatefulHelperField`).
