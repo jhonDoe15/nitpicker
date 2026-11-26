@@ -5,6 +5,7 @@ import { useTempProjects } from '../../../../shared/test-support/temp-projects.m
 import { fieldOf, listOf, parseJson } from '../../../../shared/values/readers.mts';
 import { engineFolders, engineWriting, type Started } from '../test-support/engine-writing.mts';
 import {
+  ON_ENGINE,
   SPOTBUGS_ENGINE_SARIF,
   spotbugsArgumentsFor,
   spotbugsOnEngine,
@@ -70,9 +71,7 @@ describe('spotbugsOnEngine', () => {
       '--classpath',
       path.join(plan.reportDir, 'spotbugs-engine-classpath.txt'),
     ]);
-    expect(String(fieldOf(start?.environment, 'NP_SB_ONLY')).split(',')).toContain(
-      'WMI_WRONG_MAP_ITERATOR',
-    );
+    expect(fieldOf(start?.environment, 'NP_SB_ONLY')).toBe(ON_ENGINE.join(','));
     expect(fieldOf(start?.environment, 'NITPICKER_JDK')).toBe(plan.javaHome);
     expect(readFileSync(path.join(plan.reportDir, 'spotbugs-engine-sources.txt'), 'utf8')).toBe(
       `${plan.sources[0] ?? ''}\n`,
@@ -151,9 +150,7 @@ describe('spotbugsOnEngine', () => {
       true,
       false,
     ]);
-    expect(String(fieldOf(started[0]?.environment, 'NP_SB_ONLY')).split(',')).toContain(
-      'WMI_WRONG_MAP_ITERATOR',
-    );
+    expect(fieldOf(started[0]?.environment, 'NP_SB_ONLY')).toBe(ON_ENGINE.join(','));
   });
 
   it('skips a detector whose patterns all run on the engine and filters out the others', () => {

@@ -15,6 +15,7 @@ import { escapeXml } from '../../builds/typed/xml-views.mts';
 
 const COMPILER = 'maven-compiler-plugin';
 const CENTRAL = 'central';
+const CONFIGURATION = 'configuration';
 const PLACEHOLDER_OPEN = ['$', '{'].join('');
 
 type Setting = (name: string, property: string) => string | undefined;
@@ -33,7 +34,7 @@ function compilerConfigurations(plugin: XmlElement | undefined, executionId: str
   const execution = childrenAt(plugin, 'executions', 'execution').find(
     (candidate) => textAt(candidate, 'id') === executionId,
   );
-  return [childAt(execution, 'configuration'), childAt(plugin, 'configuration')].filter(
+  return [childAt(execution, CONFIGURATION), childAt(plugin, CONFIGURATION)].filter(
     (configuration) => configuration !== undefined,
   );
 }
@@ -163,8 +164,8 @@ function isExtraCompile(execution: XmlElement): boolean {
   return (
     textAt(execution, 'id') !== 'default-compile' &&
     textAt(execution, 'phase') !== 'none' &&
-    textAt(execution, 'configuration', 'skipMain') !== 'true' &&
-    childAt(execution, 'configuration', 'compileSourceRoots') === undefined
+    textAt(execution, CONFIGURATION, 'skipMain') !== 'true' &&
+    childAt(execution, CONFIGURATION, 'compileSourceRoots') === undefined
   );
 }
 
@@ -177,8 +178,8 @@ function extraCompiles(
     .filter(isExtraCompile)
     .map((execution) => {
       const configurations = [
-        childAt(execution, 'configuration'),
-        childAt(plugin, 'configuration'),
+        childAt(execution, CONFIGURATION),
+        childAt(plugin, CONFIGURATION),
       ].filter((configuration) => configuration !== undefined);
       const setting = settingOf(project, configurations);
       return {

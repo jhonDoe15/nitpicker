@@ -3,7 +3,7 @@ import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
 import { presetToDeclare as untypedPresetToDeclare } from '../../configuration/project-checks/preset-detection.mts';
 import { parseConfigFile } from '../../configuration/layers/layers.mts';
-import { fieldOf, messageOf } from '../../../shared/values/readers.mts';
+import { fieldOf, isPlainObject, messageOf } from '../../../shared/values/readers.mts';
 import type { PlanContext, PlanProject, ProjectEntry } from '../project-types.mts';
 import type { NitpickerConfig, ProjectOverlay } from '../../../shared/values/config-types.mts';
 import { readLayeredConfig } from '../../configuration/layers/read-layered.mts';
@@ -69,7 +69,8 @@ function nestedExcludes(entry: ProjectEntry, allPaths: readonly string[]): strin
     });
 }
 
-const SCRIPT_PRESETS = new Set(['typescript', 'javascript']);
+const DEFAULT_PRESET = 'typescript';
+const SCRIPT_PRESETS = new Set([DEFAULT_PRESET, 'javascript']);
 export const WEB_SOURCE_FOLDERS = ['src/main/webapp', 'src/main/frontend', 'frontend'];
 
 function companionSettings(
@@ -164,7 +165,7 @@ function withDerivedRoots(
   }: { absolute: string; overlay: ProjectOverlay | undefined; repositoryRoot: string },
   loaded: Loaded,
 ): Derived {
-  const preset = loaded.config?.preset ?? overlay?.preset ?? 'typescript';
+  const preset = loaded.config?.preset ?? overlay?.preset ?? DEFAULT_PRESET;
   const unset = loaded.config !== undefined && loaded.config.layout?.sourceRoots === undefined;
   const roots =
     entry.path !== '.' && unset && SCRIPT_PRESETS.has(preset)
@@ -174,7 +175,8 @@ function withDerivedRoots(
     return { overlay, loaded };
   }
   const settings = overlay?.settings ?? {};
-  const layout = { ...(fieldOf(settings, 'layout') ?? {}), sourceRoots: roots };
+  const declared = fieldOf(settings, 'layout');
+  const layout = { ...(isPlainObject(declared) ? declared : undefined), sourceRoots: roots };
   const derived = { ...overlay, settings: { ...settings, layout } };
   return {
     overlay: derived,
@@ -229,7 +231,7 @@ export function describeProject(entry: ProjectEntry, context: PlanContext): Plan
     repoPath: path.posix.normalize(path.posix.join(prefix, folder)),
     origin: entry.origin,
     overlay,
-    preset: loaded.config?.preset ?? overlay?.preset ?? 'typescript',
+    preset: loaded.config?.preset ?? overlay?.preset ?? DEFAULT_PRESET,
     ...(entry.workspace === undefined
       ? {}
       : { toolchainRoot: path.posix.normalize(path.posix.join(prefix, entry.workspace)) }),

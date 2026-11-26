@@ -43,7 +43,7 @@ export function isModular(files: readonly string[]): boolean {
 }
 
 type SetShape = Omit<CompileSet, 'name' | 'sources' | 'compiler'>;
-export type ModuleFiles = { readonly main: readonly string[]; readonly test: readonly string[] };
+type ModuleFiles = { readonly main: readonly string[]; readonly test: readonly string[] };
 type SetsRequest = {
   readonly module: SourceModule;
   readonly classpaths: Classpaths;
@@ -62,7 +62,9 @@ function mainSets(
     const sources = selectedSources(module.sourceRoots, files, execution.sources).filter(
       (file) => !taken.has(file),
     );
-    sources.forEach((file) => taken.add(file));
+    for (const file of sources) {
+      taken.add(file);
+    }
     return {
       ...shape,
       ...sized(shape, sources),

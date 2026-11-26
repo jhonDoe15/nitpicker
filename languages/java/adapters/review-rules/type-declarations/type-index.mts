@@ -57,7 +57,12 @@ function qualifiedName(named: Named, name: string, from: TypeDecl): TypeDecl | u
 export function indexOf(types: readonly TypeDecl[]): TypeIndex {
   const byName = new Map<string, TypeDecl[]>();
   for (const type of types) {
-    byName.set(type.name, [...(byName.get(type.name) ?? []), type]);
+    const group = byName.get(type.name);
+    if (group) {
+      group.push(type);
+    } else {
+      byName.set(type.name, [type]);
+    }
   }
   function named(name: string): readonly TypeDecl[] {
     return byName.get(name) ?? [];

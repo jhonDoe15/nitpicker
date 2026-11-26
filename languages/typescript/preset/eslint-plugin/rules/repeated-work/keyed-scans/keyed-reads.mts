@@ -63,15 +63,16 @@ function changesWithin(
 
 export function readsLoopState(
   sourceCode: SourceCode,
-  node: TSESTree.Node,
+  read: TSESTree.Node,
   repeat: TSESTree.Node,
 ): boolean {
   return someNode(
-    node,
-    (child) =>
-      child.type === AST_NODE_TYPES.Identifier &&
-      ((declaredWithin(sourceCode, child, repeat) && !declaredWithin(sourceCode, child, node)) ||
-        changesWithin(sourceCode, child, repeat)),
+    read,
+    (identifier) =>
+      identifier.type === AST_NODE_TYPES.Identifier &&
+      ((declaredWithin(sourceCode, identifier, repeat) &&
+        !declaredWithin(sourceCode, identifier, read)) ||
+        changesWithin(sourceCode, identifier, repeat)),
   );
 }
 

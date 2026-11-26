@@ -26,7 +26,7 @@ const ELISION_OPTIONS = [
   'emitDecoratorMetadata',
 ];
 
-let extracted = new Map<string, EngineExtraction>();
+const extracted = new Map<string, EngineExtraction>();
 
 function isEngineFile(fileName: string): boolean {
   return ENGINE_EXTENSIONS.has(path.extname(fileName)) && !/\.d\.[mc]?ts$/u.test(fileName);
@@ -55,12 +55,20 @@ export function transpilesLikeEngine(transpileOptions: unknown): boolean {
 export function withEngineSources(gather: Gather): Gather {
   return (fileAndDirectoryArray, options) => {
     const sources = gather(fileAndDirectoryArray, options);
-    extracted = readsLikeEngine(options)
-      ? engineExtraction({
-          baseDirectory: String(options['baseDir'] ?? process.cwd()),
+    extracted.clear();
+    if (readsLikeEngine(options)) {
+      const baseDir = options['baseDir'];
+      const found = engineExtraction(
+        {
+          baseDirectory: typeof baseDir === 'string' ? baseDir : process.cwd(),
           files: sources.filter(isEngineFile),
-        })
-      : new Map();
+        },
+        process.env,
+      );
+      for (const [file, extraction] of found) {
+        extracted.set(file, extraction);
+      }
+    }
     return sources;
   };
 }
@@ -83,7 +91,9 @@ function copyOf(dependency: ExtractedDependency): ExtractedDependency {
 export function withEngineTypeScriptExtract(extract: Extract): Extract {
   return (options, fileName, transpileOptions) => {
     const found = engineFile(options, fileName, transpileOptions);
-    if (found === undefined) return extract(options, fileName, transpileOptions);
+    if (found === undefined) {
+      return extract(options, fileName, transpileOptions);
+    }
     const systems = listOf(options['moduleSystems']);
     return found.dependencies
       .filter((dependency) => systems.includes(dependency.moduleSystem))
