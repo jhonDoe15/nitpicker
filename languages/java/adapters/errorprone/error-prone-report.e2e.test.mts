@@ -1,5 +1,5 @@
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,6 +37,11 @@ public final class Probe {
         String path = new java.net.URI("file", null, input.get(1), null).getPath();
         boolean matches = java.util.regex.Pattern.compile(pattern).matcher(path).matches();
         System.out.print(String.join(" ", lines) + "\\n" + matches);
+      }
+      case "own" -> {
+        List<String> options = new ArrayList<>(rest.subList(1, rest.size()));
+        ErrorProneReport.ownOutput(options, rest.get(0));
+        System.out.print(String.join(" ", options));
       }
       case "processed" -> {
         String flag = ErrorProneReport.withoutGenerated(List.of("-s", rest.get(0)), List.of()).get(0);
@@ -189,6 +194,16 @@ describe.runIf(enabled)(
         'true',
       );
       expect(probe(['processed', output, `${work}/src/main/java/demo/Bench.java`])).toBe('false');
+    });
+
+    it('gives each parallel job its own class and generated-source folder', () => {
+      const classes = path.join(work, 'own', 'classes');
+      const generated = path.join(work, 'own', 'generated');
+
+      expect(probe(['own', 'slice-2', '-d', classes, '-s', generated, '-proc:full'])).toBe(
+        `-d ${classes}/slice-2 -s ${generated}/slice-2 -proc:full`,
+      );
+      expect(existsSync(path.join(classes, 'slice-2'))).toBe(true);
     });
 
     it('splits the sources into one slice per worker, keeping 40 files or more in each', () => {

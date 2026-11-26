@@ -350,11 +350,15 @@ public final class ErrorProneReport {
     List<String> others = sources.stream().filter(source -> !unsuppressed.contains(source)).toList();
     boolean immutable = immutableInReach(javacOptions(head, sources), sources);
     List<Job> jobs = new ArrayList<>();
-    for (List<String> group : Stream.of(others, unsuppressed).filter(list -> !list.isEmpty()).toList()) {
+    List<List<String>> groups = Stream.of(others, unsuppressed).filter(list -> !list.isEmpty()).toList();
+    for (List<String> group : groups) {
       List<List<String>> slices = slices(group);
       for (int slice = 0; slice < slices.size(); slice++) {
         List<String> files = slices.get(slice);
         List<String> options = javacOptions(head, sources);
+        if (groups.size() > 1 || slices.size() > 1) {
+          ownOutput(options, (group == unsuppressed ? "lombok-" : "slice-") + slice);
+        }
         if (fixChecks != null) {
           int processors = options.indexOf(PROCESSOR_PATH) + 1;
           options.set(processors, options.get(processors) + java.io.File.pathSeparator + fixChecks);
@@ -373,6 +377,21 @@ public final class ErrorProneReport {
       }
     }
     return jobs;
+  }
+
+  /**
+   * Moves a job's {@code -d} and {@code -s} folders into a subfolder of their own. Jobs run at once, and annotation
+   * processors that merge an index file in the class output would otherwise read each other's half-written files.
+   */
+  static void ownOutput(List<String> options, String job) throws IOException {
+    for (String flag : List.of("-d", "-s")) {
+      int at = options.indexOf(flag) + 1;
+      if (at > 0) {
+        Path folder = Path.of(options.get(at)).resolve(job);
+        Files.createDirectories(folder);
+        options.set(at, folder.toString());
+      }
+    }
   }
 
   /**
