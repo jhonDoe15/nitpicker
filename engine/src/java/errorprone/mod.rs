@@ -289,6 +289,9 @@ mod truth_checks;
 mod three_letter_zones;
 mod wakelock;
 mod flogger_args;
+mod no_allocation;
+mod must_be_closed;
+mod must_be_closed_fix;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -920,6 +923,8 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["UnnecessaryCopy"], unnecessary_copy::unnecessary_copy),
     (&["PackageLocation"], package_location::package_location),
     (&["OptionalNotPresent"], constant_expression_checks::optional_not_present),
+    (&["NoAllocation"], no_allocation::no_allocation),
+    (&["MustBeClosedChecker", "MustBeClosed"], must_be_closed::must_be_closed),
 ];
 
 pub struct ErrorProne;
