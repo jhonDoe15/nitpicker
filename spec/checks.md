@@ -1066,6 +1066,13 @@ a function shared with a sibling (both call it, it calls both back; Java follows
 sibling checks a `Set` or `Map` field keyed by its parameter. The reported entry point does not touch that guard and
 does not call the guarded sibling.
 
+Cache after guard fallback: `nitpicker/no-cache-after-guard-fallback` (production source, in `eslint-lint`) and
+`pmd/CacheAfterGuardFallback` (Java, main sources) report a cache write keyed by the same parameter as an earlier
+recursion guard check that returns early (TypeScript: `set` after `has` or `add`; Java: `put` or `putIfAbsent` after
+`!inProgress.add(node)`, `contains` or `containsKey`), in a function that recurses (TypeScript: through any functions
+of the file; Java: directly or through one other method of the class), unless the function names a partial result.
+The cached value may be one that a refused deeper turn cut short.
+
 Shrinking worklist join: `nitpicker/no-shrinking-worklist-join` (production source, in `eslint-lint`) and
 `pmd/ShrinkingWorklistJoin` (Java, main sources) report the join in a worklist loop that pushes a successor when a
 join into its stored state changed (`join`, `merge`, `union`, `meet`, `widen`, Java `addAll`, on `state.get(next)`),

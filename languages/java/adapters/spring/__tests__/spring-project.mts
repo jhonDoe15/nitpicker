@@ -164,6 +164,7 @@ const REVIEW_RULES = new Set([
   'UnguardedCyclicRecursion',
   'UnguardedRecursionEntry',
   'ShrinkingWorklistJoin',
+  'CacheAfterGuardFallback',
   'DepthOnlyWorklist',
   'DestroyLeavesDescendants',
   'HeadCutErrorOutput',

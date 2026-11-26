@@ -21,6 +21,7 @@ import { rule as ruleNoBooleanFlagParameter } from '../rules/flags/no-boolean-fl
 import { rule as ruleNoBranchInCompositionRoot } from '../rules/boundaries/no-branch-in-composition-root.mts';
 import { rule as ruleNoBtoaOnRuntimeText } from '../rules/encoding/no-btoa-on-runtime-text.mts';
 import { rule as ruleNoBufferedGrowingOutput } from '../rules/processes/output/no-buffered-growing-output.mts';
+import { rule as ruleNoCacheAfterGuardFallback } from '../rules/recursion/guards/no-cache-after-guard-fallback.mts';
 import { rule as ruleNoCacheWriteInTransaction } from '../rules/transactions/cache-writes/no-cache-write-in-transaction.mts';
 import { rule as ruleNoCachedRejection } from '../rules/lifecycles/memo/no-cached-rejection.mts';
 import { rule as ruleNoCaseMismatchedLookup } from '../rules/lookups/no-case-mismatched-lookup.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoMismatchedPreconditionMessage } from '../rules/preconditi
 import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
 import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
 import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
-import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multiple-collection-joins.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -123,6 +123,7 @@ export const partRules = {
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
   'no-btoa-on-runtime-text': ruleNoBtoaOnRuntimeText,
   'no-buffered-growing-output': ruleNoBufferedGrowingOutput,
+  'no-cache-after-guard-fallback': ruleNoCacheAfterGuardFallback,
   'no-cache-write-in-transaction': ruleNoCacheWriteInTransaction,
   'no-cached-rejection': ruleNoCachedRejection,
   'no-case-mismatched-lookup': ruleNoCaseMismatchedLookup,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
   'no-module-level-let': ruleNoModuleLevelLet,
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
-  'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
 };

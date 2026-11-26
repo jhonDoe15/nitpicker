@@ -25,6 +25,7 @@
   "pmd/BlockingInCompletionStage": ["performance", "async"],
   "pmd/BooleanFlagParameter": ["maintainability"],
   "pmd/BufferNeverReleased": ["bug", "reliability"],
+  "pmd/CacheAfterGuardFallback": ["bug"],
   "pmd/CachedEntityFieldNotSerializable": ["bug", "persistence"],
   "pmd/CachedFutureKeepsFailure": ["bug", "async"],
   "pmd/CallValueStoredInSharedField": ["bug", "async"],

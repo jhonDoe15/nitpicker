@@ -39,6 +39,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-operand-depth-recursion',
   'nitpicker/no-unguarded-recursion-entry',
   'nitpicker/no-shrinking-worklist-join',
+  'nitpicker/no-cache-after-guard-fallback',
   'nitpicker/no-depth-only-worklist',
   'nitpicker/no-chunkwise-stream-text',
   'nitpicker/no-route-without-auth',

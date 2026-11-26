@@ -316,6 +316,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Every entry point into a guarded recursion checks the same guard: when one function refuses a turn through an
   in-progress `Set` or `Map`, a sibling that reaches the same recursion checks it too, or calls the guarded one
   (`nitpicker/no-unguarded-recursion-entry`).
+- A cache never stores an answer a recursion guard may have cut short: skip the `set` when a deeper turn was refused,
+  or mark the value as partial (`nitpicker/no-cache-after-guard-fallback`).
 - A worklist pass whose transfer can remove facts keeps the last output per edge and recomputes each input from them,
   instead of joining into one stored input (`nitpicker/no-shrinking-worklist-join`).
 - A worklist that can add several items per turn keeps a `Set` of the items already expanded; a depth limit alone

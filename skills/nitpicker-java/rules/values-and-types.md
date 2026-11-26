@@ -264,6 +264,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   recurses only into the right operand, or takes a depth limit (`pmd/OperandDepthRecursion`).
 - Every entry point into a guarded recursion checks the same in-progress `Set` or `Map` as its sibling, or calls the
   guarded sibling (`pmd/UnguardedRecursionEntry`).
+- A cache never stores an answer that a recursion guard may have cut short in a deeper turn: skip the `put` or mark
+  the value as partial (`pmd/CacheAfterGuardFallback`).
 - A worklist that can add several items per turn keeps a `Set` of the items already expanded
   (`if (!expanded.add(item)) continue;`): a depth limit alone does not bound the number of paths
   (`pmd/DepthOnlyWorklist`).

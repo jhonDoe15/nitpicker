@@ -4,6 +4,7 @@ export const RECURSION_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/recursion/operands/no-operand-depth-recursion.mjs',
   'languages/typescript/preset/eslint-plugin/rules/recursion/guards/guard-uses.mjs',
   'languages/typescript/preset/eslint-plugin/rules/recursion/guards/no-unguarded-recursion-entry.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/recursion/guards/no-cache-after-guard-fallback.mjs',
   'languages/typescript/preset/eslint-plugin/rules/worklists/worklist-loops.mjs',
   'languages/typescript/preset/eslint-plugin/rules/worklists/no-shrinking-worklist-join.mjs',
   'languages/typescript/preset/eslint-plugin/rules/worklists/no-depth-only-worklist.mjs',

@@ -699,6 +699,12 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   sibling also calls and that calls both of them back. A turn that comes in through the unguarded entry is never
   refused, so nested input redoes the whole recursion on every turn. Allowed form: check the same guard in every entry
   point, or route the entry point through the guarded one.
+- `nitpicker/no-cache-after-guard-fallback`: a recursive function (directly, or through other functions of the file,
+  also when passed as a callback) that returns early when a guard `has` its parameter or refuses to `add` it, and later
+  `set`s the same parameter in another map. A deeper turn may have returned the fallback, so the stored answer may be
+  partial and what the cache holds depends on which caller asked first. A function that names a partial or incomplete
+  result (`partial`, `incomplete`, `provisional`, `truncated`, `cutShort`) is taken as handling it. Allowed form: do
+  not store an answer a refused turn fed into, or store it marked as partial.
 - `nitpicker/no-shrinking-worklist-join`: a worklist loop (`for...of` over an array it pushes to, or a `while` loop
   that `pop`s or `shift`s it) that pushes a successor when a join into the stored state of that successor reports a
   change (`join`, `merge`, `union`, `meet` or `widen` on `state.get(next)` or `state[next]`), while the transfer

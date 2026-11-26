@@ -49,6 +49,7 @@ export const productionGuardEntries: Record<string, Linter.RuleEntry> = {
   'nitpicker/no-operand-depth-recursion': 'error',
   'nitpicker/no-unguarded-recursion-entry': 'error',
   'nitpicker/no-shrinking-worklist-join': 'error',
+  'nitpicker/no-cache-after-guard-fallback': 'error',
   'nitpicker/no-depth-only-worklist': 'error',
   'nitpicker/no-chunkwise-stream-text': 'error',
   'nitpicker/no-in-memory-query': 'error',
