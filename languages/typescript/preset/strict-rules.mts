@@ -215,6 +215,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-head-cut-error-output',
   'nitpicker/require-compiler-file-name',
   'nitpicker/no-single-shape-manifest-field',
+  'nitpicker/require-moved-tsconfig-type-roots',
   'nitpicker/no-stderr-as-failure',
   'nitpicker/no-status-only-spawn-check',
   'nitpicker/no-buffered-growing-output',

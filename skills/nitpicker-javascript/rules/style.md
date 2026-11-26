@@ -348,6 +348,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A `package.json` field npm accepts in several shapes (`bundleDependencies: true`, `workspaces: { packages }`,
   `man` as a string) is checked with `Array.isArray` or `typeof` before a list member is read from it
   (`nitpicker/no-single-shape-manifest-field`).
+- A tsconfig that `extends` another and is written to a temporary folder sets `compilerOptions.typeRoots` to the type
+  roots of the original config: TypeScript derives the default from the folder of the config it opens
+  (`nitpicker/require-moved-tsconfig-type-roots`).
 - Decide whether a child process failed by its exit status (`status !== 0`, `exitCode`, the callback's `error`), not
   by text on its standard error, which also carries warnings and notices (`nitpicker/no-stderr-as-failure`).
 - Read `error` and `signal` of a `spawnSync` result before its `status`: a child that could not start, timed out or

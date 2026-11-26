@@ -60,6 +60,7 @@ import { rule as ruleRequireClientTimeout } from '../rules/clients/require-clien
 import { rule as ruleRequireCompilerFileName } from '../rules/compiler-api/require-compiler-file-name.mts';
 import { rule as ruleRequireErrorListener } from '../rules/events/require-error-listener.mts';
 import { rule as ruleRequireHttpTimeout } from '../rules/security/http/require-http-timeout.mts';
+import { rule as ruleRequireMovedTsconfigTypeRoots } from '../rules/temp-staging/require-moved-tsconfig-type-roots.mts';
 import { rule as ruleRequireProcessTimeout } from '../rules/processes/require-process-timeout.mts';
 import { rule as ruleRequirePromiseReject } from '../rules/promises/executors/require-promise-reject.mts';
 import { rule as ruleRequireTestProcessTimeout } from '../rules/test-runtime/processes/timeouts/require-test-process-timeout.mts';
@@ -140,6 +141,7 @@ export const partRules = {
   'require-compiler-file-name': ruleRequireCompilerFileName,
   'require-error-listener': ruleRequireErrorListener,
   'require-http-timeout': ruleRequireHttpTimeout,
+  'require-moved-tsconfig-type-roots': ruleRequireMovedTsconfigTypeRoots,
   'require-process-timeout': ruleRequireProcessTimeout,
   'require-promise-reject': ruleRequirePromiseReject,
   'require-test-process-timeout': ruleRequireTestProcessTimeout,

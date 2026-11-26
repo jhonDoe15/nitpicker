@@ -446,6 +446,10 @@ Compiler API without the input's file name: `nitpicker/require-compiler-file-nam
 `ts.createLanguageServiceSourceFile` called without a file name, or with a string literal, inside a function that has a
 parameter or local named for a file name or path. The compiler then treats every input as the same file.
 
+Moved tsconfig without type roots: `nitpicker/require-moved-tsconfig-type-roots` (production source, in `eslint-lint`)
+reports an object literal with an `extends` key that is serialized with `JSON.stringify` and written under
+`os.tmpdir()` or a `mkdtemp` folder without `compilerOptions.typeRoots`. The default type roots are the
+`node_modules/@types` folders above the opened config, so in a temporary folder global types are not found.
 Standard error as failure: `nitpicker/no-stderr-as-failure` (production source, in `eslint-lint`) and
 `pmd/StderrAsFailure` (Java, main sources) report a condition that fails a finished subprocess because its standard
 error is not empty, when the condition stands alone or is one side of `||` and its branch throws (or rejects, or

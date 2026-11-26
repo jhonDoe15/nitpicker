@@ -2052,6 +2052,14 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `package.json` file, or typed `PackageJson`, also through a variable or `a || b` / `a ?? []`. A manifest in the
   other shape throws `includes is not a function` or reads `undefined`. Not reported: code in the same function
   that checks the value with `Array.isArray` or `typeof`, and other values.
+- A tsconfig that extends another and is written to a temporary folder sets `typeRoots`
+  (`nitpicker/require-moved-tsconfig-type-roots`, production files). Reported: an object literal with an `extends` key,
+  serialized with `JSON.stringify` and written with `writeFile` or `writeFileSync` under `os.tmpdir()` or a `mkdtemp`
+  folder (followed through `const` variables and `path.join`), whose `compilerOptions` has no `typeRoots` key or is
+  missing. TypeScript derives the default `typeRoots` from the folder of the config it opens, so from a temporary
+  folder the project's `node_modules/@types` are not found. Not reported: a `typeRoots` key, a spread or a
+  `compilerOptions` value that is not an object literal, text written as it is, and folders outside the temporary
+  directory.
 - A finished child process is not judged by text on its standard error (`nitpicker/no-stderr-as-failure`,
   production files). Reported: an `if` or a ternary whose test (alone, or as one side of `||`) checks that the
   standard error is not empty (`stderr`, `stderr.length`, `stderr.length > 0`, `stderr !== ''`, also through
