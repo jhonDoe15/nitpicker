@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -57,6 +57,41 @@ describe('derived source roots', () => {
     });
     expect(derivedSourceRoots(found)).toEqual(['.']);
   });
+
+  it('leaves test folders out of the source roots', () => {
+    const found = packageWith({
+      'tsconfig.json': '{"include":["src","test"]}',
+      'test/a.test.ts': CODE,
+    });
+    expect(derivedSourceRoots(found)).toEqual(['.']);
+  });
+
+  it('expands braces in tsconfig.json includes', () => {
+    const found = packageWith({
+      'tsconfig.json': '{"include":["{app,lib}/**/*"]}',
+      'app/a.ts': CODE,
+      'lib/b.ts': CODE,
+    });
+    expect(derivedSourceRoots(found)).toEqual(['app', 'lib']);
+  });
+
+  it('takes a package.json entry without an extension', () => {
+    const found = packageWith({ 'package.json': '{"main":"lib/index"}', 'lib/index.js': CODE });
+    expect(derivedSourceRoots(found)).toEqual(['lib']);
+  });
+
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+    'skips a folder it cannot read',
+    () => {
+      const found = packageWith({ 'package.json': '{}', 'locked/a.ts': CODE, 'open/b.ts': CODE });
+      chmodSync(path.join(found, 'locked'), 0o000);
+      try {
+        expect(derivedSourceRoots(found)).toEqual(['.']);
+      } finally {
+        chmodSync(path.join(found, 'locked'), 0o755);
+      }
+    },
+  );
 
   it('derives nothing for a package without code outside its tool configuration', () => {
     const found = packageWith({

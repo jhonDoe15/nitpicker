@@ -57,7 +57,9 @@ function noticesOf(plan: MonorepoPlan, prepared: Prepared, cli: MonorepoCli): st
     ),
     ...unlistedHint(unlistedFolders(plan, comparison.changed)),
     ...submoduleHint(submodulePaths(plan).filter((folder) => comparison.changed.includes(folder))),
-    ...derivedLayoutHint(plan.projects),
+    ...derivedLayoutHint(
+      prepared.rows.filter(({ selection }) => selection.selected).map(({ project }) => project),
+    ),
   ];
   for (const notice of notices) {
     cli.stderr.write(`nitpicker: ${notice}\n`);

@@ -1,7 +1,8 @@
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, type Dirent } from 'node:fs';
 import path from 'node:path';
 import { parsedJsonc as untypedParsedJsonc } from '../../../../shared/jsonc/jsonc.mts';
 import { fieldOf, isPlainObject, listOf } from '../../../../shared/values/readers.mts';
+import { expandBraces } from '../../../../languages/typescript/preset/layout/source-root/root-paths.mts';
 
 type ParsedJsonc = { readonly kind: string; readonly value?: unknown };
 
@@ -10,11 +11,13 @@ const parsedJsonc: (text: string) => ParsedJsonc = untypedParsedJsonc;
 const PACKAGE_ROOT = '.';
 const DEFAULT_SOURCE_FOLDER = 'src';
 const BUILD_FOLDERS = ['dist', 'build', 'out', 'target', 'coverage', 'node_modules'];
+const TEST_FOLDERS = ['test', 'tests', '__tests__', 'e2e'];
 const ENTRY_FIELDS = ['main', 'module', 'exports', 'bin'];
 const OUTPUT_OPTIONS = ['outDir', 'declarationDir'];
 const GLOB_SYNTAX = /[*?{}[\]]/u;
 const FILE_NAME = /.\.[^./]+$/u;
 const CODE_FILE = /\.[cm]?[jt]sx?$/u;
+const EXTENSION = /\.[^./]+$/u;
 const TOOL_CONFIG = /\.config\.[cm]?[jt]s$/u;
 const DECLARATION_FILE = /\.d\.[cm]?ts$/u;
 
@@ -52,8 +55,10 @@ function rootsOf(
   output: ReadonlySet<string>,
 ): string[] {
   const folders = targets
+    .flatMap(expandBraces)
     .map(topFolderOf)
     .filter((folder): folder is string => folder !== undefined && !output.has(folder))
+    .filter((folder) => !TEST_FOLDERS.includes(folder))
     .filter((folder) => folder === PACKAGE_ROOT || isFolder(path.join(absolute, folder)));
   return folders.includes(PACKAGE_ROOT) ? [PACKAGE_ROOT] : [...new Set(folders)].sort();
 }
@@ -71,10 +76,18 @@ function isSourceName(name: string): boolean {
   return CODE_FILE.test(name) && !DECLARATION_FILE.test(name) && !TOOL_CONFIG.test(name);
 }
 
+function entriesOf(folder: string): Dirent[] {
+  try {
+    return readdirSync(folder, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+}
+
 function hasCode(folder: string, output: ReadonlySet<string>): boolean {
   const pending = [folder];
   for (const current of pending) {
-    for (const entry of readdirSync(current, { withFileTypes: true })) {
+    for (const entry of entriesOf(current)) {
       if (entry.isFile() && isSourceName(entry.name)) return true;
       if (entry.isDirectory() && !entry.name.startsWith('.') && !output.has(entry.name)) {
         pending.push(path.join(current, entry.name));
@@ -116,8 +129,8 @@ function derivedFrom(
   }
   const manifest = objectIn(path.join(absolute, 'package.json'));
   const fromManifest = rootsOf(
-    ENTRY_FIELDS.flatMap((field) => stringsIn(fieldOf(manifest, field))).filter((target) =>
-      CODE_FILE.test(target),
+    ENTRY_FIELDS.flatMap((field) => stringsIn(fieldOf(manifest, field))).filter(
+      (target) => CODE_FILE.test(target) || !EXTENSION.test(path.posix.basename(target)),
     ),
     absolute,
     output,
