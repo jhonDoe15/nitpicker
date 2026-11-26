@@ -65,8 +65,9 @@ const globalPins = {
   dangerouslyIgnoreUnhandledErrors: false,
   update: 'none' as const,
 };
-const coverageIgnoreHint =
-  /\/\*\s*(?:v8|c8|istanbul)\s+ignore\b[\s\S]*?\*\/|\/\/\s*(?:v8|c8|istanbul)\s+ignore\b[^\n]*/gu;
+const codeToken =
+  /(["'])(?:\\[\s\S]|(?!\1)[^\\\n])*\1|`(?:\\[\s\S]|[^\\`])*`|\/\*[\s\S]*?(?:\*\/|$)|\/\/[^\n]*/gu;
+const coverageIgnoreHint = /^\/[*/]\s*(?:v8|c8|istanbul)\s+ignore\b/u;
 const stripCoverageIgnoreHints: Vite.Plugin = {
   name: 'nitpicker-strip-coverage-ignore-hints',
   enforce: 'pre',
@@ -74,7 +75,9 @@ const stripCoverageIgnoreHints: Vite.Plugin = {
     if (id.includes('/node_modules/') || !code.includes('ignore')) {
       return undefined;
     }
-    const stripped = code.replaceAll(coverageIgnoreHint, (hint) => hint.replaceAll(/[^\n]/gu, ' '));
+    const stripped = code.replaceAll(codeToken, (token) =>
+      coverageIgnoreHint.test(token) ? token.replaceAll(/[^\n]/gu, ' ') : token,
+    );
     return stripped === code ? undefined : { code: stripped };
   },
 };
@@ -189,7 +192,6 @@ const coverage = {
   reporter: ['text', 'json'],
   reportsDirectory: 'reports/quality/coverage',
 };
-
 const configWithoutProjectConfig = {
   plugins: [stripCoverageIgnoreHints],
   test: {
@@ -207,7 +209,6 @@ const configWithoutProjectConfig = {
 function definesOwnTests(test: object = {}) {
   return ['projects', 'workspace', 'include'].some((key) => Reflect.get(test, key) !== undefined);
 }
-
 async function layeredOnProjectConfig(projectConfigFile: string, root: string) {
   const loaded = await loadConfigFromFile(projectConfigFile);
   const directory = path.dirname(projectConfigFile);
@@ -234,7 +235,6 @@ async function layeredOnProjectConfig(projectConfigFile: string, root: string) {
     },
   };
 }
-
 function timeoutLimits() {
   const parsed: unknown = JSON.parse(process.env.NITPICKER_TEST_TIMEOUT_LIMITS ?? '{}');
   const limits = new Map<string, unknown>(Object.entries(isPolicy(parsed) ? parsed : {}));

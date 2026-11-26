@@ -370,7 +370,7 @@ describe('the required checks of the typescript workflow', () => {
     const shards = listOf(fieldAt(jobs, 'self-gate-shard', 'strategy', 'matrix', 'shard'));
     const combining = budgetOf('self-gate');
 
-    expect(fieldAt(jobs, 'self-gate', 'needs')).toBe('self-gate-shard');
+    expect(fieldAt(jobs, 'self-gate', 'needs')).toEqual(['self-gate-shard', 'self-gate-tests']);
     expect(shards).toEqual([1, 2, 3]);
     expect(
       runsOf('self-gate').filter((run) => run.startsWith('node core/cli.mts aggregate')),
@@ -390,6 +390,34 @@ describe('the required checks of the typescript workflow', () => {
     ]);
     expect(budgetOf('self-gate-shard').slice(0, combining.length)).toEqual(combining);
     expect(runsOf('self-gate-shard').filter((run) => run.includes('--defer-exit'))).toEqual([]);
+  });
+
+  it('runs coverage and CRAP once, on the results the test shards recorded', () => {
+    const runsOf = (job: string): string[] =>
+      listOf(fieldAt(jobs, job, 'steps')).map((step) => String(fieldAt(step, 'run')));
+    const gateStep = listOf(fieldAt(jobs, 'self-gate-tests', 'steps')).find((step) =>
+      String(fieldAt(step, 'run')).startsWith('node core/cli.mts'),
+    );
+
+    expect({
+      needs: fieldAt(jobs, 'self-gate-tests', 'needs'),
+      shardRecords: runsOf('test-shard').some((run) =>
+        run.includes('--reporter=blob --outputFile'),
+      ),
+      shardsSkip: runsOf('self-gate-shard').some((run) =>
+        run.includes(
+          "config.disable = [...new Set([...(config.disable ?? []), 'coverage', 'crap'])]",
+        ),
+      ),
+      gate: fieldAt(gateStep, 'run'),
+      results: fieldAt(gateStep, 'env', 'NITPICKER_TEST_RESULTS'),
+    }).toEqual({
+      needs: 'test-shard',
+      shardRecords: true,
+      shardsSkip: true,
+      gate: 'node core/cli.mts --analyzer coverage --analyzer crap --output reports/self-gate-tests',
+      results: 'reports/test-results',
+    });
   });
 
   it('lets no workflow that runs on a label look at which label was added', () => {

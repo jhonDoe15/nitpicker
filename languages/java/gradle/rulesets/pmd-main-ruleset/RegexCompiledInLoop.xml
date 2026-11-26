@@ -1,0 +1,30 @@
+  <rule name="RegexCompiledInLoop" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="String.matches, replaceAll, replaceFirst and Pattern.matches compile their regex on every call, so with a constant pattern in a loop or a stream lambda the same pattern is compiled once per element. Compile it once: private static final Pattern DATED = Pattern.compile(...) and then DATED.matcher(line).matches() or DATED.matcher(line).replaceAll(...). An exception fits a loop that runs a few times, or a pattern that is cheap to compile.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $meta := '[\\\[\](){}.*+?^$|]',
+    $constant := function($a) {
+      exists($a/self::StringLiteral[matches(string(@ConstValue), $meta)])
+      or exists($a/self::VariableAccess[matches(@Name, '^[A-Z][A-Z0-9_]*$')]
+           [let $n := @Name
+            return some $f in ancestor::ClassBody[1]/FieldDeclaration[@Static = true()][pmd-java:modifiers() = 'final']
+                                 /VariableDeclarator[VariableId/@Name = $n][*[2][self::StringLiteral]]
+                   satisfies matches(string($f/*[2]/@ConstValue), $meta)])
+    }
+return
+//MethodCall[pmd-java:matchesSig('java.lang.String#matches(_)') or pmd-java:matchesSig('java.lang.String#replaceAll(_,_)')
+     or pmd-java:matchesSig('java.lang.String#replaceFirst(_,_)') or pmd-java:matchesSig('java.util.regex.Pattern#matches(_,_)')]
+  [$constant(ArgumentList/*[1])]
+  [let $m := .
+   return exists(ancestor::ForeachStatement[*[last()]//MethodCall[. is $m]])
+   or exists(ancestor::ForStatement[not(ForInit//MethodCall[. is $m])]) or exists(ancestor::WhileStatement) or exists(ancestor::DoStatement)
+   or exists(ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall
+        [@MethodName = ('map', 'filter', 'forEach', 'anyMatch', 'allMatch', 'noneMatch', 'flatMap', 'peek')]
+        [*[1][pmd-java:typeIs('java.util.stream.BaseStream')
+              or (../@MethodName = 'forEach' and (pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Map')))]]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

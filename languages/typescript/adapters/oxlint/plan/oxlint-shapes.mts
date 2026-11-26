@@ -148,3 +148,11 @@ export type OwnedMessage = {
   readonly message: string;
   readonly check: SpreadReport & { readonly ruleId: string };
 };
+
+export function residualPairs(residual: readonly ResidualGroup[]): Set<string> {
+  return new Set(
+    residual.flatMap((group) =>
+      group.files.flatMap((file) => group.rules.map((rule) => JSON.stringify([file, rule]))),
+    ),
+  );
+}

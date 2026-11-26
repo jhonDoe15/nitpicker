@@ -70,6 +70,7 @@
   "pmd/DroppedCallbackInTest": ["tests"],
   "pmd/ForEachSideEffect": ["maintainability"],
   "pmd/HandSplitHttpHeader": ["bug"],
+  "pmd/HiddenInheritedField": ["maintainability"],
   "pmd/HostPortColonSplit": ["bug"],
   "pmd/HttpValueCase": ["bug"],
   "pmd/IndexBoundOffByOne": ["bug"],

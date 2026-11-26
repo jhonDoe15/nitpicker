@@ -539,6 +539,35 @@ error. On Node.js 22, npm 10 can stop with `Cannot read properties of null (read
 while it resolves the optional peer dependencies of Vitest 4; the tool error then says to update npm
 (`npm install --global npm@11`; see [npm 10 and Vitest 4.1](#npm-10-and-vitest-41)).
 
+### Test results recorded by your test jobs
+
+The TypeScript `coverage` analyzer runs the project's tests on both snapshots. When CI already runs
+the whole suite with coverage, often split over several jobs, the gate can read that run instead
+of running the suite again: set `NITPICKER_TEST_RESULTS` to a folder that holds the merged
+`coverage-final.json` (Istanbul JSON, as `--coverage.reporter=json` writes it) and the Vitest JSON
+report as `test-report.json` (`--reporter=json`). A relative folder is read from the project root.
+For example, after test shards that each wrote a blob report with coverage:
+
+```bash
+npx vitest --merge-reports --coverage --coverage.reporter=json \
+  --coverage.reportsDirectory=test-results --reporter=json --outputFile=test-results/test-report.json
+NITPICKER_TEST_RESULTS=test-results npx nitpicker --analyzer coverage --analyzer crap
+```
+
+- The results describe the head only. The base tests are not run, so the base is judged the way a
+  red base is: a coverage, CRAP or slow-test finding is new when its file is added by the change or
+  it sits on a line the change adds or edits (see "A base whose tests fail"), and the run carries a
+  `tests-not-run-on-base` note instead of a tool error.
+- Record them with the coverage settings nitpicker uses: list every source file in
+  `coverage.include`, or a source file that no test loads is missing from the report instead of
+  showing as uncovered.
+- Record the results in the same checkout path the gate runs in: the paths in both files are moved
+  from the checkout into the snapshot nitpicker builds, and other paths are left alone.
+- Results that record a failing test are a `tests-failed` tool error; nitpicker does not run the
+  tests again to name them.
+- A base that is not run is not cached, so a later run without `NITPICKER_TEST_RESULTS` still runs
+  the base tests.
+
 ### Console summary
 
 A comparison run prints a short summary. New violations are grouped by rule, the most important

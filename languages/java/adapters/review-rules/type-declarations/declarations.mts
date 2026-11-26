@@ -1,6 +1,13 @@
 import { appendAll } from '../../../../../shared/lists/lists.mts';
-import type { BareSource, Span } from '../max-value-sums/sum-types.mts';
-import { forward, splitTopLevel } from '../max-value-sums/source/source-file.mts';
+import type { BareSource, SourceFile, Span } from '../max-value-sums/sum-types.mts';
+import {
+  angleStep,
+  forward,
+  parseSource,
+  splitTopLevel,
+} from '../max-value-sums/source/source-file.mts';
+import { blankLiterals, importsOf, mainSourceTexts, packageOf } from '../java-sources.mts';
+import type { MainSourceOptions } from '../java-sources.mts';
 import { memberAt, textAt } from './members.mts';
 import type { Member } from './members.mts';
 import type { FieldDecl, FileContext, MethodDecl, TypeDecl, TypeKind } from './types.mts';
@@ -16,25 +23,28 @@ type Header = {
   readonly open: number;
 };
 
-function lastName(source: BareSource, span: Span): string {
-  const names = source.tokens
-    .slice(span.from, span.to)
-    .filter(({ kind }) => kind === 'identifier')
-    .map(({ text }) => text);
-  const generic = source.tokens.slice(span.from, span.to).findIndex(({ text }) => text === '<');
-  const bare =
-    generic === -1
-      ? names
-      : source.tokens
-          .slice(span.from, span.from + generic)
-          .filter(({ kind }) => kind === 'identifier')
-          .map(({ text }) => text);
-  return bare.at(-1) ?? '';
+function qualifiedName(source: BareSource, span: Span): string {
+  const { tokens } = source;
+  const generic = tokens.slice(span.from, span.to).findIndex(({ text }) => text === '<');
+  const end = generic === -1 ? span.to : span.from + generic;
+  const last = tokens.slice(span.from, end).findLastIndex(({ kind }) => kind === 'identifier');
+  const parts = [span.from + last];
+  for (const at of parts) {
+    if (at - 2 >= span.from && textAt(tokens, at - 1) === '.') {
+      parts.push(at - 2);
+    }
+  }
+  return last === -1
+    ? ''
+    : parts
+        .map((at) => textAt(tokens, at))
+        .toReversed()
+        .join('.');
 }
 
 function namesIn(source: BareSource, span: Span): string[] {
   return splitTopLevel(source, span)
-    .map((part) => lastName(source, part))
+    .map((part) => qualifiedName(source, part))
     .filter((name) => name !== '');
 }
 
@@ -43,14 +53,16 @@ function markersOf(
   keyword: number,
 ): { marks: Map<string, number>; open: number } {
   const marks = new Map<string, number>();
+  let angle = 0;
   for (const { index } of forward(source, keyword + 2)) {
     const text = textAt(source.tokens, index);
     if (text === '{') {
       return { marks, open: index };
     }
-    if (HEADER_WORDS.has(text) && !marks.has(text)) {
+    if (angle === 0 && HEADER_WORDS.has(text) && !marks.has(text)) {
       marks.set(text, index);
     }
+    angle += angleStep(text);
   }
   return { marks, open: source.tokens.length };
 }
@@ -105,7 +117,7 @@ function bodyOf(
     if (inner.kind === 'method' && inner.method.name !== name) {
       methods.push(inner.method);
     } else if (inner.kind === 'field') {
-      fields.push(inner.field);
+      appendAll(fields, inner.fields);
     }
   }
   return { methods, fields };
@@ -134,6 +146,7 @@ function typeOf(source: BareSource, member: TypeMember, place: Place): TypeDecl 
     imports: context.imports,
     file: context.file,
     line: tokens[member.keyword + 1]?.line ?? 0,
+    body: member.body,
     superclass: header.superclass,
     interfaces: header.interfaces,
     methods,
@@ -164,4 +177,29 @@ export function declarationsOf(source: BareSource, context: FileContext): TypeDe
     );
   }
   return found;
+}
+
+const WILDCARD_IMPORT = /^\s*import\s+([\w.]+)\.\*\s*;/gmu;
+
+function wildcardImports(text: string): string[] {
+  return [...text.matchAll(WILDCARD_IMPORT)].map((match) => `${match[1] ?? ''}.*`);
+}
+
+export type ParsedTypes = { readonly source: SourceFile; readonly types: readonly TypeDecl[] };
+
+export function mainSourceTypes(projectRoot: string, options: MainSourceOptions): ParsedTypes[] {
+  return mainSourceTexts(projectRoot, options)
+    .filter(({ kotlin }) => !kotlin)
+    .map(({ file, text }) => {
+      const clean = blankLiterals(text);
+      const source = parseSource(text, { file, kotlin: false });
+      return {
+        source,
+        types: declarationsOf(source, {
+          file,
+          pkg: packageOf(clean),
+          imports: [...importsOf(clean), ...wildcardImports(clean)],
+        }),
+      };
+    });
 }

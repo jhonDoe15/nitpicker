@@ -3,17 +3,15 @@ import { pathInside } from '../../../../../shared/filesystem.mts';
 import type { JavaFinding } from '../../typed/java-values.mts';
 import type { JpaFilterOptions } from '../jpa-types.mts';
 import type { FetchSource } from './fetch-types.mts';
-import { crossedFetchAt, fetchSource } from './java/fetch-sites.mts';
+import { collectionFetchAt, crossedFetchAt, fetchSource } from './java/fetch-sites.mts';
 import { javaEntities } from './java/java-entities.mts';
 
 export const COLLECTION_FETCH_RULE = 'JpaMultipleCollectionFetch';
+export const PAGED_FETCH_RULE = 'SpringPagedCollectionFetch';
+const FETCH_RULES = new Set([COLLECTION_FETCH_RULE, PAGED_FETCH_RULE]);
 
 function isCandidate(finding: JavaFinding): boolean {
-  return (
-    finding.tool === 'pmd' &&
-    finding.rule === COLLECTION_FETCH_RULE &&
-    finding.path.endsWith('.java')
-  );
+  return finding.tool === 'pmd' && FETCH_RULES.has(finding.rule) && finding.path.endsWith('.java');
 }
 
 function sourceFile(projectRoot: string, relative: string): string | undefined {
@@ -36,6 +34,10 @@ export function withCrossedFetches(
     const source = sources.get(file) ?? fetchSource(readFileSync(file, 'utf8'));
     sources.set(file, source);
     const line = finding.location?.line ?? 1;
-    return crossedFetchAt(source, line, entities.relationOf) !== undefined;
+    const found =
+      finding.rule === PAGED_FETCH_RULE
+        ? collectionFetchAt(source, line, entities.relationOf)
+        : crossedFetchAt(source, line, entities.relationOf);
+    return found !== undefined;
   });
 }

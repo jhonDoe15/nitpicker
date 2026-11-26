@@ -60,7 +60,7 @@ public final class Prefetch {
   }
 
   public List<String> oneByOne(List<String> urls) {
-    return urls.stream().map(url -> CompletableFuture.supplyAsync(() -> body(url)).join()).toList(); // violation: UnboundedWait
+    return urls.stream().map(url -> CompletableFuture.supplyAsync(() -> body(url)).join()).toList(); // violation: UnboundedWait, FutureJoinedWhereStarted
   }
 
   public void virtualSubmit(List<String> urls) {
