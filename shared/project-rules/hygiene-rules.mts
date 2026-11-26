@@ -9,6 +9,7 @@ export const HYGIENE_RULE_IDS = {
   committedBinary: 'committed-binary',
   largeFile: 'large-file',
   committedBuildOutput: 'committed-build-output',
+  committedMinifiedBundle: 'committed-minified-bundle',
   migrationOrder: 'migration-order',
   migrationHardcodedName: 'migration-hardcoded-name',
   startSchemaPush: 'start-schema-push',
@@ -79,6 +80,13 @@ export const HYGIENE_RULES: RuleEntry[] = [
     check: REPOSITORY_HYGIENE,
     limit:
       'a committed build output folder (`dist`, `build`, `out`, `coverage`, `target` next to a project manifest; `.next`, `.nuxt`, `storybook-static`, `.turbo`, `.parcel-cache` anywhere)',
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
+    id: HYGIENE_RULE_IDS.committedMinifiedBundle,
+    check: REPOSITORY_HYGIENE,
+    limit:
+      'a tracked `.js`, `.mjs`, `.cjs` or `.ts` file of at least 20 KB that looks minified (an average line over 500 characters, or one line holding over 90% of the bytes), outside build output, `node_modules`, vendored and test folders',
     enforcedBy: EVERY_LANGUAGE,
   },
   {

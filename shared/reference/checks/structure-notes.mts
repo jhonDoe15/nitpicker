@@ -127,6 +127,11 @@ export const STRUCTURE_NOTES: Readonly<Record<string, RuleNote>> = {
     'Build output is generated, so committing it creates noise and merge conflicts.',
     'Remove the folder from version control and add it to `.gitignore`.',
   ],
+  'committed-minified-bundle': [
+    'A tracked `.js`, `.mjs`, `.cjs` or `.ts` file of at least 20 KB that looks minified (an average line over 500 characters, or one line holding over 90% of the bytes), outside build output, `node_modules`, vendored and test folders.',
+    'Analyzers treat a minified bundle as code: it slows every run by orders of magnitude and produces findings nobody can act on.',
+    'Move the file out of the source root, load it as a dependency, or exclude it in the layout.',
+  ],
   'migration-order': [
     'A migration the change adds that sorts before the newest migration on the base branch, or an Alembic or Django migration that forks the history.',
     'A database that already ran the newer migration skips the older one or refuses to start.',

@@ -208,6 +208,7 @@ describe('the hygiene configuration hash', () => {
       'conventions/lines.mts',
       'filesystem.mts',
       'head-policy.mts',
+      'hygiene/bundles/minified-bundles.mts',
       'hygiene/check-types.mts',
       'hygiene/cli.mts',
       'hygiene/files/build-output.mts',
