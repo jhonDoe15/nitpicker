@@ -101,7 +101,7 @@ impl<'a> Context<'a, '_> {
     pub fn report_when(&mut self, rule: &str, start: u32, end: Option<u32>, message: String, conditions: Vec<(String, String)>) {
         let (line, column) = self.place(start);
         let rule = if rule.contains('/') { rule.to_string() } else { format!("nitpicker/{rule}") };
-        let finding = Finding { file: self.display.to_string(), line, column, rule, message, symbol: None, priority: None };
+        let finding = Finding { file: self.display.to_string(), line, column, rule, message, symbol: None, priority: None, arguments: None };
         self.findings.push(Reported { finding, end: end.map(|end| self.place(end)), conditions });
     }
 }
@@ -172,7 +172,7 @@ impl Selection {
 }
 
 fn unparsed(display: &str, rule: &str) -> Vec<Reported> {
-    vec![Finding { file: display.to_string(), line: 1, column: 1, rule: rule.into(), message: String::new(), symbol: None, priority: None }.into()]
+    vec![Finding { file: display.to_string(), line: 1, column: 1, rule: rule.into(), message: String::new(), symbol: None, priority: None, arguments: None }.into()]
 }
 
 fn lint_file(path: &str, display: &str, settings: &[String], (selected, rules, view): (&[&'static str], &[Rule], bool), types: Option<&std::cell::RefCell<typed::types::Types>>) -> Vec<Reported> {
