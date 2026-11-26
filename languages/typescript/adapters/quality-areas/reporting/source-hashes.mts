@@ -26,6 +26,7 @@ import { readFileSync, lstatSync } from 'node:fs';
 import path from 'node:path';
 
 const DEFAULT_CASE = 'the default case';
+const LINE_BREAK = /\r?\n/u;
 const DEFAULT_CLAUSE = /^default\b/u;
 const NEVER_ANNOTATION = /^default\s*:[\s\S]*?:\s*never\b/u;
 const UNION_DEFAULT_HINT =
@@ -34,20 +35,21 @@ const VALUE_DEFAULT_HINT = ' (pass a value that no case lists)';
 
 export function withFunctionSourceHashes(parsed: unknown, projectRoot: string): CrapReport {
   const report: CrapReport = reportOf(parsed, 'function');
-  const sourceTexts = new Map<string, string>();
+  const sourceLines = new Map<string, readonly string[]>();
   const identities = new Map<string, FunctionIdentity>();
   return {
     ...report,
     functions: (report.functions ?? []).map((entry): CrapEntry => {
-      let source = sourceTexts.get(entry.source);
-      if (source === undefined) {
-        source = readProjectSource(projectRoot, entry.source);
-        sourceTexts.set(entry.source, source);
+      let lines = sourceLines.get(entry.source);
+      if (lines === undefined) {
+        const source = readProjectSource(projectRoot, entry.source);
+        lines = source.split(LINE_BREAK);
+        sourceLines.set(entry.source, lines);
         identities.set(entry.source, functionIdentity(source, entry.source));
       }
       const name = identities.get(entry.source)?.crapFunctionName(entry) ?? entry.function;
-      const text = sourceLineRange(
-        source,
+      const text = lineRange(
+        lines,
         entry.start ?? entry.lines?.start,
         entry.end ?? entry.lines?.end,
       );
@@ -256,6 +258,14 @@ function sourceLineRange(
   startLine: number | undefined,
   endLine: number | undefined,
 ): string {
+  return lineRange(source.split(LINE_BREAK), startLine, endLine);
+}
+
+function lineRange(
+  lines: readonly string[],
+  startLine: number | undefined,
+  endLine: number | undefined,
+): string {
   if (
     startLine === undefined ||
     endLine === undefined ||
@@ -265,8 +275,5 @@ function sourceLineRange(
   ) {
     return '';
   }
-  return source
-    .split(/\r?\n/)
-    .slice(startLine - 1, endLine)
-    .join('\n');
+  return lines.slice(startLine - 1, endLine).join('\n');
 }

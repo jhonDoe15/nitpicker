@@ -6,9 +6,14 @@ use std::sync::LazyLock;
 
 /// The grammar rejects an annotation between a type and `...`, and reads a record pattern with a qualified type
 /// (`case Shape.Box(var inside) ->`, `value instanceof Shape.Box(var inside)`) as a method call. The first is blanked out; in the second the dots of the
-/// record type become `_`, so the grammar sees one name and parses a record pattern.
+/// record type become `_`, so the grammar sees one name and parses a record pattern. The grammar also stops at a
+/// NUL character, which Java allows in strings, text blocks, character literals and comments: there it becomes a
+/// space. A NUL in code is left, so the file stays broken, as it is for PMD at the end of a file.
 pub fn masked(text: &str) -> Option<String> {
     let mut bytes: Option<Vec<u8>> = None;
+    if text.contains('\0') {
+        blank_quoted_nul(text, &mut bytes);
+    }
     if text.contains("...") {
         blank_spread_annotations(text, &mut bytes);
     }
@@ -27,6 +32,15 @@ fn blank_spread_annotations(text: &str, bytes: &mut Option<Vec<u8>>) {
             if !byte.is_ascii_whitespace() {
                 *byte = b' ';
             }
+        }
+    }
+}
+
+fn blank_quoted_nul(text: &str, bytes: &mut Option<Vec<u8>>) {
+    let code = code_bytes(text);
+    for (at, byte) in text.bytes().enumerate() {
+        if byte == 0 && !code[at] {
+            bytes.get_or_insert_with(|| text.as_bytes().to_vec())[at] = b' ';
         }
     }
 }

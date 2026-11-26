@@ -4,7 +4,10 @@ import { normalizedRelativePath, assertContainedPath } from './paths.mts';
 import { validatedWorktreeRoot as validatedSnapshotRoot } from '../static-checks/arguments.mts';
 import { positiveInteger as untypedPositiveInteger } from '../../../../core/diff/comparison/schema/values.mts';
 import path from 'node:path';
-import { analyzerDeadlineMs } from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mts';
+import {
+  analyzerDeadlineMs,
+  sizeAllowanceMs,
+} from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mts';
 
 export type EslintOptions = {
   readonly analyzerName: string;
@@ -121,7 +124,7 @@ export function parseArguments(
       Number(
         values.get('--timeout-ms') ??
           analyzerDeadlineMs(processEnvironment) ??
-          DEFAULT_ESLINT_TIMEOUT_MS,
+          DEFAULT_ESLINT_TIMEOUT_MS + sizeAllowanceMs(processEnvironment),
       ),
       '--timeout-ms',
     ),

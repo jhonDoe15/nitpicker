@@ -58,8 +58,8 @@
            else
              let $then := $self($self, $s/*[2], $loop),
                  $else := if ($s/*[3]) then $self($self, $s/*[3], $loop) else (true(), false()),
-                 $guard := exists($s/*[1][self::InstanceOfExpression or self::UnaryExpression[@Operator = '!']]
-                             /descendant-or-self::InstanceOfExpression[1]/*[1][self::VariableAccess][@Name = $caught]),
+                 $guard := exists($s/*[1][self::InfixExpression[@Operator = 'instanceof'] or self::UnaryExpression[@Operator = '!']]
+                             /descendant-or-self::InfixExpression[@Operator = 'instanceof'][1]/*[1][self::VariableAccess][@Name = $caught]),
                  $stopped := not($then[1] or $then[2]) or not($else[1] or $else[2])
              return if ($guard and $stopped) then (false(), false())
                     else ($then[1] or $else[1], $then[2] or $else[2])

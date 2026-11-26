@@ -12,9 +12,9 @@
         or (self::MethodCall[@MethodName = ('getName', 'getCanonicalName')][*[1][self::ClassLiteral]])]]
   [let $named := ArgumentList/*[1]/descendant-or-self::ClassLiteral/*[1]/@SimpleName,
        $own := ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration
-                           or self::InterfaceDeclaration or self::AnnotationTypeDeclaration],
+                           or self::AnnotationTypeDeclaration],
        $inFile := ancestor::CompilationUnit//*[self::ClassDeclaration or self::EnumDeclaration
-                           or self::RecordDeclaration or self::InterfaceDeclaration]/@SimpleName,
+                           or self::RecordDeclaration]/@SimpleName,
        $parents := $own/(ExtendsList | ImplementsList)/ClassType/@SimpleName,
        $words := function($n) { tokenize(replace($n, '([a-z0-9])([A-Z])', '$1 $2'), ' ') },
        $a := $words($own[last()]/@SimpleName),

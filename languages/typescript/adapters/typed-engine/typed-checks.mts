@@ -141,7 +141,12 @@ function projectGroups(parts: readonly TypedCheckPart[]): Map<string, number[]> 
   const groups = new Map<string, number[]>();
   for (const [index, part] of parts.entries()) {
     const key = JSON.stringify(part.project);
-    groups.set(key, [...(groups.get(key) ?? []), index]);
+    const group = groups.get(key);
+    if (group === undefined) {
+      groups.set(key, [index]);
+    } else {
+      group.push(index);
+    }
   }
   return groups;
 }

@@ -16,6 +16,10 @@ import {
   ENGINE_FINDINGS_FILE,
   replayEngineFindingsFrom,
 } from '../../../shared/engine/engine-findings-file.mts';
+import {
+  SEEDED_TREE_VARIABLE,
+  seedTreesFrom,
+} from '../../../shared/project-files/seeded/seeded-trees.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
@@ -55,6 +59,8 @@ const selectedRules = selectedRuleIds(process.env['NITPICKER_DIFF_ESLINT_ONLY_RU
 shareSolverAnswers(answerStore(optionalEnvironmentPath(SOLVER_ANSWERS_ENVIRONMENT)));
 
 replayEngineFindingsFrom(optionalEnvironmentPath(ENGINE_FINDINGS_FILE));
+
+seedTreesFrom(optionalEnvironmentPath(SEEDED_TREE_VARIABLE));
 
 export default guardedEntries(
   (
