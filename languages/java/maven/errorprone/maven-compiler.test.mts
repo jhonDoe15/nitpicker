@@ -79,6 +79,43 @@ describe('compilerSettings', () => {
     ]);
   });
 
+  it('reads the default compile includes and excludes, and each extra compile execution with its own level', () => {
+    const settings = compilerSettings(
+      project(`<properties><maven.compiler.release>8</maven.compiler.release></properties>
+        <build><plugins><plugin><artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <excludes><exclude>org/example/jwk/EdEcKeys.java</exclude></excludes>
+          <testExcludes><testExclude>**/Slow*.java</testExclude></testExcludes>
+        </configuration>
+        <executions>
+          <execution><id>compile-java15</id><goals><goal>compile</goal></goals><configuration>
+            <includes><include>org/example/jwk/EdEcKeys.java</include></includes>
+            <excludes combine.self="override" />
+            <release>15</release>
+          </configuration></execution>
+          <execution><id>java9-module</id><goals><goal>compile</goal></goals><configuration>
+            <compileSourceRoots><compileSourceRoot>src/main/java9</compileSourceRoot></compileSourceRoots>
+          </configuration></execution>
+          <execution><id>off</id><phase>none</phase><goals><goal>compile</goal></goals></execution>
+        </executions></plugin></plugins></build>`),
+    );
+
+    expect([settings.sources, settings.test?.sources, settings.executions]).toStrictEqual([
+      { includes: [], excludes: ['org/example/jwk/EdEcKeys.java'] },
+      { includes: [], excludes: ['**/Slow*.java'] },
+      [
+        {
+          id: 'compile-java15',
+          release: '15',
+          source: undefined,
+          target: undefined,
+          compilerArgs: [],
+          sources: { includes: ['org/example/jwk/EdEcKeys.java'], excludes: [] },
+        },
+      ],
+    ]);
+  });
+
   it("treats an empty release as missing and falls back to the plugin's own default level", () => {
     const level = (body: string) => {
       const { release, source, target } = compilerSettings(project(body));
@@ -172,6 +209,28 @@ describe('compilerSettings', () => {
         withPath(lombok, `<dependency>${lombok}<version>\${lombok.version}</version></dependency>`),
       ),
     ).toThrow(message('${lombok.version}'));
+  });
+});
+
+describe('processorRepositories', () => {
+  it('carries the repositories the project declares, without central, into the processor tool', () => {
+    const settings = compilerSettings(
+      project(`<repositories>
+          <repository><id>central</id><url>https://repo.maven.apache.org/maven2</url></repository>
+          <repository><id>plugins</id><url>https://repo.example.org/public/?a=1&amp;b=2</url>
+            <snapshots><enabled>false</enabled></snapshots></repository>
+        </repositories>${SPRING_STYLE}`),
+    );
+    const plain = defined(processorTool(compilerSettings(project(SPRING_STYLE))));
+    const tool = defined(processorTool(settings));
+
+    expect(settings.processorRepositories).toEqual([
+      '<repository><id>plugins</id><url>https://repo.example.org/public/?a=1&amp;b=2</url>' +
+        '<snapshots><enabled>false</enabled></snapshots></repository>',
+    ]);
+    expect(tool.repositories).toEqual(settings.processorRepositories);
+    expect(tool.name).not.toBe(plain.name);
+    expect(plain.repositories).toBeUndefined();
   });
 });
 

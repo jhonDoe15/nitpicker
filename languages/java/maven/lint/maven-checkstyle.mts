@@ -16,7 +16,7 @@ import { CHECKSTYLE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools
 import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
 import { fieldOf, fieldsOf, optionalText, textOf } from '../../../../shared/values/readers.mts';
 import { skipWithoutJdk, toolJava } from '../errorprone/maven-jdk.mts';
-import type { SourceModule } from '../errorprone/compiler-types.mts';
+import type { SourceModule } from '../compile-sets/compiler-types.mts';
 import { javaCommand, runJava } from '../programs/java-command.mts';
 import type { ToolClasspaths } from '../typed/kotlin-types.mts';
 import { javaFiles } from './java-files.mts';

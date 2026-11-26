@@ -1,5 +1,6 @@
 //! Checks on the value given to a variable or returned from a method.
 use super::Context;
+use super::fixes::Fix;
 use crate::engine::source::{children, named_children, parent};
 use crate::java::helpers::{declarators, has_modifier};
 use crate::java::types::model::Type;
@@ -69,12 +70,8 @@ pub fn unnecessary_boxed_assignment(context: &Context, node: Node) {
         return;
     };
     if given.unboxed_or_same() == Type::Primitive(primitive) {
-        context.report(
-            "UnnecessaryBoxedAssignment",
-            node,
-            list.start_byte(),
-            "This expression can be implicitly boxed.",
-        );
+        let fix = Fix::replace(call.start_byte(), call.end_byte(), context.text(arguments[0]));
+        context.report_fixed("UnnecessaryBoxedAssignment", node, list.start_byte(), "This expression can be implicitly boxed.", &[fix]);
     }
 }
 
@@ -196,6 +193,21 @@ fn constant(context: &Context, expression: Node) -> bool {
     }
 }
 
+/// An `int` literal operand gets an `L`, else the left operand a `(long)` cast.
+fn widening_fix<'t>(context: &Context, operation: Node<'t>) -> Fix {
+    let int_literal = |operand: Option<Node<'t>>| {
+        operand.filter(|operand| {
+            matches!(operand.kind(), "decimal_integer_literal" | "hex_integer_literal" | "octal_integer_literal" | "binary_integer_literal")
+                && !context.text(*operand).ends_with(['l', 'L'])
+        })
+    };
+    let left = operation.child_by_field_name("left");
+    if let Some(literal) = int_literal(left).or_else(|| int_literal(operation.child_by_field_name("right"))) {
+        return Fix::new().insert(literal.end_byte(), "L");
+    }
+    Fix::new().insert(left.map_or(operation.start_byte(), |left| left.start_byte()), "(long) ")
+}
+
 pub fn int_long_math(context: &Context, node: Node) {
     let Some(value) = handed(context, node).filter(|value| {
         matches!(
@@ -242,12 +254,8 @@ pub fn int_long_math(context: &Context, node: Node) {
     } else {
         value.start_byte()
     };
-    context.report(
-        "IntLongMath",
-        node,
-        at,
-        "Expression of type int may overflow before being assigned to a long",
-    );
+    let fix = widening_fix(context, innermost.expect("an inner operation"));
+    context.report_fixed("IntLongMath", node, at, "Expression of type int may overflow before being assigned to a long", &[fix]);
 }
 
 fn target_name<'f>(context: &'f Context, node: Node) -> Option<&'f str> {
@@ -265,6 +273,18 @@ fn target_name<'f>(context: &'f Context, node: Node) -> Option<&'f str> {
     node.child_by_field_name(field)
         .filter(|left| left.kind() == "identifier")
         .map(|left| context.text(left))
+}
+
+/// Deletes the declaration and writes its modifiers and type before the one assignment.
+fn inline_fix(context: &Context, declaration: Node, declarator: Node, assignment: Node) -> Fix {
+    let names = declarators(declaration);
+    let end = match children(declaration).into_iter().find(|part| part.kind() == "," && part.start_byte() >= declarator.end_byte()) {
+        Some(comma) if names.last() != Some(&declarator) => comma.end_byte(),
+        _ => declaration.end_byte(),
+    };
+    let modifiers = crate::java::helpers::modifiers(declaration).map(|modifiers| format!("{} ", context.text(modifiers))).unwrap_or_default();
+    let written = declaration.child_by_field_name("type").map(|kind| context.text(kind)).unwrap_or_default();
+    Fix::replace(declaration.start_byte(), end, "").insert(assignment.start_byte(), format!("{modifiers}{written} "))
 }
 
 pub fn initialize_inline(context: &Context, node: Node) {
@@ -309,11 +329,13 @@ pub fn initialize_inline(context: &Context, node: Node) {
                 _ => false,
             });
         if direct && !changed {
-            context.report(
+            let fix = inline_fix(context, node, declarator, plain[0]);
+            context.report_fixed(
                 "InitializeInline",
                 declarator,
                 name.start_byte(),
                 "Initializing variables in their declaring statement is clearer, where possible.",
+                &[fix],
             );
         }
     }

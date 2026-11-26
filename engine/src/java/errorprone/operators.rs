@@ -1,5 +1,6 @@
 //! Checks on operators.
 use super::Context;
+use super::fixes::Fix;
 use crate::engine::source::parent;
 use crate::java::types::model::{OBJECT, Type, flag};
 use tree_sitter::Node;
@@ -47,7 +48,7 @@ pub fn operator_precedence(context: &Context, node: Node) {
                 || (shift(this) && arithmetic(that))
                 || (shift(that) && arithmetic(this));
             if precedence(this) != precedence(that) && confusing {
-                context.report("OperatorPrecedence", node, own.start_byte(), PRECEDENCE);
+                context.report_fixed("OperatorPrecedence", node, own.start_byte(), PRECEDENCE, &[precedence_fix(context, node, this)]);
             }
         }
         "ternary_expression" => {
@@ -62,11 +63,40 @@ pub fn operator_precedence(context: &Context, node: Node) {
                 _ => false,
             };
             if boolean {
-                context.report("OperatorPrecedence", condition, own.start_byte(), PRECEDENCE);
+                let fix = Fix::new().insert(condition.start_byte(), "(").insert(condition.end_byte(), ")");
+                context.report_fixed("OperatorPrecedence", condition, own.start_byte(), PRECEDENCE, &[fix]);
             }
         }
         _ => {}
     }
+}
+
+/// `(a && b) && c` becomes `(a && b && c)`, anything else gets parentheses around it.
+fn precedence_fix(context: &Context, node: Node, kind: &str) -> Fix {
+    let (start, end) = (node.start_byte(), node.end_byte());
+    let basic = Fix::new().insert(start, "(").insert(end, ")");
+    let (Some(left), Some(right)) = (node.child_by_field_name("left"), node.child_by_field_name("right")) else { return basic };
+    let parenthesized = |side: Node| side.kind() == "parenthesized_expression";
+    if !matches!(kind, "&&" | "||" | "+") || parenthesized(left) == parenthesized(right) {
+        return basic;
+    }
+    let inner = stripped(if parenthesized(left) { left } else { right });
+    if inner.kind() != "binary_expression" || operator(inner).is_none_or(|own| context.text(own) != kind) {
+        return basic;
+    }
+    if parenthesized(right) {
+        Fix::new().insert(start, "(").delete(right.start_byte(), right.start_byte() + 1).insert(end, "")
+    } else {
+        Fix::new().insert(start, "").delete(left.end_byte() - 1, left.end_byte()).insert(end, ")")
+    }
+}
+
+fn stripped(mut node: Node) -> Node {
+    while node.kind() == "parenthesized_expression" {
+        let Some(inner) = node.named_child(0) else { break };
+        node = inner;
+    }
+    node
 }
 
 fn declares_equals(context: &Context, class: &str) -> bool {
@@ -155,5 +185,6 @@ pub fn reference_equality(context: &Context, node: Node) {
             }
         }
     }
-    context.report("ReferenceEquality", node, own.start_byte(), "Comparison using reference equality instead of value equality");
+    let fixes = super::equality_fix::fixes(context, node, context.text(own));
+    context.report_fixed("ReferenceEquality", node, own.start_byte(), "Comparison using reference equality instead of value equality", &fixes);
 }
