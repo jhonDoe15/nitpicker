@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { CodeFolders } from '../../../../languages/typescript/preset/notices/empty-sources.mts';
 import { parsedJsonc as untypedParsedJsonc } from '../../../../shared/jsonc/jsonc.mts';
 import { resolveInside as untypedResolveInside } from '../../../../shared/conventions/read-inside.mts';
-import { fieldOf, isPlainObject, listOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, isPlainObject, stringsIn } from '../../../../shared/values/readers.mts';
 import { PROJECT_ROOT as untypedProjectRoot } from '../../../../languages/typescript/preset/layout/source-root/root-paths.mts';
 
 type ParsedJsonc = { readonly kind: string; readonly value?: unknown };
@@ -33,23 +33,6 @@ function manifestOf(projectRoot: string): Record<string, unknown> | undefined {
   return parsed?.kind === 'json' && isPlainObject(parsed.value) ? parsed.value : undefined;
 }
 
-function childrenOf(value: unknown): readonly unknown[] {
-  if (Array.isArray(value)) {
-    return listOf(value);
-  }
-  return isPlainObject(value) ? Object.values(value) : [];
-}
-
-function targetsIn(value: unknown): string[] {
-  const pending: unknown[] = [value];
-  for (const current of pending) {
-    for (const child of childrenOf(current)) {
-      pending.push(child);
-    }
-  }
-  return pending.filter((entry): entry is string => typeof entry === 'string');
-}
-
 function rootFileTarget(projectRoot: string, target: string): boolean {
   const relative = path.posix.normalize(target.replaceAll('\\', '/'));
   const file = relative.includes('/') ? undefined : resolveInside(projectRoot, relative);
@@ -57,7 +40,7 @@ function rootFileTarget(projectRoot: string, target: string): boolean {
 }
 
 function entryAtRoot(manifest: Record<string, unknown>, projectRoot: string): boolean {
-  return ENTRY_FIELDS.flatMap((field) => targetsIn(fieldOf(manifest, field))).some((target) =>
+  return ENTRY_FIELDS.flatMap((field) => stringsIn(fieldOf(manifest, field))).some((target) =>
     rootFileTarget(projectRoot, target),
   );
 }

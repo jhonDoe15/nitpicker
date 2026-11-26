@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type { SourceCode } from '../typed/node-views.mts';
 import { staticMemberName } from '../support/member-roots.mts';
+import { importedName } from '../../fixes/support/nodes.mts';
 import { findVariable } from '../analysis/constant-resolution.mts';
 import {
   isGlobalObject,
@@ -170,14 +171,6 @@ function checkPattern(state: State, pattern: TSESTree.ObjectPattern): void {
       ...restStreamReads(context, pattern),
     ]);
   }
-}
-
-function importedName(specifier: Specifier): string | undefined {
-  if (specifier.type !== AST_NODE_TYPES.ImportSpecifier) {
-    return undefined;
-  }
-  const { imported } = specifier;
-  return imported.type === AST_NODE_TYPES.Identifier ? imported.name : imported.value;
 }
 
 function localName(specifier: Specifier): string {

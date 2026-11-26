@@ -13,12 +13,12 @@ export function nameOfCall(node: TSESTree.Node): string {
 
 type Pending = { readonly node: TSESTree.Node; readonly depth: number };
 
-interface ResolveOptions {
+type ResolveOptions = {
   readonly context: SourceContext;
   readonly node: TSESTree.Node;
   readonly operandsOf: (value: TSESTree.Node) => readonly TSESTree.Node[];
   readonly maxDepth: number;
-}
+};
 
 function resolvedAt(options: ResolveOptions, pending: Pending): TSESTree.Node | undefined {
   return pending.depth > options.maxDepth

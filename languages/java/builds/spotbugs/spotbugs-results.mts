@@ -146,7 +146,7 @@ function placedNameOf(
   placed: Placed,
   [kind, qualified, owner]: readonly [string, string, string],
 ): string {
-  if (placed.byArguments === true) {
+  if (placed.placement === 'arguments') {
     return finding.arguments?.[1] ?? qualified;
   }
   return placed.classNamed?.includes(finding.priority ?? 0)
@@ -164,7 +164,7 @@ function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): Spotbug
   const kind = place.slice(0, colon);
   const qualified = place.slice(colon + 1);
   const owner = ownerOf(kind, qualified);
-  const subject = placed.byArguments === true ? (finding.arguments?.[0] ?? owner) : owner;
+  const subject = placed.placement === 'arguments' ? (finding.arguments?.[0] ?? owner) : owner;
   const directory = packageOf(subject).replaceAll('.', '/');
   const file = path.basename(finding.file);
   return {

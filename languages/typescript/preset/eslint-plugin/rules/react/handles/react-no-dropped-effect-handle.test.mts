@@ -10,7 +10,10 @@ declare const events: {
   on(name: string, l: () => void): typeof events;
   onChange(l: () => void): IDisposable;
 };
-declare const stream: { subscribe(l: () => void): Subscription; pipe(...o: unknown[]): { subscribe(l: () => void): Subscription } };
+declare const stream: {
+  subscribe(l: () => void): Subscription;
+  pipe(...o: unknown[]): { subscribe(l: () => void): Subscription };
+};
 declare const history: { listen(l: () => void): () => void; setTitle(t: string): () => void };
 declare function registerFlush(key: string, f: () => void): () => void;
 declare const ref: { current: unknown };
