@@ -326,6 +326,14 @@ impl<'a, 't> Machine<'a, 't> {
         }))
     }
 
+    pub fn node_type_is(&self, id: u32, name: &str, exactly: bool) -> bool {
+        self.type_is(&Focus { item: Some(&Item::Node(id)), position: 1, size: 1 }, name, exactly)
+    }
+
+    pub fn node_matches_sig(&self, id: u32, written: &str) -> bool {
+        self.matches_sig(&Focus { item: Some(&Item::Node(id)), position: 1, size: 1 }, written)
+    }
+
     pub(super) fn type_is(&self, focus: &Focus, name: &str, exactly: bool) -> bool {
         let Some(Item::Node(id)) = focus.item else { return false };
         let Some(kind) = self.node_type(*id) else { return false };
