@@ -144,7 +144,7 @@ describe('spotbugsOnEngine', () => {
 
     expect(added.slice(0, 2)).toStrictEqual([
       '-omitVisitors',
-      'CloneIdiom,ConstructorThrow,FindHiddenMethod,DontCatchNullPointerException,WrongMapIterator',
+      'CloneIdiom,ConstructorThrow,DontCatchNullPointerException,WrongMapIterator',
     ]);
     expect(plain[1]).toBe(
       'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,FindHiddenMethod,DontCatchNullPointerException,WrongMapIterator',

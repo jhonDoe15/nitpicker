@@ -2119,5 +2119,12 @@
 ["hiding3/p/B.java", "HSM_HIDING_METHOD", 4, "The method 'f()' in class 'B' hides a method in class 'Q'. Declare the respective methods non-static or private to eradicate the problem."],
 ["hiding3/p/B.java", "HSM_HIDING_METHOD", 7, "The method 'g()' in class 'Y' hides a method in class 'In'. Declare the respective methods non-static or private to eradicate the problem."],
 ["hiding3/p/sub/Q.java", "HSM_HIDING_METHOD", 4, "The method 'f()' in class 'Q' hides a method in class 'A'. Declare the respective methods non-static or private to eradicate the problem."],
-["hiding3/p/sub/Q.java", "HSM_HIDING_METHOD", 7, "The method 'g()' in class 'Z' hides a method in class 'In'. Declare the respective methods non-static or private to eradicate the problem."]
+["hiding3/p/sub/Q.java", "HSM_HIDING_METHOD", 7, "The method 'g()' in class 'Z' hides a method in class 'In'. Declare the respective methods non-static or private to eradicate the problem."],
+["hiding4/A.java", "HSM_HIDING_METHOD", 5, "The method 'm()' in class 'B' hides a method in class 'A'. Declare the respective methods non-static or private to eradicate the problem."],
+["hiding4/A.java", "HSM_HIDING_METHOD", 12, "The method 'o()' in class 'C' hides a method in class 'A'. Declare the respective methods non-static or private to eradicate the problem."],
+["hiding4/q/A.java", "HSM_HIDING_METHOD", 15, "The method 'a()' in class 'B' hides a method in class 'A'. Declare the respective methods non-static or private to eradicate the problem."],
+["hiding4/q/A.java", "HSM_HIDING_METHOD", 16, "The method 'f()' in class 'B' hides a method in class 'A'. Declare the respective methods non-static or private to eradicate the problem."],
+["hiding4/q/A.java", "HSM_HIDING_METHOD", 18, "The method 'f()' in class 'F' hides a method in class '$D'. Declare the respective methods non-static or private to eradicate the problem."],
+["hiding4/q/A.java", "HSM_HIDING_METHOD", 19, "The method 'f()' in class 'G' hides a method in class '$D'. Declare the respective methods non-static or private to eradicate the problem."],
+["hiding4/q/A.java", "HSM_HIDING_METHOD", 19, "The method 'f()' in class 'G' hides a method in class 'F'. Declare the respective methods non-static or private to eradicate the problem."]
 ]

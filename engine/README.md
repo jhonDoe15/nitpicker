@@ -765,8 +765,12 @@ library classes too (`Thread.currentThread()`); a package-private method of a su
 Priority 2, level `error`, line = the method's first line, arguments the signature with simple parameter types,
 the simple binary name of the class (`N1`, `1L` for a local class, `1` for an anonymous one) and of the
 superclass. The SARIF name drops the package only when the superclass is in the class's own package (`B.f()`, but
-`p.T.currentThread()`). The engine writes the place as `function:p.B.f()@p.A` so nitpicker can tell. Every
-pattern of `FindHiddenMethod` is on the engine, so SpotBugs no longer runs that detector.
+`p.T.currentThread()`). The engine writes the place as `function:p.B.f()@p.A` so nitpicker can tell. A class name
+that starts with `$` keeps it (`$D`). SpotBugs reports nothing more for a class from the first `native` method that
+hides one on, nothing for a class file with more than 1,000 methods (constructors, lambdas and the static
+initializer count; the engine estimates this from the source), and nothing for a class whose superclass chain
+cannot be resolved to `Object`. Every pattern of `FindHiddenMethod` is on the engine, so SpotBugs no longer runs
+that detector, except for Lombok modules: the engine does not see the static methods Lombok writes (`builder()`).
 
 On the six comparison code bases, SARIF results, same / missed / extra: jackson-databind 1 / 0 / 0, Guava
 8 / 0 / 0, the others 0.

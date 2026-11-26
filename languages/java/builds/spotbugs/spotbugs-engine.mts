@@ -61,7 +61,7 @@ export const ON_ENGINE: readonly string[] = [
   'SE_NO_SERIALVERSIONID',
   'HSM_HIDING_METHOD',
 ];
-const LOMBOK_WRITES = 'SING_';
+const LOMBOK_WRITES: readonly string[] = ['SING_', 'HSM_'];
 const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   MultipleInstantiationsOfSingletons: [
     'SING_SINGLETON_GETTER_NOT_SYNCHRONIZED',
@@ -234,7 +234,7 @@ export function spotbugsOnEngine(
   }
   const lombok = processors === 'lombok';
   const patterns = lombok
-    ? ON_ENGINE.filter((pattern) => !pattern.startsWith(LOMBOK_WRITES))
+    ? ON_ENGINE.filter((pattern) => !LOMBOK_WRITES.some((prefix) => pattern.startsWith(prefix)))
     : ON_ENGINE;
   try {
     const report = engineReport(plan, lombok, { binary, environment, run });
