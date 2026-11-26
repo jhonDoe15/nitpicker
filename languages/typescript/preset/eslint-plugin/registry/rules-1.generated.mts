@@ -14,6 +14,7 @@ import { rule as ruleNoAccumulatingGroupSpread } from '../rules/repeated-work/gr
 import { rule as ruleNoAccumulatingSpread } from '../rules/collections/no-accumulating-spread.mts';
 import { rule as ruleNoAccumulatorConcat } from '../rules/collections/no-accumulator-concat.mts';
 import { rule as ruleNoAddOnlyCollection } from '../rules/lifecycles/growth/no-add-only-collection.mts';
+import { rule as ruleNoAggregatePackageForOneMember } from '../rules/dependencies/no-aggregate-package-for-one-member.mts';
 import { rule as ruleNoAmbiguousLookupKey } from '../rules/lookup-keys/no-ambiguous-lookup-key.mts';
 import { rule as ruleNoArraySpreadArguments } from '../rules/collections/call-spreads/no-array-spread-arguments.mts';
 import { rule as ruleNoAssertionInLoop } from '../test-assertions/loop-assertions/no-assertion-in-loop.mts';
@@ -30,6 +31,7 @@ import { rule as ruleNoCaseMixedHeaderMerge } from '../rules/urls/requests/no-ca
 import { rule as ruleNoCaseSensitivePathCompare } from '../rules/urls/paths/no-case-sensitive-path-compare.mts';
 import { rule as ruleNoCheckThenWrite } from '../rules/transactions/no-check-then-write.mts';
 import { rule as ruleNoChildExitEvent } from '../rules/processes/events/no-child-exit-event.mts';
+import { rule as ruleNoChildWaitAfterLocalWork } from '../rules/heavy-steps/no-child-wait-after-local-work.mts';
 import { rule as ruleNoChunkwiseStreamText } from '../rules/chunks/no-chunkwise-stream-text.mts';
 import { rule as ruleNoCleanupSkippedOnFailure } from '../rules/lifecycles/release/no-cleanup-skipped-on-failure.mts';
 import { rule as ruleNoCollectedStreamRows } from '../rules/streams/no-collected-stream-rows.mts';
@@ -96,8 +98,6 @@ import { rule as ruleNoLookupPerElement } from '../rules/concurrency/reactive/no
 import { rule as ruleNoLoopInvariantCopy } from '../rules/repeated-work/copies/no-loop-invariant-copy.mts';
 import { rule as ruleNoLossyJsonStringify } from '../rules/json-values/no-lossy-json-stringify.mts';
 import { rule as ruleNoLossyUtf8Decode } from '../rules/decoding/no-lossy-utf8-decode.mts';
-import { rule as ruleNoMagicNumbers } from '../rules/wrapped/no-magic-numbers.mts';
-import { rule as ruleNoMalformedQueryText } from '../rules/query-text/no-malformed-query-text.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -116,6 +116,7 @@ export const partRules = {
   'no-accumulating-spread': ruleNoAccumulatingSpread,
   'no-accumulator-concat': ruleNoAccumulatorConcat,
   'no-add-only-collection': ruleNoAddOnlyCollection,
+  'no-aggregate-package-for-one-member': ruleNoAggregatePackageForOneMember,
   'no-ambiguous-lookup-key': ruleNoAmbiguousLookupKey,
   'no-array-spread-arguments': ruleNoArraySpreadArguments,
   'no-assertion-in-loop': ruleNoAssertionInLoop,
@@ -132,6 +133,7 @@ export const partRules = {
   'no-case-sensitive-path-compare': ruleNoCaseSensitivePathCompare,
   'no-check-then-write': ruleNoCheckThenWrite,
   'no-child-exit-event': ruleNoChildExitEvent,
+  'no-child-wait-after-local-work': ruleNoChildWaitAfterLocalWork,
   'no-chunkwise-stream-text': ruleNoChunkwiseStreamText,
   'no-cleanup-skipped-on-failure': ruleNoCleanupSkippedOnFailure,
   'no-collected-stream-rows': ruleNoCollectedStreamRows,
@@ -198,6 +200,4 @@ export const partRules = {
   'no-loop-invariant-copy': ruleNoLoopInvariantCopy,
   'no-lossy-json-stringify': ruleNoLossyJsonStringify,
   'no-lossy-utf8-decode': ruleNoLossyUtf8Decode,
-  'no-magic-numbers': ruleNoMagicNumbers,
-  'no-malformed-query-text': ruleNoMalformedQueryText,
 };

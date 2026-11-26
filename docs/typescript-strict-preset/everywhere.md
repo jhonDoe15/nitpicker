@@ -2218,6 +2218,105 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `--`), argument lists with a spread, and shell commands with a pipe, a
   redirection or a list (`git log | head -5`). Allowed forms: `spawn` with the output read as a stream, `stdio` set
   to a file descriptor, or a tool that writes its report to a file.
+- A list that grows with the input is not turned into one string before it is written or after it is read
+  (`nitpicker/no-whole-list-json-text`, production files). A string holds at most about 512 million characters: past
+  that `JSON.stringify` and `join` throw `RangeError: Invalid string length` and the output is lost exactly when it is
+  largest, and below it the process holds the whole text next to the objects (500 MB of JSON for 360,000 findings
+  peaks at 2.0 GB, against 0.45 GB read one record per line). Reported: `JSON.stringify(x)` or `x.join(...)` whose
+  result (alone, in a template or a `+`, or through a `const`) is the data of `writeFileSync`, `writeFile`,
+  `appendFileSync`, `appendFile`, `writeSync` or a `.write(...)` call, when `x` is a list that grows with the input: a
+  name or field whose last word is `findings`, `results`, `files`, `rows`, `entries`, `items`, `records`, `issues`,
+  `diagnostics`, `violations`, `lines` or `paths`, an empty array filled with `push` in a loop, an object or array
+  that holds one of those, or `map`, `filter`, `flatMap`, `sort` and the like of one; and
+  `JSON.parse(readFileSync(...))` (or an awaited `readFile`) whose result is read through such a field. Not reported:
+  a value of fixed shape (a summary, a config, a `const` set to an object literal or a string), a list cut with
+  `slice` first, and an array literal of fixed items. Write one element per line (JSON Lines) or in batches, and read
+  the file back line by line.
+- A list that grows with the input is not mapped into a new array only to be walked once
+  (`nitpicker/no-mapped-copy-for-single-pass`, production files). The copy and every object in it stay alive next to
+  the original until the walk ends, long enough to reach the old generation: with 360,000 findings each report file
+  added 100 to 300 MB to the process. Reported: `list.map(...)`, `list.filter(...)`, `list.flatMap(...)` or
+  `[...list]` passed straight to a function of the same file whose parameter is read exactly once, as the source of a
+  `for...of` loop, in `yield*` or in `Readable.from`, when `list` grows with the input (the same lists as
+  `nitpicker/no-whole-list-json-text`). Not reported: a copy that is stored, sorted, read twice or returned, a
+  parameter walked inside another loop or callback, a list cut with `slice` first, and functions from other files. Map
+  each item as it is consumed: a generator over the list, or the mapping inside the loop.
+- A long-running Go-built server or checker is started with a collector setting
+  (`nitpicker/require-go-collector-setting`, production files). With Go's default `GOGC=100` the heap grows to twice
+  its live size before each collection, which is gigabytes for a server that keeps a whole program in memory (the
+  TypeScript 7 API server peaked at 4.6 GB with a live heap of 3.0 to 3.6 GB, and at 4.2 GB with `GOGC=50`, same wall
+  time). Reported: `spawn`, `spawnSync`, `execFile`, `execFileSync` and execa calls whose command is `tsgo`,
+  `tsgolint` or `gopls` (a literal, a path ending in one of them or in the `@typescript/native-preview` package, or a
+  binding named like `tsgoPath`), or whose arguments include `--api` while the command is a binding or a `tsc` path,
+  when the options pass no `env`, or an `env` object without `GOGC` or `GOMEMLIMIT` (`env: process.env`, a spread of
+  `process.env` alone or a key set to `undefined` does not count). Not reported: `--version` and `--help` runs,
+  options or an `env` the rule cannot read (a parameter, another spread). Pass `env: { ...process.env, GOGC:
+  process.env.GOGC ?? '50' }`.
+- JVMs started in a loop or pool get a heap goal next to their heap ceiling (`nitpicker/require-jvm-heap-goal`,
+  production files). A ceiling is not a size: with the default throughput goal a JVM grows its heap toward `-Xmx` or
+  `-XX:MaxRAMPercentage` instead of collecting, and does not give it back, so several at once hold far more than their
+  live data (4.0 GB for about 1.6 GB of live data on a 15 GB machine). Reported: `spawn`, `spawnSync`, `execFile`,
+  `execFileSync` and execa calls on `java` (a literal or a path ending in `java` or `java.exe`, or a binding named
+  like `javaPath`) whose argument array sets `-Xmx`, `-XX:MaxRAMPercentage=` or `-XX:MaxRAM=` and none of
+  `-XX:GCTimeRatio=`, `-XX:SoftMaxHeapSize=` or `-XX:MaxHeapFreeRatio=`, and any child whose `env` sets such a ceiling
+  without a goal in `JAVA_TOOL_OPTIONS`, `JDK_JAVA_OPTIONS` or `_JAVA_OPTIONS`, when the call sits in a loop, in a
+  callback given to `map`, `forEach`, `flatMap`, `Promise.all`, `pMap`, `mapLimit` or a `limit` function, or in a
+  function of the same file called from one. Not reported: a JVM started once per run, argument arrays with a spread
+  (arguments from user configuration), and arrays with an element the rule cannot read whose name looks like a flag
+  (`goalFlag`, `jvmArgs`); the ceiling and the goal count together across the arguments and the options variables. Add
+  `-XX:GCTimeRatio=4` (or `-XX:SoftMaxHeapSize` with ZGC) next to the ceiling.
+- A whole file list that grows with the project is not handed to one type-aware run
+  (`nitpicker/no-unbatched-heavy-run`, production files). A type-aware linter or compiler builds one program over
+  every file it gets, so its memory grows with the project: 5.4 GB for a 4,400-file web app, against under 2 GB for
+  runs of at most 500 files with identical findings. Reported: a spread of a function parameter named like a file list
+  (`files`, `paths`, `allProjectFiles`) or of a file listing or glob result (as in
+  `nitpicker/no-growing-process-arguments`) in the argument array of `spawn`, `spawnSync`, `execFile`, `execFileSync`
+  or execa, when the command is `tsc`, `tsgo`, `tsgolint` or `vue-tsc` or the arguments include `--type-aware`,
+  `--type-check` or `--typecheck`, and the call does not sit in a loop, in a callback given to `map`, `forEach`,
+  `Promise.all` or a pool, or in a function of the same file called from one. Not reported: lists cut with `slice`,
+  literal lists and other commands. Split the list into bounded batches and run once per batch; splitting only by
+  command line length does not bound memory.
+- A function does not wait for a child process after in-process work the child does not read
+  (`nitpicker/no-child-wait-after-local-work`, production files). V8 does not give back the pages the in-process work
+  grew, so the parent sits at its high-water mark while the child runs and the machine holds both peaks at once (a
+  runner at 1.6 GB, 250 MB of it live, next to a 4.4 GB type-checker server; running the server first took the peak
+  from 6.72 GB to 5.49 GB with identical findings). Reported: in one function body, a `const` set from a call (awaited
+  or not) that starts a child process (`spawn`, `spawnSync`, `execFile`, `exec`, `fork`, execa and the like, directly
+  or in the body of a function of the same file) after a `const` set from a plain function call (not a method such as
+  `path.join` or `process.cwd`) that does not, when the child statement does not read the earlier binding and both
+  bindings are later put together in one array literal (`[...local, ...typed]`). Not reported: a child step that reads
+  the earlier result, results used apart or only gathered in an object, and two child steps. Run the child step first
+  and the in-process step after it.
+- A second TypeScript program is not built while the first is still in use
+  (`nitpicker/no-overlapping-typescript-programs`, production files). A program holds its syntax trees, binder symbols
+  and checker caches; while a binding still reads it, a full collection cannot free it, so the process needs room for
+  both, and on a machine with less memory than the heap limit it is killed. Reported: a call to `createProgram`,
+  `createWatchProgram`, `createLanguageService` or `createSemanticDiagnosticsBuilderProgram` imported from
+  `typescript` (namespace, default or named import) when an earlier such call in the same function was bound to a
+  variable that is read after it, before that variable is reassigned, directly or through a `const` set from its
+  `getTypeChecker()`. Not reported: a first program last read before the second build, builds in separate functions,
+  and functions of the same name from other packages. Read what you need from the first program before building the
+  second, or build each in its own function that returns plain data.
+- A long-lived map does not get one entry per loop item that is only read for that item
+  (`nitpicker/no-per-item-cache-growth`, production files, a broad rule). Each item adds an entry used only while that
+  item is processed, but the map lives as long as its owner, so memory grows with the number of items instead of
+  staying at the size of one (0.8 GB of token lists in one typed lint run). A `WeakMap` does not help when its keys
+  stay reachable from the same long-lived owner. Reported: `cache.set(key, value)` inside a `for...of` or `for...in`
+  loop, where `cache` is a module-level `const` or a class field initialised to an empty `new Map()` or `new
+  WeakMap()`, `key` reads the loop variable, a `cache.get(...)` with the same key follows in the same iteration, and
+  every other use of the map is inside that loop and none of them is `delete` or `clear`. Not reported: a map read or
+  handed on outside the loop (a lookup table), exported, reassigned or returned, a function-local map, and a loop over
+  an array literal. The cost only matters when the loop is long and the cached value is large; keep the value in a
+  local of the loop body, or delete the entry once the item is done.
+- A whole tool package is not loaded to use one member that ships as its own package
+  (`nitpicker/no-aggregate-package-for-one-member`, production files). `typescript-eslint` loads its parser, its
+  plugin and every rule definition; loading it to use only the parser costs about 0.5 CPU seconds more than
+  `@typescript-eslint/parser`, once per project in a monorepo run. Reported: `require`, a `createRequire(...)`
+  function, `await import(...)` and a static `import` of `typescript-eslint` whose result is used only through
+  `parser` (load `@typescript-eslint/parser`) or only through `plugin` (load `@typescript-eslint/eslint-plugin`): read
+  as a member of the call, destructured, imported by name, or a binding read only through that member. Not reported:
+  two or more members used, a binding used whole, and type-only imports. Load the member's package, resolved from the
+  location of the aggregate package when it is not a direct dependency.
 - Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and
   Python presets) have no TypeScript or JavaScript counterpart: nothing blocks a thread on a promise, and a promise
   that never settles is a missing deadline for `await`, which `nitpicker/require-client-timeout` and

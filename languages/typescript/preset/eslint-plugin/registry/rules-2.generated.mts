@@ -1,5 +1,8 @@
+import { rule as ruleNoMagicNumbers } from '../rules/wrapped/no-magic-numbers.mts';
+import { rule as ruleNoMalformedQueryText } from '../rules/query-text/no-malformed-query-text.mts';
 import { rule as ruleNoManagedResourceConstructionOutsideCompositionRoots } from '../rules/boundaries/no-managed-resource-construction-outside-composition-roots.mts';
 import { rule as ruleNoManyToManyCascadeRemove } from '../rules/persistence/no-many-to-many-cascade-remove.mts';
+import { rule as ruleNoMappedCopyForSinglePass } from '../rules/whole-lists/no-mapped-copy-for-single-pass.mts';
 import { rule as ruleNoMismatchedPreconditionMessage } from '../rules/preconditions/no-mismatched-precondition-message.mts';
 import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
 import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
@@ -18,11 +21,13 @@ import { rule as ruleNoOperandSlip } from '../rules/operands/no-operand-slip.mts
 import { rule as ruleNoOrmQueryLogging } from '../rules/database/no-orm-query-logging.mts';
 import { rule as ruleNoOrmSchemaSync } from '../rules/database/no-orm-schema-sync.mts';
 import { rule as ruleNoOverflowingBackoff } from '../rules/backoff/no-overflowing-backoff.mts';
+import { rule as ruleNoOverlappingTypescriptPrograms } from '../rules/program-lifetimes/no-overlapping-typescript-programs.mts';
 import { rule as ruleNoParameterMutation } from '../rules/signatures/no-parameter-mutation.mts';
 import { rule as ruleNoPartialOutputAssertion } from '../rules/test-runtime/assertions/no-partial-output-assertion.mts';
 import { rule as ruleNoPatternCompiledInLoop } from '../rules/repeated-work/patterns/no-pattern-compiled-in-loop.mts';
 import { rule as ruleNoPerCallDebounce } from '../rules/lifecycles/debounce/no-per-call-debounce.mts';
 import { rule as ruleNoPerCallRegistration } from '../rules/lifecycles/registrations/no-per-call-registration.mts';
+import { rule as ruleNoPerItemCacheGrowth } from '../rules/program-lifetimes/no-per-item-cache-growth.mts';
 import { rule as ruleNoPipeDroppingErrors } from '../rules/streams/no-pipe-dropping-errors.mts';
 import { rule as ruleNoPlaceholderImplementation } from '../rules/placeholders/no-placeholder-implementation.mts';
 import { rule as ruleNoPrefixWithoutBoundary } from '../rules/affixes/no-prefix-without-boundary.mts';
@@ -88,21 +93,19 @@ import { rule as ruleNoTypeLookupPerNode } from '../rules/type-lookups/no-type-l
 import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framework-in-domain.mts';
 import { rule as ruleNoUnanchoredAffixReplace } from '../rules/affixes/no-unanchored-affix-replace.mts';
 import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-writes.mts';
+import { rule as ruleNoUnbatchedHeavyRun } from '../rules/heavy-steps/no-unbatched-heavy-run.mts';
 import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mts';
 import { rule as ruleNoUncheckedResponseJson } from '../rules/response-json/no-unchecked-response-json.mts';
 import { rule as ruleNoUncheckedUrlSink } from '../rules/urls/links/no-unchecked-url-sink.mts';
 import { rule as ruleNoUnclearedSharedMock } from '../test-quality/shared-mocks/no-uncleared-shared-mock.mts';
-import { rule as ruleNoUnclearedTimeout } from '../rules/lifecycles/timers/no-uncleared-timeout.mts';
-import { rule as ruleNoUnclosedFileDescriptor } from '../rules/resources/descriptors/no-unclosed-file-descriptor.mts';
-import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mts';
-import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mts';
-import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mts';
-import { rule as ruleNoUnencodedUrlPart } from '../rules/urls/construction/no-unencoded-url-part.mts';
 
 export const partRules = {
+  'no-magic-numbers': ruleNoMagicNumbers,
+  'no-malformed-query-text': ruleNoMalformedQueryText,
   'no-managed-resource-construction-outside-composition-roots':
     ruleNoManagedResourceConstructionOutsideCompositionRoots,
   'no-many-to-many-cascade-remove': ruleNoManyToManyCascadeRemove,
+  'no-mapped-copy-for-single-pass': ruleNoMappedCopyForSinglePass,
   'no-mismatched-precondition-message': ruleNoMismatchedPreconditionMessage,
   'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
   'no-module-level-let': ruleNoModuleLevelLet,
@@ -121,11 +124,13 @@ export const partRules = {
   'no-orm-query-logging': ruleNoOrmQueryLogging,
   'no-orm-schema-sync': ruleNoOrmSchemaSync,
   'no-overflowing-backoff': ruleNoOverflowingBackoff,
+  'no-overlapping-typescript-programs': ruleNoOverlappingTypescriptPrograms,
   'no-parameter-mutation': ruleNoParameterMutation,
   'no-partial-output-assertion': ruleNoPartialOutputAssertion,
   'no-pattern-compiled-in-loop': ruleNoPatternCompiledInLoop,
   'no-per-call-debounce': ruleNoPerCallDebounce,
   'no-per-call-registration': ruleNoPerCallRegistration,
+  'no-per-item-cache-growth': ruleNoPerItemCacheGrowth,
   'no-pipe-dropping-errors': ruleNoPipeDroppingErrors,
   'no-placeholder-implementation': ruleNoPlaceholderImplementation,
   'no-prefix-without-boundary': ruleNoPrefixWithoutBoundary,
@@ -191,14 +196,9 @@ export const partRules = {
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
   'no-unanchored-affix-replace': ruleNoUnanchoredAffixReplace,
   'no-unatomic-writes': ruleNoUnatomicWrites,
+  'no-unbatched-heavy-run': ruleNoUnbatchedHeavyRun,
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,
   'no-unchecked-response-json': ruleNoUncheckedResponseJson,
   'no-unchecked-url-sink': ruleNoUncheckedUrlSink,
   'no-uncleared-shared-mock': ruleNoUnclearedSharedMock,
-  'no-uncleared-timeout': ruleNoUnclearedTimeout,
-  'no-unclosed-file-descriptor': ruleNoUnclosedFileDescriptor,
-  'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
-  'no-uncollected-tests': ruleNoUncollectedTests,
-  'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
-  'no-unencoded-url-part': ruleNoUnencodedUrlPart,
 };

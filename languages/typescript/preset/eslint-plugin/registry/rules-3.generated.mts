@@ -1,3 +1,9 @@
+import { rule as ruleNoUnclearedTimeout } from '../rules/lifecycles/timers/no-uncleared-timeout.mts';
+import { rule as ruleNoUnclosedFileDescriptor } from '../rules/resources/descriptors/no-unclosed-file-descriptor.mts';
+import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mts';
+import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mts';
+import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mts';
+import { rule as ruleNoUnencodedUrlPart } from '../rules/urls/construction/no-unencoded-url-part.mts';
 import { rule as ruleNoUnescapedCssSelector } from '../rules/selectors/no-unescaped-css-selector.mts';
 import { rule as ruleNoUnescapedFilterValue } from '../rules/patterns/filters/no-unescaped-filter-value.mts';
 import { rule as ruleNoUnescapedHtmlInterpolation } from '../rules/patterns/html/no-unescaped-html-interpolation.mts';
@@ -39,6 +45,7 @@ import { rule as ruleNoWallClockElapsed } from '../rules/wall-clock/no-wall-cloc
 import { rule as ruleNoWastedCollectionStep } from '../rules/collections/pipelines/no-wasted-collection-step.mts';
 import { rule as ruleNoWeakAssertion } from '../test-assertions/weak-assertion/no-weak-assertion.mts';
 import { rule as ruleNoWeakHash } from '../rules/security/hash/no-weak-hash.mts';
+import { rule as ruleNoWholeListJsonText } from '../rules/whole-lists/no-whole-list-json-text.mts';
 import { rule as ruleNoWholeRowsForOneValue } from '../rules/queries/columns/no-whole-rows-for-one-value.mts';
 import { rule as ruleNoWorkBeforeEarlyExit } from '../rules/repeated-work/early-exits/no-work-before-early-exit.mts';
 import { rule as ruleNoWorkerStateInConcurrentTests } from '../test-quality/concurrent-tests/no-worker-state-in-concurrent-tests.mts';
@@ -76,7 +83,9 @@ import { rule as ruleRequireAbortSignalForwarding } from '../rules/cancellation/
 import { rule as ruleRequireAtomicUpdates } from '../rules/wrapped/require-atomic-updates.mts';
 import { rule as ruleRequireClientTimeout } from '../rules/clients/require-client-timeout.mts';
 import { rule as ruleRequireErrorListener } from '../rules/events/require-error-listener.mts';
+import { rule as ruleRequireGoCollectorSetting } from '../rules/child-heaps/require-go-collector-setting.mts';
 import { rule as ruleRequireHttpTimeout } from '../rules/security/http/require-http-timeout.mts';
+import { rule as ruleRequireJvmHeapGoal } from '../rules/child-heaps/require-jvm-heap-goal.mts';
 import { rule as ruleRequireProcessTimeout } from '../rules/processes/require-process-timeout.mts';
 import { rule as ruleRequirePromiseReject } from '../rules/promises/executors/require-promise-reject.mts';
 import { rule as ruleRequireTestProcessTimeout } from '../rules/test-runtime/processes/timeouts/require-test-process-timeout.mts';
@@ -89,12 +98,14 @@ import { rule as ruleStructuredCatchLogging } from '../rules/errors/structured-c
 import { rule as ruleTestMustUseProductionRuntime } from '../rules/test-runtime/assertions/test-must-use-production-runtime.mts';
 import { rule as ruleTestTsconfigPinsLibAndTypes } from '../rules/test-runtime/types/test-tsconfig-pins-lib-and-types.mts';
 import { rule as ruleTimeUnitMismatch } from '../rules/time/units/time-unit-mismatch.mts';
-import { rule as ruleTimeoutAbandonsOperation } from '../rules/async/timeout-abandons-operation.mts';
-import { rule as ruleUnboundedFanOut } from '../rules/concurrency/unbounded-fan-out.mts';
-import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reactive/unbounded-reactive-fan-out.mts';
-import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-uncleared-timeout': ruleNoUnclearedTimeout,
+  'no-unclosed-file-descriptor': ruleNoUnclosedFileDescriptor,
+  'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
+  'no-uncollected-tests': ruleNoUncollectedTests,
+  'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
+  'no-unencoded-url-part': ruleNoUnencodedUrlPart,
   'no-unescaped-css-selector': ruleNoUnescapedCssSelector,
   'no-unescaped-filter-value': ruleNoUnescapedFilterValue,
   'no-unescaped-html-interpolation': ruleNoUnescapedHtmlInterpolation,
@@ -136,6 +147,7 @@ export const partRules = {
   'no-wasted-collection-step': ruleNoWastedCollectionStep,
   'no-weak-assertion': ruleNoWeakAssertion,
   'no-weak-hash': ruleNoWeakHash,
+  'no-whole-list-json-text': ruleNoWholeListJsonText,
   'no-whole-rows-for-one-value': ruleNoWholeRowsForOneValue,
   'no-work-before-early-exit': ruleNoWorkBeforeEarlyExit,
   'no-worker-state-in-concurrent-tests': ruleNoWorkerStateInConcurrentTests,
@@ -173,7 +185,9 @@ export const partRules = {
   'require-atomic-updates': ruleRequireAtomicUpdates,
   'require-client-timeout': ruleRequireClientTimeout,
   'require-error-listener': ruleRequireErrorListener,
+  'require-go-collector-setting': ruleRequireGoCollectorSetting,
   'require-http-timeout': ruleRequireHttpTimeout,
+  'require-jvm-heap-goal': ruleRequireJvmHeapGoal,
   'require-process-timeout': ruleRequireProcessTimeout,
   'require-promise-reject': ruleRequirePromiseReject,
   'require-test-process-timeout': ruleRequireTestProcessTimeout,
@@ -186,8 +200,4 @@ export const partRules = {
   'test-must-use-production-runtime': ruleTestMustUseProductionRuntime,
   'test-tsconfig-pins-lib-and-types': ruleTestTsconfigPinsLibAndTypes,
   'time-unit-mismatch': ruleTimeUnitMismatch,
-  'timeout-abandons-operation': ruleTimeoutAbandonsOperation,
-  'unbounded-fan-out': ruleUnboundedFanOut,
-  'unbounded-reactive-fan-out': ruleUnboundedReactiveFanOut,
-  'untested-round-trip': ruleUntestedRoundTrip,
 };

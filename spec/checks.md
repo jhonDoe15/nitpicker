@@ -467,6 +467,55 @@ a buffered `child_process` or `execa` call whose output is read when the command
 constant, or when `maxBuffer` is a constant and the output is parsed whole (`JSON.parse`, `split`). Past the limit
 the child is killed and the call fails with `ENOBUFS`; the allowed forms read the output as a stream or from a file.
 
+Whole-list JSON text: `nitpicker/no-whole-list-json-text` (production source, in `eslint-lint`) reports
+`JSON.stringify` or `join` of a list that grows with the input (a findings, results, files or rows list, or an array
+filled in a loop) whose result is written with `writeFileSync`, `appendFileSync`, `writeSync` or a stream's `write`,
+and `JSON.parse(readFileSync(...))` read for such a list. Past about 512 million characters the string cannot be built
+and the output is lost; below it the text doubles the memory of the data. The allowed form writes and reads one
+element per line.
+
+Copies walked once: `nitpicker/no-mapped-copy-for-single-pass` (production source, in `eslint-lint`) reports `map`,
+`filter`, `flatMap` or a spread copy of a list that grows with the input passed to a function of the same file that
+only walks that parameter once (`for...of`, `yield*`, `Readable.from`). The copy doubles the memory of the list for
+the length of the walk; the allowed form maps each item as it is consumed.
+
+Go collector settings: `nitpicker/require-go-collector-setting` (production source, in `eslint-lint`) reports a child
+process started on a Go-built server or checker (`tsgo`, `tsgolint`, `gopls`, the TypeScript 7 API server with
+`--api`) whose `env` sets neither `GOGC` nor `GOMEMLIMIT`. With the default `GOGC=100` such a server holds twice its
+live heap; the allowed form passes `GOGC` unless the user set one.
+
+JVM heap goals: `nitpicker/require-jvm-heap-goal` (production source, in `eslint-lint`) reports a `java` child process
+started in a loop, a parallel map or a pool, or from a function called there, whose arguments or `JAVA_TOOL_OPTIONS`
+set a heap ceiling (`-Xmx`, `-XX:MaxRAMPercentage`) and no goal (`-XX:GCTimeRatio`, `-XX:SoftMaxHeapSize`,
+`-XX:MaxHeapFreeRatio`). Each such JVM grows to its ceiling and keeps it, so concurrent JVMs hold far more than their
+live data; the allowed form adds `-XX:GCTimeRatio=4` next to the ceiling.
+
+Unbatched heavy runs: `nitpicker/no-unbatched-heavy-run` (production source, in `eslint-lint`) reports a parameter or
+file listing spread whole into the arguments of a type-aware run (`tsc`, `tsgo`, `tsgolint`, `vue-tsc`,
+`--type-aware`) that is not started from a loop, a parallel map or a pool. One program over every file grows with the
+project; the allowed form runs once per bounded batch.
+
+Child waits after local work: `nitpicker/no-child-wait-after-local-work` (production source, in `eslint-lint`) reports
+a statement that starts a child process (directly or through a function of the same file) after an in-process step
+whose result it does not read, when both results are later combined in one array. The parent holds the
+memory of its own step while the child runs; the allowed form runs the child step first.
+
+Overlapping TypeScript programs: `nitpicker/no-overlapping-typescript-programs` (production source, in `eslint-lint`)
+reports a second `createProgram`, `createWatchProgram`, `createLanguageService` or
+`createSemanticDiagnosticsBuilderProgram` from `typescript` in a function that still reads the first program, or its
+type checker, after it. Both programs stay live at once; the allowed form finishes with the first before building the
+second.
+
+Per-item caches: `nitpicker/no-per-item-cache-growth` (production source, in `eslint-lint`, a broad rule) reports a
+module-level or field `Map` or `WeakMap` that a loop fills with one entry per item and reads back only for the same
+item, when nothing removes the entries. The map grows with the number of items; the allowed form keeps the value in a
+local of the loop body or deletes the entry when the item is done.
+
+Aggregate packages for one member: `nitpicker/no-aggregate-package-for-one-member` (production source, in
+`eslint-lint`) reports a `require`, dynamic `import` or static `import` of `typescript-eslint` used only through
+`parser` or only through `plugin`, which ship as their own packages. The aggregate loads every part of the tool; the
+allowed form loads the member's package.
+
 Unbounded waits: `pmd/UnboundedWait` (Java, main sources) reports `get()` or `join()` without a timeout on a
 `Future` or `CompletableFuture`, `Thread.join()` and `CountDownLatch.await()`, and
 `pmd/ReactorBlockWithoutTimeout` (with `reactor-core` on the compile classpath) reports `block()`,
