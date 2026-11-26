@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { depthFirst, nameOf, nodeChildren } from '../typed/node-views.mts';
+import { ancestorsOf, contains, depthFirst, nameOf, nodeChildren } from '../typed/node-views.mts';
 import { enclosingFunction, isFunction, type FunctionNode } from '../typed/syntax-views.mts';
 import { isTreeSitterBinding, sourceOf } from './tree-sitter-module.mts';
 
@@ -93,21 +93,102 @@ function functionNames(fn: FunctionNode): string[] {
 
 function isDeclarationName(node: TSESTree.Identifier): boolean {
   const { parent } = node;
-  switch (parent.type) {
-    case AST_NODE_TYPES.FunctionDeclaration:
-    case AST_NODE_TYPES.FunctionExpression:
-    case AST_NODE_TYPES.VariableDeclarator:
-      return parent.id === node;
-    case AST_NODE_TYPES.MethodDefinition:
-    case AST_NODE_TYPES.PropertyDefinition:
-      return parent.key === node && !parent.computed;
-    default:
-      return false;
+  if (
+    parent.type === AST_NODE_TYPES.FunctionDeclaration ||
+    parent.type === AST_NODE_TYPES.FunctionExpression ||
+    parent.type === AST_NODE_TYPES.VariableDeclarator
+  ) {
+    return parent.id === node;
+  }
+  return (
+    (parent.type === AST_NODE_TYPES.MethodDefinition ||
+      parent.type === AST_NODE_TYPES.PropertyDefinition) &&
+    parent.key === node &&
+    !parent.computed
+  );
+}
+
+type Callers = Map<string, Set<FunctionNode | undefined>>;
+
+type Facts = {
+  readonly walks: TSESTree.Node[];
+  readonly checks: TSESTree.Node[];
+  readonly callers: Callers;
+  usesTreeSitter: boolean;
+};
+
+type ErrorCheckContext = Readonly<TSESLint.RuleContext<'unhandledErrorNodes', []>>;
+
+function recordSource(facts: Facts, node: TSESTree.Node): void {
+  const source = sourceOf(node);
+  facts.usesTreeSitter ||= source !== undefined && isTreeSitterBinding(source);
+}
+
+function recordCheck(facts: Facts, node: TSESTree.Node): void {
+  if (isCheck(node)) {
+    facts.checks.push(node);
   }
 }
 
-function contains(outer: TSESTree.Node, inner: TSESTree.Node): boolean {
-  return outer.range[0] <= inner.range[0] && inner.range[1] <= outer.range[1];
+function recordIdentifier(facts: Facts, node: TSESTree.Identifier): void {
+  recordCheck(facts, node);
+  if (isDeclarationName(node)) {
+    return;
+  }
+  const found = facts.callers.get(node.name) ?? new Set<FunctionNode | undefined>();
+  found.add(enclosingFunction(node));
+  facts.callers.set(node.name, found);
+}
+
+function checksIn(facts: Facts, fn: FunctionNode | undefined): boolean {
+  return fn === undefined
+    ? facts.checks.some((check) => enclosingFunction(check) === undefined)
+    : facts.checks.some((check) => contains(fn, check));
+}
+
+function callersOf(facts: Facts, fn: FunctionNode): (FunctionNode | undefined)[] {
+  return functionNames(fn).flatMap((name) => [...(facts.callers.get(name) ?? [])]);
+}
+
+function isHandled(facts: Facts, start: FunctionNode | undefined): boolean {
+  const pending = [start];
+  const seen = new Set<FunctionNode>();
+  for (const fn of pending) {
+    if (fn === undefined) {
+      if (checksIn(facts, undefined)) {
+        return true;
+      }
+      continue;
+    }
+    if (seen.has(fn)) {
+      continue;
+    }
+    seen.add(fn);
+    if (checksIn(facts, fn)) {
+      return true;
+    }
+    pending.push(...callersOf(facts, fn));
+  }
+  return false;
+}
+
+function reportUnhandledWalks(context: ErrorCheckContext, facts: Facts): void {
+  if (!facts.usesTreeSitter) {
+    return;
+  }
+  const reported = new Set<FunctionNode | undefined>();
+  for (const walk of facts.walks) {
+    const chain = ancestorsOf(walk).filter(isFunction);
+    const outer = chain.at(-1);
+    if (reported.has(outer) || chain.some((fn) => isHandled(facts, fn))) {
+      continue;
+    }
+    if (outer === undefined && checksIn(facts, undefined)) {
+      continue;
+    }
+    reported.add(outer);
+    context.report({ node: walk, messageId: 'unhandledErrorNodes' });
+  }
 }
 
 export const rule: TSESLint.RuleModule<'unhandledErrorNodes'> = {
@@ -123,89 +204,32 @@ export const rule: TSESLint.RuleModule<'unhandledErrorNodes'> = {
     },
   },
   create(context) {
-    let usesTreeSitter = false;
-    const walks: TSESTree.Node[] = [];
-    const checks: TSESTree.Node[] = [];
-    const callers = new Map<string, Set<FunctionNode | undefined>>();
-    const visitSource = (node: TSESTree.Node): void => {
-      const source = sourceOf(node);
-      usesTreeSitter ||= source !== undefined && isTreeSitterBinding(source);
-    };
+    const facts: Facts = { walks: [], checks: [], callers: new Map(), usesTreeSitter: false };
+    function visitSource(node: TSESTree.Node): void {
+      recordSource(facts, node);
+    }
     return {
       ImportDeclaration: visitSource,
       ImportExpression: visitSource,
       Identifier(node) {
-        if (isCheck(node)) {
-          checks.push(node);
-        }
-        if (!isDeclarationName(node)) {
-          const found = callers.get(node.name) ?? new Set<FunctionNode | undefined>();
-          found.add(enclosingFunction(node));
-          callers.set(node.name, found);
-        }
+        recordIdentifier(facts, node);
       },
       Literal(node) {
-        if (isCheck(node)) {
-          checks.push(node);
-        }
+        recordCheck(facts, node);
       },
       MemberExpression(node) {
         if (isChildList(node) && isChildWalk(node)) {
-          walks.push(node);
+          facts.walks.push(node);
         }
       },
       CallExpression(node) {
-        visitSource(node);
+        recordSource(facts, node);
         if (isChainedLookup(node)) {
-          walks.push(node);
+          facts.walks.push(node);
         }
       },
       'Program:exit'() {
-        if (!usesTreeSitter) {
-          return;
-        }
-        const checksIn = (fn: FunctionNode | undefined): boolean =>
-          fn === undefined
-            ? checks.some((check) => enclosingFunction(check) === undefined)
-            : checks.some((check) => contains(fn, check));
-        const handled = (
-          fn: FunctionNode | undefined,
-          seen: Set<FunctionNode | undefined>,
-        ): boolean => {
-          if (fn === undefined) {
-            return checksIn(undefined);
-          }
-          if (seen.has(fn)) {
-            return false;
-          }
-          seen.add(fn);
-          if (checksIn(fn)) {
-            return true;
-          }
-          return functionNames(fn).some((name) =>
-            [...(callers.get(name) ?? [])].some((caller) => handled(caller, seen)),
-          );
-        };
-        const chainOfFunctions = (node: TSESTree.Node): FunctionNode[] => {
-          const found: FunctionNode[] = [];
-          for (let fn = enclosingFunction(node); fn !== undefined; fn = enclosingFunction(fn)) {
-            found.push(fn);
-          }
-          return found;
-        };
-        const reported = new Set<FunctionNode | undefined>();
-        for (const walk of walks) {
-          const chain = chainOfFunctions(walk);
-          const outer = chain.at(-1);
-          if (reported.has(outer) || chain.some((fn) => handled(fn, new Set()))) {
-            continue;
-          }
-          if (outer === undefined && checksIn(undefined)) {
-            continue;
-          }
-          reported.add(outer);
-          context.report({ node: walk, messageId: 'unhandledErrorNodes' });
-        }
+        reportUnhandledWalks(context, facts);
       },
     };
   },
