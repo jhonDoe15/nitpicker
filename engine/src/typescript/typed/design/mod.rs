@@ -110,6 +110,7 @@ pub struct Cx<'a> {
     ids: HashMap<String, u32>,
     tables: Vec<Rc<NodeTable>>,
     types_at: HashMap<At, Option<Rc<Type>>>,
+    asked_ahead: HashSet<u32>,
     pub registry: Registry,
 }
 
@@ -223,7 +224,7 @@ fn export_names(names: &HashMap<u32, Vec<(At, String)>>, declaration: At) -> Vec
 }
 
 pub fn check(session: &mut Session, input: &Input) -> Found<Value> {
-    let mut cx = Cx { session, input, paths: Vec::new(), ids: HashMap::new(), tables: Vec::new(), types_at: HashMap::new(), registry: Registry::default() };
+    let mut cx = Cx { session, input, paths: Vec::new(), ids: HashMap::new(), tables: Vec::new(), types_at: HashMap::new(), asked_ahead: HashSet::new(), registry: Registry::default() };
     let mut files = Vec::new();
     let mut names = HashMap::new();
     for (name, _) in &input.files {
@@ -276,6 +277,8 @@ pub fn check(session: &mut Session, input: &Input) -> Found<Value> {
     }
     let mut callables = Vec::new();
     for index in 0..cx.registry.sites.len() {
+        let file = cx.registry.sites[index].node.file;
+        targets::symbols_ahead(&mut cx, file)?;
         let mut fact = calls::callable_fact(&mut cx, index)?;
         let site = &cx.registry.sites[index];
         if input.published && site.member.is_none() && !site.callback && site.exported {

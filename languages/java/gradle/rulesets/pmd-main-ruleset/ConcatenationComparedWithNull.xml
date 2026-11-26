@@ -9,7 +9,7 @@
    return exists($e[self::InfixExpression[@Operator = '+'][not(@Parenthesized = true())]])
      and (exists($e[pmd-java:typeIs('java.lang.String')])
           or exists($e/descendant-or-self::InfixExpression[@Operator = '+'][StringLiteral]
-                      [not(ancestor::*[exists(. intersect $e/descendant::*)][not(self::InfixExpression[@Operator = '+'] or self::ParenthesizedExpression)])]))
+                      [not(ancestor::*[exists(. intersect $e/descendant::*)][not(self::InfixExpression[@Operator = '+'])])]))
   ]
 ]]></value>
       </property>

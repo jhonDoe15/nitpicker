@@ -108,6 +108,21 @@ describe('analyzer budgets scaled with project size', () => {
     expect(deadlineScaleOf({ timeoutScale: { perThousandFilesMs: 0 } })).toBeUndefined();
   });
 
+  it('scales the default deadline of an analyzer that sets neither a timeout nor a scale', () => {
+    const { root } = git.createGitRepository(
+      { ...sources(1_001), 'README.md': '' },
+      { prefix: 'nitpicker-deadline-' },
+    );
+    const unset = { timeoutMs: undefined, timeoutScale: undefined };
+    const memoryScale = { perThousandFilesMegabytes: 100, extensions: ['md'] };
+
+    expect(preparedTimeout(analyzer(unset), root)).toBe(7 * MINUTE_MS);
+    expect(preparedTimeout(analyzer({ ...unset, memoryScale }), root)).toBe(6 * MINUTE_MS);
+    expect(
+      preparedTimeout(analyzer({ ...unset, timeoutMs: MINUTE_MS, configuredTimeout: true }), root),
+    ).toBe(MINUTE_MS);
+  });
+
   it('adds a per-module allowance for each build file of the project', () => {
     const { root } = git.createGitRepository(
       {

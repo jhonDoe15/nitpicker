@@ -66,7 +66,7 @@ let $boxes := map { 'boolean': 'Boolean', 'byte': 'Byte', 'char': 'Character', '
       $executable/(self::MethodDeclaration | self::ConstructorDeclaration)[pmd-java:modifiers() = 'public']
         [not(ModifierList/Annotation[pmd-java:typeIs('java.lang.Override')])]
         [not(self::ConstructorDeclaration and parent::RecordBody)]
-        [ancestor::*[self::ClassDeclaration or self::InterfaceDeclaration or self::EnumDeclaration
+        [ancestor::*[self::ClassDeclaration or self::EnumDeclaration
                      or self::RecordDeclaration][1][pmd-java:modifiers() = 'public']]
     },
     $typeOf := function($member) { ($member/ClassType | $member/ArrayType | $member/PrimitiveType)[1] },

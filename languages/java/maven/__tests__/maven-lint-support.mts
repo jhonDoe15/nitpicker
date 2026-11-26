@@ -1,7 +1,7 @@
 import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { vi } from 'vitest';
-import type { SourceModule } from '../errorprone/compiler-types.mts';
+import type { SourceModule } from '../compile-sets/compiler-types.mts';
 
 export function sourceModule(fields: Partial<SourceModule> & { basedir: string }): SourceModule {
   return {

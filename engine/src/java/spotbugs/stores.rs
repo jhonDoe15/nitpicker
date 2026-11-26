@@ -108,19 +108,30 @@ fn choice(context: &Context, first: Node, second: Node) -> bool {
                 return true;
             }
             let (Some((first_owner, first_name)), Some((_, second_name))) = (producer(context, first), producer(context, second)) else { return false };
-            immutable_call(context, second) && (first_name == second_name || (first_owner != "Collections" && second_name == "copyOf"))
+            !FORGOTTEN.get() && immutable_call(context, second) && (first_name == second_name || (first_owner != "Collections" && second_name == "copyOf"))
         }
         _ => false,
     }
 }
 
 thread_local! {
+    /// Set while judging a store into a field of a class whose `Class` object the code names: SpotBugs then forgets
+    /// what it learned about the types stored in the class's fields.
+    static FORGOTTEN: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     /// How deep the values are being followed. Local variables can name each other in a circle and a chain of
     /// `c ? a : b` can be thousands long, so the way down has an end: 8 local variables or 256 nested values.
     static FOLLOWED: std::cell::Cell<u16> = const { std::cell::Cell::new(0) };
 }
 
 const DEEPEST: u16 = 256;
+
+/// Runs `judge` with the types stored in the fields forgotten or not.
+pub fn forgetting<T>(forgotten: bool, judge: impl FnOnce() -> T) -> T {
+    let before = FORGOTTEN.replace(forgotten);
+    let found = judge();
+    FORGOTTEN.set(before);
+    found
+}
 
 pub fn immutable_value(context: &Context, value: Node) -> bool {
     let value = crate::java::types::expr::unwrap(value);

@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { ownedNativeChecker, ownedNativeMessage } from './native/owned-native-rules.mts';
 import { reportedRuleKey } from './oxlint-translation.mts';
 import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mts';
 import { troubleshootingError } from '../lint-engine/typed/tools.mts';
+import { type ReportedFiles, reportedFiles } from './stage/reported-files.mts';
 import type {
   LintMessage,
   LintResult,
@@ -27,39 +27,69 @@ const MESSAGE_IN_HELP_RULES = new Set(['no-restricted-imports', 'no-restricted-p
 export class UnmappedDiagnosticError extends Error {}
 
 const TSCONFIG_ERROR_CODE = 'typescript(tsconfig-error)';
+const COMPILER_ERROR_CODE = /^TS\(\d+\)$/u;
+const COMPILER_REJECTION = /^TS\(\d+\): /u;
+
+export function isCompilerRejection(message: LintMessage): boolean {
+  return message.fatal === true && COMPILER_REJECTION.test(message.message);
+}
 
 export function eslintShapedResults(
   stage: string,
   diagnostics: readonly OxlintDiagnostic[],
-  naming: Naming,
+  { naming, listed }: { readonly naming: Naming; readonly listed: readonly string[] },
 ): LintResult[] {
   const reported = distinctDiagnostics(diagnostics).filter(
     (diagnostic) => !isIgnoredDiagnostic(diagnostic),
   );
   rejectTsconfigErrors(stage, reported);
-  const byFile = Map.groupBy(reported, (diagnostic) => diagnostic.filename);
-  return [...byFile].map(([filename, fileDiagnostics]) => {
-    const filePath = filename.replaceAll('\\', '/');
-    const bytes = readFileSync(stagedFile(stage, filename));
-    const locate = byteLocator(bytes);
-    const neutralized = naming.neutralized.get(filePath) ?? new Set<string>();
-    const converted = fileDiagnostics.map((diagnostic) =>
-      eslintMessage(diagnostic, naming, { filePath, locate }),
-    );
-    const keeps = converted.some(({ check }) => check !== undefined)
-      ? ownedNativeChecker(filePath, bytes.toString('utf8'))
-      : undefined;
-    return {
+  const stagedFiles: ReportedFiles = reportedFiles(stage, listed);
+  const located = reported.flatMap((diagnostic) =>
+    stagedFiles(diagnostic.filename).map((file) => ({ ...file, diagnostic })),
+  );
+  const byFile = Map.groupBy(located, ({ filePath }) => filePath);
+  return [...byFile].map(([filePath, entries]) =>
+    fileResult({
       filePath,
-      messages: converted
-        .flatMap(({ message, check }) =>
-          check === undefined
-            ? [message]
-            : (keeps?.(check) ?? []).map((span) => ({ ...message, ...span })),
-        )
-        .filter((message) => !isNeutralizerWhitespace(message, neutralized)),
-    };
-  });
+      full: entries[0]?.full ?? filePath,
+      fileDiagnostics: distinctDiagnostics(
+        entries.map(({ diagnostic }) => ({ ...diagnostic, filename: filePath })),
+      ),
+      naming,
+    }),
+  );
+}
+
+function fileResult({
+  filePath,
+  full,
+  fileDiagnostics,
+  naming,
+}: {
+  readonly filePath: string;
+  readonly full: string;
+  readonly fileDiagnostics: readonly OxlintDiagnostic[];
+  readonly naming: Naming;
+}): LintResult {
+  const bytes = readFileSync(full);
+  const locate = byteLocator(bytes);
+  const neutralized = naming.neutralized.get(filePath) ?? new Set<string>();
+  const converted = fileDiagnostics.map((diagnostic) =>
+    eslintMessage(diagnostic, naming, { filePath, locate }),
+  );
+  const keeps = converted.some(({ check }) => check !== undefined)
+    ? ownedNativeChecker(filePath, bytes.toString('utf8'))
+    : undefined;
+  return {
+    filePath,
+    messages: converted
+      .flatMap(({ message, check }) =>
+        check === undefined
+          ? [message]
+          : (keeps?.(check) ?? []).map((span) => ({ ...message, ...span })),
+      )
+      .filter((message) => !isNeutralizerWhitespace(message, neutralized)),
+  };
 }
 
 const TSCONFIG_REJECTED =
@@ -88,14 +118,6 @@ function withoutStage(text: string, stage: string): string {
     (current, prefix) => current.replaceAll(`${prefix}/`, '').replaceAll(`${prefix}\\`, ''),
     text,
   );
-}
-
-function stagedFile(stage: string, filename: string): string {
-  const full = path.resolve(stage, filename);
-  if (!full.startsWith(`${stage}${path.sep}`)) {
-    throw new Error(`oxlint reported a file outside its stage: ${filename}`);
-  }
-  return full;
 }
 
 function distinctDiagnostics(diagnostics: readonly OxlintDiagnostic[]): OxlintDiagnostic[] {
@@ -150,6 +172,10 @@ function eslintMessage(
     return { message: { fatal: true, message: diagnostic.message, severity: 2, ...position } };
   }
   const ruleId = naming.ruleNames.get(key);
+  if (ruleId === undefined && COMPILER_ERROR_CODE.test(String(diagnostic.code))) {
+    const message = `${String(diagnostic.code)}: ${diagnostic.message}`;
+    return { message: { fatal: true, message, severity: 2, ...position } };
+  }
   if (ruleId === undefined) {
     throw new UnmappedDiagnosticError(
       `oxlint reported ${String(diagnostic.code)}: ${diagnostic.message} ${diagnostic.help ?? ''}`.trim(),

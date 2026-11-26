@@ -137,8 +137,7 @@ return
       or pmd-java:typeIs('double') or pmd-java:typeIs('float') or pmd-java:typeIs('short')
       or pmd-java:typeIs('byte') or pmd-java:typeIs('char')
       or self::UnaryExpression[@Operator = '!']
-      or self::InfixExpression[@Operator = ('==', '!=', '<', '>', '<=', '>=', '&&', '||')]
-      or self::InstanceOfExpression]
+      or self::InfixExpression[@Operator = ('==', '!=', '<', '>', '<=', '>=', '&&', '||', 'instanceof')]]
    or @MethodName = 'notNull' and ArgumentList/@Size = 2
       and ArgumentList/*[1][self::VariableAccess or self::FieldAccess or self::MethodCall]
         [pmd-java:typeIs('java.lang.CharSequence') or pmd-java:typeIs('java.util.Collection')
@@ -798,7 +797,7 @@ return
    return exists($e[self::InfixExpression[@Operator = '+'][not(@Parenthesized = true())]])
      and (exists($e[pmd-java:typeIs('java.lang.String')])
           or exists($e/descendant-or-self::InfixExpression[@Operator = '+'][StringLiteral]
-                      [not(ancestor::*[exists(. intersect $e/descendant::*)][not(self::InfixExpression[@Operator = '+'] or self::ParenthesizedExpression)])]))
+                      [not(ancestor::*[exists(. intersect $e/descendant::*)][not(self::InfixExpression[@Operator = '+'])])]))
   ]
 ]]></value>
       </property>
@@ -2378,8 +2377,7 @@ return //MethodCall[ArgumentList]
               $v/@CompileTimeConstant = true()
               or exists($v/ancestor::Block//LocalVariableDeclaration[pmd-java:modifiers() = 'final']
                           /VariableDeclarator[VariableId/@Name = $v/@Name][NumericLiteral])))]
-  [let $parent := ancestor::*[not(self::ParenthesizedExpression
-                                  or self::InfixExpression[@Operator = ('+', '-', '*')][pmd-java:typeIsExactly('int')])][1]
+  [let $parent := ancestor::*[not(self::InfixExpression[@Operator = ('+', '-', '*')][pmd-java:typeIsExactly('int')])][1]
    return exists($parent/self::InfixExpression[@Operator = ('+', '-', '*')][pmd-java:typeIsExactly('long')])
           and empty(ancestor::InfixExpression[@Operator = '*'][pmd-java:typeIsExactly('int')][. >> $parent])]
 ]]></value>
@@ -2795,9 +2793,9 @@ return //MethodCall[@MethodName = $levels][ArgumentList/@Size >= 2]
         or (self::MethodCall[@MethodName = ('getName', 'getCanonicalName')][*[1][self::ClassLiteral]])]]
   [let $named := ArgumentList/*[1]/descendant-or-self::ClassLiteral/*[1]/@SimpleName,
        $own := ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration
-                           or self::InterfaceDeclaration or self::AnnotationTypeDeclaration],
+                           or self::AnnotationTypeDeclaration],
        $inFile := ancestor::CompilationUnit//*[self::ClassDeclaration or self::EnumDeclaration
-                           or self::RecordDeclaration or self::InterfaceDeclaration]/@SimpleName,
+                           or self::RecordDeclaration]/@SimpleName,
        $parents := $own/(ExtendsList | ImplementsList)/ClassType/@SimpleName,
        $words := function($n) { tokenize(replace($n, '([a-z0-9])([A-Z])', '$1 $2'), ' ') },
        $a := $words($own[last()]/@SimpleName),
@@ -4056,7 +4054,7 @@ let $boxes := map { 'boolean': 'Boolean', 'byte': 'Byte', 'char': 'Character', '
       $executable/(self::MethodDeclaration | self::ConstructorDeclaration)[pmd-java:modifiers() = 'public']
         [not(ModifierList/Annotation[pmd-java:typeIs('java.lang.Override')])]
         [not(self::ConstructorDeclaration and parent::RecordBody)]
-        [ancestor::*[self::ClassDeclaration or self::InterfaceDeclaration or self::EnumDeclaration
+        [ancestor::*[self::ClassDeclaration or self::EnumDeclaration
                      or self::RecordDeclaration][1][pmd-java:modifiers() = 'public']]
     },
     $typeOf := function($member) { ($member/ClassType | $member/ArrayType | $member/PrimitiveType)[1] },
@@ -4241,8 +4239,8 @@ let $bounded := function($o, $local) {
     }
 return
 //InfixExpression[@Operator = '-'][count(*) = 2]
-  [let $anchor := ancestor::*[not(self::ParenthesizedExpression or self::CastExpression or self::ConditionalExpression)][1],
-       $cast := exists(parent::CastExpression) or exists(parent::ParenthesizedExpression/parent::CastExpression),
+  [let $anchor := ancestor::*[not(self::CastExpression or self::ConditionalExpression)][1],
+       $cast := exists(parent::CastExpression),
        $method := $anchor/ancestor-or-self::*[self::MethodDeclaration or self::LambdaExpression][1],
        $locals := $method//LocalVariableDeclaration/VariableDeclarator/VariableId/@Name,
        $intParam := function($o) {
@@ -5411,7 +5409,7 @@ let $mapTypes := ('Map', 'HashMap', 'LinkedHashMap', 'TreeMap', 'SortedMap', 'Na
                  and $step[self::MethodCall][@MethodName = $passThrough or $identityMap(.)]))
               and empty($steps[self::MethodCall][@MethodName = 'filter']
                          [.//MethodCall[@MethodName = 'getValue']
-                          and (.//NullLiteral or .//InstanceofExpression
+                          and (.//NullLiteral or .//InfixExpression[@Operator = 'instanceof']
                                or .//MethodCall[@MethodName = ('nonNull', 'isNull')])])
               and $nullableMap($entries/*[1])))
     },
@@ -5554,7 +5552,7 @@ return
 //MethodDeclaration[@Visibility = 'public'][@Static = false() or not(@Name = ('of', 'from', 'valueOf', 'create', 'builder'))]
   [not(@Overridden = true())][not(ModifierList/Annotation[@SimpleName = ('Override', 'Bean', 'Test', 'ParameterizedTest')])]
   [not(matches(@Name, '^(?:set|with)[A-Z]'))][not(@Name = 'main')]
-  [not(ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration or self::AnnotationTypeDeclaration or self::InterfaceDeclaration][@Visibility != 'public'])]
+  [not(ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration or self::AnnotationTypeDeclaration][@Visibility != 'public'])]
   [not(ancestor::ClassDeclaration[@Local = true() or @Anonymous = true()])]
   [Block]
   /FormalParameters/FormalParameter[not(ModifierList/Annotation)][PrimitiveType[@Kind = 'boolean']][not(@Varargs = true())]

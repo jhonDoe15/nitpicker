@@ -1,0 +1,17 @@
+[
+["p/Interrupts.java", "AvoidCatchingGenericException", 14, 18],
+["p/Interrupts.java", "AvoidCatchingGenericException", 28, 18],
+["p/Interrupts.java", "AvoidCatchingGenericException", 41, 18],
+["p/Interrupts.java", "AvoidInstanceofChecksInCatchClause", 11, 17],
+["p/Interrupts.java", "AvoidInstanceofChecksInCatchClause", 24, 19],
+["p/Interrupts.java", "AvoidInstanceofChecksInCatchClause", 38, 17],
+["p/Interrupts.java", "SwallowedInterrupt", 23, 11],
+["p/Interrupts.java", "SwallowedInterrupt", 37, 11],
+["p/Shapes.java", "BooleanFlagParameter", 14, 31],
+["p/Shapes.java", "BooleanFlagParameter", 21, 36],
+["p/Shapes.java", "GenericTypeName", 37, 1],
+["p/Shapes.java", "SystemPrintln", 32, 13],
+["p/Values.java", "ConcatenationComparedWithNull", 38, 16],
+["p/Values.java", "IntProductWidenedLate", 26, 24],
+["p/Values.java", "NullMapValue", 22, 22]
+]
