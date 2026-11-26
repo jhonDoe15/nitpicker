@@ -51,6 +51,7 @@ pub struct Scopes<'a, 's> {
     identifiers: HashMap<u32, u32>,
     blocks: HashMap<(u32, u32), u32>,
     uses: HashMap<u32, Use>,
+    spans: Vec<(u32, u32, ScopeId)>,
 }
 
 const FUNCTIONS: [&str; 5] = ["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression", "TSDeclareFunction", "TSEmptyBodyFunctionExpression"];
@@ -82,25 +83,29 @@ impl<'a, 's> Scopes<'a, 's> {
                 _ => None,
             };
         }
-        Scopes { semantic, view, identifiers, blocks, uses }
+        let scoping = semantic.scoping();
+        let mut spans: Vec<(u32, u32, ScopeId)> = scoping
+            .scope_descendants_from_root()
+            .map(|scope| {
+                let span = semantic.nodes().kind(scoping.get_node_id(scope)).span();
+                (span.start, span.end, scope)
+            })
+            .collect();
+        spans.sort_by_key(|(start, end, _)| (*start, std::cmp::Reverse(*end)));
+        Scopes { semantic, view, identifiers, blocks, uses, spans }
     }
 
     fn scope_at(&self, offset: u32) -> ScopeId {
         let scoping = self.semantic.scoping();
-        let nodes = self.semantic.nodes();
-        let mut best = scoping.root_scope_id();
-        let mut width = u32::MAX;
-        for scope in scoping.scope_descendants_from_root() {
-            let span = nodes.kind(scoping.get_node_id(scope)).span();
-            if span.start <= offset && offset < span.end && span.end - span.start <= width {
-                best = scope;
-                width = span.end - span.start;
-            }
-        }
-        best
+        let index = self.spans.partition_point(|(start, _, _)| *start <= offset);
+        let Some(&(_, _, last)) = index.checked_sub(1).and_then(|at| self.spans.get(at)) else { return scoping.root_scope_id() };
+        let contains = |scope: ScopeId| {
+            let span = self.semantic.nodes().kind(scoping.get_node_id(scope)).span();
+            span.start <= offset && offset < span.end
+        };
+        scoping.scope_ancestors(last).find(|scope| contains(*scope)).unwrap_or_else(|| scoping.root_scope_id())
     }
 
-    /// `variableNamed` / `findVariable`: the variable an identifier names, looked up from where it stands.
     pub fn variable_named(&self, identifier: Node) -> Option<SymbolId> {
         let scoping = self.semantic.scoping();
         match self.uses.get(&identifier.start()) {
