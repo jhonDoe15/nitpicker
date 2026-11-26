@@ -459,13 +459,13 @@ patterns together):
 | mybatis-3 | 1 | 0 | 0 |
 | javaparser-core | 6 | 0 | 0 |
 | Nacos | 13 | 0 | 0 |
-| Elasticsearch `server` | 616 | 31 | 69 |
+| Elasticsearch `server` | 618 | 29 | 73 |
 
 On Elasticsearch `server` by pattern:
 
 | Pattern | Same | Missed | Extra |
 | --- | --- | --- | --- |
-| `NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE` | 524 | 22 | 62 |
+| `NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE` | 526 | 20 | 66 |
 | `NP_NULL_ON_SOME_PATH` | 92 | 9 | 7 |
 | `NP_ALWAYS_NULL` | 0 | 0 | 0 |
 
@@ -475,7 +475,7 @@ and 3.2 GB after a 31 s compile. The null pass runs once per file, a body nothin
 after a glance at its text, and what a method of another file does is worked out only when a call hands it a
 value that matters, then kept for the run.
 
-What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 237 findings, all the same):
+What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 240 findings of these patterns, all the same):
 
 - Only `@CheckForNull`, or an annotation whose own declaration carries `@CheckForNull` (a nickname, as measured
   with `@TypeQualifierNickname` beside it), marks a method result or a field. `javax.annotation.Nullable` and
@@ -501,8 +501,10 @@ What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 237 findings,
 - What is known of a `final` field stays known across calls. What is known of another field of `this` ends at a
   call on `this` (also `super.` and `this(...)`), a call or constructor handed `this` and a `synchronized` block;
   the field then counts as read again at that point. A `volatile` field is read anew each time.
-- The test of an `assert` is run, and past any `assert` a value that only may be null is no longer reported.
-- Lambda bodies are never reported; anonymous classes, constructors, initializers and field initializers are.
+- The test of an `assert` is run (where it fails, its message is made and the method ends as at a `throw`), and
+  past any `assert` a value that only may be null is no longer reported.
+- Lambda bodies are not reported by these three patterns; anonymous classes, constructors, initializers and field
+  initializers are.
 - Several results of one method dereferenced on one line make one finding.
 
 Differences on Elasticsearch `server`, 100:
@@ -522,10 +524,66 @@ Differences on Elasticsearch `server`, 100:
   a few JDK methods (`getClass`, `notifyAll`, a collection's `add` or `put`, `StringBuilder.append`). Not built
   in yet.
 
+#### Redundant tests, known nulls, `Boolean` and `equals`
+
+`src/java/spotbugs/nulls/redundant.rs` reports from the same forward pass `RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE`,
+`RCN_REDUNDANT_NULLCHECK_OF_NULL_VALUE`, `RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE` and
+`NP_LOAD_OF_KNOWN_NULL_VALUE`; `src/java/spotbugs/methods/` holds `NP_BOOLEAN_RETURN_NULL` and
+`NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT`. All six are exact on the six smaller code bases above. On Elasticsearch
+`server`:
+
+| Pattern | Same | Missed | Extra |
+| --- | --- | --- | --- |
+| `RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE` | 29 | 4 | 1 |
+| `RCN_REDUNDANT_NULLCHECK_OF_NULL_VALUE` | 0 | 2 | 0 |
+| `RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE` | 3 | 2 | 2 |
+| `NP_LOAD_OF_KNOWN_NULL_VALUE` | 14 | 2 | 0 |
+| `NP_BOOLEAN_RETURN_NULL` | 10 | 0 | 0 |
+| `NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT` | 2 | 0 | 0 |
+
+`NP_BOOLEAN_RETURN_NULL` and `NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT` run on the engine in real runs, with SpotBugs'
+priority and SARIF place (the method; the `equals` parameter); SpotBugs no longer runs `BooleanReturnNull`. The
+other four stay with SpotBugs until Elasticsearch is exact.
+
+What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_methods`, `null_redundant`, `null_repeated`,
+`null_copies`, `null_asserts2`, `null_lambdas`):
+
+- A comparison with `null` of a value already known is reported by what is known and by where the way the test
+  rules out leads: code of its own, a place other ways reach too, or a `throw` (an `assert` that fails counts as
+  one). Known from a dereference: high / medium / medium priority; proved by an earlier test: high / medium / not
+  reported; created here (`new`, a string, `this`, a method that never returns null): medium / not / not.
+- A created value that is then tested counts as proved by that test from then on. Of all the tests one value makes
+  redundant, only the one with the highest priority is reported, the first of them on a tie.
+- A variable copied from another variable or from a field holds the same value: a test or dereference of one
+  tells about all, and the message names the first local variable holding it (parameters first), else the field.
+- `x == null ? 0 : 1` and `x == null ? false : true` only turn the test into a number: not a test.
+- Handing a value to `this(...)` or `super(...)` whose constructor dereferences it dereferences it.
+- The line of a test or a read is the line of its statement, moved on by each method call that finished before it
+  and by the condition of a `?:` or a loop it is in (the line of the condition's operator).
+- Lambda bodies are methods of their own here: their redundant tests and reads of known nulls are reported.
+- A read of a local variable known to be null from a comparison is reported once per such null, where it is
+  first read, unless it goes straight to `return`.
+- A comparison with `null` of the result of a call that never returns null (`toString()`, `getClass()`, ...) is
+  reported where the way it rules out is code of its own. A static field just given a new value is not.
+- For `NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT` (also `tests/fixtures/spotbugs/bc_equals*`, `null_equals_this`): at
+  an `instanceof`, a comparison with `null`, `Objects.isNull` / `nonNull`, or an `if` whose condition is
+  `this == o` or `o == this` (not `!=`, not inside `||` or `return`), only the way a null argument takes counts,
+  also when a copy of it is tested; a comparison with `null` whose two ways meet right away ends it, as does locking
+  on it. A dereference in a `finally` body, in a `synchronized` block, or where a `catch` of `NullPointerException`,
+  `RuntimeException` or `Exception` (not `Throwable`) or a `finally` would see it does not count.
+- `NP_BOOLEAN_RETURN_NULL` is high priority for a method whose name starts with `is`;
+  `NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT` for a final method, a final class or a record.
+
+Differences on Elasticsearch `server`, 13: three `assert` tests of a value from a method that never returns null
+(`ProjectResolver` 48, `ValuesSourceRegistry` 175, `EscfDoubleColumn` 38) that lab code with the same shape does
+not reproduce; two tests of fields known null (`DesiredBalanceComputer` 649, `AbstractTSDBDocValuesProducer`
+3266); two line numbers of a `?:` test spread over lines (`RestTasksAction` 141); a parameter dereferenced by a
+call before a test that SpotBugs does not count (`RestCatComponentTemplateAction` 117); and 5 not looked at one by
+one yet.
+
 Not rebuilt yet: `NP_NULL_PARAM_DEREF` and its variants, `NP_GUARANTEED_DEREF`,
-`NP_NULL_ON_SOME_PATH_EXCEPTION`, `NP_NULL_ON_SOME_PATH_MIGHT_BE_INFEASIBLE`, `NP_LOAD_OF_KNOWN_NULL_VALUE`, the
-`RCN_` family, `NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE`, `NP_BOOLEAN_RETURN_NULL` and
-`NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT`. Other code bases are not compared yet.
+`NP_NULL_ON_SOME_PATH_EXCEPTION`, `NP_NULL_ON_SOME_PATH_MIGHT_BE_INFEASIBLE` and
+`NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE`.
 
 
 ### Statement patterns

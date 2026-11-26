@@ -101,4 +101,12 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     text: 'Equals method should not assume anything about the type of its argument',
     levels: { 2: 'note' },
   },
+  NP_BOOLEAN_RETURN_NULL: {
+    text: 'Method with Boolean return type returns explicit null',
+    levels: { 1: 'warning', 2: 'warning' },
+  },
+  NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT: {
+    text: 'equals() method does not check for null argument',
+    levels: { 1: 'error', 2: 'warning' },
+  },
 };
