@@ -25,6 +25,15 @@ declare const query: { select(): { from(table: string): PromiseLike<string[]> } 
 const START = 'const reportJob = startReport(files);';
 const LATER = 'const names = await listNames(); const sizes = measureAll(files);';
 
+function inMethod(body: string) {
+  const code = `${PRELUDE}export class Collector { job?: Promise<string>; other = 1; files: string[] = [];
+  reset() { this.job = undefined; }
+  async collect(files: string[]) { ${body} } }`;
+  return { filename: write(code, 'ts'), code };
+}
+
+const MEMBER_START = 'this.job = startReport(files);';
+
 function inFunction(body: string) {
   const code = `${PRELUDE}export async function collect(files: string[]) { ${body} }`;
   return { filename: write(code, 'ts'), code };
@@ -70,8 +79,50 @@ tester.run('no-early-wait-on-started-work', rule, {
     inFunction(
       `${START} const report = await reportJob; logger.info("x"); console.log("y"); const m = Math.max(1, 2); return merge(report, m);`,
     ),
+    inMethod(`${MEMBER_START} const report = await this.job; return merge(report, files);`),
+    inMethod(
+      `${MEMBER_START} const report = await this.job; this.reset(); ${LATER} return merge(report, names, sizes);`,
+    ),
+    inMethod(
+      `${MEMBER_START} const report = await this.job; this.job = startReport(files); ${LATER} return merge(report, names, sizes);`,
+    ),
+    inMethod(
+      `${MEMBER_START} const report = await this.job; this.other = 2; ${LATER} return merge(report, names, sizes);`,
+    ),
+    inMethod(
+      `${MEMBER_START} const report = await this.job; send(this); ${LATER} return merge(report, names, sizes);`,
+    ),
+    inMethod(`const report = await this.job; ${LATER} return merge(report, names, sizes);`),
+    inMethod(
+      `this.job = Promise.resolve(compute(files)); this.reset(); const report = await this.job; ${LATER} return merge(report, names, sizes);`,
+    ),
+    inMethod(
+      `this.other = 3; const report = await this.other; ${LATER} return merge(report, names, sizes);`,
+    ),
   ],
   invalid: [
+    {
+      ...inMethod(
+        `${MEMBER_START} const report = await this.job; const names = await listNames(this.files[0]); const sizes = measureAll(this.files); return merge(report, names, sizes);`,
+      ),
+      errors: [
+        {
+          messageId: 'early',
+          data: { task: 'this.job', next: 'const names = await listNames(this.files[0]);' },
+        },
+      ],
+    },
+    {
+      ...inFunction(
+        `const jobs: { report?: Promise<string> } = {}; jobs.report = startReport(files); const report = await jobs.report; ${LATER} return merge(report, names, sizes);`,
+      ),
+      errors: [
+        {
+          messageId: 'early',
+          data: { task: 'jobs.report', next: 'const names = await listNames();' },
+        },
+      ],
+    },
     {
       ...inFunction(
         `${START} const report = await reportJob; ${LATER} return merge(report, names, sizes);`,

@@ -166,11 +166,16 @@ files are left alone; timers, `fetch`, `window` listeners, sockets and observers
 `react-x/purity`.
 
 React hydration: `nitpicker/react-no-hydration-mismatch` (production source in a package that depends on a
-server-rendering React framework, in `eslint-lint`, report-only) reports a ternary or `&&` rendered by a component (a
-JSX child or the returned value, in the component's own body) whose test checks `typeof window`, `document`,
-`navigator`, `localStorage`, `sessionStorage` or `matchMedia`, directly or through a module-level `const` made only of
-such tests. Portals, attributes, `suppressHydrationWarning`, shadowed globals, branches that render nothing, nested
-functions and branches inside another conditional branch are left alone.
+server-rendering React framework, or on `react-dom` with a non-test source that imports `hydrateRoot` from
+`react-dom/client`, in
+`eslint-lint`, report-only) reports a ternary or `&&` rendered by a component (a JSX child or the returned value, in the
+component's own body) whose test checks `typeof window`, `document`, `navigator`, `localStorage`, `sessionStorage` or
+`matchMedia` (or `globalThis.window`), directly, through a module-level `const` made only of such tests or through a
+project hook that returns only such tests. It also reports a `useState` initial value or `useMemo` factory whose value
+such a test decides (a returned value, or the test of an `if` that returns) when the value is a JSX child or an attribute
+of an HTML element. Portals, attributes, `suppressHydrationWarning`, shadowed globals, branches that render nothing,
+nested functions, branches inside another conditional branch and a file named directly in
+`dynamic(() => import('./file'), { ssr: false })` are left alone.
 
 React i18next: `nitpicker/react-i18next-escape-value` (production source in a React project that depends on
 `react-i18next`, in `eslint-lint`) reports a `t(...)` or `<Trans values>` call that interpolates values into text React
@@ -730,16 +735,19 @@ element against a lower and an upper bound that returns or breaks on the first h
 
 Sequential reads: `nitpicker/no-sequential-independent-reads` (production source, in `eslint-lint`, report-only) reports
 two or more adjacent `const x = await <read>` statements in one block where no later read uses an earlier result. Reads
-are `fetch` without a body (method `GET` or `HEAD`) and ORM reads of the project's ORM. A write, a guard or any other
+are `fetch` without a body (method `GET` or `HEAD`), ORM reads of the project's ORM and calls to project functions (same
+file or imported) that only make such reads. A write, a guard or any other
 statement ends the run; loops, transaction callbacks, transaction-named clients, locking reads and reads named after an
 authorization or session check are left alone. The JavaScript preset runs the same rule.
 
 Early waits: `nitpicker/no-early-wait-on-started-work` (production source, in `eslint-lint`, report-only, broad) reports
-`const r = await task` where `task` is a same-block `const` holding a `Promise` started earlier (type-aware) and `r` is
+`const r = await task` where `task` is a same-block `const` or a member (`this.task`) assigned in the same block, holding a
+`Promise` started earlier (type-aware), and `r` is
 first read three or more statements later after statements that do work (calls other than accessors, logging, `Math` and
 `JSON`), do not mention `task` and do not leave the block. Java runs the same check as `pmd/EarlyWaitOnStartedWork` on
 `Future.get()`, `get(timeout, unit)` and `join()` of a future started by `supplyAsync`, `runAsync`, `submit`, `schedule`
-or `sendAsync`.
+or `sendAsync`, and on `Thread.join()` of a thread started in the same block whose lambda only calls methods of locals
+created in the block before it (its result is first used where a later statement reads one of those locals).
 
 `nitpicker/no-accumulating-group-spread` (production source, in `eslint-lint`) reports a group of a
 `Map` or object spread into a new array that replaces it on every step of a loop or iteration

@@ -1453,34 +1453,83 @@ return
     </properties>
   </rule>
   <rule name="EarlyWaitOnStartedWork" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This waits with get() or join() for a Future started earlier, but its result is first used only after later statements that do not use it. While this waits, nothing else runs. Move the wait to where the result is first used, so that the independent work overlaps with the task. An exception fits only when the later work relies on the task having finished (shared state, a file or row the task writes, a required order).">
+        message="This waits for work started earlier (get() or join() on a Future, join() on a Thread), but the result is first used only after later statements that do not use it. While this waits, nothing else runs. Move the wait to where the result is first used, so that the independent work overlaps with the task. An exception fits only when the later work relies on the task having finished (shared state, a file or row the task writes, a required order).">
     <priority>3</priority>
     <properties>
       <property name="xpath">
         <value><![CDATA[
-//Block[not(parent::TryStatement)]/LocalVariableDeclaration
+(//Block[not(parent::TryStatement)]/LocalVariableDeclaration
   [count(VariableDeclarator) = 1]
-  [VariableDeclarator/MethodCall[(@MethodName = 'get' and ArgumentList/@Size = (0, 2))
-                                  or (@MethodName = 'join' and ArgumentList/@Size = 0)]
+  [VariableDeclarator/MethodCall
+     [(@MethodName = 'get' and ArgumentList/@Size = (0, 2)) or (@MethodName = 'join' and ArgumentList/@Size = 0)]
      [*[1][self::VariableAccess][pmd-java:typeIs('java.util.concurrent.Future')]]]
   [let $at := count(preceding-sibling::*),
-       $name := VariableDeclarator/VariableId/@Name,
-       $task := VariableDeclarator/MethodCall/*[1]/@Name,
-       $users := following-sibling::*[descendant::VariableAccess[@Name = $name]],
+       $task := VariableDeclarator/MethodCall/*[1]/@Name
+   return exists(parent::Block/LocalVariableDeclaration[VariableDeclarator/VariableId/@Name = $task]
+                   [VariableDeclarator/MethodCall
+                      [@MethodName = ('supplyAsync', 'runAsync', 'submit', 'schedule', 'sendAsync')]]
+                   [count(preceding-sibling::*) lt $at])]
+|
+//Block[not(parent::TryStatement)]/ExpressionStatement
+  [MethodCall[@MethodName = 'join' and ArgumentList/@Size = 0]
+     [*[1][self::VariableAccess][pmd-java:typeIs('java.lang.Thread')]]]
+  [let $at := count(preceding-sibling::*),
+       $task := MethodCall/*[1]/@Name,
+       $declared := parent::Block/LocalVariableDeclaration[VariableDeclarator/VariableId/@Name = $task]
+                      [count(preceding-sibling::*) lt $at],
+       $made := $declared/VariableDeclarator/*[self::ConstructorCall[pmd-java:typeIsExactly('java.lang.Thread')]
+                                                [not(AnonymousClassDeclaration)]
+                                              or self::MethodCall[@MethodName = ('start', 'startVirtualThread')]
+                                                [pmd-java:typeIsExactly('java.lang.Thread')]],
+       $body := $made/ArgumentList/LambdaExpression,
+       $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
+       $holders := parent::Block/LocalVariableDeclaration
+                     [count(preceding-sibling::*) lt count($declared/preceding-sibling::*)]
+                     /VariableDeclarator[ConstructorCall or ArrayAllocation or ArrayInitializer]
+                     /VariableId/@Name,
+       $own := ($holders, $body//VariableId/@Name),
+       $inputs := ($own, $scope/FormalParameters//VariableId/@Name)
+   return count($body) = 1
+     and exists($body//VariableAccess[@Name = $holders])
+     and empty($body//(ThisExpression | SuperExpression | FieldAccess | ConstructorCall | AssignmentExpression
+                       | UnaryExpression[@Operator = ('++', '--')]))
+     and (every $call in $body//MethodCall satisfies
+            $call/*[1][self::VariableAccess[@Name = $own]
+                       or self::TypeExpression[pmd-java:typeIsExactly('java.lang.String')
+                                               or pmd-java:typeIsExactly('java.lang.Math')]])
+     and (every $read in $body//VariableAccess satisfies $read/@Name = $inputs)
+     and empty(parent::Block/*[count(preceding-sibling::*) gt count($declared/preceding-sibling::*)]
+                             [count(preceding-sibling::*) lt $at]
+                             //AssignmentExpression[*[1][self::VariableAccess][@Name = $task]])
+     and (exists($made/self::MethodCall)
+          or exists(preceding-sibling::ExpressionStatement
+                      [count(preceding-sibling::*) gt count($declared/preceding-sibling::*)]
+                      /MethodCall[@MethodName = 'start' and ArgumentList/@Size = 0]
+                        [*[1][self::VariableAccess][@Name = $task]]))])
+  [let $at := count(preceding-sibling::*),
+       $task := (VariableDeclarator/MethodCall, MethodCall)[1]/*[1]/@Name,
+       $declared := parent::Block/LocalVariableDeclaration[VariableDeclarator/VariableId/@Name = $task]
+                      [count(preceding-sibling::*) lt $at],
+       $outer := parent::Block/LocalVariableDeclaration
+                   [count(preceding-sibling::*) lt count($declared/preceding-sibling::*)]
+                   /VariableDeclarator/VariableId/@Name,
+       $captured := if (self::ExpressionStatement)
+                    then $declared/VariableDeclarator/*/ArgumentList/LambdaExpression//VariableAccess
+                           [@Name = $outer]/@Name
+                    else (),
+       $names := (VariableDeclarator/VariableId/@Name, $captured),
+       $users := following-sibling::*[descendant::VariableAccess[@Name = $names]],
        $first := if (exists($users)) then count($users[1]/preceding-sibling::*) else -1,
        $between := following-sibling::*[count(preceding-sibling::*) lt $first]
    return $first - $at ge 3
+     and empty($between//VariableAccess[@Name = $task])
      and not(matches($task,
        '^(lock|mutex|barrier|ready|init|initialized|shutdown|flush|close|closed|drain|drained|limit|limiter|sleep|delay|wait|done|exit|exited|end|ended|finish|finished|complete|completed|completion|settled|stop|stopped)([A-Z0-9_]|$)|(Lock|Mutex|Barrier|Ready|Init|Initialized|Shutdown|Flush|Close|Closed|Drain|Drained|Limit|Limiter|Sleep|Delay|Wait|Done|Exit|Exited|End|Ended|Finish|Finished|Complete|Completed|Completion|Settled|Stop|Stopped)([A-Z0-9_]|$)'))
-     and exists(parent::Block/LocalVariableDeclaration[VariableDeclarator/VariableId/@Name = $task]
-                  [VariableDeclarator/MethodCall[@MethodName = ('supplyAsync', 'runAsync', 'submit', 'schedule', 'sendAsync')]]
-                  [count(preceding-sibling::*) lt $at])
      and exists($between//MethodCall
                   [not(matches(@MethodName, '^(get|is|has)([A-Z]|$)|^(join|log|trace|debug|info|warn|error)$'))]
                   [not(*[1][self::TypeExpression][pmd-java:typeIs('java.lang.Math')])])
      and empty($between/descendant-or-self::*[self::ReturnStatement or self::ThrowStatement
-                                              or self::BreakStatement or self::ContinueStatement])
-     and empty($between//VariableAccess[@Name = $task])]
+                                              or self::BreakStatement or self::ContinueStatement])]
 ]]></value>
       </property>
     </properties>
