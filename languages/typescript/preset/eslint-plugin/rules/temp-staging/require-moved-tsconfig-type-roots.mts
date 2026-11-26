@@ -51,7 +51,7 @@ function ownStrings(value: TSESTree.Node): readonly string[] {
     return typeof value.value === 'string' ? [value.value] : [];
   }
   return value.type === AST_NODE_TYPES.TemplateLiteral
-    ? value.quasis.map((part) => part.value.cooked)
+    ? value.quasis.map((part) => part.value.cooked ?? '')
     : [];
 }
 
