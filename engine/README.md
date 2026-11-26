@@ -423,54 +423,78 @@ outer instance of an inner class is `this$N` and a record component its own name
 
 `src/java/spotbugs/nulls/` follows values through a method on the flow graph of `src/java/flow/`: a backward
 pass finds where a value is dereferenced whichever way the flow goes, a forward pass carries what is known about
-each local variable and field. Measured on Elasticsearch `server` (4 cores), where SpotBugs reports 647 findings
-of the three patterns (87% of its 746 null findings):
+each local variable and field. Compared with SpotBugs on seven code bases (same / missed / extra, the three
+patterns together):
+
+| Code base | Same | Missed | Extra |
+| --- | --- | --- | --- |
+| commons-lang, guava | 0 | 0 | 0 |
+| jackson-databind | 5 | 0 | 0 |
+| mybatis-3 | 1 | 0 | 0 |
+| javaparser-core | 6 | 0 | 0 |
+| Nacos | 13 | 0 | 0 |
+| Elasticsearch `server` | 616 | 31 | 69 |
+
+On Elasticsearch `server` by pattern:
 
 | Pattern | Same | Missed | Extra |
 | --- | --- | --- | --- |
-| `NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE` | 485 | 61 | 11 |
-| `NP_NULL_ON_SOME_PATH` | 92 | 9 | 11 |
+| `NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE` | 524 | 22 | 62 |
+| `NP_NULL_ON_SOME_PATH` | 92 | 9 | 7 |
 | `NP_ALWAYS_NULL` | 0 | 0 | 0 |
 
-With the three patterns the run takes 18.0 s, 67 CPU s and 0.58 GB at its peak on that code base, 8.0 s and
-30 CPU s more than the other five patterns alone; SpotBugs with all its patterns takes 249 s, 417 CPU s and
-3.2 GB after a 31 s compile. The callee summaries are worked out once per class, not once per file, and whether
-a method is overridden is looked up over every class of the run: both are still to be made cheaper.
+The engine with all its SpotBugs patterns takes about 22 s wall, 75 CPU s and 0.64 GB at its peak on that code
+base (4 cores), 5 s more than without the work across files; SpotBugs with all its patterns takes 249 s, 417 CPU s
+and 3.2 GB after a 31 s compile. The null pass runs once per file, a body nothing in which can be null is skipped
+after a glance at its text, and what a method of another file does is worked out only when a call hands it a
+value that matters, then kept for the run.
 
-What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 229 findings, all the same):
+What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 237 findings, all the same):
 
 - Only `@CheckForNull`, or an annotation whose own declaration carries `@CheckForNull` (a nickname, as measured
   with `@TypeQualifierNickname` beside it), marks a method result or a field. `javax.annotation.Nullable` and
   other annotations named `Nullable` that are not such nicknames do nothing. The
   mark is inherited from an overridden method, and a record component hands it to its accessor and field.
+- A few JDK methods count as returning null (`File.list` and `listFiles`, `Path.getFileName`, `getParent` and
+  `getRoot`, `Reference.get`, `ReferenceQueue.poll`, `Files.probeContentType` and a few more), looked up by the
+  receiver's class and then the classes and interfaces above it. `src/java/spotbugs/nulls/jdk-nulls.tsv` holds
+  them, the JDK methods that never return null and the JDK parameters SpotBugs takes as dereferenced; it was
+  made by calling every public method of `java.base` in lab code and reading what SpotBugs reported.
 - A value that only may be null is reported where it is dereferenced, as long as it is dereferenced whichever
   way the flow goes from where it arose. `return` and `throw` are ways without a dereference; an exception
   thrown by a call is not a way. A value that is certainly null (from `null`, or on the null side of a test)
   stays reportable past a split.
 - A dereference is a call on the value, a field or array access, unboxing, `synchronized`, `throw`, the iterable
-  of a `for`, a `switch` on it, and handing it to a method of the same file that dereferences that parameter on
-  every way through (static, private, final or not overridden; followed through further calls).
-- What is known of a field of `this` ends at a call on `this` (also `super.` and `this(...)`), a call or
-  constructor handed `this` and a `synchronized` block;
+  of a `for`, a `switch` on it, and handing it to a method that dereferences that parameter on every way through
+  (static, private, final or not overridden; followed through further calls, in this file, in other files of the
+  run, and in the JDK table).
+- A method whose every return gives a value never null (a new object, a string, or a call to such a method, in
+  this file, another file or the JDK) makes the null side of a test of its result impossible, so nothing on that
+  side is reported. Other files are worked out in two rounds: the first knows nothing of calls into further
+  files, the second uses the first; a third round changes nothing on the code bases above.
+- What is known of a `final` field stays known across calls. What is known of another field of `this` ends at a
+  call on `this` (also `super.` and `this(...)`), a call or constructor handed `this` and a `synchronized` block;
   the field then counts as read again at that point. A `volatile` field is read anew each time.
 - The test of an `assert` is run, and past any `assert` a value that only may be null is no longer reported.
 - Lambda bodies are never reported; anonymous classes, constructors, initializers and field initializers are.
 - Several results of one method dereferenced on one line make one finding.
 
-Differences on Elasticsearch `server`, 92:
+Differences on Elasticsearch `server`, 100:
 
-- Handed to a method that dereferences it, about 68 missed: the method is in another file or in the JDK. A
-  rule sees the other files of a run only as outlines without bodies, so this needs a pass over the whole
-  project that records which parameters each method dereferences; SpotBugs has such a list for the JDK built in.
+- `Path.getFileName()` and `Path.getParent()` dereferenced, 47 extra: SpotBugs reports them in lab code, in
+  Nacos, and in an Elasticsearch class analysed alone, but not when the Elasticsearch classes are analysed
+  together; which classes turn it off is still being narrowed down.
 - A value arising after several null tests in a row, 6 extra: SpotBugs drops it (a field then gets
   `NP_NULL_ON_SOME_PATH_MIGHT_BE_INFEASIBLE`). The experiments show three tests in a row are enough, and that
   calls, other branches, loops and tests of method results in between each weaken it by a different amount; no
   rule tried so far fits both the experiments and this code base, so none is built in.
-- A method of the same file that dereferences its parameter, 3 extra: SpotBugs did not use that knowledge,
-  probably because of the order it visits classes in.
 - A helper that always throws, 2 extra: SpotBugs knows the call does not return.
 - `switch` with `case null`, 1 extra.
-- Not looked at one by one yet: 9 extra and 2 missed of `NP_NULL_ON_SOME_PATH`, 1 line that differs.
+- Not looked at one by one yet: 31 missed and 13 extra. One known cause among them is which calls end what is
+  known of a field that is not `final`: lab code shows a call handed `this` keeps it when the method returns a
+  value and writes no field, and ends it when the method returns nothing, is abstract or inherited, or is one of
+  a few JDK methods (`getClass`, `notifyAll`, a collection's `add` or `put`, `StringBuilder.append`). Not built
+  in yet.
 
 Not rebuilt yet: `NP_NULL_PARAM_DEREF` and its variants, `NP_GUARANTEED_DEREF`,
 `NP_NULL_ON_SOME_PATH_EXCEPTION`, `NP_NULL_ON_SOME_PATH_MIGHT_BE_INFEASIBLE`, `NP_LOAD_OF_KNOWN_NULL_VALUE`, the

@@ -15,7 +15,7 @@ pub struct Path {
     /// A field SpotBugs takes as possibly null.
     pub checked: bool,
     pub volatile: bool,
-    /// An instance field of the object the method runs on.
+    /// A field of the object the method runs on that is not final: calls can change it.
     pub of_this: bool,
 }
 
@@ -61,7 +61,7 @@ impl<'c, 'a> Finder<'c, 'a> {
     }
 
     fn member(&mut self, base: Option<String>, class: &ClassInfo, field: &Field) -> usize {
-        let of_this = base.as_deref() == Some("this");
+        let of_this = base.as_deref() == Some("this") && field.flags & flag::FINAL == 0;
         let key = match base {
             Some(base) => format!("{base}.{}", field.name),
             None => format!("{}.{}", class.name, field.name),
@@ -114,7 +114,7 @@ impl<'c, 'a> Finder<'c, 'a> {
                             let key = format!("this.{name}");
                             let shown = names::field(self.context, self.class, self.class, name);
                             let checked = resolver.check_for_null(component);
-                            Some(self.add(Path { key, shown, field: true, checked, volatile: false, of_this: true }))
+                            Some(self.add(Path { key, shown, field: true, checked, volatile: false, of_this: false }))
                         }
                         None => Some(self.local(name)),
                     },

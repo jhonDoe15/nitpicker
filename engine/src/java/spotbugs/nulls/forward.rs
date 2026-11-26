@@ -321,12 +321,13 @@ impl<'u, 'c, 'a> Flow<'u, 'c, 'a> {
             }
             budget -= 1;
             let thrown = self.steps(block, &mut store);
-            let mut sent: Vec<(usize, Store)> = Vec::new();
+            let mut sent: Vec<(usize, Store, bool)> = Vec::new();
             match &blocks[block].exit {
                 Exit::End => {}
-                Exit::Jump(to) => sent.push((*to, store)),
+                Exit::Jump(to) => sent.push((*to, store, true)),
                 Exit::Branch(_, holds, fails) => {
                     self.fade(block, &mut store);
+                    let known = unit.tests[block].as_ref().filter(|test| store[test.path].tag == NONNULL).and_then(|test| test.null_holds);
                     let (mut held, mut failed) = (store.clone(), store);
                     if let Some(test) = &unit.tests[block] {
                         let shown = &unit.finder.all[test.path].shown;
@@ -339,26 +340,29 @@ impl<'u, 'c, 'a> Flow<'u, 'c, 'a> {
                     }
                     split[*holds] = true;
                     split[*fails] = true;
-                    sent.push((*holds, held));
-                    sent.push((*fails, failed));
+                    sent.push((*holds, held, known != Some(true)));
+                    sent.push((*fails, failed, known != Some(false)));
                 }
                 Exit::Any(all) => {
                     self.fade(block, &mut store);
                     let open = open_switch(unit.finder.context.file, blocks[block].steps.last());
                     for (position, to) in all.iter().enumerate() {
                         split[*to] = true;
-                        sent.push((*to, if open && position + 1 == all.len() { quiet(&store) } else { store.clone() }));
+                        sent.push((*to, if open && position + 1 == all.len() { quiet(&store) } else { store.clone() }, true));
                     }
                 }
             }
             for handler in blocks[block].catches.iter().flatten() {
-                sent.push((handler.block, quiet(&thrown)));
+                sent.push((handler.block, quiet(&thrown), true));
             }
-            for (ordinal, (to, store)) in sent.into_iter().enumerate() {
+            for (ordinal, (to, store, taken)) in sent.into_iter().enumerate() {
                 let key = (block, ordinal);
-                match arriving[to].iter_mut().find(|(from, _)| *from == key) {
-                    Some((_, known)) if *known == store => continue,
-                    Some((_, known)) => *known = store,
+                let at = arriving[to].iter().position(|(from, _)| *from == key);
+                match at {
+                    None if !taken => continue,
+                    Some(at) if !taken => drop(arriving[to].remove(at)),
+                    Some(at) if arriving[to][at].1 == store => continue,
+                    Some(at) => arriving[to][at].1 = store,
                     None => arriving[to].push((key, store)),
                 }
                 let mut input = (to == 0).then(|| start.clone());
