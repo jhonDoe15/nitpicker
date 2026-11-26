@@ -329,7 +329,7 @@ fn null_away_reports_what_null_away_reports_on_the_error_prone_fixtures() {
     let top: Vec<&str> = found.iter().filter(|name| !found.iter().any(|other| name.starts_with(&format!("{other}.")))).map(String::as_str).collect();
     let (missed, extra, count) = null_away_differences(&source, &source, &top.join(","), None, "nullaway-errorprone.json");
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(count, 453);
+    assert_eq!(count, 734);
 }
 
 /// A library compiled with javac carries its `@Nullable` in type annotations; NullAway reads them from the class files.
