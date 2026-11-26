@@ -1,3 +1,4 @@
+import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
 import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mts';
 import { rule as ruleNoUninjectableDelay } from '../rules/test-runtime/lifecycle/no-uninjectable-delay.mts';
@@ -69,6 +70,7 @@ import { rule as ruleRequireProcessTimeout } from '../rules/processes/require-pr
 import { rule as ruleRequirePromiseReject } from '../rules/promises/executors/require-promise-reject.mts';
 import { rule as ruleRequireStagedParentNodeModules } from '../rules/temp-staging/require-staged-parent-node-modules.mts';
 import { rule as ruleRequireTestProcessTimeout } from '../rules/test-runtime/processes/timeouts/require-test-process-timeout.mts';
+import { rule as ruleRequireTreeSitterErrorCheck } from '../rules/tree-sitter/require-tree-sitter-error-check.mts';
 import { rule as ruleReusableObjectPerCall } from '../rules/reuse/reusable-object-per-call.mts';
 import { rule as ruleSettlePendingOnClose } from '../rules/lifecycles/pending/settle-pending-on-close.mts';
 import { rule as ruleShorterBooleanLogic } from '../rules/control/shorter-boolean-logic.mts';
@@ -84,6 +86,7 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
   'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
   'no-uninjectable-delay': ruleNoUninjectableDelay,
@@ -155,6 +158,7 @@ export const partRules = {
   'require-promise-reject': ruleRequirePromiseReject,
   'require-staged-parent-node-modules': ruleRequireStagedParentNodeModules,
   'require-test-process-timeout': ruleRequireTestProcessTimeout,
+  'require-tree-sitter-error-check': ruleRequireTreeSitterErrorCheck,
   'reusable-object-per-call': ruleReusableObjectPerCall,
   'settle-pending-on-close': ruleSettlePendingOnClose,
   'shorter-boolean-logic': ruleShorterBooleanLogic,

@@ -2105,6 +2105,20 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   file. Inside `node.type === "t"` (an `if`, a ternary or `&&`) the field is checked against the fields of type `t`
   only. A field name that does not exist is not an error in the API, it is an empty answer. Not reported: field names
   from variables, modules for which no `node-types.json` can be found.
+- A tree walked with tree-sitter decides what an error node does (`nitpicker/require-tree-sitter-error-check`,
+  production files). Reported: in a module that imports `web-tree-sitter` or `tree-sitter`, a function that indexes
+  `children` or `namedChildren` (`node.children[0]`), maps them with a callback that reads the structure of each child,
+  or chains a member access directly on `childForFieldName(...)` (no `?.`), when neither the function nor a function in
+  the same file that calls or references it mentions `hasError`, `isError`, `isMissing` or the type `"ERROR"`. A parser
+  that recovers from errors puts an error node in place of any expected child, and the rest of the tree looks normal.
+  Not reported: exported functions (their callers are in other files), `?.` access, text-only reads.
+- A positional element is tested before use in plain JavaScript (`nitpicker/no-unchecked-positional-element`,
+  `.js`, `.mjs` and `.cjs` files without `@ts-check`). Reported: an element taken by position from an array that is a
+  property of a parameter (`({ children: [first] }) => ...`, or a `map`/`flatMap`/`forEach`/`filter` callback
+  `([, second]) => ...` over a member of a parameter) and passed to a call or read with `.` without a default and
+  without any test of it (`=== undefined`, `if`, `?.`, `??`, `&&`). TypeScript reports this with
+  `noUncheckedIndexedAccess`; plain JavaScript has nothing. Not reported: `Object.entries` pairs, regular expression
+  results, tuples documented in the function's comment, literal arrays.
 - A finished child process is not judged by text on its standard error (`nitpicker/no-stderr-as-failure`,
   production files). Reported: an `if` or a ternary whose test (alone, or as one side of `||`) checks that the
   standard error is not empty (`stderr`, `stderr.length`, `stderr.length > 0`, `stderr !== ''`, also through

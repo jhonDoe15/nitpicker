@@ -73,6 +73,8 @@ export const productionGuardEntries: Record<string, Linter.RuleEntry> = {
   'nitpicker/no-single-folder-config-lookup': 'error',
   'nitpicker/no-keyword-regex-over-source': 'error',
   'nitpicker/no-unknown-tree-sitter-field': 'error',
+  'nitpicker/require-tree-sitter-error-check': 'error',
+  'nitpicker/no-unchecked-positional-element': 'error',
   'nitpicker/no-stderr-as-failure': 'error',
   'nitpicker/no-status-only-spawn-check': 'error',
   'nitpicker/no-buffered-growing-output': 'error',

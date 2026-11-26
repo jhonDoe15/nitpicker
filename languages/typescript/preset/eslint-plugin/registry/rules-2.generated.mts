@@ -78,6 +78,7 @@ import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framewo
 import { rule as ruleNoUnanchoredAffixReplace } from '../rules/affixes/no-unanchored-affix-replace.mts';
 import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-writes.mts';
 import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mts';
+import { rule as ruleNoUncheckedPositionalElement } from '../rules/positional-elements/no-unchecked-positional-element.mts';
 import { rule as ruleNoUncheckedResponseJson } from '../rules/response-json/no-unchecked-response-json.mts';
 import { rule as ruleNoUncheckedUrlSink } from '../rules/urls/links/no-unchecked-url-sink.mts';
 import { rule as ruleNoUnclearedSharedMock } from '../test-quality/shared-mocks/no-uncleared-shared-mock.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-u
 import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
 import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/no-unguarded-option-list.mts';
 import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/registry/no-unguarded-registry-delete.mts';
-import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
 
 export const partRules = {
   'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
@@ -180,6 +180,7 @@ export const partRules = {
   'no-unanchored-affix-replace': ruleNoUnanchoredAffixReplace,
   'no-unatomic-writes': ruleNoUnatomicWrites,
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,
+  'no-unchecked-positional-element': ruleNoUncheckedPositionalElement,
   'no-unchecked-response-json': ruleNoUncheckedResponseJson,
   'no-unchecked-url-sink': ruleNoUncheckedUrlSink,
   'no-uncleared-shared-mock': ruleNoUnclearedSharedMock,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
   'no-unguarded-option-list': ruleNoUnguardedOptionList,
   'no-unguarded-registry-delete': ruleNoUnguardedRegistryDelete,
-  'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
 };

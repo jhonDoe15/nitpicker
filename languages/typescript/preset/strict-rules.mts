@@ -221,6 +221,8 @@ export const strictEslintRuleIds = [
   'nitpicker/no-single-folder-config-lookup',
   'nitpicker/no-keyword-regex-over-source',
   'nitpicker/no-unknown-tree-sitter-field',
+  'nitpicker/require-tree-sitter-error-check',
+  'nitpicker/no-unchecked-positional-element',
   'nitpicker/no-stderr-as-failure',
   'nitpicker/no-status-only-spawn-check',
   'nitpicker/no-buffered-growing-output',

@@ -474,6 +474,12 @@ in a module that uses `web-tree-sitter` or `tree-sitter`, when the `node-types.j
 such field (for the node type, when a `node.type === '...'` check on the same node encloses the lookup). Nothing is
 reported when no grammar's `node-types.json` can be found.
 
+Parser error nodes: `nitpicker/require-tree-sitter-error-check` (production source, in `eslint-lint`) reports a function
+in a `web-tree-sitter` or `tree-sitter` module that indexes or maps the children of a node, or chains on
+`childForFieldName(...)`, when neither it nor a same-file caller checks `hasError`, `isError`, `isMissing` or the
+`ERROR` type. `nitpicker/no-unchecked-positional-element` (`.js`, `.mjs` and `.cjs` files) reports an element
+destructured by position from an array that is a property of a parameter and used without an `undefined` test.
+
 Standard error as failure: `nitpicker/no-stderr-as-failure` (production source, in `eslint-lint`) and
 `pmd/StderrAsFailure` (Java, main sources) report a condition that fails a finished subprocess because its standard
 error is not empty, when the condition stands alone or is one side of `||` and its branch throws (or rejects, or

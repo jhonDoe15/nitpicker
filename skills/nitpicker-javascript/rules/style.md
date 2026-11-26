@@ -364,6 +364,11 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   Use a parser or a tokenizer, or strip comments and strings first (`nitpicker/no-keyword-regex-over-source`).
 - Use only field names that the grammar defines in `childForFieldName` and `childrenForFieldName`: an unknown name
   is not an error, it returns nothing (`nitpicker/no-unknown-tree-sitter-field`).
+- A function that walks a tree-sitter tree decides what happens with error nodes: they stand in for any child, so
+  check `hasError`, `isError`, `isMissing` or the type `ERROR`, or skip the unit
+  (`nitpicker/require-tree-sitter-error-check`).
+- In plain JavaScript, test an element taken by position from an array of a parameter (`({ children: [first] }) =>`)
+  before passing it on or reading it: the array can be shorter (`nitpicker/no-unchecked-positional-element`).
 - Decide whether a child process failed by its exit status (`status !== 0`, `exitCode`, the callback's `error`), not
   by text on its standard error, which also carries warnings and notices (`nitpicker/no-stderr-as-failure`).
 - Read `error` and `signal` of a `spawnSync` result before its `status`: a child that could not start, timed out or
