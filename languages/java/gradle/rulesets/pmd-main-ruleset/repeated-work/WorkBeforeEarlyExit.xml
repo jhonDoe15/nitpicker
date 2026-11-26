@@ -4,18 +4,25 @@
     <properties>
       <property name="xpath">
         <value><![CDATA[
-let $cheap := ('get', 'getOrDefault', 'contains', 'containsKey', 'containsValue', 'equals', 'equalsIgnoreCase', 'charAt',
-      'substring', 'startsWith', 'endsWith', 'indexOf', 'lastIndexOf', 'trim', 'strip', 'toLowerCase', 'toUpperCase', 'split',
-      'replace', 'replaceAll', 'valueOf', 'toString', 'hashCode', 'size', 'isEmpty', 'length', 'of', 'ofNullable', 'compareTo',
-      'format', 'requireNonNull', 'getAttribute', 'getProperty', 'getParameter', 'getHeader', 'getOrNull', 'orElse'),
-    $verbs := '^_*(accept|acquire|add|advance|append|apply|call|clear|close|consume|create|dec|decrement|delete|dequeue|eat|emit|enqueue|exec|expect|fetch|generate|inc|increment|insert|lex|match|next|now|open|poll|pop|post|push|put|random|read|release|remove|reset|run|save|scan|send|set|shift|skip|splice|start|stop|take|test|unshift|update|uuid|write)([A-Z_$0-9]|$)',
+let $verbs := '^_*(accept|acquire|add|advance|append|apply|call|clear|close|consume|create|dec|decrement|delete|dequeue|eat|emit|enqueue|exec|expect|fetch|generate|inc|increment|insert|lex|match|next|now|open|poll|pop|post|push|put|random|read|release|remove|reset|run|save|scan|send|set|shift|skip|splice|start|stop|take|test|unshift|update|uuid|write|check|require|validate|assert|ensure|verify|invoke|parse|decode|deserialize|load|lock|await|wait|sleep)([A-Z_$0-9]|$)',
     $settled := function($node) {
       empty($node/descendant-or-self::*[self::MethodCall or self::ConstructorCall or self::AssignmentExpression
         or self::UnaryExpression[@Operator = ('++', '--')] or self::LambdaExpression or self::MethodReference])
     },
     $costly := function($call) {
-      $call/ArgumentList/@Size > 0 and not($call/@MethodName = $cheap) and not(matches($call/@MethodName, $verbs))
+      $call/ArgumentList/@Size > 0
+        and matches($call/@MethodName, '^(resolve|find|lookup|search|locate|compute|calculate|derive|infer|evaluate|analy[sz]e|collect|query|render|normalize|canonicali[sz]e|digest|describe|typeOf)([A-Z_0-9]|$)')
         and $settled($call/ArgumentList) and $settled($call/*[1][not(self::ArgumentList)])
+    },
+    $inMemory := function($init) {
+      (exists($init/self::MethodCall[@MethodName = ('toList', 'collect', 'count', 'anyMatch', 'allMatch', 'noneMatch',
+          'toArray', 'sum', 'max', 'min', 'reduce')][*[1]/descendant-or-self::MethodCall[@MethodName = ('stream', 'parallelStream')]])
+        or exists($init/self::ConstructorCall[ClassType/@SimpleName = ('ArrayList', 'HashMap', 'HashSet', 'LinkedHashMap',
+          'LinkedHashSet', 'TreeMap', 'TreeSet')][ArgumentList/@Size = 1])
+        or exists($init/self::MethodCall[@MethodName = 'copyOf'][ArgumentList/@Size = 1]
+          [*[1][self::TypeExpression][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]))
+      and empty($init//MethodCall[matches(@MethodName, $verbs)] | $init//AssignmentExpression
+        | $init//UnaryExpression[@Operator = ('++', '--')])
     },
     $cheapTest := function($test) {
       empty($test/descendant-or-self::*[self::ConstructorCall or self::AssignmentExpression
@@ -28,18 +35,19 @@ let $cheap := ('get', 'getOrDefault', 'contains', 'containsKey', 'containsValue'
           [ancestor::* intersect $scope])
         or exists($scope[self::LambdaExpression][parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach',
           'forEachOrdered', 'forEachRemaining', 'map', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch',
-          'mapToObj', 'mapToInt', 'mapToLong')]])
+          'mapToObj', 'mapToInt', 'mapToLong')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]])
         or exists($scope[self::MethodDeclaration][matches(@Name, '^visit')])
     }
 return
 //LocalVariableDeclaration[parent::Block][count(VariableDeclarator) = 1]
-  [VariableDeclarator/*[2][self::MethodCall][$costly(.)]]
-  [let $name := VariableDeclarator/VariableId/@Name
-   return exists(following-sibling::*[1][self::IfStatement][count(*) = 2]
+  [let $name := VariableDeclarator/VariableId/@Name, $init := VariableDeclarator/*[2],
+       $looping := $repeated(.)
+   return ($inMemory($init) or ($looping and exists($init[self::MethodCall][$costly(.)]))) and exists(following-sibling::*[1][self::IfStatement][count(*) = 2]
      [*[2]/(self::Block/*[last()] | self::*[not(self::Block)])
        [self::BreakStatement or self::ContinueStatement or self::ReturnStatement or self::ThrowStatement]]
      [empty(.//VariableAccess[@Name = $name])]
-     [$settled(*[1]) or ($cheapTest(*[1]) and $repeated(.))])]
+     [$settled(*[1]) or ($cheapTest(*[1]) and $looping)])]
 ]]></value>
       </property>
     </properties>

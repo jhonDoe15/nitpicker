@@ -959,7 +959,8 @@ return (
         <value><![CDATA[
 let $bodies := (//ForeachStatement/*[last()] | //ForStatement/*[last()] | //WhileStatement/*[last()] | //DoStatement/*[1]
       | //LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining',
-          'map', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch', 'mapToObj', 'mapToInt', 'mapToLong')]]/*[last()])
+          'map', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch', 'mapToObj', 'mapToInt', 'mapToLong')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]/*[last()])
 return
 $bodies//MethodCall[@MethodName = ('getMethod', 'getDeclaredMethod', 'getField', 'getDeclaredField', 'getConstructor',
     'getDeclaredConstructor')]
@@ -2841,6 +2842,7 @@ let $iterations := ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'fla
       'addLast', 'putIfAbsent'),
     $source := function($copy) {
       ($copy/self::ConstructorCall[ClassType/@SimpleName = $copies][ArgumentList/@Size = 1]/ArgumentList/*[1]
+          [pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]
       | $copy/self::MethodCall[@MethodName = 'copyOf'][ArgumentList/@Size = 1]
           [*[1][self::TypeExpression][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]
           /ArgumentList/*[1]
@@ -2854,12 +2856,14 @@ let $iterations := ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'fla
     },
     $stored := function($copy) {
       exists($copy/parent::ArgumentList/parent::ConstructorCall[not(ClassType/@SimpleName = $copies)]
-        | $copy/parent::ArgumentList/parent::MethodCall[@MethodName = ('add', 'put', 'set', 'offer', 'push', 'addFirst',
+        | $copy/parent::ArgumentList/parent::MethodCall[@MethodName = ('add', 'put', 'offer', 'push', 'addFirst',
             'addLast', 'putIfAbsent', 'of', 'entry')]
         | $copy/parent::AssignmentExpression[*[2] is $copy][*[1][self::FieldAccess or self::ArrayAccess]]
-        | $copy/parent::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('map', 'mapToObj')]]
+        | $copy/parent::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('map', 'mapToObj')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]
         | $copy/parent::ReturnStatement[ancestor::LambdaExpression[1][parent::ArgumentList/parent::MethodCall
-            [@MethodName = ('map', 'mapToObj')]]])
+            [@MethodName = ('map', 'mapToObj')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]])
     },
     $small := function($pass) {
       exists($pass/self::ForeachStatement/*[2][self::MethodCall[@MethodName = ('of', 'asList')] or self::ArrayAllocation])
@@ -2870,7 +2874,8 @@ return
   [let $from := $source(.),
        $name := $from/@Name,
        $pass := ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
-         or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations]]][1],
+         or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]][1],
        $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
        $declared := ($scope//VariableDeclarator[VariableId/@Name = $name]
          | ancestor::ClassBody[1]/FieldDeclaration/VariableDeclarator[VariableId/@Name = $name])[1]
@@ -3789,29 +3794,30 @@ return //MethodCall[@MethodName = ('isPresent', 'isEmpty')][ArgumentList/@Size =
     <properties>
       <property name="xpath">
         <value><![CDATA[
-let $cheap := ('get', 'getOrDefault', 'contains', 'containsKey', 'containsValue', 'equals', 'equalsIgnoreCase', 'charAt',
-      'substring', 'startsWith', 'endsWith', 'indexOf', 'lastIndexOf', 'trim', 'strip', 'toLowerCase', 'toUpperCase', 'split',
-      'replace', 'replaceAll', 'valueOf', 'toString', 'hashCode', 'size', 'isEmpty', 'length', 'of', 'ofNullable', 'compareTo',
-      'format', 'requireNonNull', 'getAttribute', 'getProperty', 'getParameter', 'getHeader', 'getOrNull', 'orElse'),
-    $verbs := '^_*(accept|acquire|add|advance|append|apply|call|clear|close|consume|create|dec|decrement|delete|dequeue|eat|emit|enqueue|exec|expect|fetch|generate|inc|increment|insert|lex|match|next|now|open|poll|pop|post|push|put|random|read|release|remove|reset|run|save|scan|send|set|shift|skip|splice|start|stop|take|test|unshift|update|uuid|write)([A-Z_$0-9]|$)',
+let $verbs := '^_*(accept|acquire|add|advance|append|apply|call|clear|close|consume|create|dec|decrement|delete|dequeue|eat|emit|enqueue|exec|expect|fetch|generate|inc|increment|insert|lex|match|next|now|open|poll|pop|post|push|put|random|read|release|remove|reset|run|save|scan|send|set|shift|skip|splice|start|stop|take|test|unshift|update|uuid|write)([A-Z_$0-9]|$)',
     $settled := function($node) {
       empty($node/descendant-or-self::*[self::MethodCall or self::ConstructorCall or self::AssignmentExpression
         or self::UnaryExpression[@Operator = ('++', '--')] or self::LambdaExpression or self::MethodReference])
     },
     $costly := function($call) {
-      $call/ArgumentList/@Size > 0 and not($call/@MethodName = $cheap) and not(matches($call/@MethodName, $verbs))
+      $call/ArgumentList/@Size > 0
+        and matches($call/@MethodName, '^(resolve|find|lookup|search|locate|compute|calculate|derive|infer|evaluate|analy[sz]e|collect|query|render|normalize|canonicali[sz]e|digest|describe|typeOf)([A-Z_0-9]|$)')
         and $settled($call/ArgumentList) and $settled($call/*[1][not(self::ArgumentList)])
     },
     $key := function($node) {
       string-join(for $part in $node/descendant-or-self::*
         return concat(local-name($part), ':', string($part/@Name), string($part/@MethodName), string($part/@Image),
-          string($part/@Operator)), ' ')
+          string($part/@Operator), string($part/@SimpleName), string($part/@True), string($part/@ConstValue)), ' ')
     },
     $after := function($test) {
       $test/ancestor::IfStatement[exists(*[1]/descendant-or-self::* intersect $test)]/*[2]
           /(self::Block/*[1] | self::*[not(self::Block)])
       | $test/ancestor::ConditionalExpression[exists(*[1]/descendant-or-self::* intersect $test)]/(*[2] | *[3])
       | $test/ancestor::InfixExpression[@Operator = ('&&', '||')][exists(*[1]/descendant-or-self::* intersect $test)]/*[2]
+    },
+    $branch := function($call) {
+      $call/ancestor-or-self::*[parent::ConditionalExpression or self::SwitchArrowBranch or self::SwitchFallthroughBranch
+        or parent::InfixExpression[@Operator = ('&&', '||')]][1]
     },
     $tested := //MethodCall[$costly(.)]
       [parent::MethodCall[@MethodName = ('isPresent', 'isEmpty')][ArgumentList/@Size = 0]
@@ -3826,9 +3832,11 @@ return
   //MethodCall[@MethodName = ancestor::MethodDeclaration[1]/@Name]
     [empty(*[1][not(self::ArgumentList) and not(self::ThisExpression)])]
     [ArgumentList/@Size > 0][$settled(ArgumentList)]
-    [let $call := ., $wanted := $key(.), $statement := ancestor::*[self::ExpressionStatement or self::ReturnStatement
-        or self::LocalVariableDeclaration][1]
-     return exists($statement//MethodCall[. << $call][$key(.) = $wanted])]
+    [ArgumentList/@Size = count(ancestor::MethodDeclaration[1]/FormalParameters/FormalParameter)]
+    [let $call := ., $wanted := $key(.), $arm := $branch(.), $statement := ancestor::*[self::ExpressionStatement
+        or self::ReturnStatement or self::LocalVariableDeclaration][1]
+     return exists($statement//MethodCall[. << $call][$key(.) = $wanted]
+       [let $other := $branch(.) return (empty($arm) and empty($other)) or $arm is $other])]
 ]]></value>
       </property>
     </properties>
@@ -3849,7 +3857,8 @@ return
 //MethodCall[@MethodName = ('anyMatch', 'allMatch', 'noneMatch', 'filter')][ArgumentList/@Size = 1]
   [*[1][self::MethodCall][@MethodName = ('stream', 'parallelStream')][ArgumentList/@Size = 0]]
   [let $pass := ancestor::*[self::ForeachStatement
-         or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations]]][1],
+         or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]][1],
        $element := ($pass/self::ForeachStatement/LocalVariableDeclaration//VariableId
          | $pass/self::LambdaExpression/LambdaParameterList//VariableId)/@Name,
        $source := *[1]/*[1],
@@ -3914,7 +3923,8 @@ return (
 let $iterations := ('forEach', 'forEachOrdered', 'map', 'flatMap', 'peek', 'mapToObj'),
     $passes := function($node) {
       $node/ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
-        or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations]]]
+        or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]]
     },
     $collectionValued := function($target, $outer) {
       let $name := $target/@Name,
@@ -6320,18 +6330,25 @@ return (
     <properties>
       <property name="xpath">
         <value><![CDATA[
-let $cheap := ('get', 'getOrDefault', 'contains', 'containsKey', 'containsValue', 'equals', 'equalsIgnoreCase', 'charAt',
-      'substring', 'startsWith', 'endsWith', 'indexOf', 'lastIndexOf', 'trim', 'strip', 'toLowerCase', 'toUpperCase', 'split',
-      'replace', 'replaceAll', 'valueOf', 'toString', 'hashCode', 'size', 'isEmpty', 'length', 'of', 'ofNullable', 'compareTo',
-      'format', 'requireNonNull', 'getAttribute', 'getProperty', 'getParameter', 'getHeader', 'getOrNull', 'orElse'),
-    $verbs := '^_*(accept|acquire|add|advance|append|apply|call|clear|close|consume|create|dec|decrement|delete|dequeue|eat|emit|enqueue|exec|expect|fetch|generate|inc|increment|insert|lex|match|next|now|open|poll|pop|post|push|put|random|read|release|remove|reset|run|save|scan|send|set|shift|skip|splice|start|stop|take|test|unshift|update|uuid|write)([A-Z_$0-9]|$)',
+let $verbs := '^_*(accept|acquire|add|advance|append|apply|call|clear|close|consume|create|dec|decrement|delete|dequeue|eat|emit|enqueue|exec|expect|fetch|generate|inc|increment|insert|lex|match|next|now|open|poll|pop|post|push|put|random|read|release|remove|reset|run|save|scan|send|set|shift|skip|splice|start|stop|take|test|unshift|update|uuid|write|check|require|validate|assert|ensure|verify|invoke|parse|decode|deserialize|load|lock|await|wait|sleep)([A-Z_$0-9]|$)',
     $settled := function($node) {
       empty($node/descendant-or-self::*[self::MethodCall or self::ConstructorCall or self::AssignmentExpression
         or self::UnaryExpression[@Operator = ('++', '--')] or self::LambdaExpression or self::MethodReference])
     },
     $costly := function($call) {
-      $call/ArgumentList/@Size > 0 and not($call/@MethodName = $cheap) and not(matches($call/@MethodName, $verbs))
+      $call/ArgumentList/@Size > 0
+        and matches($call/@MethodName, '^(resolve|find|lookup|search|locate|compute|calculate|derive|infer|evaluate|analy[sz]e|collect|query|render|normalize|canonicali[sz]e|digest|describe|typeOf)([A-Z_0-9]|$)')
         and $settled($call/ArgumentList) and $settled($call/*[1][not(self::ArgumentList)])
+    },
+    $inMemory := function($init) {
+      (exists($init/self::MethodCall[@MethodName = ('toList', 'collect', 'count', 'anyMatch', 'allMatch', 'noneMatch',
+          'toArray', 'sum', 'max', 'min', 'reduce')][*[1]/descendant-or-self::MethodCall[@MethodName = ('stream', 'parallelStream')]])
+        or exists($init/self::ConstructorCall[ClassType/@SimpleName = ('ArrayList', 'HashMap', 'HashSet', 'LinkedHashMap',
+          'LinkedHashSet', 'TreeMap', 'TreeSet')][ArgumentList/@Size = 1])
+        or exists($init/self::MethodCall[@MethodName = 'copyOf'][ArgumentList/@Size = 1]
+          [*[1][self::TypeExpression][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]))
+      and empty($init//MethodCall[matches(@MethodName, $verbs)] | $init//AssignmentExpression
+        | $init//UnaryExpression[@Operator = ('++', '--')])
     },
     $cheapTest := function($test) {
       empty($test/descendant-or-self::*[self::ConstructorCall or self::AssignmentExpression
@@ -6344,18 +6361,19 @@ let $cheap := ('get', 'getOrDefault', 'contains', 'containsKey', 'containsValue'
           [ancestor::* intersect $scope])
         or exists($scope[self::LambdaExpression][parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach',
           'forEachOrdered', 'forEachRemaining', 'map', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch',
-          'mapToObj', 'mapToInt', 'mapToLong')]])
+          'mapToObj', 'mapToInt', 'mapToLong')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]])
         or exists($scope[self::MethodDeclaration][matches(@Name, '^visit')])
     }
 return
 //LocalVariableDeclaration[parent::Block][count(VariableDeclarator) = 1]
-  [VariableDeclarator/*[2][self::MethodCall][$costly(.)]]
-  [let $name := VariableDeclarator/VariableId/@Name
-   return exists(following-sibling::*[1][self::IfStatement][count(*) = 2]
+  [let $name := VariableDeclarator/VariableId/@Name, $init := VariableDeclarator/*[2],
+       $looping := $repeated(.)
+   return ($inMemory($init) or ($looping and exists($init[self::MethodCall][$costly(.)]))) and exists(following-sibling::*[1][self::IfStatement][count(*) = 2]
      [*[2]/(self::Block/*[last()] | self::*[not(self::Block)])
        [self::BreakStatement or self::ContinueStatement or self::ReturnStatement or self::ThrowStatement]]
      [empty(.//VariableAccess[@Name = $name])]
-     [$settled(*[1]) or ($cheapTest(*[1]) and $repeated(.))])]
+     [$settled(*[1]) or ($cheapTest(*[1]) and $looping)])]
 ]]></value>
       </property>
     </properties>

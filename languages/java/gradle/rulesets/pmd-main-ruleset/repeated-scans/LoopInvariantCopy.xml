@@ -12,6 +12,7 @@ let $iterations := ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'fla
       'addLast', 'putIfAbsent'),
     $source := function($copy) {
       ($copy/self::ConstructorCall[ClassType/@SimpleName = $copies][ArgumentList/@Size = 1]/ArgumentList/*[1]
+          [pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]
       | $copy/self::MethodCall[@MethodName = 'copyOf'][ArgumentList/@Size = 1]
           [*[1][self::TypeExpression][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]
           /ArgumentList/*[1]
@@ -25,12 +26,14 @@ let $iterations := ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'fla
     },
     $stored := function($copy) {
       exists($copy/parent::ArgumentList/parent::ConstructorCall[not(ClassType/@SimpleName = $copies)]
-        | $copy/parent::ArgumentList/parent::MethodCall[@MethodName = ('add', 'put', 'set', 'offer', 'push', 'addFirst',
+        | $copy/parent::ArgumentList/parent::MethodCall[@MethodName = ('add', 'put', 'offer', 'push', 'addFirst',
             'addLast', 'putIfAbsent', 'of', 'entry')]
         | $copy/parent::AssignmentExpression[*[2] is $copy][*[1][self::FieldAccess or self::ArrayAccess]]
-        | $copy/parent::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('map', 'mapToObj')]]
+        | $copy/parent::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('map', 'mapToObj')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]
         | $copy/parent::ReturnStatement[ancestor::LambdaExpression[1][parent::ArgumentList/parent::MethodCall
-            [@MethodName = ('map', 'mapToObj')]]])
+            [@MethodName = ('map', 'mapToObj')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]])
     },
     $small := function($pass) {
       exists($pass/self::ForeachStatement/*[2][self::MethodCall[@MethodName = ('of', 'asList')] or self::ArrayAllocation])
@@ -41,7 +44,8 @@ return
   [let $from := $source(.),
        $name := $from/@Name,
        $pass := ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
-         or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations]]][1],
+         or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]][1],
        $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
        $declared := ($scope//VariableDeclarator[VariableId/@Name = $name]
          | ancestor::ClassBody[1]/FieldDeclaration/VariableDeclarator[VariableId/@Name = $name])[1]

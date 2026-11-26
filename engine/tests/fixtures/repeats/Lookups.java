@@ -28,6 +28,22 @@ public class Lookups {
     return n == 0 ? 0 : twice(n - 1) + twice(n - 1);
   }
 
+  int arms(int n, boolean up) {
+    return switch (n) {
+      case 0 -> arms(n - 1, true);
+      case 1 -> arms(n - 1, false);
+      default -> up ? arms(n - 2, up) : arms(n - 2, up);
+    };
+  }
+
+  int overloaded(int n) {
+    return overloaded(n, true) + overloaded(n, true);
+  }
+
+  int overloaded(int n, boolean up) {
+    return up ? n : -n;
+  }
+
   int branches(int n) {
     if (n > 3) {
       return branches(n - 1);
@@ -133,6 +149,44 @@ public class Lookups {
       return null;
     }
     return found;
+  }
+
+  List<String> namesFirst(List<Item> items, boolean skip) {
+    List<String> names = items.stream().map(Item::name).toList();
+    if (skip) {
+      return List.of();
+    }
+    return names;
+  }
+
+  List<Item> copyFirst(List<Item> items, boolean skip) {
+    List<Item> copy = new ArrayList<>(items);
+    if (skip) {
+      return List.of();
+    }
+    return copy;
+  }
+
+  void checkedFirst(List<String> keys) {
+    for (String key : keys) {
+      Item found = checkFound(key, 1);
+      if (key.isEmpty()) {
+        continue;
+      }
+      Item kind = getKind(key, 1);
+      if (key.isBlank()) {
+        continue;
+      }
+      System.out.println(found + " " + kind);
+    }
+  }
+
+  Item checkFound(String key, int depth) {
+    return find(key, depth);
+  }
+
+  Item getKind(String key, int depth) {
+    return find(key, depth);
   }
 
   Item exitWithElse(String key, boolean skip) {

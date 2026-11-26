@@ -550,16 +550,20 @@ Go follow in #2133.
 its result and again to use it, and a recursive call repeated with the same arguments on one path.
 Java has `RepeatedCall` (main PMD ruleset): `resolve(x).isPresent() && resolve(x).get()`, a
 `find(x) != null` test followed by `find(x)` in the guarded branch or arm, and a recursive call
-repeated with the same arguments in one statement. Kotlin, Python and Go follow in #2133.
+repeated with the same arguments in one statement and branch. The tested call must be named as a
+lookup or computation (`resolve`, `find`, `lookup`, `compute` and similar); a first run over large
+Java projects showed that other names in this position are mostly cheap accessors (`group(n)`,
+`getenv`, getters). Kotlin, Python and Go follow in #2133.
 
 `nitpicker/no-work-before-early-exit` (production source, in `eslint-lint`) reports effect-free
 in-memory work (a collection pass, a `Map` or `Set` built; file reads and parses are left alone, since
 moving them would change which error the exit path raises) declared right before an early exit
 that does not read it. Java has `WorkBeforeEarlyExit` (main PMD ruleset), where PMD
-`PrematureDeclaration` treats calls as impure and so skips this case: a local initialised by a call
-with arguments right before an `if` without `else` that ends in an exit and reads neither the local
-nor any call. Inside a loop body, an iteration callback or a `visit*` method the condition may call
-methods that do not change state (#2184): the expensive call is paid for every element the cheap
+`PrematureDeclaration` treats calls as impure and so skips this case: a stream pass or a collection
+copy right before an `if` without `else` that ends in an exit, makes no calls and does not read the
+local. Inside a loop body, an iteration callback or a `visit*` method (#2184) a local set from a
+lookup or computation (`resolve`, `find`, `compute` and similar) is reported too, and the condition
+may call methods that do not change state: the expensive call is paid for every element the cheap
 test throws away. Kotlin, Python and Go follow in #2133.
 
 `nitpicker/no-read-all-before-pass` (production source, in `eslint-lint`) reports every file read
