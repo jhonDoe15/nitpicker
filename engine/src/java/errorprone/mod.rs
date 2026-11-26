@@ -7,6 +7,8 @@ mod annotated;
 mod ban;
 mod comments;
 mod parameter_comment;
+mod parameter_name;
+mod identifier_data;
 mod text_blocks;
 mod streams;
 mod strong_time;
@@ -262,6 +264,16 @@ mod android_fragments;
 mod rule_not_run;
 mod unnecessary_copy;
 mod matcher_wrapping;
+mod junit_cleanups;
+mod dagger_modules;
+mod list_remove;
+mod package_location;
+mod null_pointer_tester;
+mod guarded_writes;
+mod immutable_set_contains;
+mod framework_assignments;
+mod ignored_values;
+mod constant_expression_checks;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -489,6 +501,7 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["ByteBufferBackingArray"], buffers::byte_buffer_backing_array),
     (&["ClassNewInstance"], reflection::class_new_instance),
     (&["ParameterComment"], parameter_comment::parameter_comment),
+    (&["ParameterName"], parameter_name::parameter_name),
     (&["StringConcatToTextBlock"], text_blocks::string_concat_to_text_block),
     (&["UnnecessaryMethodReference"], references::unnecessary_method_reference),
     (&["AmbiguousMethodReference"], references::ambiguous_method_reference),
@@ -823,6 +836,22 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["FragmentInjection"], android_fragments::fragment_injection),
     (&["UnnecessaryMethodInvocationMatcher"], matcher_wrapping::unnecessary_method_invocation_matcher),
     (&["TimeInStaticInitializer"], thread_time_checks::time_in_static_initializer),
+    (&["ExtendingJUnitAssert"], junit_cleanups::extending_junit_assert),
+    (&["JUnit4EmptyMethods"], junit_cleanups::junit4_empty_methods),
+    (&["AssertThrowsBlockToExpression"], junit_cleanups::assert_throws_block_to_expression),
+    (&["ScopeOnModule"], dagger_modules::scope_on_module),
+    (&["PrivateConstructorForNoninstantiableModule"], dagger_modules::private_constructor_for_noninstantiable_module),
+    (&["ListRemoveAmbiguous"], list_remove::list_remove_ambiguous),
+    (&["UnnecessarySetDefault"], null_pointer_tester::unnecessary_set_default),
+    (&["StaticGuardedByInstance"], guarded_writes::static_guarded_by_instance),
+    (&["SelfSet"], constant_expression_checks::self_set),
+    (&["TruthConstantAsserts"], constant_expression_checks::truth_constant_asserts),
+    (&["DuplicateAssertion"], constant_expression_checks::duplicate_assertion),
+    (&["IgnoredPureGetter"], ignored_values::ignored_pure_getter),
+    (&["RxReturnValueIgnored"], ignored_values::rx_return_value_ignored),
+    (&["UnnecessaryAssignment"], framework_assignments::unnecessary_assignment_expression),
+    (&["UnnecessaryAssignment"], framework_assignments::unnecessary_assignment_variable),
+    (&["ImmutableSetForContains"], immutable_set_contains::immutable_set_for_contains),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
@@ -856,6 +885,8 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["MemoizeConstantVisitorStateLookups"], visitor_state::memoize_constant_visitor_state_lookups),
     (&["RuleNotRun"], rule_not_run::rule_not_run),
     (&["UnnecessaryCopy"], unnecessary_copy::unnecessary_copy),
+    (&["PackageLocation"], package_location::package_location),
+    (&["OptionalNotPresent"], constant_expression_checks::optional_not_present),
 ];
 
 pub struct ErrorProne;

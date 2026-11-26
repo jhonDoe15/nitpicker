@@ -22,4 +22,8 @@ public abstract class ImmutableSet<E> extends ImmutableCollection<E> implements 
       return null;
     }
   }
+
+  public static <E> java.util.stream.Collector<E, ?, ImmutableSet<E>> toImmutableSet() {
+    return null;
+  }
 }

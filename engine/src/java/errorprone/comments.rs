@@ -18,11 +18,11 @@ pub struct Commented {
     pub after: Vec<Comment>,
 }
 
-struct Token {
-    pos: usize,
-    end: usize,
-    comma: bool,
-    comments: Vec<Comment>,
+pub(super) struct Token {
+    pub(super) pos: usize,
+    pub(super) end: usize,
+    pub(super) comma: bool,
+    pub(super) comments: Vec<Comment>,
 }
 
 static BLOCK: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\s*/\*\s*(.*?)\s*\*/\s*").unwrap());
@@ -60,7 +60,7 @@ fn collect<'t>(node: Node<'t>, from: usize, to: usize, out: &mut Vec<Node<'t>>) 
     }
 }
 
-fn tokenize(context: &Context, from: usize, to: usize) -> Vec<Token> {
+pub(super) fn tokenize(context: &Context, from: usize, to: usize) -> Vec<Token> {
     let mut leaves = Vec::new();
     collect(context.file.tree.root_node(), from, to, &mut leaves);
     leaves.sort_by_key(|leaf| leaf.start_byte());
