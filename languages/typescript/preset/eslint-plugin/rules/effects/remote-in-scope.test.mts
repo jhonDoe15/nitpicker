@@ -109,6 +109,9 @@ tester.run('no-remote-call-in-transaction with types', inTransaction, {
     run(
       'await prisma.$transaction(async (db) => { await db.user.create({ data: { id } }); setTimeout(() => notify(id), 1); });',
     ),
+    typed(
+      "import * as transaction from './store';\nexport async function go() { await transaction(async () => { await fetch('x'); }); }",
+    ),
   ],
   invalid: [
     {
