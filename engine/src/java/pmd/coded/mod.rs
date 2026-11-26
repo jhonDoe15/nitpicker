@@ -9,6 +9,7 @@ mod frameworks;
 mod message;
 mod performance;
 mod text;
+mod unused;
 mod usages;
 
 pub use message::{expanded, formatted};
@@ -20,7 +21,7 @@ const PACKAGE: &str = "net.sourceforge.pmd.lang.java.rule.";
 pub fn port(class: &str) -> Option<Port> {
     let short = class.strip_prefix(PACKAGE)?;
     let (category, name) = short.split_once('.')?;
-    if let Some(found) = text::port(name) {
+    if let Some(found) = text::port(name).or_else(|| unused::port(name)) {
         return Some(found);
     }
     match category {

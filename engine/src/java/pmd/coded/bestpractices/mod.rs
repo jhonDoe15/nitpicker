@@ -5,6 +5,7 @@ mod instantiation;
 mod resources;
 mod tests;
 
+pub use declarations::{explicitly_unused, never_used, read_usage};
 pub use resources::test_class_without_test_cases;
 
 use super::Port;
