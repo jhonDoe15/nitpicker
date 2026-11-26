@@ -618,6 +618,33 @@ fn mark_method(method: &mut Method, marks: &[Mark], (descriptor, written): (&[u8
     }
 }
 
+/// A constructor of an inner class takes the enclosing instance first, which the source never writes; its generic
+/// signature, declaration annotations and type annotations already leave it out.
+fn drop_enclosing_instance(method: &mut Method, signature: Option<&[u8]>) {
+    let count = method.parameters.len();
+    method.parameters.remove(0);
+    let generic = signature.and_then(|text| Signature { text, at: 0, written_bounds: Vec::new() }.method()).filter(|(_, listed, _)| listed.len() + 1 == count);
+    match generic {
+        Some((type_parameters, listed, _)) => {
+            method.generic_parameters = listed;
+            method.type_bounds = type_parameters.iter().map(|(_, bound)| bound.clone()).collect();
+            method.type_parameters = type_parameters.into_iter().map(|(name, _)| name).collect();
+            method.shown = signature.and_then(|text| show_parameters(text, method.varargs)).unwrap_or_default();
+        }
+        None => {
+            method.generic_parameters.remove(0);
+            method.shown = method.shown.split_once(',').map_or_else(String::new, |(_, rest)| rest.to_string());
+        }
+    }
+    if method.names.len() == count {
+        method.names.remove(0);
+    }
+    if method.detail.parameter_annotations.len() == count {
+        method.detail.parameter_annotations.remove(0);
+    }
+    method.nullable_parameters >>= 1;
+}
+
 pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     let mut reader = Reader { data, at: 0 };
     if reader.u4()? != 0xCAFE_BABE {
@@ -712,6 +739,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         }
     }
     let mut methods = Vec::new();
+    let mut constructors = Vec::new();
     let mut setter_like = false;
     let returns_own = format!(")L{internal};");
     for _ in 0..reader.u2()? {
@@ -743,6 +771,9 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 generic.unwrap_or_else(|| (Vec::new(), parameters.clone(), returns.clone()));
             let parameters_count = parameters.len();
             let written = signature.filter(|text| Signature { text, at: 0, written_bounds: Vec::new() }.method().is_some_and(|(_, listed, _)| listed.len() == parameters_count));
+            if method_name == b"<init>" {
+                constructors.push((methods.len(), descriptor, signature));
+            }
             method_marks.push((methods.len(), marks, descriptor, written.unwrap_or(descriptor)));
             methods.push(Method {
                 name: String::from_utf8_lossy(method_name).into_owned(),
@@ -796,6 +827,14 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     let shift = if access & 0x4000 != 0 { 2 } else { usize::from(inner.contains(internal)) };
     for (at, marks, descriptor, written) in method_marks {
         mark_method(&mut methods[at], &marks, (descriptor, written), &inner, shift);
+    }
+    if access & ACC_ENUM == 0 && inner.contains(internal) && let Some((outer, _)) = internal.rsplit_once('$') {
+        let first = format!("(L{outer};");
+        for (at, descriptor, signature) in constructors {
+            if descriptor.starts_with(first.as_bytes()) {
+                drop_enclosing_instance(&mut methods[at], signature);
+            }
+        }
     }
     for (mask, bit) in [(0x4000, flag::ENUM), (0x2000, flag::ANNOTATION)] {
         if access & mask != 0 {

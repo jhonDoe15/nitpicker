@@ -315,7 +315,7 @@ fn null_away_reads_type_annotations_from_class_files() {
     let _ = std::fs::remove_dir_all(&classes);
     let (missed, extra, count) = result;
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(count, 34);
+    assert_eq!(count, 39);
 }
 
 #[test]

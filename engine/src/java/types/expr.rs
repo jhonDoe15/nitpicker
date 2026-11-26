@@ -1007,7 +1007,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn pick_constructor(&self, creation: Node) -> Option<Call> {
-        let owner = self.type_node(creation.child_by_field_name("type")?)?;
+        let owner = self.written_creation(creation)?;
         let info = self.index.get(&owner.name())?;
         if info.is_interface && children(creation).iter().any(|part| part.kind() == "class_body") {
             let void = Type::Primitive("void");
@@ -1045,8 +1045,26 @@ impl<'a> Resolver<'a> {
         Some(call)
     }
 
+    /// The class a creation names. `outer.new Inner()` looks `Inner` up among the member classes of the type of
+    /// `outer` and its supertypes.
+    fn written_creation(&self, creation: Node) -> Option<Type> {
+        let kind = creation.field("type")?;
+        let before_new = children(creation).into_iter().take_while(|part| part.kind() != "new");
+        let outer = before_new.filter(|part| part.is_named() && !part.kind().ends_with("comment") && !part.kind().ends_with("annotation")).last();
+        let Some(outer) = outer else { return self.type_node(kind) };
+        let base = if kind.kind() == "generic_type" { *crate::engine::source::named_children(kind).first()? } else { kind };
+        let simple = self.file.text_of(base);
+        let owner = self.type_of(outer)?.name();
+        let name = self.index.lineage(&owner).iter().map(|class| format!("{class}.{simple}")).find(|name| self.index.has(name))?;
+        let given = match children(kind).into_iter().find(|part| part.kind() == "type_arguments") {
+            Some(list) => crate::engine::source::named_children(list).into_iter().filter_map(|argument| self.type_node(argument)).collect(),
+            None => Vec::new(),
+        };
+        Some(Type::Class(name, given))
+    }
+
     fn created_type(&self, creation: Node) -> Option<Type> {
-        let written = self.type_node(creation.field("type")?)?;
+        let written = self.written_creation(creation)?;
         let Some(info) = self.index.get(&written.name()).filter(|info| !info.type_parameters.is_empty()) else { return Some(written) };
         if !matches!(&written, Type::Class(_, given) if given.is_empty()) {
             return Some(written);
