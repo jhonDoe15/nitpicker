@@ -105,7 +105,8 @@ fn check_method(context: &Context, member: Node, nodes: &[Node], label: Option<&
                 if let Some((pattern, kind)) = monitor(context, lock) {
                     let message = format!("Synchronization performed on {} in {label}", names::binary(context, &kind));
                     let priority = if pattern == "JLM_JSR166_LOCK_MONITORENTER" { 1 } else { 2 };
-                    context.report_placed(pattern, *node, context.line(*node), message, place::value(context, label, lock), priority);
+                    let arguments = vec![names::binary(context, &kind), label.to_string()];
+                    context.report_listed(pattern, *node, context.line(*node), message, place::value(context, label, lock), priority, arguments);
                 }
             }
             _ => {}
