@@ -236,5 +236,5 @@ fn null_away_reports_what_null_away_reports() {
     let missed: Vec<&Told> = expected.difference(&found).collect();
     let extra: Vec<&Told> = found.difference(&expected).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(expected.len(), 119);
+    assert_eq!(expected.len(), 122);
 }

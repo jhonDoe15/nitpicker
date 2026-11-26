@@ -11,6 +11,8 @@ pub enum Type {
     Variable(String),
     /// An unbounded wildcard argument: stands for the bound of the parameter it fills.
     Wildcard,
+    /// A bounded wildcard argument, kept only where types are printed: `true` for `? super`.
+    Bounded(bool, Box<Type>),
     Null,
 }
 
@@ -25,6 +27,7 @@ impl Type {
             Type::Array(element) => format!("{}[]", element.name()),
             Type::Null => "null".to_string(),
             Type::Wildcard => OBJECT.to_string(),
+            Type::Bounded(_, bound) => bound.name(),
         }
     }
     /// The same type without type arguments. Variables are expected to be replaced before this.
@@ -33,6 +36,7 @@ impl Type {
             Type::Class(name, _) => Type::class(name.split('&').next().unwrap_or(name)),
             Type::Array(element) => Type::Array(Box::new(element.erased())),
             Type::Variable(_) | Type::Wildcard => Type::class(OBJECT),
+            Type::Bounded(_, bound) => bound.erased(),
             other => other.clone(),
         }
     }
@@ -43,6 +47,7 @@ impl Type {
                 Type::Class(name.clone(), arguments.iter().map(|argument| argument.substitute(map)).collect())
             }
             Type::Array(element) => Type::Array(Box::new(element.substitute(map))),
+            Type::Bounded(lower, bound) => Type::Bounded(*lower, Box::new(bound.substitute(map))),
             other => other.clone(),
         }
     }
@@ -58,7 +63,7 @@ impl Type {
         match self {
             Type::Variable(_) => true,
             Type::Class(_, arguments) => arguments.iter().any(Type::mentions_variable),
-            Type::Array(element) => element.mentions_variable(),
+            Type::Array(element) | Type::Bounded(_, element) => element.mentions_variable(),
             _ => false,
         }
     }

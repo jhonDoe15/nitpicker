@@ -15,6 +15,7 @@ fn pretty(kind: &Type) -> String {
         Type::Array(element) => format!("{} []", pretty(element)),
         Type::Variable(name) => name.clone(),
         Type::Wildcard => "?".to_string(),
+        Type::Bounded(lower, bound) => format!("? {} {}", if *lower { "super" } else { "extends" }, pretty(bound)),
         Type::Null => "null".to_string(),
     }
 }
@@ -111,7 +112,7 @@ fn reference(context: &Context, node: Node, shown: &dyn Fn() -> String, above: (
 /// The functional interface method with the type arguments of this use filled in, the way NullAway prints it.
 /// Asked for only when a report is made: it resolves the surrounding call again with its type variables kept.
 fn shown(context: &Context, node: Node, declaring: &ClassInfo, method: &Method) -> String {
-    let resolver = context.resolver.symbolic();
+    let resolver = context.resolver.printing();
     let target = resolver.lambda_target(node).filter(|target| target.name() == declaring.name || resolver.index.is_subtype(&target.name(), &declaring.name));
     let map = target.map(|target| resolver.index.member_map(&target, &declaring.name)).unwrap_or_default();
     let taken = method.generic_parameters.iter().map(|kind| pretty(&kind.substitute(&map)));
