@@ -80,6 +80,11 @@
   "disable": ["mutation", "test-console"],
   "exceptions": [
     {
+      "rule": "nitpicker/no-unsafe-path-join",
+      "paths": ["languages/java/builds/spotbugs/spotbugs-lombok.mts"],
+      "reason": "Follows lombok.config import lines the way Lombok does; an import may point outside the project, and the joined part is the fixed name lombok.config."
+    },
+    {
       "rule": "nitpicker/no-module-level-mutable-state",
       "paths": ["languages/typescript/adapters/dependency-graph/engine-extract/engine-hooks.mts"],
       "reason": "Per-process singleton: dependency-cruiser loads the gather hook and the two extract hooks as separate shim modules, and they share the engine extraction made at gather time."

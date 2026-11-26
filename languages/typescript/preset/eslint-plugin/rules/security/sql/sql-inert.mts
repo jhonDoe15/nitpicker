@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { DYNAMIC } from '../../../../../../../shared/rules/security/sql-text.mts';
 import { findVariable, stringValue } from '../../analysis/constant-resolution.mts';
-import { ancestorsOf, chainOf } from '../../typed/node-views.mts';
+import { ancestorsOf, blockTail, chainOf } from '../../typed/node-views.mts';
 import { ts } from '../../typed/typescript-views.mts';
 import {
   leafValues,
@@ -117,10 +117,7 @@ function checks(context: Context, test: TSESTree.Node, variable: TSESLint.Scope.
 }
 
 function exits(statement: TSESTree.Node): boolean {
-  const last = chainOf(statement, (current) =>
-    current.type === AST_NODE_TYPES.BlockStatement ? current.body.at(-1) : undefined,
-  ).at(-1);
-  return last !== undefined && EXITS.has(last.type);
+  return EXITS.has(blockTail(statement)?.type ?? '');
 }
 
 function isStopGuard(

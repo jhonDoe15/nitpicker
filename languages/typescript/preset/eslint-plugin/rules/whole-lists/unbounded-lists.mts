@@ -88,15 +88,9 @@ function filledInLoop(
   });
 }
 
-interface Expansion {
-  unbounded: boolean;
-  next: TSESTree.Node[];
-}
+type Expansion = { readonly unbounded: boolean; readonly next: TSESTree.Node[] };
 
-interface Pending {
-  node: TSESTree.Node;
-  depth: number;
-}
+type Pending = { readonly node: TSESTree.Node; readonly depth: number };
 
 const NO_EXPANSION: Expansion = { unbounded: false, next: [] };
 
@@ -155,10 +149,12 @@ function expansionOf(context: SourceContext, node: TSESTree.Node): Expansion {
 
 export function isUnboundedList(context: SourceContext, start: TSESTree.Node): boolean {
   const pending: Pending[] = [{ node: start, depth: 0 }];
+  const expanded = new Set<TSESTree.Node>();
   for (const { node, depth } of pending) {
-    if (depth > MAX_DEPTH) {
+    if (depth > MAX_DEPTH || expanded.has(node)) {
       continue;
     }
+    expanded.add(node);
     const { unbounded, next } = expansionOf(context, unwrapOf(node, TYPE_WRAPPERS));
     if (unbounded) {
       return true;
