@@ -3,7 +3,7 @@ import { xmlFilesMatching } from '../java-lint/xml-files.mts';
 export type XPathRule = { readonly file: string; readonly rule: string; readonly xpath: string };
 
 const RULESET = /<ruleset[\s>]/u;
-const RULE = /<rule\b([^>]*)>([\s\S]*?)<\/rule>/gu;
+const RULE = /<rule\b([^>]*?)(?<!\/)>([\s\S]*?)<\/rule>/gu;
 const XPATH_PROPERTY = /<property\s+name="xpath"[^>]*>\s*<value>([\s\S]*?)<\/value>/u;
 const CDATA = /^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/u;
 const RULE_NAME = /\bname="([^"]*)"/u;

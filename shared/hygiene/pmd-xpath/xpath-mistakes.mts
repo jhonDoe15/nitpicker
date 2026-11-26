@@ -31,7 +31,8 @@ export type XPathMistake = {
 
 function previousWord(xpath: string, end: number): string {
   const before = xpath.slice(0, end);
-  return /([\w-]+)\s*$/u.exec(before)?.[1] ?? '';
+  const match = /([\w-]+)\s*$/u.exec(before);
+  return match === null || before[match.index - 1] === '$' ? '' : (match[1] ?? '');
 }
 
 function startsAbsolutePath(xpath: string, index: number): boolean {

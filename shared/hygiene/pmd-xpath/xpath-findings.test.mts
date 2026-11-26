@@ -5,7 +5,7 @@ import { pmdXPathMistakeFindings } from './xpath-findings.mts';
 
 const { createGitRepository } = useGitFixtures();
 
-function reported(xpaths: Record<string, string>): string[] {
+function reported(xpaths: Record<string, string>, before = ''): string[] {
   const rules = Object.entries(xpaths)
     .map(
       ([name, xpath]) =>
@@ -13,7 +13,7 @@ function reported(xpaths: Record<string, string>): string[] {
     )
     .join('\n');
   const { root } = createGitRepository({
-    'config/pmd/rules.xml': `<?xml version="1.0"?>\n<ruleset name="own">\n${rules}\n</ruleset>\n`,
+    'config/pmd/rules.xml': `<?xml version="1.0"?>\n<ruleset name="own">\n${before}${rules}\n</ruleset>\n`,
   });
   return pmdXPathMistakeFindings('repository-hygiene', {
     projectRoot: root,
@@ -43,6 +43,23 @@ describe('pmd-xpath-rule-mistake', () => {
         Commented: '//A[(: //B :) C]',
         RootChildren: "//A[/CompilationUnit/ImportDeclaration[@ImportedName = 'x']]",
         AncestorChildren: '//A[ancestor::CompilationUnit/ImportDeclaration]',
+      }),
+    ).toEqual([]);
+  });
+
+  it('keeps rules after a self-closing rule reference', () => {
+    expect(
+      reported(
+        { Scan: '//MethodDeclaration[//MethodCall]' },
+        '  <rule ref="category/java/design.xml/GodClass"/>\n',
+      ),
+    ).toEqual(['Scan']);
+  });
+
+  it('treats a word after a dollar sign as a variable, not a keyword', () => {
+    expect(
+      reported({
+        Variables: '//A[exists($eq/B)][empty($in/C)][not($not/D)][exists($eq//MethodCall[@X])]',
       }),
     ).toEqual([]);
   });

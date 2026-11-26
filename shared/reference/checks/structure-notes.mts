@@ -163,7 +163,7 @@ export const STRUCTURE_NOTES: Readonly<Record<string, RuleNote>> = {
     'Remove the module from the configuration instead of filtering its output.',
   ],
   'pmd-xpath-rule-mistake': [
-    'A project-owned PMD XPath rule that scans from the document root inside a predicate (`//X`, `/X` or `ancestor::CompilationUnit//` in `[...]`), or applies a single-item function or `eq`/`ne` to an unguarded `FormalParameters/FormalParameter`, `ArgumentList/*`, `ClassBody/*` or `Block/*` path.',
+    'A project-owned PMD XPath rule that scans from the document root inside a predicate (a `//X` path or `ancestor::CompilationUnit//` in `[...]`; a cheap `/CompilationUnit/X` child path is not reported, and node names are not checked against the grammar yet), or applies a single-item function or `eq`/`ne` to an unguarded `FormalParameters/FormalParameter`, `ArgumentList/*`, `ClassBody/*` or `Block/*` path.',
     'A root scan inside a predicate is evaluated again for every candidate node; a single-item function over several nodes is a type error, so PMD skips the rule for that file without failing the build.',
     'Bind the nodes once or walk from the candidate; pick one node with `[1]`, guard with `count(...) = 1`, or compare with `=`.',
   ],
