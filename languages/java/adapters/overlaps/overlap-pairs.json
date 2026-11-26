@@ -806,11 +806,6 @@
     "scope": "line"
   },
   {
-    "primary": ["pmd/LocalExecutorNeverShutDown"],
-    "secondary": ["pmd/CloseResource"],
-    "scope": "line"
-  },
-  {
     "primary": ["pmd/ScheduledTaskStopsOnFailure"],
     "secondary": ["errorprone/FutureReturnValueIgnored"],
     "scope": "line"
