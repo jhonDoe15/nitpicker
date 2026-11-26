@@ -56,24 +56,28 @@ fn is_before_all(context: &Context, method: Node) -> bool {
         && annotation_simple_names(context, method).iter().any(|own| matches!(*own, "BeforeClass" | "BeforeAll"))
 }
 
-fn mutates(context: &Context, inner: Node, name: &str) -> bool {
+fn mutates<'t>(context: &Context<'t>, inner: Node<'t>, declarator: Node<'t>, name: &str) -> bool {
     let target = match inner.kind() {
         "assignment_expression" => inner.child_by_field_name("left"),
         "update_expression" => named_children(inner).into_iter().next(),
         _ => None,
     };
-    target.is_some_and(|target| match target.kind() {
+    let named = target.is_some_and(|target| match target.kind() {
         "identifier" => context.text(target) == name,
         "field_access" => target.child_by_field_name("field").is_some_and(|field| context.text(field) == name),
         _ => false,
+    });
+    named && target.is_some_and(|target| match super::symbol_key::reference_key(context, target) {
+        Some(found) => super::symbol_key::declared_key(context, declarator).is_some_and(|own| own == found),
+        None => true,
     })
 }
 
 /// Whether the field is assigned in a `@BeforeAll` method, and whether it is assigned anywhere else.
-fn mutations(context: &Context, name: &str) -> (bool, bool) {
+fn mutations<'t>(context: &Context<'t>, declarator: Node<'t>, name: &str) -> (bool, bool) {
     let (mut before, mut other) = (false, false);
     walk(context.file.tree.root_node(), |inner| {
-        if !mutates(context, inner, name) {
+        if !mutates(context, inner, declarator, name) {
             return;
         }
         if std::iter::successors(parent(inner), |at| parent(*at)).any(|at| is_before_all(context, at)) {
@@ -101,7 +105,7 @@ pub fn non_final_static_field(context: &Context, node: Node) {
     }
     for declarator in children(node).into_iter().filter(|part| part.kind() == "variable_declarator") {
         let Some(name) = declarator.child_by_field_name("name") else { continue };
-        let (before, other) = mutations(context, context.text(name));
+        let (before, other) = mutations(context, declarator, context.text(name));
         if before {
             continue;
         }

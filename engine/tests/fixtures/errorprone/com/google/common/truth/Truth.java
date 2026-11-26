@@ -22,4 +22,20 @@ public final class Truth {
   public static StreamSubject assertThat(java.util.stream.Stream<?> actual) {
     return null;
   }
+
+  public static <S extends Subject, A> SimpleSubjectBuilder<S, A> assertAbout(Subject.Factory<S, A> factory) {
+    return null;
+  }
+
+  public static StandardSubjectBuilder assert_() {
+    return null;
+  }
+
+  public static MultimapSubject assertThat(com.google.common.collect.Multimap<?, ?> actual) {
+    return null;
+  }
+
+  public static MultisetSubject assertThat(com.google.common.collect.Multiset<?> actual) {
+    return null;
+  }
 }

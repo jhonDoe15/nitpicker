@@ -7,7 +7,7 @@ use tree_sitter::Node;
 
 const MAX_CASES_TO_PRINT: usize = 5;
 
-fn is_statement(switch: Node) -> bool {
+pub(super) fn is_statement(switch: Node) -> bool {
     parent(switch).is_some_and(|holder| {
         matches!(
             holder.kind(),

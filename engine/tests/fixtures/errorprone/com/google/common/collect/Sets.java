@@ -6,4 +6,16 @@ public final class Sets {
   public static <E> HashSet<E> newHashSet(E... elements) {
     return new HashSet<E>();
   }
+
+  public static <E> HashSet<E> newHashSet() {
+    return new HashSet<E>();
+  }
+
+  public static <E> java.util.LinkedHashSet<E> newLinkedHashSet() {
+    return new java.util.LinkedHashSet<E>();
+  }
+
+  public static <E> java.util.Set<E> newConcurrentHashSet() {
+    return new HashSet<E>();
+  }
 }

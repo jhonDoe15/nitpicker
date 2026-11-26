@@ -18,4 +18,24 @@ public class MapSubject extends Subject {
       return null;
     }
   }
+
+  public void containsEntry(Object key, Object value) {}
+
+  public void doesNotContainEntry(Object key, Object value) {}
+
+  public void containsKey(Object key) {}
+
+  public void doesNotContainKey(Object key) {}
+
+  public Ordered containsAtLeast(Object k0, Object v0, Object... rest) {
+    return null;
+  }
+
+  public Ordered containsExactlyEntriesIn(java.util.Map<?, ?> expectedMap) {
+    return null;
+  }
+
+  public Ordered containsAtLeastEntriesIn(java.util.Map<?, ?> expectedMap) {
+    return null;
+  }
 }

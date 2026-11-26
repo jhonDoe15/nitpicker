@@ -40,4 +40,24 @@ public class IterableSubject extends Subject {
   public Ordered containsAtLeastElementsIn(Iterable<?> expected) {
     return null;
   }
+
+  public Ordered containsExactlyElementsIn(Object[] expected) {
+    return null;
+  }
+
+  public void contains(Object element) {}
+
+  public void doesNotContain(Object element) {}
+
+  public void containsAnyIn(Iterable<?> expected) {}
+
+  public void containsAnyIn(Object[] expected) {}
+
+  public void containsNoneIn(Iterable<?> excluded) {}
+
+  public void containsNoneIn(Object[] excluded) {}
+
+  public Ordered containsAtLeastElementsIn(Object[] expected) {
+    return null;
+  }
 }

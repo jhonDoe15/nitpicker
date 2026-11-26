@@ -98,30 +98,74 @@ fn rewritten(context: &Context, check: &'static str, rewrite: fn(&str) -> Option
     context.report_fixed(check, node, preferred(node), message, &[fix]);
 }
 
-fn misused_date_format(context: &Context, node: Node, check: &'static str, rewrite: fn(&str) -> Option<String>) {
+/// The pattern argument of a `SimpleDateFormat` constructor or pattern method call, as `MisusedDateFormat` matches it.
+pub fn pattern_argument<'t>(context: &Context, node: Node<'t>) -> Option<Node<'t>> {
     match node.kind() {
         "method_invocation" => {
-            let Some(name) = node.child_by_field_name("name").map(|name| context.text(name)) else { return };
+            let name = node.child_by_field_name("name").map(|name| context.text(name))?;
             let matches = match name {
                 "applyPattern" | "applyLocalizedPattern" => [JAVA_FORMAT, ICU_FORMAT].iter().any(|class| instance_on_exact_class(context, node, class, &[name])),
                 "ofPattern" => static_on_class(context, node, "java.time.format.DateTimeFormatter", &["ofPattern"]),
                 _ => false,
             };
-            if let Some(pattern) = arguments(node).first().copied().filter(|_| matches) {
-                rewritten(context, check, rewrite, node, pattern);
-            }
+            arguments(node).first().copied().filter(|_| matches)
         }
         "object_creation_expression" => {
-            let Some(pattern) = arguments(node).first().copied() else { return };
-            let Some(class) = super::parts::class_of(context, node).filter(|class| class == JAVA_FORMAT || class == ICU_FORMAT) else { return };
-            let Some(call) = context.resolver.resolve_constructor(node) else { return };
+            let pattern = arguments(node).first().copied()?;
+            let class = super::parts::class_of(context, node).filter(|class| class == JAVA_FORMAT || class == ICU_FORMAT)?;
+            let call = context.resolver.resolve_constructor(node)?;
             let listed: Vec<String> = call.method.parameters.iter().map(|kind| kind.name()).collect();
-            if CONSTRUCTORS.iter().any(|(owner, parameters)| *owner == class && parameters.iter().copied().eq(listed.iter().map(String::as_str))) {
-                rewritten(context, check, rewrite, node, pattern);
-            }
+            CONSTRUCTORS.iter().any(|(owner, parameters)| *owner == class && parameters.iter().copied().eq(listed.iter().map(String::as_str))).then_some(pattern)
         }
-        _ => {}
+        _ => None,
     }
+}
+
+fn misused_date_format(context: &Context, node: Node, check: &'static str, rewrite: fn(&str) -> Option<String>) {
+    if let Some(pattern) = pattern_argument(context, node) {
+        rewritten(context, check, rewrite, node, pattern);
+    }
+}
+
+pub fn duplicate_date_format_field(context: &Context, node: Node) {
+    let Some(pattern) = pattern_argument(context, node) else { return };
+    let Some(value) = constant_text(context, pattern) else { return };
+    let state = std::cell::RefCell::new((Vec::<char>::new(), Vec::<char>::new(), None::<char>, 0i32));
+    parse(
+        &value,
+        |special| {
+            let (seen, duplicates, previous, depth) = &mut *state.borrow_mut();
+            match special {
+                '[' => *depth += 1,
+                ']' => *depth -= 1,
+                _ => {}
+            }
+            if !"GyYMLwWDdFEuaHkKhmsSzZX".contains(special) || *depth > 0 {
+                *previous = None;
+                return;
+            }
+            if *previous != Some(special) {
+                if seen.contains(&special) {
+                    if !duplicates.contains(&special) {
+                        duplicates.push(special);
+                    }
+                } else {
+                    seen.push(special);
+                }
+                *previous = Some(special);
+            }
+        },
+        |_| state.borrow_mut().2 = None,
+    );
+    let mut duplicates = state.into_inner().1;
+    if duplicates.is_empty() {
+        return;
+    }
+    duplicates.sort();
+    let listed: Vec<String> = duplicates.iter().map(|found| format!("'{found}'")).collect();
+    let description = if listed.len() > 1 { format!("the fields [{}]", listed.join(", ")) } else { format!("the field {}", listed[0]) };
+    let message = format!("DateFormat pattern \"{value}\" uses {description} more than once. Reuse of DateFormat fields is most likely unintentional.");
+    context.report_fixed("DuplicateDateFormatField", node, preferred(node), &message, &[]);
 }
 
 pub fn misused_day_of_year(context: &Context, node: Node) {
@@ -135,7 +179,7 @@ pub fn misused_week_year(context: &Context, node: Node) {
 const JODA_TYPES: [&str; 5] = ["DateTime", "Duration", "Instant", "Interval", "Period"];
 const JODA_NO_METHOD: [&str; 3] = ["LocalDate", "LocalDateTime", "LocalTime"];
 
-fn inside_joda(context: &Context) -> bool {
+pub fn inside_joda(context: &Context) -> bool {
     let package = context.resolver.scope.package.as_str();
     package == "org.joda.time" || package.starts_with("org.joda.time.")
 }

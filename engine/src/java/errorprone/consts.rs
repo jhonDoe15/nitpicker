@@ -259,6 +259,15 @@ fn field_initializer<'a>(context: &Context<'a>, class: &str, name: &str) -> Opti
 /// The constants of the JDK classes that code commonly uses; the class files give no numeric values here.
 fn library_value(class: &str, name: &str) -> Option<Const> {
     Some(match (class, name) {
+        ("java.util.regex.Pattern", "UNIX_LINES") => Const::Int(1),
+        ("java.util.regex.Pattern", "CASE_INSENSITIVE") => Const::Int(2),
+        ("java.util.regex.Pattern", "COMMENTS") => Const::Int(4),
+        ("java.util.regex.Pattern", "MULTILINE") => Const::Int(8),
+        ("java.util.regex.Pattern", "LITERAL") => Const::Int(16),
+        ("java.util.regex.Pattern", "DOTALL") => Const::Int(32),
+        ("java.util.regex.Pattern", "UNICODE_CASE") => Const::Int(64),
+        ("java.util.regex.Pattern", "CANON_EQ") => Const::Int(128),
+        ("java.util.regex.Pattern", "UNICODE_CHARACTER_CLASS") => Const::Int(256),
         ("java.lang.Integer", "MAX_VALUE") => Const::Int(i32::MAX),
         ("java.lang.Integer", "MIN_VALUE") => Const::Int(i32::MIN),
         ("java.lang.Integer", "SIZE") => Const::Int(32),

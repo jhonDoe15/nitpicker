@@ -1,5 +1,6 @@
 //! ObjectToString: a value of a final class that does not override `toString` is turned into a string.
 use super::Context;
+use super::mirror_to_string::{SYMBOL, TYPE as TYPE_NAME, matches_mirror, type_fix};
 use super::shape::{arguments, preferred};
 use crate::engine::source::children;
 use crate::java::types::model::{OBJECT, Type, flag};
@@ -13,7 +14,7 @@ const FORMAT_METHOD: &str = "com.google.errorprone.annotations.FormatMethod";
 const PRINT_NAMES: [&str; 3] = ["print", "println", "append"];
 
 /// `SuggestedFixes.qualifyType` for a class: from the innermost class out, up to the first name that is visible.
-fn qualify_type(context: &Context, at: Node, qualified: &str) -> String {
+pub(super) fn qualify_type(context: &Context, at: Node, qualified: &str) -> String {
     let parts: Vec<&str> = qualified.split('.').collect();
     let first = parts.iter().position(|part| part.starts_with(char::is_uppercase)).unwrap_or(parts.len() - 1);
     let mut names: Vec<&str> = Vec::new();
@@ -34,7 +35,7 @@ fn qualify_type(context: &Context, at: Node, qualified: &str) -> String {
 }
 
 /// The type the way `SuggestedFixes.prettyType` prints it.
-fn pretty(context: &Context, at: Node, kind: &Type) -> String {
+pub(super) fn pretty(context: &Context, at: Node, kind: &Type) -> String {
     match kind {
         Type::Class(name, shown) if !shown.is_empty() => {
             let parts: Vec<String> = shown.iter().map(|part| pretty(context, at, part)).collect();
@@ -65,16 +66,74 @@ fn plain_final(context: &Context, kind: &Type) -> bool {
 enum Mode {
     Object,
     Stream,
+    LiteProto,
+    Symbol,
+    Type,
 }
 
-fn matches_type(context: &Context, kind: &Type, mode: Mode) -> bool {
+fn matches_type(context: &Context, matched: Node, kind: &Type, mode: Mode) -> bool {
     match mode {
+        Mode::Symbol | Mode::Type => matches_mirror(context, matched, kind, mode == Mode::Symbol),
         Mode::Object => plain_final(context, kind),
         Mode::Stream => matches!(kind, Type::Class(name, _) if name == STREAM || context.resolver.index.is_subtype(name, STREAM)),
+        Mode::LiteProto => lite_proto(context, kind).is_some(),
     }
 }
 
-fn report(context: &Context, matched: Node, at: Node, kind: &Type, mode: Mode) {
+fn descends(context: &Context, name: &str, above: &str) -> bool {
+    name == above || context.resolver.index.is_subtype(name, above)
+}
+
+/// `Some(true)` for a lite proto enum, `Some(false)` for a lite proto message.
+fn lite_proto(context: &Context, kind: &Type) -> Option<bool> {
+    let Type::Class(name, _) = kind else { return None };
+    let message = descends(context, name, "com.google.protobuf.MessageLite") && !descends(context, name, "com.google.protobuf.Message") && name != "com.google.protobuf.UnknownFieldSet";
+    if message {
+        return Some(false);
+    }
+    let lite_enum = descends(context, name, "com.google.protobuf.Internal.EnumLite")
+        && !descends(context, name, "com.google.protobuf.ProtocolMessageEnum")
+        && !descends(context, name, "com.google.protobuf.Descriptors.EnumValueDescriptor")
+        && !descends(context, name, "com.google.protobuf.AbstractMessageLite.InternalOneOfEnum");
+    lite_enum.then_some(true)
+}
+
+const STRIPPED_LOG_METHODS: [&str; 10] = ["atVerbose", "atFine", "atFiner", "atFinest", "atDebug", "atConfig", "atInfo", "v", "d", "i"];
+
+/// Whether the matched tree or one of its ancestors is a call chain that goes through a log method the optimizer strips.
+fn stripped_log_message(context: &Context, matched: Node) -> bool {
+    let mut current = Some(matched);
+    while let Some(at) = current {
+        let mut chain = Some(at);
+        while let Some(call) = chain.filter(|call| call.kind() == "method_invocation") {
+            if call.child_by_field_name("name").is_some_and(|name| STRIPPED_LOG_METHODS.contains(&context.text(name))) {
+                return true;
+            }
+            chain = call.child_by_field_name("object");
+        }
+        current = crate::engine::source::parent(at);
+    }
+    false
+}
+
+fn report(context: &Context, matched: Node, at: Node, kind: &Type, mode: Mode, explicit: bool) {
+    if mode == Mode::LiteProto {
+        if stripped_log_message(context, matched) {
+            return;
+        }
+        let message = if lite_proto(context, kind) == Some(true) {
+            "toString() on lite proto enums will generate different representations of the value from development and optimized builds. Consider using #getNumber if you only need a serialized representation of the value, or #name if you really need the name."
+        } else {
+            "toString() on lite protos will not generate a useful representation of the proto from optimized builds. Consider whether using some subset of fields instead would provide useful information."
+        };
+        return context.report_fixed("LiteProtoToString", matched, preferred(at), message, &[]);
+    }
+    if matches!(mode, Mode::Symbol | Mode::Type) {
+        let (name, shown) = if mode == Mode::Symbol { (SYMBOL, "Element") } else { (TYPE_NAME, "TypeMirror") };
+        let message = format!("{shown}#toString shouldn't be used as it is expensive and fragile.");
+        let fixes: Vec<_> = if mode == Mode::Type && explicit { type_fix(context, matched, at).into_iter().collect() } else { Vec::new() };
+        return context.report_fixed(name, matched, preferred(at), &message, &fixes);
+    }
     if mode == Mode::Stream {
         let message = "Calling toString on a Stream does not provide useful information";
         return context.report_fixed(STREAM_NAME, matched, preferred(at), message, &[]);
@@ -89,14 +148,18 @@ fn report(context: &Context, matched: Node, at: Node, kind: &Type, mode: Mode) {
 }
 
 fn handle(context: &Context, matched: Node, stringified: Node, mode: Mode) {
-    if let Some(kind) = context.resolver.type_of(stringified).filter(|kind| matches_type(context, kind, mode)) {
-        report(context, matched, stringified, &kind, mode);
+    handle_kind(context, matched, stringified, mode, false);
+}
+
+fn handle_kind(context: &Context, matched: Node, stringified: Node, mode: Mode, explicit: bool) {
+    if let Some(kind) = context.resolver.type_of(stringified).filter(|kind| matches_type(context, matched, kind, mode)) {
+        report(context, matched, stringified, &kind, mode, explicit);
     }
 }
 
 fn handle_typed(context: &Context, matched: Node, stringified: Node, kind: &Type, mode: Mode) {
-    if matches_type(context, kind, mode) {
-        report(context, matched, stringified, kind, mode);
+    if matches_type(context, matched, kind, mode) {
+        report(context, matched, stringified, kind, mode, false);
     }
 }
 
@@ -131,12 +194,12 @@ fn call(context: &Context, node: Node, mode: Mode) {
             args.iter().for_each(|arg| handle(context, node, *arg, mode));
         }
     }
-    if method.is_static && object_only && name == "valueOf" && resolved.declaring == STRING {
+    if method.is_static && object_only && name == "valueOf" && resolved.declaring == STRING && !matches!(mode, Mode::Symbol | Mode::Type) {
         args.iter().for_each(|arg| handle(context, node, *arg, mode));
     }
     if !method.is_static && method.parameters.is_empty() && name == "toString" {
         if let Some(object) = object {
-            handle(context, node, object, mode);
+            handle_kind(context, node, object, mode, true);
         }
     }
     if formatted {
@@ -245,6 +308,18 @@ pub fn object_to_string(context: &Context, node: Node) {
     dispatch(context, node, Mode::Object);
 }
 
+pub fn symbol_to_string(context: &Context, node: Node) {
+    dispatch(context, node, Mode::Symbol);
+}
+
+pub fn type_to_string(context: &Context, node: Node) {
+    dispatch(context, node, Mode::Type);
+}
+
 pub fn stream_to_string(context: &Context, node: Node) {
     dispatch(context, node, Mode::Stream);
+}
+
+pub fn lite_proto_to_string(context: &Context, node: Node) {
+    dispatch(context, node, Mode::LiteProto);
 }

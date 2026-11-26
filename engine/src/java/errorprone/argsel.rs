@@ -14,7 +14,7 @@ use tree_sitter::Node;
 const NAME: &str = "ArgumentSelectionDefectChecker";
 const NULL: &str = "*NULL*";
 pub(super) const NOT_PRESENT: &str = "*NOT_PRESENT*";
-const ASSERT_CLASSES: [&str; 3] = ["org.junit.Assert", "junit.framework.TestCase", "junit.framework.Assert"];
+pub(super) const ASSERT_CLASSES: [&str; 4] = ["org.junit.Assert", "junit.framework.TestCase", "junit.framework.Assert", "ErrorProneTest"];
 
 pub struct Invocation<'t> {
     pub node: Node<'t>,
@@ -250,14 +250,25 @@ pub(super) fn fits(context: &Context, symbolic_resolver: &Resolver, inv: &Invoca
     assignable(context.resolver.index, &|name| own_variable(context, inv, name), &symbolic, &kind, &inv.formal_types[formal])
 }
 
+/// The cost of giving the formal at the first index the actual at the second, when a check has its own distance function.
+pub(super) type Distance<'a> = &'a dyn Fn(usize, usize) -> f64;
+
 fn find_changes(context: &Context, inv: &Invocation) -> Option<Changes> {
+    find_changes_with(context, inv, None)
+}
+
+/// `ArgumentChangeFinder.findChanges`; without a distance function of its own, the one of `ArgumentSelectionDefectChecker`.
+pub(super) fn find_changes_with(context: &Context, inv: &Invocation, custom: Option<Distance>) -> Option<Changes> {
     let count = inv.formal_names.len();
     let actual_names: Vec<String> = match &inv.bound {
         Some(bound) => bound.iter().map(|(name, _)| name.clone()).collect(),
         None => inv.actuals.iter().map(|argument| argument_name(context, *argument)).collect(),
     };
-    let mut costs = matrix(inv, &actual_names);
-    if !promising(&costs) {
+    let mut costs = match custom {
+        Some(distance) => (0..count).map(|i| (0..count).map(|j| distance(i, j)).collect()).collect(),
+        None => matrix(inv, &actual_names),
+    };
+    if custom.is_none() && !promising(&costs) {
         return None;
     }
     let symbolic = context.resolver.symbolic();
@@ -265,10 +276,11 @@ fn find_changes(context: &Context, inv: &Invocation) -> Option<Changes> {
     for i in 0..count {
         for j in 0..count {
             if i != j {
-                if actual_names[j] != NOT_PRESENT && !fits(context, &symbolic, inv, i, j) {
+                let untyped = custom.is_some() && inv.bound.is_none() && context.resolver.type_of(inv.actuals[j]) == Some(Type::Null);
+                if untyped || ((custom.is_some() || actual_names[j] != NOT_PRESENT) && !fits(context, &symbolic, inv, i, j)) {
                     costs[i][j] = f64::INFINITY;
                 } else {
-                    viable |= costs[i][j].is_finite() || actual_names[j] == NOT_PRESENT;
+                    viable |= custom.is_some() || costs[i][j].is_finite() || actual_names[j] == NOT_PRESENT;
                 }
             }
         }

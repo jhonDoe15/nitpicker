@@ -31,6 +31,8 @@ pub struct Options {
     pub release: Option<u32>,
     /// javac ran Lombok over the sources: source classes have the members Lombok writes, and `val` infers a local's type.
     pub lombok: bool,
+    /// The compile runs with `-XDandroidCompatible=true`.
+    pub android_compatible: bool,
 }
 
 /// Facts a language extracts from one file for whole-project passes (duplicates, metrics).

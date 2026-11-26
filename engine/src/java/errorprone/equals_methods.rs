@@ -8,15 +8,15 @@ use crate::java::types::model::{OBJECT, Type};
 use crate::java::types::scope::enclosing_type;
 use tree_sitter::Node;
 
-fn is_public(method: Node) -> bool {
+pub(super) fn is_public(method: Node) -> bool {
     has_modifier(method, "public") || in_interface_or_annotation(method)
 }
 
-fn formals(method: Node) -> Vec<Node> {
+pub(super) fn formals(method: Node) -> Vec<Node> {
     method.child_by_field_name("parameters").map(named_children).unwrap_or_default().into_iter().filter(|part| matches!(part.kind(), "formal_parameter" | "spread_parameter")).collect()
 }
 
-fn name_of<'a>(context: &'a Context, method: Node) -> &'a str {
+pub(super) fn name_of<'a>(context: &'a Context, method: Node) -> &'a str {
     method.child_by_field_name("name").map(|name| context.text(name)).unwrap_or_default()
 }
 
@@ -41,7 +41,7 @@ pub fn equals_declaration(context: &Context, method: Node) -> bool {
     parameters.len() == 1 && takes_exactly_object(context, parameters[0]) && returns_boolean(context, method, true)
 }
 
-fn hash_code_declaration(context: &Context, method: Node) -> bool {
+pub(super) fn hash_code_declaration(context: &Context, method: Node) -> bool {
     method.kind() == "method_declaration"
         && name_of(context, method) == "hashCode"
         && is_public(method)
@@ -50,7 +50,7 @@ fn hash_code_declaration(context: &Context, method: Node) -> bool {
 }
 
 /// A call of `equals(Object)` that gives a boolean, on any class.
-fn instance_equals_call(context: &Context, expression: Node) -> bool {
+pub(super) fn instance_equals_call(context: &Context, expression: Node) -> bool {
     if expression.kind() != "method_invocation" || expression.child_by_field_name("name").is_none_or(|name| context.text(name) != "equals") {
         return false;
     }

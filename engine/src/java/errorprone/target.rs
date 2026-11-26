@@ -1,6 +1,6 @@
 //! `TargetType.targetType`: the type the place of an expression asks for, for the places the checks here need.
 use super::Context;
-use crate::engine::source::parent;
+use crate::engine::source::{named_children, parent};
 use crate::java::types::model::Type;
 use tree_sitter::Node;
 
@@ -95,7 +95,26 @@ pub fn target_type(context: &Context, node: Node) -> Option<Type> {
             if up.kind() == "assignment_expression" && context.text(up.child_by_field_name("operator")?) != "=" {
                 return compound(context, up, current);
             }
+            if up.kind() == "variable_declarator" && parent(up).and_then(|declaration| declaration.child_by_field_name("type")).is_some_and(|written| context.text(written) == "var") {
+                return context.resolver.type_of(current);
+            }
             context.resolver.expected(current)
+        }
+        "instanceof_expression" | "synchronized_statement" => Some(Type::class(crate::java::types::model::OBJECT)),
+        "assert_statement" => {
+            let condition = named_children(up).into_iter().next().is_some_and(|first| first.id() == current.id());
+            Some(if condition { Type::Primitive("boolean") } else { Type::class("java.lang.String") })
+        }
+        "dimensions_expr" => Some(Type::Primitive("int")),
+        "expression_statement" => {
+            let rule = parent(up).filter(|rule| rule.kind() == "switch_rule")?;
+            let switch = parent(rule).and_then(parent).filter(|switch| switch.kind() == "switch_expression")?;
+            switch_type(context, switch)
+        }
+        "yield_statement" => {
+            let switch = javac_up(javac_up(javac_up(up)?)?)?;
+            let selector = (switch.kind() == "switch_expression").then(|| switch.child_by_field_name("condition")).flatten()?;
+            context.resolver.type_of(selector)
         }
         "binary_expression" => binary(context, up, current),
         "cast_expression" => context.resolver.type_node(up.child_by_field_name("type")?),
@@ -135,4 +154,15 @@ fn compound(context: &Context, tree: Node, current: Node) -> Option<Type> {
         return Some(Type::Primitive("boolean"));
     }
     binary_promotion(&variable, &expression)
+}
+
+/// The parent in javac's tree, which has no `switch_block` between a switch and its cases.
+fn javac_up(node: Node) -> Option<Node> {
+    let up = parent(node)?;
+    if up.kind() == "switch_block" { parent(up) } else { Some(up) }
+}
+
+/// A switch expression is typed by its target when it has one, and stands alone otherwise.
+fn switch_type(context: &Context, switch: Node) -> Option<Type> {
+    context.resolver.expected(switch).or_else(|| context.resolver.type_of(switch))
 }

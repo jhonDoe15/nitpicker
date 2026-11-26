@@ -7,7 +7,10 @@ mod annotated;
 mod ban;
 mod comments;
 mod parameter_comment;
+mod parameter_name;
+mod identifier_data;
 mod text_blocks;
+mod truth_implement_chaining;
 mod streams;
 mod strong_time;
 mod references;
@@ -82,6 +85,7 @@ mod unused_methods;
 mod immutable;
 mod immutable_known;
 mod keep;
+mod lambda_function_types;
 mod lexical;
 mod types;
 mod strings;
@@ -114,6 +118,11 @@ mod misc_calls;
 mod branches;
 mod contracts;
 mod time_checks;
+mod time_with;
+mod inject_more;
+mod junit_more;
+mod misc_defect_shapes;
+mod hash_code_checks;
 mod decl_checks;
 mod undefined_equality;
 mod unnecessary_async;
@@ -142,6 +151,7 @@ mod docparams;
 mod compat;
 mod equalsincompat;
 mod doclinks;
+mod mirror_to_string;
 mod object_to_string;
 mod constant_pattern;
 mod already_checked;
@@ -193,6 +203,15 @@ mod auto_value;
 mod tz_data;
 mod zone_ids;
 mod time_constants;
+mod visitor_state;
+mod framework_methods;
+mod big_decimal;
+mod duration_calls;
+mod outline_none;
+mod flogger_format;
+mod jdk_calls;
+mod labels;
+mod constant_exprs;
 mod incompatible_calls;
 mod junit3;
 mod override_checks;
@@ -215,6 +234,71 @@ mod inject_codegen;
 mod source_text;
 mod annotation_misuse;
 mod tree_to_string;
+mod joda_checks;
+mod numeric_calls;
+mod contextual_misc;
+mod nested_instanceof;
+mod optional_nulls;
+mod mockito_setup;
+mod mock_unused;
+mod misc_defect_calls;
+mod declaration_defects;
+mod auto_value_fields;
+mod flogger_calls;
+mod assert_order;
+mod mock_invocations;
+mod boxed_constructor;
+mod catch_fail;
+mod robolectric_shadow;
+mod test_parameter;
+mod truth_exactly;
+mod flogger_modifiers;
+mod truth_types;
+mod tree_kind_checks;
+mod inject_method_annotations;
+mod strong_byte_string;
+mod self_and_stream_calls;
+mod call_arguments;
+mod declaration_warnings;
+mod future_transform;
+mod class_declaration_checks;
+mod method_call_checks;
+mod thread_time_checks;
+mod flogger_causes;
+mod android_fragments;
+mod rule_not_run;
+mod unnecessary_copy;
+mod unnecessary_qualifier;
+mod matcher_wrapping;
+mod junit_cleanups;
+mod dagger_modules;
+mod list_remove;
+mod package_location;
+mod null_pointer_tester;
+mod guarded_writes;
+mod guarded_by;
+mod immutable_set_contains;
+mod framework_assignments;
+mod ignored_values;
+mod constant_expression_checks;
+mod provides_checks;
+mod comparable_checks;
+mod date_format_constant;
+mod format_checks;
+mod doc_misc;
+mod truth_chaining;
+mod bug_pattern_naming;
+mod expected_exception;
+mod auto_value_leaks;
+mod assertion_failures;
+mod assert_throws;
+mod truth_checks;
+mod three_letter_zones;
+mod wakelock;
+mod flogger_args;
+mod no_allocation;
+mod must_be_closed;
+mod must_be_closed_fix;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -371,7 +455,7 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["JdkObsolete"], obsolete::jdk_obsolete),
     (&["BooleanLiteral"], targets::boolean_literal),
     (&["IdentifierName"], naming::identifier_name),
-    (&["EmptyBlockTag", "MissingSummary", "InvalidBlockTag", "UnescapedEntity", "EscapedEntity", "InvalidInlineTag", "InvalidThrows", "InvalidParam", "InvalidLink", "MalformedInlineTag", "PreferThrowsTag"], javadoc::javadoc),
+    (&["EmptyBlockTag", "MissingSummary", "InvalidBlockTag", "UnescapedEntity", "EscapedEntity", "InvalidInlineTag", "InvalidThrows", "InvalidParam", "InvalidLink", "MalformedInlineTag", "PreferThrowsTag", "InvalidSnippet", "InvalidThrowsLink", "UnrecognisedJavadocTag", "UrlInSee", "InheritDoc"], javadoc::javadoc),
     (&["AnnotationPosition"], annotated::annotation_position),
     (&["RedundantOverride"], redundant::redundant_override),
     (&["CheckedExceptionNotThrown"], throws::checked_exception_not_thrown),
@@ -393,6 +477,7 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["InterruptedExceptionSwallowed"], interrupts::interrupted_exception_swallowed),
     (&["FutureReturnValueIgnored"], futures::future_return_value_ignored),
     (&["ImmutableEnumChecker"], immutable::immutable_enum_checker),
+    (&["ImmutableAnnotationChecker"], immutable::entry::immutable_annotation_checker),
     (&["TypeParameterNaming"], names::type_parameter_naming),
     (&["WildcardImport"], names::wildcard_import),
     (&["SameNameButDifferent"], names::same_name_but_different),
@@ -442,6 +527,7 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["ByteBufferBackingArray"], buffers::byte_buffer_backing_array),
     (&["ClassNewInstance"], reflection::class_new_instance),
     (&["ParameterComment"], parameter_comment::parameter_comment),
+    (&["ParameterName"], parameter_name::parameter_name),
     (&["StringConcatToTextBlock"], text_blocks::string_concat_to_text_block),
     (&["UnnecessaryMethodReference"], references::unnecessary_method_reference),
     (&["AmbiguousMethodReference"], references::ambiguous_method_reference),
@@ -519,6 +605,13 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["JavaDurationGetSecondsToToSeconds"], time_checks::duration_get_seconds_to_seconds),
     (&["ObjectToString"], object_to_string::object_to_string),
     (&["StreamToString"], object_to_string::stream_to_string),
+    (&["LiteProtoToString"], object_to_string::lite_proto_to_string),
+    (&["ImplementAssertionWithChaining"], truth_implement_chaining::implement_assertion_with_chaining),
+    (&["LambdaFunctionalInterface"], lambda_function_types::lambda_functional_interface),
+    (&["UnnecessaryQualifier"], unnecessary_qualifier::unnecessary_qualifier),
+    (&["TruthIncompatibleType"], truth_types::truth_incompatible_type),
+    (&["SymbolToString"], object_to_string::symbol_to_string),
+    (&["TypeToString"], object_to_string::type_to_string),
     (&["CompileTimeConstant"], compile_constant::compile_time_constant_check),
     (&["ConstantPatternCompile"], constant_pattern::constant_pattern_compile),
     (&["ReturnValueIgnored"], returns_ignored::return_value_ignored),
@@ -650,11 +743,172 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["RefersToDaggerCodegen"], inject_codegen::refers_to_dagger_codegen),
     (&["MisleadingEscapedSpace"], source_text::misleading_escaped_space),
     (&["CompatibleWithAnnotationMisuse"], annotation_misuse::compatible_with_misuse),
+    (&["JavaDurationWithNanos"], time_with::java_duration_with_nanos),
+    (&["JavaDurationWithSeconds"], time_with::java_duration_with_seconds),
+    (&["JodaDurationWithMillis"], time_with::joda_duration_with_millis),
+    (&["JavaInstantGetSecondsGetNano"], time_with::java_instant_get_seconds_get_nano),
+    (&["JavaLocalDateTimeGetNano"], time_with::java_local_date_time_get_nano),
+    (&["JavaLocalTimeGetNano"], time_with::java_local_time_get_nano),
+    (&["JavaPeriodGetDays"], time_with::java_period_get_days),
+    (&["JodaConstructors"], time_with::joda_constructors),
+    (&["JodaDateTimeConstants"], time_with::joda_date_time_constants),
+    (&["JavaxInjectOnFinalField"], inject_more::javax_inject_on_final_field),
+    (&["InjectOnConstructorOfAbstractClass"], inject_more::inject_on_constructor_of_abstract_class),
+    (&["InjectedConstructorAnnotations"], inject_more::injected_constructor_annotations),
+    (&["InjectScopeAnnotationOnInterfaceOrAbstractClass"], inject_more::scope_annotation_on_interface_or_abstract_class),
+    (&["InjectInvalidTargetingOnScopingAnnotation"], inject_more::invalid_targeting_on_scoping_annotation),
+    (&["JUnit3FloatingPointComparisonWithoutDelta"], junit_more::junit3_floating_point_comparison_without_delta),
+    (&["JUnit4ClassUsedInJUnit3"], junit_more::junit4_class_used_in_junit3),
+    (&["JUnitAmbiguousTestClass"], junit_more::junit_ambiguous_test_class),
+    (&["JUnitIncompatibleType"], junit_more::junit_incompatible_type),
+    (&["HardCodedSdCardPath"], misc_defect_shapes::hard_coded_sd_card_path),
+    (&["ICCProfileGetInstance"], misc_defect_shapes::icc_profile_get_instance),
+    (&["IncorrectMainMethod"], misc_defect_shapes::incorrect_main_method),
+    (&["IncrementInForLoopAndHeader"], misc_defect_shapes::increment_in_for_loop_and_header),
+    (&["InstanceOfAndCastMatchWrongType"], misc_defect_shapes::instance_of_and_cast_match_wrong_type),
+    (&["IntFloatConversion"], misc_defect_shapes::int_float_conversion),
+    (&["InconsistentHashCode"], hash_code_checks::inconsistent_hash_code),
+    (&["JodaInstantWithMillis"], joda_checks::joda_instant_with_millis),
+    (&["JodaNewPeriod"], joda_checks::joda_new_period),
+    (&["JodaPlusMinusLong"], joda_checks::joda_plus_minus_long),
+    (&["JodaTimeConverterManager"], joda_checks::joda_time_converter_manager),
+    (&["LongFloatConversion"], numeric_calls::long_float_conversion),
+    (&["MathAbsoluteNegative"], numeric_calls::math_absolute_negative),
+    (&["MultipleUnaryOperatorsInMethodCall"], numeric_calls::multiple_unary_operators_in_method_call),
+    (&["NegativeCharLiteral"], numeric_calls::negative_char_literal),
+    (&["LockOnNonEnclosingClassLiteral"], contextual_misc::lock_on_non_enclosing_class_literal),
+    (&["MissingRefasterAnnotation"], contextual_misc::missing_refaster_annotation),
+    (&["MultimapKeys"], contextual_misc::multimap_keys),
+    (&["MultipleParallelOrSequentialCalls"], contextual_misc::multiple_parallel_or_sequential_calls),
+    (&["NamedLikeContextualKeyword"], contextual_misc::named_like_contextual_keyword),
+    (&["LiteEnumValueOf"], contextual_misc::lite_enum_value_of),
+    (&["NestedInstanceOfConditions"], nested_instanceof::nested_instance_of_conditions),
+    (&["NonCanonicalStaticMemberImport"], nested_instanceof::non_canonical_static_member_import),
+    (&["NullOptional"], optional_nulls::null_optional),
+    (&["NullableOptional"], optional_nulls::nullable_optional),
+    (&["NullableConstructor"], optional_nulls::nullable_constructor),
+    (&["OptionalMapToOptional"], optional_nulls::optional_map_to_optional),
+    (&["MockIllegalThrows"], mockito_setup::mock_illegal_throws),
+    (&["MockitoDoSetup"], mockito_setup::mockito_do_setup),
+    (&["CacheLoaderNull"], async_nulls::cache_loader_null),
+    (&["DoNotMockAutoValue"], do_not_mock::do_not_mock_auto_value),
+    (&["BareDotMetacharacter"], misc_defect_calls::bare_dot_metacharacter),
+    (&["CharacterGetNumericValue"], misc_defect_calls::character_get_numeric_value),
+    (&["GetClassOnEnum"], misc_defect_calls::get_class_on_enum),
+    (&["BigDecimalEquals"], misc_defect_calls::big_decimal_equals),
+    (&["CollectorShouldNotUseState"], misc_defect_calls::collector_should_not_use_state),
+    (&["BindingToUnqualifiedCommonType"], misc_defect_calls::binding_to_unqualified_common_type),
+    (&["DeprecatedVariable"], declaration_defects::deprecated_variable),
+    (&["AutoValueFinalMethods"], auto_value_fields::auto_value_final_methods),
+    (&["AssertSameIncompatible"], assert_order::assert_same_incompatible),
+    (&["BoxedPrimitiveConstructor"], boxed_constructor::boxed_primitive_constructor),
+    (&["CatchFail"], catch_fail::catch_fail),
+    (&["AssertEqualsArgumentOrderChecker"], assert_order::assert_equals_argument_order),
+    (&["FloggerPerWithoutRateLimit"], flogger_calls::flogger_per_without_rate_limit),
+    (&["FloggerLogWithCause"], flogger_calls::flogger_log_with_cause),
+    (&["FloggerRedundantIsEnabled"], flogger_calls::flogger_redundant_is_enabled),
+    (&["AutoValueImmutableFields"], auto_value_fields::auto_value_immutable_fields),
+    (&["ClosingStandardOutputStreams"], declaration_defects::closing_standard_output_streams),
+    (&["AssistedInjectAndInjectOnConstructors"], declaration_defects::assisted_inject_and_inject_on_constructors),
+    (&["AssistedInjectAndInjectOnSameConstructor"], declaration_defects::assisted_inject_and_inject_on_same_constructor),
+    (&["AttemptedNegativeZero"], constant_exprs::attempted_negative_zero),
+    (&["ErroneousBitwiseExpression"], constant_exprs::erroneous_bitwise_expression),
+    (&["ComplexBooleanConstant"], constant_exprs::complex_boolean_constant),
+    (&["NarrowingCompoundAssignment"], constant_exprs::narrowing_compound_assignment),
+    (&["UnnecessaryBreakInSwitch"], labels::unnecessary_break_in_switch),
+    (&["AddressSelection"], jdk_calls::address_selection),
+    (&["ScannerUseDelimiter"], jdk_calls::scanner_use_delimiter),
+    (&["ErroneousThreadPoolConstructorChecker"], jdk_calls::erroneous_thread_pool_constructor),
+    (&["DateChecker"], jdk_calls::date_checker),
+    (&["DuplicateDateFormatField"], date_format::duplicate_date_format_field),
+    (&["FloggerMessageFormat"], flogger_format::flogger_message_format),
+    (&["FloggerStringConcatenation"], flogger_format::flogger_string_concatenation),
+    (&["OutlineNone"], outline_none::outline_none),
+    (&["CanonicalDuration"], duration_calls::canonical_duration),
+    (&["JodaWithDurationAddedLong"], duration_calls::joda_with_duration_added_long),
+    (&["BigDecimalLiteralDouble"], big_decimal::big_decimal_literal_double),
+    (&["UnnecessarilyVisible"], framework_methods::unnecessarily_visible),
+    (&["DoNotClaimAnnotations"], framework_methods::do_not_claim_annotations),
+    (&["UnsafeFinalization"], framework_methods::unsafe_finalization),
+    (&["TraditionalSwitchExpression"], declaration_warnings::traditional_switch_expression),
+    (&["TransientMisuse"], declaration_warnings::transient_misuse),
+    (&["RecordComponentOverride"], declaration_warnings::record_component_override),
+    (&["ToStringReturnsNull"], declaration_warnings::to_string_returns_null),
+    (&["SwigMemoryLeak"], declaration_warnings::swig_memory_leak),
+    (&["SystemConsoleNull"], declaration_warnings::system_console_null),
+    (&["PreconditionsCheckNotNullRepeated"], call_arguments::preconditions_check_not_null_repeated),
+    (&["PrimitiveArrayPassedToVarargsMethod"], call_arguments::primitive_array_passed_to_varargs_method),
+    (&["PrimitiveAtomicReference"], call_arguments::primitive_atomic_reference),
+    (&["ProtoDurationGetSecondsGetNano"], call_arguments::proto_duration_get_seconds_get_nano),
+    (&["ProtoTimestampGetSecondsGetNano"], call_arguments::proto_timestamp_get_seconds_get_nano),
+    (&["RethrowReflectiveOperationExceptionAsLinkageError"], self_and_stream_calls::rethrow_reflective_operation_exception),
+    (&["SuperCallToObjectMethod"], self_and_stream_calls::super_call_to_object_method),
+    (&["StreamToIterable"], self_and_stream_calls::stream_to_iterable),
+    (&["SelfAlwaysReturnsThis"], self_and_stream_calls::self_always_returns_this),
+    (&["QualifierOrScopeOnInjectMethod"], inject_method_annotations::qualifier_or_scope_on_inject_method),
+    (&["QualifierWithTypeUse"], inject_method_annotations::qualifier_with_type_use),
+    (&["PreferInstanceofOverGetKind"], tree_kind_checks::prefer_instanceof_over_get_kind),
+    (&["TruthContainsExactlyElementsInUsage"], truth_exactly::truth_contains_exactly_elements_in_usage),
+    (&["PreferTestParameter"], test_parameter::prefer_test_parameter),
+    (&["RobolectricShadowDirectlyOn"], robolectric_shadow::robolectric_shadow_directly_on),
+    (&["MissingImplementsComparable"], class_declaration_checks::missing_implements_comparable),
+    (&["IterableAndIterator"], class_declaration_checks::iterable_and_iterator),
+    (&["Overrides"], class_declaration_checks::overrides),
+    (&["InjectOnBugCheckers"], class_declaration_checks::inject_on_bug_checkers),
+    (&["OverridesGuiceInjectableMethod"], class_declaration_checks::overrides_guice_injectable_method),
+    (&["OverridingMethodInconsistentArgumentNamesChecker"], class_declaration_checks::overriding_method_inconsistent_argument_names),
+    (&["JUnitMethodInvoked"], method_call_checks::junit_method_invoked),
+    (&["ThrowIfUncheckedKnownUnchecked"], method_call_checks::throw_if_unchecked_known_unchecked),
+    (&["GuiceNestedCombine"], method_call_checks::guice_nested_combine),
+    (&["TypeEquals"], method_call_checks::type_equals),
+    (&["ThreadJoinLoop"], thread_time_checks::thread_join_loop),
+    (&["FloggerWithoutCause"], flogger_causes::flogger_without_cause),
+    (&["FloggerWithCause"], flogger_causes::flogger_with_cause),
+    (&["FutureTransformAsync"], future_transform::future_transform_async),
+    (&["FragmentNotInstantiable"], android_fragments::fragment_not_instantiable),
+    (&["FragmentInjection"], android_fragments::fragment_injection),
+    (&["UnnecessaryMethodInvocationMatcher"], matcher_wrapping::unnecessary_method_invocation_matcher),
+    (&["TimeInStaticInitializer"], thread_time_checks::time_in_static_initializer),
+    (&["ExtendingJUnitAssert"], junit_cleanups::extending_junit_assert),
+    (&["JUnit4EmptyMethods"], junit_cleanups::junit4_empty_methods),
+    (&["AssertThrowsBlockToExpression"], junit_cleanups::assert_throws_block_to_expression),
+    (&["ScopeOnModule"], dagger_modules::scope_on_module),
+    (&["PrivateConstructorForNoninstantiableModule"], dagger_modules::private_constructor_for_noninstantiable_module),
+    (&["ListRemoveAmbiguous"], list_remove::list_remove_ambiguous),
+    (&["UnnecessarySetDefault"], null_pointer_tester::unnecessary_set_default),
+    (&["StaticGuardedByInstance"], guarded_writes::static_guarded_by_instance),
+    (&["SelfSet"], constant_expression_checks::self_set),
+    (&["TruthConstantAsserts"], constant_expression_checks::truth_constant_asserts),
+    (&["DuplicateAssertion"], constant_expression_checks::duplicate_assertion),
+    (&["IgnoredPureGetter"], ignored_values::ignored_pure_getter),
+    (&["RxReturnValueIgnored"], ignored_values::rx_return_value_ignored),
+    (&["UnnecessaryAssignment"], framework_assignments::unnecessary_assignment_expression),
+    (&["UnnecessaryAssignment"], framework_assignments::unnecessary_assignment_variable),
+    (&["ImmutableSetForContains"], immutable_set_contains::immutable_set_for_contains),
+    (&["CloseableProvides"], provides_checks::closeable_provides),
+    (&["EmptySetMultibindingContributions"], provides_checks::empty_set_multibinding_contributions),
+    (&["ComparableAndComparator"], comparable_checks::comparable_and_comparator),
+    (&["BadComparable"], comparable_checks::bad_comparable),
+    (&["DateFormatConstant"], date_format_constant::date_format_constant),
+    (&["ExpensiveLenientFormatString"], format_checks::expensive_lenient_format_string),
+    (&["FormatStringShouldUsePlaceholders"], format_checks::format_string_should_use_placeholders),
+    (&["TruthGetOrDefault"], truth_checks::truth_get_or_default),
+    (&["BugPatternNaming"], bug_pattern_naming::bug_pattern_naming),
+    (&["ExpectedExceptionChecker"], expected_exception::expected_exception_checker),
+    (&["AutoValueSubclassLeaked"], auto_value_leaks::auto_value_subclass_leaked),
+    (&["ChainedAssertionLosesContext"], truth_chaining::chained_assertion_loses_context),
+    (&["AssertionFailureIgnored"], assertion_failures::assertion_failure_ignored),
+    (&["AssertThrowsMultipleStatements"], assert_throws::assert_throws_multiple_statements),
+    (&["ThreeLetterTimeZoneID"], three_letter_zones::three_letter_time_zone_id),
+    (&["WakelockReleasedDangerously"], wakelock::wakelock_released_dangerously),
+    (&["FloggerArgumentToString"], flogger_args::flogger_argument_to_string),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
 /// leave the resolver with answers found in a different order.
 const FILE_CHECKS: &[(&[&str], Check)] = &[
+    (&["FloggerRequiredModifiers"], flogger_modifiers::flogger_required_modifiers),
+    (&["StronglyTypeByteString"], strong_byte_string::strongly_type_byte_string),
     (&["UnnecessaryBoxedVariable"], boxed::unnecessary_boxed_variable),
     (&["UnusedMethod"], unused_methods::unused_method),
     (&["NotJavadoc"], docplaced::not_javadoc),
@@ -673,6 +927,20 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["UnicodeDirectionalityCharacters"], stmt_defects::unicode_directionality_characters),
     (&["UnicodeInCode"], source_text::unicode_in_code),
     (&["TreeToString"], tree_to_string::tree_to_string),
+    (&["MockNotUsedInProduction"], mock_unused::mock_not_used_in_production),
+    (&["DefaultPackage"], declaration_defects::default_package),
+    (&["EmptyTopLevelDeclaration"], declaration_defects::empty_top_level_declaration),
+    (&["DirectInvocationOnMock"], mock_invocations::direct_invocation_on_mock),
+    (&["UnusedLabel"], labels::unused_label),
+    (&["UnnecessaryTestMethodPrefix"], framework_methods::unnecessary_test_method_prefix),
+    (&["MemoizeConstantVisitorStateLookups"], visitor_state::memoize_constant_visitor_state_lookups),
+    (&["RuleNotRun"], rule_not_run::rule_not_run),
+    (&["UnnecessaryCopy"], unnecessary_copy::unnecessary_copy),
+    (&["PackageLocation"], package_location::package_location),
+    (&["OptionalNotPresent"], constant_expression_checks::optional_not_present),
+    (&["NoAllocation"], no_allocation::no_allocation),
+    (&["MustBeClosedChecker", "MustBeClosed"], must_be_closed::must_be_closed),
+    (&["GuardedBy"], guarded_by::guarded_by),
 ];
 
 pub struct ErrorProne;

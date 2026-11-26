@@ -23,7 +23,8 @@ fn defines_hash_code(context: &Context, class: &str) -> bool {
 
 pub fn bad_annotation_implementation(context: &Context, node: Node) {
     let anonymous = node.kind() == "object_creation_expression" && children(node).iter().any(|part| part.kind() == "class_body");
-    if !matches!(node.kind(), "class_declaration" | "enum_declaration") && !anonymous {
+    let constant = node.kind() == "enum_constant" && node.child_by_field_name("body").is_some();
+    if !matches!(node.kind(), "class_declaration" | "enum_declaration") && !anonymous && !constant {
         return;
     }
     let Some(name) = context.resolver.scope.names.get(&node.id()) else { return };
@@ -33,6 +34,9 @@ pub fn bad_annotation_implementation(context: &Context, node: Node) {
     }
     let body = children(node).into_iter().find(|part| part.kind() == "class_body");
     let at = if anonymous { body.map_or(node.start_byte(), |body| body.start_byte()) } else { class_keyword(node) };
+    if constant {
+        return context.report_fixed("BadAnnotationImplementation", node, node.start_byte(), ENUM_MESSAGE, &[]);
+    }
     if node.kind() == "enum_declaration" {
         return context.report_fixed("BadAnnotationImplementation", node, at, ENUM_MESSAGE, &[]);
     }

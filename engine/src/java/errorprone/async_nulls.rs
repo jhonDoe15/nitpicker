@@ -8,8 +8,8 @@ use crate::engine::source::{ancestor, children, named_children, parent};
 use crate::java::types::model::target;
 use tree_sitter::Node;
 
-fn provide_fix(node: Node) -> Vec<super::fixes::Fix> {
-    if node.kind() == "null_literal" {
+fn provide_fix(node: Node, immediate: bool) -> Vec<super::fixes::Fix> {
+    if immediate && node.kind() == "null_literal" {
         vec![Fix::replace(node.start_byte(), node.end_byte(), "immediateFuture(null)").with_imports()]
     } else {
         vec![Fix::new()]
@@ -37,7 +37,7 @@ fn async_returns(context: &Context, node: Node, check: &'static str, async_class
         "lambda_expression" => {
             let Some(body) = node.child_by_field_name("body").filter(|body| body.kind() != "block") else { return };
             if definitely_null(context, body, &[]) && lambda_overrides(context, node, async_class) {
-                context.report_fixed(check, node, node.start_byte(), message, &provide_fix(body));
+                context.report_fixed(check, node, node.start_byte(), message, &provide_fix(body, async_class != LOADER));
             }
         }
         "return_statement" => {
@@ -54,7 +54,7 @@ fn async_returns(context: &Context, node: Node, check: &'static str, async_class
                 };
                 if let Some(matched) = matched {
                     if matched {
-                        context.report_fixed(check, node, node.start_byte(), message, &provide_fix(expression));
+                        context.report_fixed(check, node, node.start_byte(), message, &provide_fix(expression, async_class != LOADER));
                     }
                     return;
                 }
@@ -66,6 +66,7 @@ fn async_returns(context: &Context, node: Node, check: &'static str, async_class
 }
 
 const FUNCTION: &str = "com.google.common.util.concurrent.AsyncFunction";
+const LOADER: &str = "com.google.common.cache.CacheLoader";
 const CALLABLE: &str = "com.google.common.util.concurrent.AsyncCallable";
 
 pub fn async_function_returns_null(context: &Context, node: Node) {
@@ -74,6 +75,10 @@ pub fn async_function_returns_null(context: &Context, node: Node) {
 
 pub fn async_callable_returns_null(context: &Context, node: Node) {
     async_returns(context, node, "AsyncCallableReturnsNull", CALLABLE, "AsyncCallable should not return a null Future, only a Future whose result is null.");
+}
+
+pub fn cache_loader_null(context: &Context, node: Node) {
+    async_returns(context, node, "CacheLoaderNull", LOADER, "The result of CacheLoader#load must be non-null.");
 }
 
 /// Whether the method carries a declaration annotation whose simple name is `Nullable`.

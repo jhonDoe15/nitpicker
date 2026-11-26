@@ -17,9 +17,9 @@ const SUPPRESSIBLE: [&str; 8] = [
 
 /// What a condition settles: the expressions that must hold, and those that must not.
 #[derive(Default)]
-struct Truthiness {
-    required_true: Vec<Ce>,
-    required_false: Vec<Ce>,
+pub(super) struct Truthiness {
+    pub(super) required_true: Vec<Ce>,
+    pub(super) required_false: Vec<Ce>,
 }
 
 #[derive(Default)]
@@ -49,6 +49,65 @@ impl Counts {
     }
 }
 
+pub(super) fn truthiness<'c, 'a>(context: &'c Context<'a>, constants: &Constants<'c, 'a, 'c>, condition: Node<'c>, not: bool) -> Truthiness {
+    let mut found = Truthiness::default();
+    let mut failed = false;
+    collect(context, constants, condition, not, &mut found, &mut failed);
+    if failed {
+        return Truthiness::default();
+    }
+    found.required_true = unique(&found.required_true);
+    found.required_false = unique(&found.required_false);
+    found
+}
+
+fn collect<'c, 'a>(context: &'c Context<'a>, constants: &Constants<'c, 'a, 'c>, node: Node<'c>, negated: bool, found: &mut Truthiness, failed: &mut bool) {
+    let mut add = |ce: Ce, negated: bool| if negated { found.required_false.push(ce) } else { found.required_true.push(ce) };
+    match node.kind() {
+        "parenthesized_expression" => {
+            if let Some(inner) = children(node).into_iter().find(|part| part.is_named() && !part.kind().ends_with("comment")) {
+                collect(context, constants, inner, negated, found, failed);
+            }
+        }
+        "unary_expression" => {
+            let bang = node.child_by_field_name("operator").is_some_and(|operator| context.text(operator) == "!");
+            if bang {
+                if let Some(operand) = node.child_by_field_name("operand") {
+                    collect(context, constants, operand, !negated, found, failed);
+                }
+            }
+        }
+        "binary_expression" => {
+            let operator = node.child_by_field_name("operator").map(|operator| context.text(operator)).unwrap_or_default();
+            match operator {
+                "==" | "!=" => {
+                    if let Some(ce) = constants.expression(node) {
+                        add(ce, if operator == "!=" { !negated } else { negated });
+                    }
+                }
+                "&&" if !negated => both(context, constants, node, negated, found, failed),
+                "||" if negated => both(context, constants, node, negated, found, failed),
+                _ => *failed = true,
+            }
+        }
+        "method_invocation" | "identifier" => {
+            if let Some(ce) = constants.expression(node) {
+                add(ce, negated);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn both<'c, 'a>(context: &'c Context<'a>, constants: &Constants<'c, 'a, 'c>, node: Node<'c>, negated: bool, found: &mut Truthiness, failed: &mut bool) {
+    for side in ["left", "right"] {
+        if let Some(part) = node.child_by_field_name(side) {
+            collect(context, constants, part, negated, found, failed);
+        }
+    }
+}
+
+
 struct Scanner<'c, 'a> {
     context: &'c Context<'a>,
     constants: Constants<'c, 'a, 'c>,
@@ -59,7 +118,7 @@ struct Scanner<'c, 'a> {
     falsehoods_in_method: Vec<Vec<Ce>>,
 }
 
-fn unique(ces: &[Ce]) -> Vec<Ce> {
+pub(super) fn unique(ces: &[Ce]) -> Vec<Ce> {
     let mut seen: Vec<Ce> = Vec::new();
     for ce in ces {
         if !seen.iter().any(|known| known.key == ce.key) {
@@ -71,62 +130,7 @@ fn unique(ces: &[Ce]) -> Vec<Ce> {
 
 impl<'c, 'a> Scanner<'c, 'a> {
     fn truthiness(&mut self, condition: Node<'c>, not: bool) -> Truthiness {
-        let mut found = Truthiness::default();
-        let mut failed = false;
-        self.collect(condition, not, &mut found, &mut failed);
-        if failed {
-            return Truthiness::default();
-        }
-        found.required_true = unique(&found.required_true);
-        found.required_false = unique(&found.required_false);
-        found
-    }
-
-    fn collect(&mut self, node: Node<'c>, negated: bool, found: &mut Truthiness, failed: &mut bool) {
-        let context = self.context;
-        let mut add = |ce: Ce, negated: bool| if negated { found.required_false.push(ce) } else { found.required_true.push(ce) };
-        match node.kind() {
-            "parenthesized_expression" => {
-                if let Some(inner) = children(node).into_iter().find(|part| part.is_named() && !part.kind().ends_with("comment")) {
-                    self.collect(inner, negated, found, failed);
-                }
-            }
-            "unary_expression" => {
-                let bang = node.child_by_field_name("operator").is_some_and(|operator| context.text(operator) == "!");
-                if bang {
-                    if let Some(operand) = node.child_by_field_name("operand") {
-                        self.collect(operand, !negated, found, failed);
-                    }
-                }
-            }
-            "binary_expression" => {
-                let operator = node.child_by_field_name("operator").map(|operator| context.text(operator)).unwrap_or_default();
-                match operator {
-                    "==" | "!=" => {
-                        if let Some(ce) = self.constants.expression(node) {
-                            add(ce, if operator == "!=" { !negated } else { negated });
-                        }
-                    }
-                    "&&" if !negated => self.both(node, negated, found, failed),
-                    "||" if negated => self.both(node, negated, found, failed),
-                    _ => *failed = true,
-                }
-            }
-            "method_invocation" | "identifier" => {
-                if let Some(ce) = self.constants.expression(node) {
-                    add(ce, negated);
-                }
-            }
-            _ => {}
-        }
-    }
-
-    fn both(&mut self, node: Node<'c>, negated: bool, found: &mut Truthiness, failed: &mut bool) {
-        for side in ["left", "right"] {
-            if let Some(part) = node.child_by_field_name(side) {
-                self.collect(part, negated, found, failed);
-            }
-        }
+        truthiness(self.context, &self.constants, condition, not)
     }
 
     fn within_scope(&mut self, truthiness: Truthiness, statement: Option<Node<'c>>) {

@@ -124,7 +124,7 @@ pub fn junit4_test_not_run(context: &Context, class: Node) {
     }
 }
 
-fn is_test_case(context: &Context, method: Node) -> bool {
+pub(super) fn is_test_case(context: &Context, method: Node) -> bool {
     if method.kind() != "method_declaration" {
         return false;
     }

@@ -72,7 +72,12 @@ fn class_name(context: &Context, class: Node) -> Option<String> {
 
 /// `JUnitMatchers.isJUnit4TestClass`.
 pub fn is_junit4_test_class(context: &Context, class: Node) -> bool {
-    if has_modifier(class, "abstract") || class_name(context, class).is_some_and(|name| context.resolver.index.is_subtype(&name, "junit.framework.TestCase")) {
+    !has_modifier(class, "abstract") && is_junit4_test_class_of_any_kind(context, class)
+}
+
+/// `isJUnit4TestClass` where its `enclosingClass(hasModifier(ABSTRACT))` finds no class, because the state's path is no class.
+pub fn is_junit4_test_class_of_any_kind(context: &Context, class: Node) -> bool {
+    if class_name(context, class).is_some_and(|name| context.resolver.index.is_subtype(&name, "junit.framework.TestCase")) {
         return false;
     }
     if runner_annotation(context, class, None, &RUNNERS).is_some() {

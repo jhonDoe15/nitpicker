@@ -265,7 +265,7 @@ impl<'t> Flow<'_, 't> {
     /// A field's own initializer.
     pub(super) fn initialized(&mut self, declarator: Node<'t>) {
         let (Some(name), Some(value), Some(declaration)) = (declarator.child_by_field_name("name"), declarator.child_by_field_name("value"), parent(declarator)) else { return };
-        if crate::java::helpers::marked_nullable(self.context.file, declaration) {
+        if crate::java::helpers::marked_nullable(self.context.file, declaration) || super::fields::excluded(self.context, declaration) {
             return;
         }
         if self.may_be_null(value) {

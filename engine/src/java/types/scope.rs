@@ -626,7 +626,7 @@ impl<'a> Resolver<'a> {
             .filter(|parameter| matches!(parameter.kind(), "formal_parameter" | "spread_parameter"))
             .map(|parameter| self.annotation_names(parameter))
             .collect();
-        super::model::Detail { access, annotations: self.annotation_names(member), parameter_annotations, marked: String::new(), nullable_types: Vec::new() }
+        super::model::Detail { access, annotations: self.annotation_names(member), parameter_annotations, guards: self.guard_exprs(member), marked: String::new(), nullable_types: Vec::new() }
     }
 
     /// Whether a declaration carries `@CheckForNull` (JSR-305 or SpotBugs) or an annotation that is itself annotated with it.
@@ -780,6 +780,8 @@ impl<'a> Resolver<'a> {
             incompatible: if kind == "annotation_type_declaration" { self.incompatible_modifiers(declaration) } else { Vec::new() },
             class_annotations,
             do_not_mock,
+            outer_instance: None,
+            hidden: Vec::new(),
         }
     }
 
@@ -838,6 +840,38 @@ impl<'a> Resolver<'a> {
             names.push(full);
         }
         (names, reason)
+    }
+
+    /// The full names of the annotations on a field, and `com.google.inject.Inject#optional` for `@Inject(optional = true)`.
+    fn field_annotations(&self, declaration: Node) -> Vec<String> {
+        let mut names = self.class_marks(declaration).0;
+        let optional = super::super::helpers::modifiers(declaration).map(children).unwrap_or_default().into_iter().any(|part| {
+            part.kind() == "annotation"
+                && part.child_by_field_name("name").is_some_and(|name| self.class_name(declaration, self.file.text_of(name)).as_deref() == Some("com.google.inject.Inject"))
+                && part.child_by_field_name("arguments").is_some_and(|list| {
+                    children(list).into_iter().any(|pair| {
+                        pair.kind() == "element_value_pair"
+                            && pair.child_by_field_name("key").is_some_and(|key| self.file.text_of(key) == "optional")
+                            && pair.child_by_field_name("value").is_some_and(|value| value.kind() == "true")
+                    })
+                })
+        });
+        if optional {
+            names.push("com.google.inject.Inject#optional".to_string());
+        }
+        names
+    }
+
+    /// `@org.mockito.Mock` on the declaration, with no explicit `answer`.
+    fn plain_mock(&self, declaration: Node) -> bool {
+        let marks = super::super::helpers::modifiers(declaration).map(children).unwrap_or_default();
+        marks.into_iter().any(|part| {
+            matches!(part.kind(), "marker_annotation" | "annotation")
+                && part.child_by_field_name("name").is_some_and(|name| self.class_name(declaration, self.file.text_of(name)).as_deref() == Some("org.mockito.Mock"))
+                && !part.child_by_field_name("arguments").is_some_and(|list| {
+                    children(list).into_iter().any(|pair| pair.kind() == "element_value_pair" && pair.child_by_field_name("key").is_some_and(|key| self.file.text_of(key) == "answer"))
+                })
+        })
     }
 
     /// What `containerOf` of the class's `@Immutable` names, and the type parameters with `@ImmutableTypeParameter`.
@@ -932,7 +966,7 @@ impl<'a> Resolver<'a> {
 
     /// Whether an expression has the shape of a constant expression; the fields it reads are collected.
     pub fn constant_shape(&self, expression: Node, uses: &mut Vec<(String, String)>) -> bool {
-        let mut all = |uses: &mut Vec<(String, String)>| {
+        let all = |uses: &mut Vec<(String, String)>| {
             crate::engine::source::named_children(expression)
                 .into_iter()
                 .filter(|part| !part.kind().ends_with("comment"))
@@ -1050,6 +1084,10 @@ impl<'a> Resolver<'a> {
                             strict: (matches!(&kind, Type::Primitive(_)) || kind.name() == "java.lang.String")
                                 && declarator.field("value").is_some_and(|value| value.kind() != "array_initializer"),
                             is_private: has(member, "private"),
+                            mock: self.plain_mock(member),
+                            annotations: self.field_annotations(member),
+                            guards: self.guard_exprs(member),
+                            folded: (info.is_interface || has(member, "final")).then(|| declarator.field("value")).flatten().and_then(|value| self.fold(value)),
                             flags: bits(member) | if info.is_interface { super::model::flag::STATIC | super::model::flag::FINAL } else { 0 },
                         });
                     }
@@ -1066,6 +1104,10 @@ impl<'a> Resolver<'a> {
                             fixed: None,
                             strict: false,
                             is_private: false,
+                            mock: false,
+                            annotations: Vec::new(),
+                            guards: self.guard_exprs(member),
+                            folded: None,
                             flags: super::model::flag::PUBLIC | super::model::flag::STATIC | super::model::flag::FINAL | super::model::flag::ENUM,
                         });
                     }
@@ -1145,7 +1187,9 @@ impl<'a> Resolver<'a> {
         if declaration.kind() == "record_declaration" {
             let (parameters, generic_parameters, varargs) = self.parameters(declaration.field("parameters"));
             if !info.methods.iter().any(|method| method.name == "<init>" && method.parameters == parameters) {
-                info.methods.push(Method { generic_parameters, varargs, nullable_parameters: self.nullable_parameters(declaration), names: self.parameter_names(declaration), ..plain("<init>", parameters, Type::Primitive("void")) });
+                let compact = declaration.field("body").map(children).unwrap_or_default().into_iter().find(|member| member.kind() == "compact_constructor_declaration");
+                let detail = super::model::Detail { annotations: compact.map(|member| self.annotation_names(member)).unwrap_or_default(), ..Default::default() };
+                info.methods.push(Method { generic_parameters, varargs, nullable_parameters: self.nullable_parameters(declaration), names: self.parameter_names(declaration), detail, ..plain("<init>", parameters, Type::Primitive("void")) });
             }
             for component in declaration.field("parameters").map(children).unwrap_or_default() {
                 // A variable arity component is an array field; its name sits one level down.
@@ -1161,10 +1205,11 @@ impl<'a> Resolver<'a> {
                 };
                 let name = self.file.text_of(name).to_string();
                 let generic = element(true).unwrap_or(kind.clone());
-                info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, number: None, fixed: None, strict: false, is_private: true, flags: super::model::flag::FINAL | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL) });
+                info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, number: None, fixed: None, strict: false, is_private: true, mock: false, annotations: Vec::new(), guards: self.guard_exprs(component), folded: None, flags: super::model::flag::FINAL | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL) });
                 info.record_components.get_or_insert_with(Vec::new).push(generic.clone());
                 let accessor = plain(&name, Vec::new(), kind.erased());
-                info.methods.push(Method { generic_returns: generic, flags: accessor.flags | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL), ..accessor });
+                let detail = super::model::Detail { guards: self.guard_exprs(component), ..accessor.detail.clone() };
+                info.methods.push(Method { detail, generic_returns: generic, flags: accessor.flags | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL), ..accessor });
             }
         }
     }
