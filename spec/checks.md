@@ -451,15 +451,17 @@ end, or both ends.
 Compiler API without the input's file name: `nitpicker/require-compiler-file-name` (production source, in
 `eslint-lint`) reports `ts.transpileModule`, `ts.transpile`, `ts.createSourceFile` and
 `ts.createLanguageServiceSourceFile` called without a file name, or with a string literal, inside a function that has a
-parameter or local named for a file name or path. The compiler then treats every input as the same file.
+parameter or local named for a file name or path, where `ts` is the `typescript` module itself. The compiler then
+treats every input as the same file.
 
 Moved tsconfig without type roots: `nitpicker/require-moved-tsconfig-type-roots` (production source, in `eslint-lint`)
-reports an object literal with an `extends` key that is serialized with `JSON.stringify` and written under
-`os.tmpdir()` or a `mkdtemp` folder without `compilerOptions.typeRoots`. The default type roots are the
+reports an object literal with an `extends` key that is serialized with `JSON.stringify` and written to a
+`tsconfig*.json` under `os.tmpdir()` or a `mkdtemp` folder without `compilerOptions.typeRoots` or `types`. The default type roots are the
 `node_modules/@types` folders above the opened config, so in a temporary folder global types are not found.
 Staged project without parent node_modules: `nitpicker/require-staged-parent-node-modules` (production source, in
 `eslint-lint`) reports a temporary folder filled with the entries of another folder that then holds a written
-`tsconfig*.json` or `package.json` or is the working folder of a spawned tool, when nothing links `node_modules` or sets
+`tsconfig*.json` or is the working folder of a spawned module-resolving tool (`tsc`, `eslint`, `node`, `vite` and the
+like), when, in that function or its callers, nothing links `node_modules` or sets
 `NODE_PATH`, `typeRoots`, `paths` or `--preserve-symlinks`. Packages hoisted to a parent `node_modules` are not
 found from the copy.
 Config file looked up in one folder: `nitpicker/no-single-folder-config-lookup` (production source, in `eslint-lint`)

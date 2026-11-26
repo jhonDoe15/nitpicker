@@ -2041,8 +2041,10 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   named for a file name or path (`fileName`, `filename`, `file`, `path`, `filePath`, also with a one-letter prefix such
   as `pFileName`). Without the name the compiler treats every input as the same file: relative imports resolve against
   it (a file importing `./module` imports itself) and the extension picks TSX or the module format. Not reported: a
-  function with no file name to pass, options from a variable or a spread, a `path` that is the `node:path` module,
-  Babel, esbuild and SWC (not covered yet).
+  function with no file name to pass, options from a variable, a spread or a computed key, a name that is the
+  `node:path` module (`import` or `require`), a parameter typed `File`, a `ts` that is not the `typescript` module (a
+  parameter or local of that name), Babel, esbuild and SWC (not covered yet). `typescript` is found through `import`,
+  `import ts = require(...)`, `require` anywhere in the file, and destructuring of it.
 - A package.json field that npm accepts in several shapes is not read as only one of them
   (`nitpicker/no-single-shape-manifest-field`, production files). Reported: a list member (`includes`, `map`,
   `filter`, `forEach`, `some`, `every`, `find`, `reduce`, `flatMap`, `join`, `push`, `indexOf`, `length`) of
@@ -2059,19 +2061,24 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
 - A project staged in a temporary folder keeps the `node_modules` of its parent folders
   (`nitpicker/require-staged-parent-node-modules`, production files). Reported: a `mkdtemp` or `mkdtempSync` folder
   that receives the entries of another folder (`symlink`, `cp` or `copyFile` in a `for...of` or `forEach`/`map` over
-  `readdir` of it) when, in the same function, a `tsconfig*.json` or `package.json` is written into it or it is the
-  `cwd`, or follows `--tsconfig`, `-p` or `--project`, of a `spawn`, `exec`, `execFile`, `fork` or `execa` call.
+  `readdir` of it) when, in the same function, a `tsconfig*.json` is written into it, or it follows `--tsconfig`, `-p`
+  or `--project` of a spawn call, or it is the `cwd` of a `spawn`, `exec`, `execFile`, `fork` or `execa` call that
+  starts a module-resolving tool (`tsc`, `eslint`, `oxlint`, `tsgolint`, `node`, `vite`, `webpack`, `rollup`, `esbuild`,
+  `jest`, `vitest`, or `npx` of one of them; a tool that is not a string literal is not known; `npm pack`, `tar` and
+  `git` are not).
   Module resolution in the copy walks up from the temporary folder, so packages in a parent `node_modules` (a hoisted
-  workspace) are not found. Not reported: a file that mentions `node_modules`, `NODE_PATH`, `typeRoots`, `paths` or
-  `--preserve-symlinks`, and a copy that is only read.
+  workspace) are not found. Not reported: a function (or one of its callers in the file) that mentions `node_modules`,
+  `NODE_PATH`, `typeRoots`, `paths` or `--preserve-symlinks`, a `package.json` written alone, and a copy that is only
+  read.
 - A tsconfig that extends another and is written to a temporary folder sets `typeRoots`
   (`nitpicker/require-moved-tsconfig-type-roots`, production files). Reported: an object literal with an `extends` key,
   serialized with `JSON.stringify` and written with `writeFile` or `writeFileSync` under `os.tmpdir()` or a `mkdtemp`
-  folder (followed through `const` variables and `path.join`), whose `compilerOptions` has no `typeRoots` key or is
-  missing. TypeScript derives the default `typeRoots` from the folder of the config it opens, so from a temporary
-  folder the project's `node_modules/@types` are not found. Not reported: a `typeRoots` key, a spread or a
-  `compilerOptions` value that is not an object literal, text written as it is, and folders outside the temporary
-  directory.
+  folder (followed through `const` variables and `path.join`) as a file named `tsconfig*.json`, whose `compilerOptions`
+  has no `typeRoots` or `types` key or is missing. TypeScript derives the default `typeRoots` from the folder of the
+  config it opens, so from a temporary folder the project's `node_modules/@types` are not found. Not reported: a
+  `typeRoots` or `types` key, a spread or a `compilerOptions` value that is not an object literal, an `extends` that
+  is a literal starting with `./`, an object assigned to or passed to `Object.assign` later, other file names
+  (`.eslintrc.json`), text written as it is, and folders outside the temporary directory.
 - A tool's config file is not looked up in one folder only (`nitpicker/no-single-folder-config-lookup`, production
   files). Reported: `existsSync`, `statSync`, `accessSync`, `stat`, `access`, `pathExists` or a `readFileSync` or
   `readFile` in a `try` of `path.join(directory, name)` where the name is a fixed config file that the tool itself

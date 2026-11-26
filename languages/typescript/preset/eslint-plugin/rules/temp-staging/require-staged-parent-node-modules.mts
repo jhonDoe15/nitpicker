@@ -1,7 +1,12 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { resolveConstant, type SourceContext } from '../analysis/constant-resolution.mts';
+import {
+  findVariable,
+  resolveConstant,
+  type SourceContext,
+} from '../analysis/constant-resolution.mts';
 import { depthFirst, nodeChildren } from '../typed/node-views.mts';
 import { enclosingFunction } from '../typed/syntax-views.mts';
+import { runsResolvingTool } from './resolving-tools.mts';
 import { inTemp, nameOfCall, propertyNamed, scopeOf } from './temp-paths.mts';
 
 const LINKERS = new Set(['symlink', 'symlinkSync', 'cp', 'cpSync', 'copyFile', 'copyFileSync']);
@@ -21,7 +26,7 @@ const WRITERS = new Set(['writeFile', 'writeFileSync']);
 const CONFIG_FLAGS = new Set(['--tsconfig', '-p', '--project']);
 const RESOLUTION_HINT =
   /node_modules|NODE_PATH|typeRoots|preserve-symlinks|\bpaths\s*:|['"`]paths['"`]/u;
-const CONFIG_FILE = /tsconfig[\w.-]*\.json|package\.json/u;
+const CONFIG_FILE = /tsconfig[\w.-]*\.json/u;
 
 function isReaddir(context: SourceContext, node: TSESTree.Node | undefined): boolean {
   const value = resolveConstant(context, node);
@@ -67,14 +72,20 @@ function usesStage(context: SourceContext, call: TSESTree.CallExpression): boole
     const [target] = call.arguments;
     return target !== undefined && inTemp(context, target) && mentionsConfigFile(target);
   }
-  return SPAWNERS.has(name) && call.arguments.some((argument) => spawnsInStage(context, argument));
+  return (
+    SPAWNERS.has(name) && call.arguments.some((argument) => spawnsInStage(context, call, argument))
+  );
 }
 
-function spawnsInStage(context: SourceContext, argument: TSESTree.Node): boolean {
+function spawnsInStage(
+  context: SourceContext,
+  call: TSESTree.CallExpression,
+  argument: TSESTree.Node,
+): boolean {
   const value = resolveConstant(context, argument);
   if (value?.type === AST_NODE_TYPES.ObjectExpression) {
     const cwd = propertyNamed(value, 'cwd');
-    return cwd !== undefined && inTemp(context, cwd.value);
+    return cwd !== undefined && inTemp(context, cwd.value) && runsResolvingTool(context, call);
   }
   if (value?.type !== AST_NODE_TYPES.ArrayExpression) {
     return false;
@@ -93,6 +104,23 @@ function spawnsInStage(context: SourceContext, argument: TSESTree.Node): boolean
   });
 }
 
+function hasResolutionHint(context: SourceContext, scope: TSESTree.Node): boolean {
+  const texts = [context.sourceCode.getText(scope)];
+  const name =
+    scope.type === AST_NODE_TYPES.FunctionDeclaration
+      ? scope.id?.name
+      : scope.parent?.type === AST_NODE_TYPES.VariableDeclarator &&
+          scope.parent.id.type === AST_NODE_TYPES.Identifier
+        ? scope.parent.id.name
+        : undefined;
+  const variable = name === undefined ? undefined : findVariable(context, scope, name);
+  for (const reference of variable?.references ?? []) {
+    const caller = enclosingFunction(reference.identifier);
+    texts.push(caller === undefined ? context.sourceCode.text : context.sourceCode.getText(caller));
+  }
+  return texts.some((text) => RESOLUTION_HINT.test(text));
+}
+
 export const rule: TSESLint.RuleModule<'stagedModules'> = {
   meta: {
     type: 'problem',
@@ -107,9 +135,6 @@ export const rule: TSESLint.RuleModule<'stagedModules'> = {
     },
   },
   create(context) {
-    if (RESOLUTION_HINT.test(context.sourceCode.text)) {
-      return {};
-    }
     const links = new Map<TSESTree.Node, TSESTree.CallExpression>();
     const uses = new Set<TSESTree.Node>();
     return {
@@ -129,7 +154,7 @@ export const rule: TSESLint.RuleModule<'stagedModules'> = {
       },
       'Program:exit'() {
         for (const [scope, link] of links) {
-          if (uses.has(scope)) {
+          if (uses.has(scope) && !hasResolutionHint(context, scope)) {
             context.report({ node: link, messageId: 'stagedModules' });
           }
         }

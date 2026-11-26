@@ -150,7 +150,7 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A `package.json` field npm accepts in several shapes (`bundleDependencies: true`, `workspaces: { packages }`,
   `man` as a string) is checked with `Array.isArray` or `typeof` before a list member is read from it
   (`nitpicker/no-single-shape-manifest-field`).
-- A project linked or copied into a temporary folder and used there (a tsconfig written, a tool started with it as
+- A project linked or copied into a temporary folder and used there (a tsconfig written, a resolving tool started with it as
   `cwd`) is given the `node_modules` of its parent folders at the matching level, because module resolution walks up
   from the temporary folder, or the tool runs in the project (`nitpicker/require-staged-parent-node-modules`).
 - A tsconfig that `extends` another and is written to a temporary folder sets `compilerOptions.typeRoots` to the type

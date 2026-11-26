@@ -232,6 +232,7 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/manifests/no-single-shape-manifest-field.mjs',
   'languages/typescript/preset/eslint-plugin/rules/temp-staging/require-staged-parent-node-modules.mjs',
   'languages/typescript/preset/eslint-plugin/rules/temp-staging/temp-paths.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/temp-staging/resolving-tools.mjs',
   'languages/typescript/preset/eslint-plugin/rules/temp-staging/require-moved-tsconfig-type-roots.mjs',
   'languages/typescript/preset/eslint-plugin/rules/source-text/no-keyword-regex-over-source.mjs',
   'languages/typescript/preset/eslint-plugin/rules/source-text/source-text-views.mjs',
