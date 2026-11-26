@@ -11,6 +11,19 @@ use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use tree_sitter::Node;
 
+/// Why a path is not null after a step.
+#[derive(Clone, Copy, PartialEq)]
+pub enum Check {
+    /// Handed to `Objects.requireNonNull`, which counts as a dereference.
+    Required,
+    /// An `assert` whose condition holds only when it is not null (`x != null`, alone or joined by `&&`).
+    Implied,
+    /// Compared with `null` somewhere else in an `assert`.
+    Compared,
+    /// Locked on with `synchronized` where locking does not count as a dereference.
+    Locked,
+}
+
 #[derive(Clone, Copy, PartialEq)]
 pub enum How {
     /// A method is called on the value.
@@ -29,7 +42,7 @@ pub enum Effect<'a> {
     /// A call that can change the fields of `this`.
     Invalidate,
     /// The path is not null afterwards, or the step did not finish: `Objects.requireNonNull`, an assertion.
-    Checked(usize),
+    Checked(usize, Check),
     /// An `assert` was passed: SpotBugs reports nothing later for a value that only may be null here.
     Asserted,
 }
@@ -82,6 +95,8 @@ pub struct Handed<'a> {
 /// A branch on whether a path is null.
 pub struct Test {
     pub path: usize,
+    /// A comparison with `null`, not a call such as `Objects.isNull` or an `instanceof`.
+    pub compared: bool,
     /// `Some(true)`: null where the test holds. `None`: only known not to be null where it holds (`instanceof`).
     pub null_holds: Option<bool>,
     pub node: usize,
@@ -189,6 +204,9 @@ impl<'c, 'a> Shared<'c, 'a> {
     /// that no class of the run overrides and whose every `return` hands back a value known not to be null.
     pub fn never_null(&self, call: &Call) -> bool {
         let index = self.context.resolver.index;
+        if jdk::object_never_null(call) {
+            return true;
+        }
         let Some(class) = self.context.classes.get(&call.declaring) else {
             return self.context.elsewhere.never_null(self.context.project, call).unwrap_or_else(|| jdk::never_null(index, call));
         };
@@ -272,7 +290,7 @@ impl<'c, 'a> Shared<'c, 'a> {
 }
 
 pub struct Unit<'c, 'a> {
-    body: Node<'a>,
+    pub body: Node<'a>,
     pub finder: Finder<'c, 'a>,
     pub cfg: Cfg<'a>,
     /// Per block, per step.
@@ -280,18 +298,30 @@ pub struct Unit<'c, 'a> {
     pub tests: Vec<Option<Test>>,
     /// The calls whose result is taken as possibly null.
     pub nullable_calls: HashSet<usize>,
-    /// The calls whose result is known not to be null.
-    pub nonnull_calls: HashSet<usize>,
+    /// Calls that never return null, with the name SpotBugs gives the method.
+    pub nonnull_calls: HashMap<usize, String>,
     /// The path each identifier or field access reads.
     pub reads: HashMap<usize, usize>,
     pub parameters: Vec<usize>,
     pub of_this: Vec<usize>,
     /// Per path: the paths that go through it.
     pub dependents: Vec<Vec<usize>>,
+    pub mode: Mode,
+    /// Whether locking on a value with `synchronized` dereferences it.
+    pub locks: bool,
 }
 
 impl<'c, 'a> Unit<'c, 'a> {
+    /// Whether the unit only works out which parameters an `equals` dereferences, with the rules measured for that.
+    pub fn equals_rules(&self) -> bool {
+        self.mode == Mode::Dereferences && !self.locks
+    }
+
     pub fn build(shared: &Shared<'c, 'a>, class: &'c str, body: Node<'a>, parameters: Option<Node<'a>>, mode: Mode) -> Self {
+        Self::build_with(shared, class, body, parameters, mode, true)
+    }
+
+    pub fn build_with(shared: &Shared<'c, 'a>, class: &'c str, body: Node<'a>, parameters: Option<Node<'a>>, mode: Mode, locks: bool) -> Self {
         let context = shared.context;
         let cfg = cfg::build_with(context.file, body, &|_| false, true);
         let mut unit = Unit {
@@ -301,11 +331,13 @@ impl<'c, 'a> Unit<'c, 'a> {
             effects: Vec::new(),
             tests: Vec::new(),
             nullable_calls: HashSet::new(),
-            nonnull_calls: HashSet::new(),
+            nonnull_calls: HashMap::new(),
             reads: HashMap::new(),
             parameters: Vec::new(),
             of_this: Vec::new(),
             dependents: Vec::new(),
+            mode,
+            locks,
         };
         for parameter in parameters.map(children).unwrap_or_default() {
             let name = parameter.child_by_field_name("name").or_else(|| {
@@ -330,7 +362,7 @@ impl<'c, 'a> Unit<'c, 'a> {
             }
             unit.effects.push(found);
             let test = match &unit.cfg.blocks[block].exit {
-                Exit::Branch(test, holds, fails) if !unit.materialized(*holds, *fails) => Some(*test),
+                Exit::Branch(test, holds, fails) if !unit.materialized(*holds, *fails) || !unit.locks => Some(*test),
                 _ => None,
             };
             let test = test.and_then(|test| unit.test(test));
@@ -340,7 +372,8 @@ impl<'c, 'a> Unit<'c, 'a> {
         if matches!(mode, Mode::Returns | Mode::Report) {
             let reaching = unit.reaching(mode);
             let called = called.into_iter().filter(|(step, _)| reaching.contains(step));
-            unit.nonnull_calls = called.filter(|(_, call)| shared.never_null(call)).map(|(step, _)| step).collect();
+            let named = |call: &Call| format!("{}.{}()", call.declaring.rsplit('.').next().unwrap_or_default(), call.method.name);
+            unit.nonnull_calls = called.filter(|(_, call)| shared.never_null(call)).map(|(step, call)| (step, named(&call))).collect();
         }
         let paths = &unit.finder.all;
         unit.of_this = (0..paths.len()).filter(|path| paths[*path].of_this).collect();
@@ -358,29 +391,45 @@ impl<'c, 'a> Unit<'c, 'a> {
         self.finder.context.text(node)
     }
 
-    /// A test whose two sides do nothing and meet again: its result only becomes a boolean value.
+    /// A test only turned into a boolean: both ways lead straight to the same place, at most pushing `0`/`1`
+    /// (or `false`/`true`), as the compiled form of `x == null ? 0 : 1` does.
     fn materialized(&self, holds: usize, fails: usize) -> bool {
         let empty = |block: usize| self.cfg.blocks[block].steps.is_empty();
         let next = |block: usize| match self.cfg.blocks[block].exit {
             Exit::Jump(to) => Some(to),
             _ => None,
         };
-        empty(holds) && empty(fails) && next(holds).is_some() && next(holds) == next(fails)
+        let bit = |block: usize| match self.cfg.blocks[block].steps.as_slice() {
+            [only] => match self.text(*only) {
+                "0" | "false" => Some(false),
+                "1" | "true" => Some(true),
+                _ => None,
+            },
+            _ => None,
+        };
+        let flag = bit(holds).is_some() && bit(fails).is_some() && bit(holds) != bit(fails);
+        (flag || (empty(holds) && empty(fails))) && next(holds).is_some() && next(holds) == next(fails)
     }
 
     fn test(&mut self, node: Node<'a>) -> Option<Test> {
+        let mut by_this = false;
         let (tested, null_holds) = match node.kind() {
             "binary_expression" => {
                 let operator = node.child_by_field_name("operator")?.kind();
                 let (left, right) = (strip(node.child_by_field_name("left")?), strip(node.child_by_field_name("right")?));
-                let other = match (left.kind(), right.kind()) {
-                    ("null_literal", _) => right,
-                    (_, "null_literal") => left,
+                let condition = parent(node).filter(|above| above.kind() == "parenthesized_expression").and_then(parent);
+                let guard = !self.locks && operator == "==" && condition.is_some_and(|above| above.kind() == "if_statement");
+                let (other, null) = match (left.kind(), right.kind()) {
+                    ("null_literal", _) => (right, true),
+                    (_, "null_literal") => (left, true),
+                    ("this", _) if guard => (right, false),
+                    (_, "this") if guard => (left, false),
                     _ => return None,
                 };
+                by_this = !null;
                 match operator {
-                    "==" => (other, Some(true)),
-                    "!=" => (other, Some(false)),
+                    "==" => (other, Some(null)),
+                    "!=" => (other, Some(!null)),
                     _ => return None,
                 }
             }
@@ -398,7 +447,8 @@ impl<'c, 'a> Unit<'c, 'a> {
         };
         let tested = if tested.kind() == "assignment_expression" { tested.child_by_field_name("left")? } else { tested };
         let path = self.finder.of(tested)?;
-        (!self.finder.all[path].volatile).then_some(Test { path, null_holds, node: node.id() })
+        let compared = node.kind() == "binary_expression" && !by_this;
+        (!self.finder.all[path].volatile).then_some(Test { path, compared, null_holds, node: node.id() })
     }
 
     fn instance_access(&self, access: Node<'a>) -> bool {
@@ -560,6 +610,15 @@ impl<'c, 'a> Unit<'c, 'a> {
         let mut wanted: HashSet<usize> = heads.iter().filter_map(|head| self.finder.of(*head)).collect();
         wanted.extend(self.tests.iter().flatten().filter(|test| test.null_holds.is_some()).map(|test| test.path));
         let mut reaching: HashSet<usize> = heads.iter().filter(|head| head.kind() == "method_invocation").map(|head| head.id()).collect();
+        crate::engine::source::walk(self.body, |node| {
+            let sides = [node.child_by_field_name("left"), node.child_by_field_name("right")].map(|side| side.map(strip));
+            if let ("binary_expression", [Some(left), Some(right)]) = (node.kind(), sides) {
+                let call = if left.kind() == "null_literal" { right } else { left };
+                if (left.kind() == "null_literal") != (right.kind() == "null_literal") && call.kind() == "method_invocation" {
+                    reaching.insert(call.id());
+                }
+            }
+        });
         let mut grown = true;
         while grown {
             grown = false;
@@ -596,8 +655,11 @@ impl<'c, 'a> Unit<'c, 'a> {
                 }
                 let listed = arguments(step);
                 if let Some(call) = &call {
-                    if call.declaring == "java.util.Objects" && call.method.name == "requireNonNull" {
-                        found.extend(listed.first().and_then(|first| self.finder.of(*first)).map(Effect::Checked));
+                    let required = call.declaring == "java.util.Objects" && call.method.name == "requireNonNull";
+                    if required && self.mode == Mode::Dereferences {
+                        found.extend(listed.first().map(|first| self.deref(*first, name, How::Parameter)));
+                    } else if required {
+                        found.extend(listed.first().and_then(|first| self.finder.of(*first)).map(|path| Effect::Checked(path, Check::Required)));
                     } else {
                         self.passed(call, step, name, &found, waiting);
                     }
@@ -623,7 +685,12 @@ impl<'c, 'a> Unit<'c, 'a> {
                     found.push(Effect::Invalidate);
                 }
             }
-            "explicit_constructor_invocation" => found.push(Effect::Invalidate),
+            "explicit_constructor_invocation" => {
+                if let Some((call, _)) = resolver.call_formals(step) {
+                    self.passed(&call, step, step, &found, waiting);
+                }
+                found.push(Effect::Invalidate);
+            }
             "field_access" => {
                 if let Some(object) = step.child_by_field_name("object").filter(|_| self.instance_access(step)) {
                     found.push(self.deref(object, step, How::Other));
@@ -674,6 +741,10 @@ impl<'c, 'a> Unit<'c, 'a> {
                 }
             }
             "assert_statement" => {
+                let mut implied = Vec::new();
+                if let Some(condition) = named_children(step).into_iter().find(|part| !part.kind().ends_with("comment")) {
+                    self.implied(condition, &mut implied);
+                }
                 let mut tested = Vec::new();
                 crate::engine::source::walk(step, |part| {
                     if part.kind() == "binary_expression" && children(part).iter().any(|side| side.kind() == "null_literal") {
@@ -682,10 +753,15 @@ impl<'c, 'a> Unit<'c, 'a> {
                 });
                 found.push(Effect::Asserted);
                 for side in tested {
-                    found.extend(self.finder.of(side).map(Effect::Checked));
+                    let check = if implied.contains(&side.id()) { Check::Implied } else { Check::Compared };
+                    found.extend(self.finder.of(side).map(|path| Effect::Checked(path, check)));
                 }
             }
             _ => {}
+        }
+        let lock = parent(step).filter(|above| above.kind() == "synchronized_statement" && step.kind() == "parenthesized_expression");
+        if !self.locks && lock.is_some() {
+            found.extend(self.finder.of(strip(step)).map(|path| Effect::Checked(path, Check::Locked)));
         }
         if self.consumed(step) {
             found.push(self.deref(step, step, How::Other));
@@ -694,6 +770,25 @@ impl<'c, 'a> Unit<'c, 'a> {
             }
         }
         found
+    }
+
+    /// The values an `assert` condition holds only when they are not null: `x != null`, also inside `&&`.
+    fn implied(&self, condition: Node<'a>, out: &mut Vec<usize>) {
+        let condition = strip(condition);
+        if condition.kind() != "binary_expression" {
+            return;
+        }
+        let operator = condition.child_by_field_name("operator").map_or("", |operator| operator.kind());
+        let (Some(left), Some(right)) = (condition.child_by_field_name("left"), condition.child_by_field_name("right")) else { return };
+        match operator {
+            "&&" => {
+                self.implied(left, out);
+                self.implied(right, out);
+            }
+            "!=" if strip(right).kind() == "null_literal" => out.push(left.id()),
+            "!=" if strip(left).kind() == "null_literal" => out.push(right.id()),
+            _ => {}
+        }
     }
 
     fn boxed(&self, node: Node<'a>) -> bool {
@@ -711,7 +806,7 @@ impl<'c, 'a> Unit<'c, 'a> {
         let field = |name: &str| above.child_by_field_name(name) == Some(node);
         match above.kind() {
             "enhanced_for_statement" => field("value"),
-            "synchronized_statement" => node.kind() == "parenthesized_expression",
+            "synchronized_statement" => self.locks && node.kind() == "parenthesized_expression",
             "switch_expression" => field("condition") && !self.primitive(node),
             "binary_expression" => {
                 let operator = above.child_by_field_name("operator").map_or("", |operator| operator.kind());

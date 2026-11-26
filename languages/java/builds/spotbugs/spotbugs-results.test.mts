@@ -128,6 +128,37 @@ describe('spotbugsResultOf', () => {
     ]);
   });
 
+  it.each([
+    ['NP_BOOLEAN_RETURN_NULL', 'function:p.B.isA()', 1, 'warning', 'p.B.isA()'],
+    [
+      'NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT',
+      'variable:p.F.equals(Object)#o',
+      1,
+      'error',
+      'p.F.equals(Object)',
+    ],
+    [
+      'NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT',
+      'variable:p.E.equals(Object)#o',
+      2,
+      'warning',
+      'p.E.equals(Object)',
+    ],
+  ])('writes %s as SpotBugs SARIF does', (rule, symbol, priority, level, argument) => {
+    const result = spotbugsResultOf({
+      file: '/src/p/B.java',
+      rule,
+      line: 3,
+      message: 'unused',
+      symbol,
+      priority,
+      arguments: rule === 'NP_BOOLEAN_RETURN_NULL' ? undefined : [argument],
+    });
+
+    expect(result.level).toBe(level);
+    expect(result.message.arguments).toStrictEqual([argument]);
+  });
+
   it('refuses a placed finding without a place or with a priority it has no level for', () => {
     const finding = { file: '/A.java', rule: 'DCN_NULLPOINTER_EXCEPTION', line: 1, message: '' };
 
@@ -242,6 +273,25 @@ describe('spotbugsResultOf', () => {
       artifactLocation: { uri: 'p/A.java' },
     });
     expect(result.locations[0].logicalLocations[0].name).toBe('A.t');
+  });
+
+  it('places a field finding in the directory of the package that holds its line', () => {
+    const result = spotbugsResultOf({
+      file: '/src/q/C.java',
+      rule: 'PA_PUBLIC_PRIMITIVE_ATTRIBUTE',
+      line: 4,
+      message: '',
+      symbol: 'member:p.A.d|q',
+      priority: 2,
+      arguments: ['p.A.d'],
+    });
+
+    expect(result.locations[0].physicalLocation.artifactLocation.uri).toBe('q/C.java');
+    expect(result.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'A.d',
+      kind: 'member',
+      fullyQualifiedName: 'p.A.d',
+    });
   });
 
   it('refuses a message it cannot read', () => {

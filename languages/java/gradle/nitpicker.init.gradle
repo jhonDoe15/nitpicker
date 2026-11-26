@@ -823,6 +823,12 @@ allprojects {
                 ])
                 writeRules('pmd-guards', guardsPlan)
                 def rulesets = reportDir.get().file('pmd-run-rulesets.txt').asFile.text
+                if (rulesets.isEmpty()) {
+                    // Every rule ran on the engine: PMD has nothing left to run.
+                    reportDir.get().file('pmd.sarif').asFile.text = '{"version":"2.1.0","runs":[]}'
+                    reportDir.get().file('pmd-log.txt').asFile.text = ''
+                    throw new StopExecutionException()
+                }
                 args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
                     '--report-file', reportDir.get().file('pmd.sarif').asFile.absolutePath,
                     '--rulesets', rulesets,

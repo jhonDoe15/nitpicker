@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
-import { PLACED, type Placed } from './spotbugs-placed.mts';
+import { PLACED, placesByArguments, type Placed } from './spotbugs-placed.mts';
 
 export type EngineSpotbugsFinding = {
   readonly file: string;
@@ -154,7 +154,7 @@ function placedNameOf(
   placed: Placed,
   [kind, qualified, owner]: readonly [string, string, string],
 ): string {
-  if (placed.placement === 'arguments') {
+  if (placesByArguments(placed)) {
     return finding.arguments?.[1] ?? qualified;
   }
   if (placed.placement === 'relative') {
@@ -173,11 +173,12 @@ function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): Spotbug
     throw new Error(`the engine wrote a ${finding.rule} finding nitpicker cannot place: ${place}`);
   }
   const kind = place.slice(0, colon);
-  const at = placed.placement === 'relative' ? place.lastIndexOf('@') : -1;
-  const qualified = place.slice(colon + 1, at === -1 ? undefined : at);
+  const body = place.slice(colon + 1);
+  const at = placed.placement === 'relative' ? body.lastIndexOf('@') : -1;
+  const [qualified = '', written] = (at === -1 ? body : body.slice(0, at)).split('|');
   const owner = ownerOf(kind, qualified);
-  const subject = placed.placement === 'arguments' ? (finding.arguments?.[0] ?? owner) : owner;
-  const directory = packageOf(subject).replaceAll('.', '/');
+  const subject = placesByArguments(placed) ? (finding.arguments?.[0] ?? owner) : owner;
+  const directory = (written ?? packageOf(subject)).replaceAll('.', '/');
   const file = path.basename(finding.file);
   return {
     ruleId: finding.rule,

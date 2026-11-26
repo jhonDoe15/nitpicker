@@ -1,5 +1,6 @@
 //! SpotBugs bug patterns rebuilt for the engine from the documented meaning of each pattern and from what
 //! SpotBugs 4.9.8 reports on test code: same pattern name, line and message, read from source instead of class files.
+mod attributes;
 mod calls;
 mod classes;
 mod constructors;
@@ -150,6 +151,19 @@ impl<'a> Context<'a> {
         }
         false
     }
+    /// Whether a method of the class around a field declaration, or of a class around that one, carries
+    /// `@SuppressFBWarnings` naming the pattern: SpotBugs lets it cover the patterns it reports on fields there.
+    pub fn suppressed_by_methods(&self, pattern: &str, declaration: Node) -> bool {
+        let mut current = parent(declaration);
+        while let Some(at) = current {
+            let body = matches!(at.kind(), "class_body" | "enum_body" | "enum_body_declarations" | "interface_body");
+            if body && children(at).into_iter().any(|member| member.kind() == "method_declaration" && self.suppresses(member, pattern)) {
+                return true;
+            }
+            current = parent(at);
+        }
+        false
+    }
     fn suppresses(&self, declaration: Node, pattern: &str) -> bool {
         let Some(modifiers) = crate::java::helpers::modifiers(declaration) else { return false };
         children(modifiers).into_iter().any(|annotation| {
@@ -200,6 +214,8 @@ const DETECTORS: &[Detector] = &[
     statements::statements as Detector,
     classes::class_shape as Detector,
     methods::methods as Detector,
+    methods::method_patterns as Detector,
+    attributes::should_be_static as Detector,
 ];
 
 #[derive(Default)]
@@ -207,6 +223,7 @@ pub struct SpotBugs {
     known: known::Known,
     elsewhere: nulls::Elsewhere,
     serial: serial::Serial,
+    attributes: attributes::Attributes,
 }
 
 impl FileRule for SpotBugs {
@@ -231,6 +248,10 @@ impl FileRule for SpotBugs {
         }
         nulls::null_dereference(&context, &declared);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
+        if context.wants(attributes::PATTERNS) {
+            let names = self.attributes.names(&project.index, &project.sources);
+            self.attributes.note(attributes::gather(&context, names));
+        }
         if context.wants(&["SE_BAD_FIELD"]) {
             self.serial.note(serial::referenced(&context), context.serial.take());
         }
@@ -240,6 +261,7 @@ impl FileRule for SpotBugs {
         if let Some(project) = project.downcast_ref::<JavaProject>() {
             self.known.settle(&project.index, out);
             self.serial.settle(project, out);
+            self.attributes.settle(&project.index, || self.known.visits(&project.index), out);
         }
     }
 }

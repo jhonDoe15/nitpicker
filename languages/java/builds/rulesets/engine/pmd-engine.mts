@@ -24,10 +24,10 @@ import {
   textsOf,
 } from '../../../../../shared/values/readers.mts';
 import { resolvedRulesets, rulesetReader, type ResolvedRule } from './pmd-catalog.mts';
-import { onlyFiles, renderedRuleset, type RulesetScope } from './pmd-render.mts';
+import { covers, onlyFiles, renderedRuleset, type RulesetScope } from './pmd-render.mts';
 import {
   engineRule,
-  portablePattern,
+  needsWholeRun,
   ruleLevel,
   runsOnEngine,
   runsOnPmd,
@@ -93,18 +93,6 @@ function splitOf(file: string, resolve: Resolve): Split | Unresolved {
   } catch (error) {
     return { unresolved: error };
   }
-}
-
-function matchesWhole(pattern: string, file: string): boolean {
-  const portable = new RegExp(portablePattern(pattern));
-  return new RegExp(`^(?:${portable.source})$`).test(file);
-}
-
-function covers({ include, exclude }: RulesetScope, file: string): boolean {
-  return (
-    !exclude.some((pattern) => matchesWhole(pattern, file)) ||
-    include.some((pattern) => matchesWhole(pattern, file))
-  );
 }
 
 function sarifOf(rows: readonly Row[], levels: ReadonlyMap<string, string>): string {
@@ -248,6 +236,12 @@ export function withoutEngineReports(reportDir: string): void {
   }
 }
 
+function wholeRunOnEngine(plan: PmdEnginePlan, splits: ReadonlyMap<string, Split>): boolean {
+  const all = [...splits.values()];
+  const partial = plan.rulesets.some((file) => !splits.has(file)) || all.some(({ onPmd }) => onPmd.length > 0);
+  return !partial || !all.some(({ onEngine }) => onEngine.some(needsWholeRun));
+}
+
 function rulesetsAfterEngine(
   plan: PmdEnginePlan,
   environment: Environment,
@@ -258,6 +252,9 @@ function rulesetsAfterEngine(
     return [...plan.rulesets];
   }
   const splits = engineSplits(plan);
+  if (!wholeRunOnEngine(plan, splits)) {
+    return [...plan.rulesets];
+  }
   const report = engineRun(plan, [...splits.values()], {
     start: () => engineStart(plan, { binary, environment, run }),
     log,
@@ -267,9 +264,6 @@ function rulesetsAfterEngine(
   }
   const unparsed = textsOf(fieldOf(report, 'syntaxErrorFiles'));
   const forPmd = pmdRulesets(plan, splits, unparsed);
-  if (forPmd.length === 0) {
-    return [...plan.rulesets];
-  }
   const rows = listOf(fieldOf(report, 'findings'))
     .map(engineFindingOf)
     .filter(({ file }) => !unparsed.includes(file));

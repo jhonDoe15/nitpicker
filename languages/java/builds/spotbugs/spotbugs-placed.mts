@@ -5,6 +5,10 @@ export type Placed = {
   readonly placement?: 'arguments' | 'relative';
 };
 
+export function placesByArguments(placed: Placed): boolean {
+  return placed.placement === 'arguments';
+}
+
 const ERROR = 'error';
 const WARNING = 'warning';
 const NOTE = 'note';
@@ -103,4 +107,28 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     placement: 'relative',
   },
   NN_NAKED_NOTIFY: { text: 'Naked notify', levels: { 2: WARNING } },
+  NP_BOOLEAN_RETURN_NULL: {
+    text: 'Method with Boolean return type returns explicit null',
+    levels: { 1: 'warning', 2: 'warning' },
+  },
+  NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT: {
+    text: 'equals() method does not check for null argument',
+    levels: { 1: 'error', 2: 'warning' },
+  },
+  PA_PUBLIC_PRIMITIVE_ATTRIBUTE: {
+    text: 'Primitive field is public',
+    levels: { 2: NOTE },
+  },
+  MS_SHOULD_BE_FINAL: {
+    text: "Field isn't final but should be",
+    levels: { 1: NOTE, 2: NOTE },
+  },
+  MS_PKGPROTECT: {
+    text: 'Field should be package protected',
+    levels: { 2: NOTE },
+  },
+  SS_SHOULD_BE_STATIC: {
+    text: 'Unread field: should this field be static?',
+    levels: { 2: NOTE },
+  },
 };
