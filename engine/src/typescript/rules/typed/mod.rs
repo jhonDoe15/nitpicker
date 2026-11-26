@@ -3,6 +3,7 @@
 //! ESLint-plugin rule, which the caller learns from a `!types` row.
 pub mod caller_objects;
 pub mod contracts;
+pub mod effects;
 pub mod numbers;
 pub mod offsets;
 pub mod presence;
@@ -27,6 +28,7 @@ use super::empty_lists;
 use super::entity_versions;
 use super::forwarding;
 use super::handlers;
+use super::held_scopes;
 use super::number_input;
 use super::patterns;
 use super::presence as presence_rules;
@@ -56,6 +58,8 @@ pub const TYPED: &[(&str, Rule)] =
     ("no-local-time-zone", time_zones::no_local_time_zone::check),
     ("no-lookup-as-presence", presence_rules::no_lookup_as_presence::check),
     ("no-mutating-method-in-domain", domain::no_mutating_method_in_domain::check), ("no-parameter-mutation", signatures::no_parameter_mutation::check),
+    ("no-remote-call-in-transaction", held_scopes::remote_in_scope::no_remote_call_in_transaction),
+    ("no-remote-call-under-lock", held_scopes::remote_in_scope::no_remote_call_under_lock),
     ("no-shadowed-spread-key", spreads::no_shadowed_spread_key::check),
     ("no-string-as-regex", patterns::no_string_as_regex::check),
     ("no-swapped-arguments", arguments::no_swapped_arguments::check),
