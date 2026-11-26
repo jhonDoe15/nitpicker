@@ -2,6 +2,7 @@ export type Placed = {
   readonly text: string;
   readonly levels: Readonly<Record<number, string>>;
   readonly classNamed?: readonly number[];
+  readonly byArguments?: boolean;
 };
 
 export const PLACED: Readonly<Record<string, Placed>> = {
@@ -70,5 +71,26 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   CN_IMPLEMENTS_CLONE_BUT_NOT_CLONEABLE: {
     text: "Class defines clone() but doesn't implement Cloneable",
     levels: { 1: 'warning', 2: 'note' },
+  },
+  SE_BAD_FIELD: {
+    text: 'Non-transient non-serializable instance field in serializable class',
+    levels: { 1: 'warning', 2: 'note' },
+  },
+  SE_NO_SERIALVERSIONID: {
+    text: "Class is Serializable, but doesn't define serialVersionUID",
+    levels: { 2: 'note' },
+  },
+  EQ_DOESNT_OVERRIDE_EQUALS: {
+    text: "Class doesn't override equals in superclass",
+    levels: { 2: 'note' },
+    byArguments: true,
+  },
+  EQ_COMPARETO_USE_OBJECT_EQUALS: {
+    text: 'Class defines compareTo(...) and uses Object.equals()',
+    levels: { 2: 'note' },
+  },
+  BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS: {
+    text: 'Equals method should not assume anything about the type of its argument',
+    levels: { 2: 'note' },
   },
 };

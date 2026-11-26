@@ -28,7 +28,7 @@ export type SpotbugsResult = {
     {
       readonly physicalLocation: {
         readonly artifactLocation: { readonly uri: string };
-        readonly region: { readonly startLine: number };
+        readonly region?: { readonly startLine: number };
       };
       readonly logicalLocations: readonly [LogicalLocation];
     },
@@ -141,6 +141,19 @@ function placeName(kind: string, qualified: string, owner: string): string {
   return qualified.slice(qualified.lastIndexOf('.', open) + 1);
 }
 
+function placedNameOf(
+  finding: EngineSpotbugsFinding,
+  placed: Placed,
+  [kind, qualified, owner]: readonly [string, string, string],
+): string {
+  if (placed.byArguments === true) {
+    return finding.arguments?.[1] ?? qualified;
+  }
+  return placed.classNamed?.includes(finding.priority ?? 0)
+    ? withoutPackage(qualified, owner)
+    : placeName(kind, qualified, owner);
+}
+
 function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): SpotbugsResult {
   const place = finding.symbol ?? '';
   const colon = place.indexOf(':');
@@ -151,7 +164,8 @@ function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): Spotbug
   const kind = place.slice(0, colon);
   const qualified = place.slice(colon + 1);
   const owner = ownerOf(kind, qualified);
-  const directory = packageOf(owner).replaceAll('.', '/');
+  const subject = placed.byArguments === true ? (finding.arguments?.[0] ?? owner) : owner;
+  const directory = packageOf(subject).replaceAll('.', '/');
   const file = path.basename(finding.file);
   return {
     ruleId: finding.rule,
@@ -161,13 +175,11 @@ function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): Spotbug
       {
         physicalLocation: {
           artifactLocation: { uri: directory === '' ? file : `${directory}/${file}` },
-          region: { startLine: finding.line },
+          ...(finding.line === 0 ? {} : { region: { startLine: finding.line } }),
         },
         logicalLocations: [
           {
-            name: placed.classNamed?.includes(finding.priority ?? 0)
-              ? withoutPackage(qualified, owner)
-              : placeName(kind, qualified, owner),
+            name: placedNameOf(finding, placed, [kind, qualified, owner]),
             kind,
             fullyQualifiedName: qualified,
           },
