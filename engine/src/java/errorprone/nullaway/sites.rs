@@ -61,7 +61,8 @@ impl<'t> Flow<'_, 't> {
                 eprintln!("   arg {} may {} known {:?}", self.context.text(actual).lines().next().unwrap_or(""), self.may_be_null(actual), self.known(strip(actual)));
             }
         }
-        let Some((call, _)) = resolved else { return };
+        let Some((call, formals)) = resolved else { return };
+        let call = anonymous_override(self.context, node, call, &formals);
         let formals = call.method.parameters.len();
         if formals == 0 {
             return;
@@ -148,7 +149,7 @@ impl<'t> Flow<'_, 't> {
     }
 
     fn maybe(&self, node: Node) -> bool {
-        matches!(self.known(strip(node)), Some(NULL | NULLABLE))
+        strip(node).kind() == "null_literal" || matches!(self.known(strip(node)), Some(NULL | NULLABLE))
     }
 
     pub(super) fn boxed(&self, node: Node) -> bool {
@@ -313,6 +314,26 @@ pub(super) fn overriding(context: &Context, method: Node) {
             return;
         }
     }
+}
+
+/// A call on `new X() { ... }` calls the method the anonymous class declares when it overrides the one found in `X`,
+/// as javac binds it.
+pub(super) fn anonymous_override(context: &Context, call_node: Node, mut call: crate::java::types::expr::Call, formals: &[Type]) -> crate::java::types::expr::Call {
+    let Some(object) = call_node.child_by_field_name("object").map(unwrap) else { return call };
+    if object.kind() != "object_creation_expression" || !children(object).iter().any(|part| part.kind() == "class_body") {
+        return call;
+    }
+    let Some(name) = context.resolver.scope.names.get(&object.id()) else { return call };
+    let Some(info) = context.resolver.index.get(name) else { return call };
+    let own = info.methods.iter().find(|method| method.name == call.method.name && !method.is_static && {
+        let fitted = formals.len() == method.parameters.len() && formals.iter().zip(&method.parameters).all(|(formal, own)| formal.erased() == *own);
+        method.parameters == call.method.parameters || fitted
+    });
+    if let Some(own) = own {
+        call.declaring = info.name.clone();
+        call.method = own.clone();
+    }
+    call
 }
 
 /// The parameter positions a library model table gives for exactly this method of this class.
