@@ -29,6 +29,7 @@ export function learnedRules({
   return {
     'nitpicker/no-unatomic-writes': ['error', databaseWrites],
     'nitpicker/no-check-then-write': ['error', databaseWrites],
+    'nitpicker/no-sequential-independent-reads': ['error', databaseWrites],
     'nitpicker/no-unfiltered-soft-delete-read': ['error', softDeleteFilters],
     'nitpicker/no-route-without-auth': ['error', routeAuth],
   };

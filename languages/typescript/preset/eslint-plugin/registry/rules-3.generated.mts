@@ -1,3 +1,5 @@
+import { rule as ruleNoUnescapedCssSelector } from '../rules/selectors/no-unescaped-css-selector.mts';
+import { rule as ruleNoUnescapedFilterValue } from '../rules/patterns/filters/no-unescaped-filter-value.mts';
 import { rule as ruleNoUnescapedHtmlInterpolation } from '../rules/patterns/html/no-unescaped-html-interpolation.mts';
 import { rule as ruleNoUnescapedPatternTranslation } from '../rules/patterns/no-unescaped-pattern-translation.mts';
 import { rule as ruleNoUnfilteredSoftDeleteRead } from '../rules/queries/soft-delete/no-unfiltered-soft-delete-read.mts';
@@ -49,11 +51,13 @@ import { rule as ruleReactFieldHasLabel } from '../rules/react/forms/react-field
 import { rule as ruleReactI18nextEscapeValue } from '../rules/react/i18n/react-i18next-escape-value.mts';
 import { rule as ruleReactMutationDropsFailure } from '../rules/react/mutations/react-mutation-drops-failure.mts';
 import { rule as ruleReactNoDirectDom } from '../rules/react/render/react-no-direct-dom.mts';
+import { rule as ruleReactNoDroppedEffectHandle } from '../rules/react/handles/react-no-dropped-effect-handle.mts';
 import { rule as ruleReactNoEagerInitialValue } from '../rules/react/initial-values/react-no-eager-initial-value.mts';
 import { rule as ruleReactNoEffectDataFetching } from '../rules/react/react-no-effect-data-fetching.mts';
 import { rule as ruleReactNoEffectDerivedState } from '../rules/react/react-no-effect-derived-state.mts';
 import { rule as ruleReactNoEffectEventHandling } from '../rules/react/render/react-no-effect-event-handling.mts';
 import { rule as ruleReactNoHardcodedColors } from '../rules/react/theme/react-no-hardcoded-colors.mts';
+import { rule as ruleReactNoHydrationMismatch } from '../rules/react/hydration/react-no-hydration-mismatch.mts';
 import { rule as ruleReactNoLeakedEffectResource } from '../rules/react/effects/react-no-leaked-effect-resource.mts';
 import { rule as ruleReactNoLiteralIdInListComponent } from '../rules/react/ids/react-no-literal-id-in-list-component.mts';
 import { rule as ruleReactNoRandomKey } from '../rules/react/render/react-no-random-key.mts';
@@ -91,6 +95,8 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-unescaped-css-selector': ruleNoUnescapedCssSelector,
+  'no-unescaped-filter-value': ruleNoUnescapedFilterValue,
   'no-unescaped-html-interpolation': ruleNoUnescapedHtmlInterpolation,
   'no-unescaped-pattern-translation': ruleNoUnescapedPatternTranslation,
   'no-unfiltered-soft-delete-read': ruleNoUnfilteredSoftDeleteRead,
@@ -142,11 +148,13 @@ export const partRules = {
   'react-i18next-escape-value': ruleReactI18nextEscapeValue,
   'react-mutation-drops-failure': ruleReactMutationDropsFailure,
   'react-no-direct-dom': ruleReactNoDirectDom,
+  'react-no-dropped-effect-handle': ruleReactNoDroppedEffectHandle,
   'react-no-eager-initial-value': ruleReactNoEagerInitialValue,
   'react-no-effect-data-fetching': ruleReactNoEffectDataFetching,
   'react-no-effect-derived-state': ruleReactNoEffectDerivedState,
   'react-no-effect-event-handling': ruleReactNoEffectEventHandling,
   'react-no-hardcoded-colors': ruleReactNoHardcodedColors,
+  'react-no-hydration-mismatch': ruleReactNoHydrationMismatch,
   'react-no-leaked-effect-resource': ruleReactNoLeakedEffectResource,
   'react-no-literal-id-in-list-component': ruleReactNoLiteralIdInListComponent,
   'react-no-random-key': ruleReactNoRandomKey,

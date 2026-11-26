@@ -165,6 +165,13 @@ imported from a router package),
 files are left alone; timers, `fetch`, `window` listeners, sockets and observers in render are reported by
 `react-x/purity`.
 
+React hydration: `nitpicker/react-no-hydration-mismatch` (production source in a package that depends on a
+server-rendering React framework, in `eslint-lint`, report-only) reports a ternary or `&&` rendered by a component (a
+JSX child or the returned value, in the component's own body) whose test checks `typeof window`, `document`,
+`navigator`, `localStorage`, `sessionStorage` or `matchMedia`, directly or through a module-level `const` made only of
+such tests. Portals, attributes, `suppressHydrationWarning`, shadowed globals, branches that render nothing, nested
+functions and branches inside another conditional branch are left alone.
+
 React i18next: `nitpicker/react-i18next-escape-value` (production source in a React project that depends on
 `react-i18next`, in `eslint-lint`) reports a `t(...)` or `<Trans values>` call that interpolates values into text React
 renders while no source file of the package sets `interpolation.escapeValue: false` and the call does not. The init
@@ -207,6 +214,11 @@ React effect resources: `nitpicker/react-no-leaked-effect-resource` (production 
 `ReportingObserver` that is created and never closed, a `navigator.geolocation.watchPosition` call whose id is never
 used, and a `requestAnimationFrame` loop that always schedules itself again and is never cancelled. A handle that is
 stored in a ref, passed on, returned or closed anywhere in the effect is left alone.
+`nitpicker/react-no-dropped-effect-handle` (same scope, type-aware) reports, in an effect callback that returns no
+cleanup, a `subscribe*`, `listen*`, `watch*`, `observe*`, `autorun*`, `addListener*`, `addEventListener` or `on[A-Z_]*`
+call whose result type is a `() => void` function or has `unsubscribe()` or `dispose()` and that is dropped or kept in
+a local the effect never reads. `once*` and
+`register*` calls, receivers created in the same effect and bounded RxJS streams are left alone.
 
 Rows changed in memory: `in-memory-update` in the Python preset reports rows loaded from a Django queryset or a
 SQLAlchemy query only to set the same values on each and write them back (`bulk_update`, `commit`), where one `update`
@@ -556,6 +568,19 @@ impure and so skips this case), Kotlin, Python and Go follow in #2133.
 into one array that is then only walked once. `nitpicker/no-collected-stream-rows` is the same idea
 for streamed rows. Java (`Files.readString`, `readAllBytes`, `readAllLines`, `ObjectMapper.readValue`),
 Kotlin, Python and Go follow in #2133.
+
+Sequential reads: `nitpicker/no-sequential-independent-reads` (production source, in `eslint-lint`, report-only) reports
+two or more adjacent `const x = await <read>` statements in one block where no later read uses an earlier result. Reads
+are `fetch` without a body (method `GET` or `HEAD`) and ORM reads of the project's ORM. A write, a guard or any other
+statement ends the run; loops, transaction callbacks, transaction-named clients, locking reads and reads named after an
+authorization or session check are left alone. The JavaScript preset runs the same rule.
+
+Early waits: `nitpicker/no-early-wait-on-started-work` (production source, in `eslint-lint`, report-only, broad) reports
+`const r = await task` where `task` is a same-block `const` holding a `Promise` started earlier (type-aware) and `r` is
+first read three or more statements later after statements that do work (calls other than accessors, logging, `Math` and
+`JSON`), do not mention `task` and do not leave the block. Java runs the same check as `pmd/EarlyWaitOnStartedWork` on
+`Future.get()`, `get(timeout, unit)` and `join()` of a future started by `supplyAsync`, `runAsync`, `submit`, `schedule`
+or `sendAsync`.
 
 `nitpicker/no-accumulating-group-spread` (production source, in `eslint-lint`) reports a group of a
 `Map` or object spread into a new array that replaces it on every step of a loop or iteration
