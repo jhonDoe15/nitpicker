@@ -1054,9 +1054,6 @@ pub fn null_away(context: &Context, root: Node) {
             flow.observe(&inputs, unit_node, wanted, &mut summary);
         }
         for block in 0..flow.cfg.blocks.len() {
-            if inputs[block].is_none() {
-                continue;
-            }
             flow.copy = flow.cfg.blocks[block].copy;
             for position in 0..flow.cfg.blocks[block].steps.len() {
                 let node = flow.cfg.blocks[block].steps[position];

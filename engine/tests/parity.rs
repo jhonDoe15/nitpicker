@@ -301,10 +301,21 @@ fn null_away_reports_what_null_away_reports() {
 #[test]
 fn null_away_reports_what_null_away_reports_on_the_error_prone_fixtures() {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join("errorprone");
-    let packages = "com.google.common.collect,com.google.common.primitives,com.google.errorprone.annotations,com.google.protobuf,e,e6";
-    let (missed, extra, count) = null_away_differences(&source, &source, packages, None, "nullaway-errorprone.json");
+    let mut found = BTreeSet::new();
+    let mut pending = vec![source.clone()];
+    while let Some(folder) = pending.pop() {
+        for path in std::fs::read_dir(folder).expect("fixtures").flatten().map(|entry| entry.path()) {
+            if path.is_dir() {
+                pending.push(path);
+            } else if let Some(line) = std::fs::read_to_string(&path).ok().and_then(|text| text.lines().find(|line| line.starts_with("package ")).map(String::from)) {
+                found.insert(line.trim_start_matches("package ").trim_end_matches(';').trim().to_string());
+            }
+        }
+    }
+    let top: Vec<&str> = found.iter().filter(|name| !found.iter().any(|other| name.starts_with(&format!("{other}.")))).map(String::as_str).collect();
+    let (missed, extra, count) = null_away_differences(&source, &source, &top.join(","), None, "nullaway-errorprone.json");
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(count, 224);
+    assert_eq!(count, 453);
 }
 
 /// A library compiled with javac carries its `@Nullable` in type annotations; NullAway reads them from the class files.
