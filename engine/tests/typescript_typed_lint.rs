@@ -33,10 +33,10 @@ fn lint(arguments: &[&std::ffi::OsStr], name: &str) -> Vec<Row> {
     let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/typescript-typed-lint");
     let list = std::env::temp_dir().join(format!("nitpicker-engine-typed-lint-{name}-{}.tsv", std::process::id()));
     let out = std::env::temp_dir().join(format!("nitpicker-engine-typed-lint-{name}-{}.json", std::process::id()));
-    let lines: Vec<String> = ["src/domain/record.ts", "src/signatures/parameters.ts", "src/defaults/fallbacks.ts", "src/arguments/calls.ts", "src/delegation/methods.ts", "src/spreads/lists.ts", "src/spreads/keys.ts", "src/promises/detached.ts", "src/forwarding/aliases.ts", "src/edges/globals.ts", "outside.ts"].iter().map(|file| format!("{}\t{file}", fixture.join(file).display())).collect();
+    let lines: Vec<String> = ["src/domain/record.ts", "src/signatures/parameters.ts", "src/defaults/fallbacks.ts", "src/arguments/calls.ts", "src/delegation/methods.ts", "src/spreads/lists.ts", "src/spreads/keys.ts", "src/promises/detached.ts", "src/forwarding/aliases.ts", "src/edges/globals.ts", "src/presence/in_checks.ts", "src/presence/lookups.ts", "src/numbers/blank.ts", "src/lists/signals.ts", "src/patterns/strings.ts", "src/time/zones.ts", "src/chunks/streams.ts", "src/chunks/guarded.ts", "src/collections/accumulators.ts", "src/unions/members.ts", "src/unions/predicates.ts", "outside.ts"].iter().map(|file| format!("{}\t{file}", fixture.join(file).display())).collect();
     std::fs::write(&list, lines.join("\n")).expect("list");
     let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
-        .args(["typescript-lint", "--rules", "no-array-spread-arguments,no-dropped-delegate-result,no-falsy-default,no-forwarding-method-alias,no-forwarding-wrapper,no-mutating-method-in-domain,no-parameter-mutation,no-shadowed-spread-key,no-swapped-arguments,no-unhandled-void-promise", "--files"])
+        .args(["typescript-lint", "--rules", "exhaustive-union-predicate,no-accumulator-concat,no-array-spread-arguments,no-blank-number-coercion,no-chunkwise-stream-text,no-dropped-delegate-result,no-empty-every-signal,no-expanding-replacement-string,no-falsy-default,no-forwarding-method-alias,no-forwarding-wrapper,no-in-presence-check,no-local-time-zone,no-lookup-as-presence,no-mutating-method-in-domain,no-parameter-mutation,no-shadowed-spread-key,no-string-as-regex,no-swapped-arguments,no-unhandled-void-promise,no-union-order-dependence", "--files"])
         .arg(&list)
         .arg("--out")
         .arg(&out)
@@ -69,5 +69,5 @@ fn every_file_stays_with_the_plugin_without_the_compiler() {
     let missing = std::env::temp_dir().join("nitpicker-engine-no-such-compiler");
     let rows = lint(&[std::ffi::OsStr::new("--compiler"), missing.as_os_str()], "missing");
     let rules: Vec<&str> = rows.iter().map(|row| row[1].as_str().unwrap_or_default()).collect();
-    assert_eq!(rules, ["!types"; 11]);
+    assert_eq!(rules, ["!types"; 22]);
 }
