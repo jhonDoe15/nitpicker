@@ -17,6 +17,7 @@ export const HYGIENE_RULE_IDS = {
   fieldLimitMismatch: 'field-limit-mismatch',
   muslDefaultAllocator: 'musl-default-allocator',
   lintCheckSuppressedEverywhere: 'lint-check-suppressed-everywhere',
+  pmdXpathRuleMistake: 'pmd-xpath-rule-mistake',
 };
 
 export const PACKAGE_RULE_IDS = {
@@ -136,7 +137,14 @@ export const HYGIENE_RULES: RuleEntry[] = [
     id: HYGIENE_RULE_IDS.lintCheckSuppressedEverywhere,
     check: REPOSITORY_HYGIENE,
     limit:
-      'a Checkstyle `<suppress>` that matches every file (`files` of `.`, `.*` or `.+`, no `lines` or `columns`) for a module the project\'s Checkstyle configuration enables, or a PMD ruleset that includes a rule and excludes every file (`<exclude-pattern>.*</exclude-pattern>`) or sets its `violationSuppressRegex` to `.*`',
+      "a Checkstyle `<suppress>` that matches every file (`files` of `.`, `.*` or `.+`, no `lines` or `columns`) for a module the project's Checkstyle configuration enables, or a PMD ruleset that includes a rule and excludes every file (`<exclude-pattern>.*</exclude-pattern>`) or sets its `violationSuppressRegex` to `.*`",
+    enforcedBy: { java: true },
+  },
+  {
+    id: HYGIENE_RULE_IDS.pmdXpathRuleMistake,
+    check: REPOSITORY_HYGIENE,
+    limit:
+      'a project-owned PMD XPath rule that scans from the document root inside a predicate (`//X`, `/X` or `ancestor::CompilationUnit//` in `[...]`), or applies a single-item function (`string`, `lower-case`, `starts-with`, `contains`, `matches`, `normalize-space`...) or `eq`/`ne` to an unguarded `FormalParameters/FormalParameter`, `ArgumentList/*`, `ClassBody/*` or `Block/*` path',
     enforcedBy: { java: true },
   },
   {

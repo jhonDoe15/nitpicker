@@ -78,6 +78,11 @@
   "disable": ["coverage", "crap", "mutation"],
   "exceptions": [
     {
+      "rule": "pmd-xpath-rule-mistake",
+      "paths": ["languages/java/gradle/**"],
+      "reason": "The PMD rulesets nitpicker ships scan the file inside predicates in 12 rules; rewriting them is #2378."
+    },
+    {
       "rule": "nitpicker/no-process-access-outside-composition-root",
       "paths": ["languages/typescript/preset/test-environment/jest/read-jest-config.mts"],
       "reason": "Config loader: it spawns the project's own Jest to print its resolved config, and the child must inherit the caller's environment with the test script's variables added. The environment is a default parameter, so callers and tests can pass their own."

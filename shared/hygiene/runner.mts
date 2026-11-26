@@ -9,6 +9,7 @@ import { withoutExcepted, withoutExcluded } from './rules.mts';
 import { trackedFiles } from './tracked-files.mts';
 import { lintSuppressedEverywhereFindings } from './java-lint/everywhere-findings.mts';
 import { minifiedBundleFindings } from './bundles/minified-bundles.mts';
+import { pmdXPathMistakeFindings } from './pmd-xpath/xpath-findings.mts';
 import { muslAllocatorFindings } from './rust/musl-allocators.mts';
 import type {
   CheckCliInput,
@@ -29,6 +30,7 @@ function collectRepositoryHygiene(context: RepositoryContext): Finding[] {
     ...muslAllocatorFindings(REPOSITORY_HYGIENE_TOOL, context),
     ...minifiedBundleFindings(REPOSITORY_HYGIENE_TOOL, context),
     ...lintSuppressedEverywhereFindings(REPOSITORY_HYGIENE_TOOL, context),
+    ...pmdXPathMistakeFindings(REPOSITORY_HYGIENE_TOOL, context),
   ];
 }
 
