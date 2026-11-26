@@ -10,14 +10,27 @@ fn first_part(node: Node) -> Option<Node> {
     named_children(node).into_iter().find(|part| !part.kind().ends_with("comment"))
 }
 
-/// The line javac gives an expression's code: the operator of an assignment or update, the `(` of a call.
+/// The line javac gives an expression statement's first instruction: where the statement starts, or the `(` of a
+/// call that has nothing to load before it.
 fn expression_line(context: &Context, expression: Node) -> usize {
     match expression.kind() {
-        "method_invocation" => expression.child_by_field_name("arguments").map_or_else(|| context.line(expression), |arguments| context.line(arguments)),
-        "assignment_expression" => expression.child_by_field_name("operator").map_or_else(|| context.line(expression), |operator| context.line(operator)),
-        "update_expression" => children(expression).into_iter().find(|part| !part.is_named()).map_or_else(|| context.line(expression), |operator| context.line(operator)),
+        "method_invocation" if expression.child_by_field_name("object").is_none() => expression
+            .child_by_field_name("arguments")
+            .filter(|arguments| named_children(*arguments).iter().all(|part| part.kind().ends_with("comment")))
+            .map_or_else(|| context.line(expression), |arguments| context.line(arguments)),
         "parenthesized_expression" => first_part(expression).map_or_else(|| context.line(expression), |inner| expression_line(context, inner)),
         _ => context.line(expression),
+    }
+}
+
+/// The value of a condition written as `true` or `false`, which javac makes no code for.
+fn fixed(condition: Option<Node>) -> Option<bool> {
+    let condition = crate::java::types::expr::unwrap(condition?);
+    match condition.kind() {
+        "true" => Some(true),
+        "false" => Some(false),
+        "unary_expression" if condition.child(0).is_some_and(|operator| operator.kind() == "!") => condition.child_by_field_name("operand").and_then(|operand| fixed(Some(operand))).map(|value| !value),
+        _ => None,
     }
 }
 
@@ -34,7 +47,16 @@ pub fn statement_start(context: &Context, statement: Node) -> Option<usize> {
             .and_then(|declarator| declarator.child_by_field_name("name"))
             .map(|name| context.line(name)),
         "expression_statement" => first_part(statement).map(|expression| expression_line(context, expression)),
-        "explicit_constructor_invocation" => statement.child_by_field_name("arguments").map(|arguments| context.line(arguments)),
+        "explicit_constructor_invocation" => Some(context.line(statement)),
+        "while_statement" if fixed(statement.child_by_field_name("condition")) == Some(true) => statement.child_by_field_name("body").and_then(|body| statement_start(context, body)),
+        "for_statement" if statement.child_by_field_name("condition").is_none() && statement.child_by_field_name("init").is_none() => {
+            statement.child_by_field_name("body").and_then(|body| statement_start(context, body))
+        }
+        "for_statement" => statement.child_by_field_name("init").and_then(|init| statement_start(context, init)).or(Some(context.line(statement))),
+        "if_statement" if fixed(statement.child_by_field_name("condition")).is_some() => {
+            let branch = if fixed(statement.child_by_field_name("condition")) == Some(true) { "consequence" } else { "alternative" };
+            statement.child_by_field_name(branch).and_then(|branch| statement_start(context, branch))
+        }
         ";" | "empty_statement" | "line_comment" | "block_comment" => None,
         kind if TYPE_DECLARATIONS.contains(&kind) => None,
         _ => Some(context.line(statement)),
@@ -59,27 +81,33 @@ pub fn delegates(constructor: Node) -> bool {
     first.is_some_and(|first| first.kind() == "explicit_constructor_invocation" && first.child_by_field_name("constructor").is_some_and(|called| called.kind() == "this"))
 }
 
-/// Whether a static field's initializer is a constant javac writes as an attribute instead of code.
-fn constant(context: &Context, field: Node, value: Node) -> bool {
+/// Whether a static field's initializer is a constant javac writes as an attribute instead of code: it reads only
+/// literals and other such constants.
+fn constant(context: &Context, own: &str, field: Node, value: Node) -> bool {
     let simple = field.child_by_field_name("type").is_some_and(|written| {
         matches!(written.kind(), "integral_type" | "floating_point_type" | "boolean_type") || matches!(context.text(written), "String" | "java.lang.String")
     });
-    simple && has_modifier(field, "final") && context.resolver.constant_shape(value, &mut Vec::new())
+    let mut uses = Vec::new();
+    simple
+        && has_modifier(field, "final")
+        && context.resolver.constant_shape(value, &mut uses)
+        && uses.iter().all(|(owner, used)| context.resolver.index.constant_field(if owner.is_empty() { own } else { owner }, used, &|_| false, true, 0))
 }
 
 /// The lines of the code a field declaration or initializer block adds to `<init>` or `<clinit>`.
-fn initializer_lines(context: &Context, member: Node, interface: bool) -> Vec<usize> {
+fn initializer_lines(context: &Context, own: &str, member: Node, interface: bool) -> Vec<usize> {
     match member.kind() {
         "field_declaration" | "constant_declaration" => {
             let is_static = interface || member.kind() == "constant_declaration" || has_modifier(member, "static");
             declarators(member)
                 .into_iter()
-                .filter(|declarator| declarator.child_by_field_name("value").is_some_and(|value| !(is_static && constant(context, member, value))))
+                .filter(|declarator| declarator.child_by_field_name("value").is_some_and(|value| !(is_static && constant(context, own, member, value))))
                 .filter_map(|declarator| declarator.child_by_field_name("name"))
                 .map(|name| context.line(name))
                 .collect()
         }
-        "static_initializer" | "block" => statement_start(context, member).into_iter().collect(),
+        "static_initializer" => named_children(member).into_iter().find(|part| part.kind() == "block").and_then(|block| statement_start(context, block)).into_iter().collect(),
+        "block" => statement_start(context, member).into_iter().collect(),
         "enum_constant" => vec![context.line(member)],
         _ => Vec::new(),
     }
@@ -139,7 +167,7 @@ pub fn class_first(context: &Context, own: &str, class: Node, members: &[Node]) 
         if member.kind() == "method_declaration" {
             lines.extend(method_start(context, *member));
         } else if is_static || instance_code {
-            lines.extend(initializer_lines(context, *member, interface));
+            lines.extend(initializer_lines(context, own, *member, interface));
         }
     }
     lines.into_iter().min()

@@ -617,24 +617,35 @@ SpotBugs reports it: the lowest line any of the class's methods has code on, as 
 (`classes/lines.rs`). A constructor's code starts at its `this(...)` or `super(...)` call, else at the `{` of its
 body; a default constructor at the class name; field initializers at the field name (copied into each
 constructor that does not call `this(...)`); a static constant needs no code; a method at its first statement
-that makes code (a local variable at its name, an assignment at its operator, a call at its `(`), or the closing
-brace of an empty body. Enums, records, classes that hold an `assert` and classes that get a bridge method (a
+that makes code (a local variable at its name, any other statement where it starts, except a call with no receiver
+and no arguments, at its `(`), or the closing brace of an empty body. A static initializer starts at its first
+statement; `while (true)`, `for (;;)` and an `if` on `true` or `false` start at the code of the body or branch
+that runs; a `for` starts at its initializer. A static constant needs no code only when its value reads literals
+and other such constants. Enums, records, classes that hold an `assert` and classes that get a bridge method (a
 method overriding one of a generic supertype whose erased parameters or result differ) also have code on the
 first line of the declaration, annotations included.
 
 Singletons (#2261, labs in `tests/fixtures/spotbugs/sing*`): a class keeps an instance in a private static field
 of its own type, made with `new` of exactly that class (not an anonymous subclass) in the field's initializer, a
-static initializer or the method that hands it out, and a public static method returns that field (directly or
-through a local variable with one value). A static method that is not private and returns a `new` instance of
-the class means it is no singleton. Enums, interfaces and records are not looked at.
+static initializer or the method that hands it out, and a public static method returns that field (directly, through a
+cast, or through a local variable with one value other than `null`). A static method that is not private,
+declares the class as its result and returns a `new` instance of it means it is no singleton. Enums, interfaces and records are not looked at.
 
 - SING_SINGLETON_HAS_NONPRIVATE_CONSTRUCTOR: the first constructor that is not private, at its first line;
   the default constructor unless the class is private.
-- SING_SINGLETON_IMPLEMENTS_SERIALIZABLE, SING_SINGLETON_IMPLEMENTS_CLONEABLE (listed in `implements`),
-  SING_SINGLETON_INDIRECTLY_IMPLEMENTS_CLONEABLE: at the class's first line.
-- SING_SINGLETON_IMPLEMENTS_CLONE_METHOD: a `clone()` that is not just `throw new CloneNotSupportedException()`.
-- SING_SINGLETON_GETTER_NOT_SYNCHRONIZED: the method that hands out the instance also makes it, compares the
-  field with `null`, and is neither `synchronized` nor holds a `synchronized` block.
+- SING_SINGLETON_IMPLEMENTS_SERIALIZABLE: at the class's first line.
+- A `clone()` is a thrower when it has no `return` and ends by throwing a new `CloneNotSupportedException`
+  (not an anonymous subclass), written in place or kept in a local. A covariant `clone()` gets a bridge, which is
+  no thrower and is placed on the class's first line.
+- SING_SINGLETON_IMPLEMENTS_CLONEABLE (listed in `implements`): on the `clone()` the class defines, else on the
+  class; none when that `clone()` is a thrower. SING_SINGLETON_INDIRECTLY_IMPLEMENTS_CLONEABLE: on the class,
+  none when its `clone()` is a thrower.
+- SING_SINGLETON_IMPLEMENTS_CLONE_METHOD: a `clone()` that is no thrower, in a class that is not cloneable.
+- SING_SINGLETON_GETTER_NOT_SYNCHRONIZED: a getter is lazy when a test that the field is `null` (an `if` or
+  `while` on `== null`, alone or in an `&&`, or the statements after an `if` on `!= null`) leads to a store of a
+  new instance before any call or `synchronized` block. With a lazy getter, the field kept is the one created
+  last in the static initializer, else the field of the last getter; the last getter of that field is reported
+  unless it is `synchronized` or holds a `synchronized` block outside lambdas.
 
 Clone idiom (#2261, `tests/fixtures/spotbugs/clones`):
 
@@ -644,7 +655,12 @@ Clone idiom (#2261, `tests/fixtures/spotbugs/clones`):
   abstract nor final, that can return and does not call `super.clone()` itself. Priority 1 (the SARIF place
   then names the class too) when a class of the run extends the class, else 2.
 - CN_IMPLEMENTS_CLONE_BUT_NOT_CLONEABLE: a public instance `clone()` of a class that is neither abstract nor
-  cloneable; priority 1 when it calls `super.clone()`.
+  cloneable, and that is no thrower; priority 1 when it calls `super.clone()`.
+- CN_IDIOM is not reported either when the class has a covariant `clone()` of any access.
+
+Review labs (`sing_lazy`, `sing_clone`, `sing_first`) are exact. Not modelled yet: conditions on named
+constants (`if (DEBUG)`), the line of a conditional expression split over lines, a `try` whose body is empty
+before a `finally`, a class header with `class` and its name on separate lines, and a native `clone()`.
 
 On the six comparison code bases built here (Elasticsearch not built), SARIF results, same / missed / extra:
 singletons 122 / 1 / 0, clone idiom 112 / 0 / 0. The missed one is SING_SINGLETON_HAS_NONPRIVATE_CONSTRUCTOR on

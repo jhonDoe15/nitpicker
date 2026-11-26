@@ -1,5 +1,6 @@
 //! Patterns about the shape of a class as a whole: its supertypes, constructors and special methods.
 mod clones;
+mod instances;
 mod lines;
 mod singletons;
 
