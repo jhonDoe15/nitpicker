@@ -4,12 +4,17 @@ import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mts';
 import { isJavaModule } from '../../builds/lint/lint-arguments.mts';
 import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
+import { javaFiles } from '../maven-lint.mts';
 import { runJava } from '../programs/java-command.mts';
 import { compiledProgram } from '../programs/helper-programs.mts';
 import { fieldOf, numberOr, textsOf } from '../../../../shared/values/readers.mts';
 import type { Classpaths } from '../typed/maven-values.mts';
 import { type ToolClasspaths, resolvedTool } from '../typed/kotlin-types.mts';
-import { type CompilerSettings, type SourceModule, compilerOf } from './compiler-types.mts';
+import {
+  type CompilerSettings,
+  type SourceModule,
+  compilerOf,
+} from '../compile-sets/compiler-types.mts';
 import {
   type CompileSet,
   type Modular,
@@ -194,16 +199,18 @@ function analyze(
   rmSync(path.join(reportDir, ENGINE_REPORT), { force: true });
   const compiler = compilerOf(module.compiler);
   const declaredFlags = textsOf(fieldOf(fieldOf(configs, ERROR_PRONE), 'arguments'));
-  const argumentFiles = compileSets({ module, classpaths }, compiler, modular).flatMap((set) =>
-    writeArguments(work, {
-      ...set,
-      processors: [
-        ...resolvedTool(tools, ERROR_PRONE),
-        ...processorPath(set.classpath, compiler, tools),
-      ],
-      flags: declaredFlags,
-      skipRoots: analyzesGenerated(configs) ? undefined : generatedRoots(module, set.roots),
-    }),
+  const files = { main: javaFiles(module.sourceRoots), test: javaFiles(module.testSourceRoots) };
+  const argumentFiles = compileSets({ module, classpaths, files }, compiler, modular).flatMap(
+    (set) =>
+      writeArguments(work, {
+        ...set,
+        processors: [
+          ...resolvedTool(tools, ERROR_PRONE),
+          ...processorPath(set.classpath, compiler, tools),
+        ],
+        flags: declaredFlags,
+        skipRoots: analyzesGenerated(configs) ? undefined : generatedRoots(module, set.roots),
+      }),
   );
   if (argumentFiles.length === 0) {
     writeFileSync(report, '[]\n');
@@ -245,7 +252,7 @@ function runReport(
 }
 
 function analyzeWithFallback(context: ErrorProneContext): void {
-  const modular = isModular(context.module);
+  const modular = isModular(javaFiles(context.module.sourceRoots));
   try {
     analyze(context, modular);
   } catch (error) {

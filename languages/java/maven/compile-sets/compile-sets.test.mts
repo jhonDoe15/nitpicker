@@ -2,8 +2,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { compilerOf } from '../errorprone/compiler-types.mts';
+import { compilerOf } from './compiler-types.mts';
 import { compileSets } from './compile-sets.mts';
+import { javaFiles } from '../maven-lint.mts';
 
 const created: string[] = [];
 
@@ -52,6 +53,7 @@ describe('compileSets', () => {
       {
         module,
         classpaths: { mainCompile: [], mainRuntime: [], testCompile: [], testRuntime: [] },
+        files: { main: javaFiles(module.sourceRoots), test: [] },
       },
       compiler,
       false,
@@ -93,6 +95,7 @@ describe('compileSets', () => {
       {
         module,
         classpaths: { mainCompile: [], mainRuntime: [], testCompile: [], testRuntime: [] },
+        files: { main: javaFiles(module.sourceRoots), test: [] },
       },
       compiler,
       true,

@@ -9,7 +9,7 @@ import type {
   CompilerSettings,
   ExtraCompile,
   SourcePatterns,
-} from './compiler-types.mts';
+} from '../compile-sets/compiler-types.mts';
 import { executionsWithGoal, textAt } from '../configuration/pom-elements.mts';
 import { escapeXml } from '../../builds/typed/xml-views.mts';
 

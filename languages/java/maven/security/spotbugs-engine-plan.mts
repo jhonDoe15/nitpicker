@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { filesEndingWith } from '../../../../shared/filesystem.mts';
-import { type CompilerSettings, compilerOf } from '../errorprone/compiler-types.mts';
+import { type CompilerSettings, compilerOf } from '../compile-sets/compiler-types.mts';
 import {
   type SpotbugsEnginePlan,
   spotbugsOnEngine,

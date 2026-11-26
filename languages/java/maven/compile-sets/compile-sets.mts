@@ -1,7 +1,6 @@
 import path from 'node:path';
-import { javaFiles } from '../lint/java-files.mts';
 import type { Classpaths } from '../typed/maven-values.mts';
-import type { CompilerSettings, SourceModule } from '../errorprone/compiler-types.mts';
+import type { CompilerSettings, SourceModule } from './compiler-types.mts';
 import { selectedSources } from './source-patterns.mts';
 
 export type Modular = boolean | 'all';
@@ -39,14 +38,24 @@ function withoutDescriptor(files: readonly string[], modular: Modular): string[]
   return files.filter((file) => modular !== false || !isDescriptor(file));
 }
 
-export function isModular(module: SourceModule): boolean {
-  return javaFiles(module.sourceRoots).some(isDescriptor);
+export function isModular(files: readonly string[]): boolean {
+  return files.some(isDescriptor);
 }
 
 type SetShape = Omit<CompileSet, 'name' | 'sources' | 'compiler'>;
+export type ModuleFiles = { readonly main: readonly string[]; readonly test: readonly string[] };
+type SetsRequest = {
+  readonly module: SourceModule;
+  readonly classpaths: Classpaths;
+  readonly files: ModuleFiles;
+};
 
-function mainSets(module: SourceModule, compiler: CompilerSettings, shape: SetShape): CompileSet[] {
-  const files = withoutDescriptor(javaFiles(module.sourceRoots), shape.modular);
+function mainSets(
+  { module, files: all }: SetsRequest,
+  compiler: CompilerSettings,
+  shape: SetShape,
+): CompileSet[] {
+  const files = withoutDescriptor(all.main, shape.modular);
   const main = selectedSources(module.sourceRoots, files, compiler.sources);
   const taken = new Set(main);
   const extra = (compiler.executions ?? []).map((execution, index): CompileSet => {
@@ -65,14 +74,15 @@ function mainSets(module: SourceModule, compiler: CompilerSettings, shape: SetSh
 }
 
 export function compileSets(
-  { module, classpaths }: { readonly module: SourceModule; readonly classpaths: Classpaths },
+  request: SetsRequest,
   compiler: CompilerSettings,
   modular: Modular,
 ): CompileSet[] {
+  const { module, classpaths, files } = request;
   const testCompiler = { ...compiler, ...compiler.test };
-  const testFiles = withoutDescriptor(javaFiles(module.testSourceRoots), false);
+  const testFiles = withoutDescriptor(files.test, false);
   return [
-    ...mainSets(module, compiler, {
+    ...mainSets(request, compiler, {
       roots: module.sourceRoots,
       classpath: [...classpaths.mainCompile, module.outputDirectory],
       own: [module.outputDirectory],

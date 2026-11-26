@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { globMatcher } from '../../../../shared/paths/glob.mts';
-import type { SourcePatterns } from '../errorprone/compiler-types.mts';
+import type { SourcePatterns } from './compiler-types.mts';
 
 const ALL_JAVA = ['**/*.java'];
 
