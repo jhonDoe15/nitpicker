@@ -170,7 +170,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   instead of calling it again after `isPresent()` or a null test, and call a recursive method once per
   sub-result (`pmd/RepeatedCall`); declare a local after the early exit that does not read it
   (`pmd/WorkBeforeEarlyExit`); and read and handle one file at a time instead of reading every file
-  into a list that is walked once (`pmd/ReadAllBeforePass`).
+  into a list that is walked once (`pmd/ReadAllBeforePass`). Walk a directory with `Files.find` or
+  `Files.walkFileTree` when you need the kind or size of each entry (`pmd/StatPerListedEntry`).
 - A `Collectors.toMap`, `toUnmodifiableMap`, `toConcurrentMap` value function and a `groupingBy`
   classifier never return `null` (they throw on it): filter the nulls first, map them
   (`Objects.toString`), or collect into a `HashMap` with `collect(HashMap::new, ..., Map::putAll)`

@@ -569,6 +569,12 @@ collected from a stream `map`, with `Files.readString`, `readAllBytes`, `readAll
 `ObjectMapper.readValue`/`readTree`, then walked once by an enhanced `for`. Kotlin, Python and Go
 follow in #2133.
 
+Java `StatPerListedEntry` (main PMD ruleset, #2070) reports a loop or stream over `Files.list`,
+`Files.walk`, `Files.newDirectoryStream` or `File.listFiles()` that calls `Files.isDirectory`,
+`isRegularFile`, `isSymbolicLink`, `size` or `getLastModifiedTime` (or `File.isDirectory`, `isFile`,
+`length`, `lastModified`) on the entry, and points to `Files.find` or `Files.walkFileTree`, which
+pass the attributes along.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a
