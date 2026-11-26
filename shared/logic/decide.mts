@@ -293,7 +293,9 @@ export async function counterexample(
   const { z3, encoding, facts, asked } = await encoded(conditions, query, options);
   const solver = solverOf(z3, [...facts, z3.Not(asked)], resourceLimit);
   try {
-    return (await solver.check()) === 'sat' ? counterexampleOf(encoding, solver.model()) : undefined;
+    return (await solver.check()) === 'sat'
+      ? counterexampleOf(encoding, solver.model())
+      : undefined;
   } finally {
     solver.release();
   }
