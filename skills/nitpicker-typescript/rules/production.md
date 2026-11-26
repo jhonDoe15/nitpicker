@@ -162,6 +162,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Handle each input of a `Promise.all(files.map(...))` batch on its own (a `try` or `.catch` in the callback, or
   `Promise.allSettled`): one unreadable or unparsable file must not discard the results of the others
   (`nitpicker/no-all-or-nothing-batch`).
+- Do not match a language keyword (`/\bcase\b/`) with a regex over raw source text: comments and strings match too.
+  Use a parser or a tokenizer, or strip comments and strings first (`nitpicker/no-keyword-regex-over-source`).
 - Decide whether a child process failed by its exit status (`status !== 0`, `exitCode`, the callback's `error`), not
   by text on its standard error, which also carries warnings and notices (`nitpicker/no-stderr-as-failure`).
 - Read `error` and `signal` of a `spawnSync` result before its `status`: a child that could not start, timed out or

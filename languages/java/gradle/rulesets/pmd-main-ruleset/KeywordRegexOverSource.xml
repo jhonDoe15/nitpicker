@@ -1,0 +1,33 @@
+  <rule name="KeywordRegexOverSource" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This matches a keyword of a programming language (case, import, class, require) with a regular expression over raw source text. Comments, strings and text blocks match as well (&quot;in this case&quot; matches case), so a rewrite or a count driven by the match changes or counts text that is not code, and a scan that continues from the match runs into the next lines. Use a parser or a tokenizer, or blank out comments, strings and text blocks first (call a method such as stripComments or maskStrings in the same method). An exception fits a throwaway script where a false match is harmless.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $keyword := function($e) {
+      exists($e/self::StringLiteral[matches(string(@ConstValue),
+        '\\b(\(\?:|\()?(abstract|async|await|case|catch|class|const|def|elif|enum|export|extends|final|finally|fun|func|function|implements|import|instanceof|interface|package|private|protected|public|require|return|static|struct|switch|synchronized|throw|throws|try|typeof|yield)(\\b|\\s|\\\(|[|)])')])
+    },
+    $sourceText := function($e) {
+      exists($e/self::VariableAccess[@Name = ('source', 'sourceText', 'sourceCode')])
+    },
+    $keywordPattern := function($e) {
+      exists($e/self::MethodCall[@MethodName = 'compile'][*[1]/self::TypeExpression/ClassType[@SimpleName = 'Pattern']]
+               [$keyword(ArgumentList/*[1])])
+    },
+    $skipsCommentsIn := function($m) {
+      exists($m//MethodCall[matches(@MethodName, 'strip|mask|removeComments|blank|tokeni[sz]e|parse|^lex', 'i') or matches(@MethodName, '[a-z]Lex')])
+    }
+return
+(//MethodCall[@MethodName = ('matches', 'replaceAll', 'replaceFirst', 'split')][ArgumentList/@Size >= 1]
+   [$sourceText(*[1])][$keyword(ArgumentList/*[1])]
+ | //MethodCall[@MethodName = 'matcher'][ArgumentList/@Size = 1][$sourceText(ArgumentList/*[1])]
+   [$keywordPattern(*[1])
+    or (let $held := *[1]/self::VariableAccess/@Name
+        return exists($held) and exists(ancestor::ClassDeclaration[1]//VariableDeclarator[@Name = $held]/*[last()]
+                                          [$keywordPattern(.)]))])
+  [not($skipsCommentsIn(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1]))]
+]]></value>
+      </property>
+    </properties>
+  </rule>

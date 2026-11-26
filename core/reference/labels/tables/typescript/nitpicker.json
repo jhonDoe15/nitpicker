@@ -265,6 +265,7 @@
   "eslint/nitpicker/require-staged-parent-node-modules": ["bug"],
   "eslint/nitpicker/require-moved-tsconfig-type-roots": ["bug"],
   "eslint/nitpicker/no-single-folder-config-lookup": ["bug"],
+  "eslint/nitpicker/no-keyword-regex-over-source": ["bug"],
   "eslint/nitpicker/no-stderr-as-failure": ["bug"],
   "eslint/nitpicker/no-status-only-spawn-check": ["bug"],
   "eslint/nitpicker/no-buffered-growing-output": ["bug"],

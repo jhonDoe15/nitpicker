@@ -434,6 +434,11 @@ never reads `descendants()`. The timed-out wrapper dies and its child keeps runn
 A package.json field in several shapes: `nitpicker/no-single-shape-manifest-field` (production source, in
 `eslint-lint`) reports a list member read from `bundleDependencies`, `bundledDependencies`, `workspaces` or `man` of a
 manifest without an `Array.isArray` or `typeof` check, since npm also accepts `true`, an object or a string there.
+Keyword regex over source text: `nitpicker/no-keyword-regex-over-source` (production source, in `eslint-lint`) and
+`pmd/KeywordRegexOverSource` (Java, main sources) report a regex with a language keyword between word boundaries
+(`\bcase\b`) applied to source text (a variable named `source` or `sourceText`, or a file read with a source extension)
+when the same function does not strip, mask or parse comments and strings first. Comments and strings match
+keywords too.
 
 Error output cut to its start: `nitpicker/no-head-cut-error-output` (production source, in `eslint-lint`) and
 `pmd/HeadCutErrorOutput` (Java, main sources) report a cut from the start (`slice(0, n)`, `substring(0, n)`,

@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { checkoutModulePath } from './paths/checkout-module.mts';
+import { blankComments } from './hygiene/limits/scanning/scan.mts';
 
 const RELATIVE_SPECIFIER =
   /(?:\bfrom\s*|\bimport\s*\(\s*|^\s*import\s*)(['"])(\.{1,2}\/[^'"]+)\1/gmu;
@@ -10,7 +11,7 @@ type VisitedFile = { readonly contents: string; readonly imports: readonly strin
 type Visit = (relativePath: string) => VisitedFile;
 
 export function importedFiles(relativePath: string, source: string, root: string): string[] {
-  return [...source.matchAll(RELATIVE_SPECIFIER)]
+  return [...blankComments(source).matchAll(RELATIVE_SPECIFIER)]
     .map((match) => match[2] ?? '')
     .map((name) => path.resolve(root, path.dirname(relativePath), name.split(/[?#]/u)[0] ?? ''))
     .filter((absolute) => existsSync(absolute) && statSync(absolute).isFile())

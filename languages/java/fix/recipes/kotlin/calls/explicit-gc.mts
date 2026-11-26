@@ -14,8 +14,8 @@ const OPEN_KEYWORD = /\b(?:else|do|try|finally|return|throw|in|is|as|if|while|fo
 const CONTROL_HEADER = /\b(?:if|for|while|when|catch)\s*$/u;
 const FUNCTION_HEADER = /(?<![\w.])fun\s/u;
 
-function shadowedNames(source: string): ReadonlySet<string> {
-  const found = [...source.matchAll(SHADOWING_IMPORT), ...source.matchAll(SHADOWING_TYPE)];
+function shadowedNames(code: string): ReadonlySet<string> {
+  const found = [...code.matchAll(SHADOWING_IMPORT), ...code.matchAll(SHADOWING_TYPE)];
   return new Set(found.map((match) => match[1] ?? ''));
 }
 
@@ -89,7 +89,7 @@ function standalone(scanned: ScannedKotlin, start: number, end: number): number 
 }
 
 function explicitCollections(scanned: ScannedKotlin): KotlinFound[] {
-  const shadowed = shadowedNames(scanned.source);
+  const shadowed = shadowedNames(scanned.code);
   return [...scanned.code.matchAll(COLLECTION)].flatMap(({ index, 0: call, 1: system }) => {
     if (shadowed.has(system === undefined ? 'Runtime' : 'System')) {
       return [];

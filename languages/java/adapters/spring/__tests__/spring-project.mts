@@ -162,6 +162,7 @@ const REVIEW_RULES = new Set([
   'GrowingProcessArguments',
   'DestroyLeavesDescendants',
   'HeadCutErrorOutput',
+  'KeywordRegexOverSource',
   'StderrAsFailure',
   'FutureWithoutException',
   'LogFormatArguments',

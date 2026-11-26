@@ -233,6 +233,8 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/temp-staging/require-staged-parent-node-modules.mjs',
   'languages/typescript/preset/eslint-plugin/rules/temp-staging/temp-paths.mjs',
   'languages/typescript/preset/eslint-plugin/rules/temp-staging/require-moved-tsconfig-type-roots.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/source-text/no-keyword-regex-over-source.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/source-text/source-text-views.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/results/no-stderr-as-failure.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/results/stderr-sources.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/results/no-status-only-spawn-check.mjs',

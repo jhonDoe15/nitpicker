@@ -94,6 +94,7 @@
   "pmd/HashOrderAssertedInTest": ["tests"],
   "pmd/HashOrderInOrderedOutput": ["reliability"],
   "pmd/HeadCutErrorOutput": ["bug"],
+  "pmd/KeywordRegexOverSource": ["bug"],
   "pmd/HttpWithoutTimeout": ["reliability"],
   "pmd/IgnoredTimedWaitInTest": ["tests"],
   "pmd/ImmutableCollectionChanged": ["bug"],

@@ -219,6 +219,7 @@ export const strictEslintRuleIds = [
   'nitpicker/require-staged-parent-node-modules',
   'nitpicker/require-moved-tsconfig-type-roots',
   'nitpicker/no-single-folder-config-lookup',
+  'nitpicker/no-keyword-regex-over-source',
   'nitpicker/no-stderr-as-failure',
   'nitpicker/no-status-only-spawn-check',
   'nitpicker/no-buffered-growing-output',
