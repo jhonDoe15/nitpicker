@@ -238,8 +238,7 @@ export function spotbugsOnEngine(
   const patterns = enginePatterns(lombok);
   try {
     const report = engineReport(plan, lombok, { binary, environment, run });
-    const sarif = engineSarif(report, patterns);
-    writeFileSync(path.join(plan.reportDir, SPOTBUGS_ENGINE_SARIF), sarif);
+    writeFileSync(path.join(plan.reportDir, SPOTBUGS_ENGINE_SARIF), engineSarif(report, patterns));
     return spotbugsArgumentsFor(plan.reportDir, patterns);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
