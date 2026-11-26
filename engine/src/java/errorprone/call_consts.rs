@@ -27,7 +27,7 @@ fn string_constant(context: &Context, node: Node) -> Option<String> {
 }
 
 /// An identity for a constant that tells `Integer` from `Long` and `Character` the way `equals` does, and its `toString`.
-fn key_of(value: &Const) -> (String, String) {
+pub(super) fn key_of(value: &Const) -> (String, String) {
     match value {
         Const::Int(number) => (format!("I{number}"), number.to_string()),
         Const::Long(number) => (format!("L{number}"), number.to_string()),
@@ -189,7 +189,7 @@ pub fn zone_id_of_z(context: &Context, call: Node) {
     context.report_fixed("ZoneIdOfZ", call, preferred(context, call), "Use ZoneOffset.UTC instead of ZoneId.of(\"Z\").", &[fix]);
 }
 
-fn lenient_position(context: &Context, call: Node, count: usize) -> Option<usize> {
+pub(super) fn lenient_position(context: &Context, call: Node, count: usize) -> Option<usize> {
     let name = call_name(context, call);
     let (position, matched) = if name.starts_with("check") && !name["check".len()..].starts_with("ElementIndex") && !name["check".len()..].starts_with("PositionIndex") && static_on_class(context, call, "com.google.common.base.Preconditions", &[name]) {
         (1, true)

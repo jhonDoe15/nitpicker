@@ -22,4 +22,12 @@ public final class Truth {
   public static StreamSubject assertThat(java.util.stream.Stream<?> actual) {
     return null;
   }
+
+  public static <S extends Subject, A> SimpleSubjectBuilder<S, A> assertAbout(Subject.Factory<S, A> factory) {
+    return null;
+  }
+
+  public static StandardSubjectBuilder assert_() {
+    return null;
+  }
 }

@@ -274,6 +274,21 @@ mod immutable_set_contains;
 mod framework_assignments;
 mod ignored_values;
 mod constant_expression_checks;
+mod provides_checks;
+mod comparable_checks;
+mod date_format_constant;
+mod format_checks;
+mod doc_misc;
+mod truth_chaining;
+mod bug_pattern_naming;
+mod expected_exception;
+mod auto_value_leaks;
+mod assertion_failures;
+mod assert_throws;
+mod truth_checks;
+mod three_letter_zones;
+mod wakelock;
+mod flogger_args;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -430,7 +445,7 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["JdkObsolete"], obsolete::jdk_obsolete),
     (&["BooleanLiteral"], targets::boolean_literal),
     (&["IdentifierName"], naming::identifier_name),
-    (&["EmptyBlockTag", "MissingSummary", "InvalidBlockTag", "UnescapedEntity", "EscapedEntity", "InvalidInlineTag", "InvalidThrows", "InvalidParam", "InvalidLink", "MalformedInlineTag", "PreferThrowsTag"], javadoc::javadoc),
+    (&["EmptyBlockTag", "MissingSummary", "InvalidBlockTag", "UnescapedEntity", "EscapedEntity", "InvalidInlineTag", "InvalidThrows", "InvalidParam", "InvalidLink", "MalformedInlineTag", "PreferThrowsTag", "InvalidSnippet", "InvalidThrowsLink", "UnrecognisedJavadocTag", "UrlInSee", "InheritDoc"], javadoc::javadoc),
     (&["AnnotationPosition"], annotated::annotation_position),
     (&["RedundantOverride"], redundant::redundant_override),
     (&["CheckedExceptionNotThrown"], throws::checked_exception_not_thrown),
@@ -579,6 +594,7 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["JavaDurationGetSecondsToToSeconds"], time_checks::duration_get_seconds_to_seconds),
     (&["ObjectToString"], object_to_string::object_to_string),
     (&["StreamToString"], object_to_string::stream_to_string),
+    (&["LiteProtoToString"], object_to_string::lite_proto_to_string),
     (&["CompileTimeConstant"], compile_constant::compile_time_constant_check),
     (&["ConstantPatternCompile"], constant_pattern::constant_pattern_compile),
     (&["ReturnValueIgnored"], returns_ignored::return_value_ignored),
@@ -852,6 +868,23 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["UnnecessaryAssignment"], framework_assignments::unnecessary_assignment_expression),
     (&["UnnecessaryAssignment"], framework_assignments::unnecessary_assignment_variable),
     (&["ImmutableSetForContains"], immutable_set_contains::immutable_set_for_contains),
+    (&["CloseableProvides"], provides_checks::closeable_provides),
+    (&["EmptySetMultibindingContributions"], provides_checks::empty_set_multibinding_contributions),
+    (&["ComparableAndComparator"], comparable_checks::comparable_and_comparator),
+    (&["BadComparable"], comparable_checks::bad_comparable),
+    (&["DateFormatConstant"], date_format_constant::date_format_constant),
+    (&["ExpensiveLenientFormatString"], format_checks::expensive_lenient_format_string),
+    (&["FormatStringShouldUsePlaceholders"], format_checks::format_string_should_use_placeholders),
+    (&["TruthGetOrDefault"], truth_checks::truth_get_or_default),
+    (&["BugPatternNaming"], bug_pattern_naming::bug_pattern_naming),
+    (&["ExpectedExceptionChecker"], expected_exception::expected_exception_checker),
+    (&["AutoValueSubclassLeaked"], auto_value_leaks::auto_value_subclass_leaked),
+    (&["ChainedAssertionLosesContext"], truth_chaining::chained_assertion_loses_context),
+    (&["AssertionFailureIgnored"], assertion_failures::assertion_failure_ignored),
+    (&["AssertThrowsMultipleStatements"], assert_throws::assert_throws_multiple_statements),
+    (&["ThreeLetterTimeZoneID"], three_letter_zones::three_letter_time_zone_id),
+    (&["WakelockReleasedDangerously"], wakelock::wakelock_released_dangerously),
+    (&["FloggerArgumentToString"], flogger_args::flogger_argument_to_string),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would

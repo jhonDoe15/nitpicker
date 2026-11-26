@@ -1,6 +1,10 @@
 package com.google.common.collect;
 
 public abstract class ImmutableSet<E> extends ImmutableCollection<E> implements java.util.Set<E> {
+  public static <E> ImmutableSet<E> of() {
+    return null;
+  }
+
   public static <E> ImmutableSet<E> of(E element) {
     return null;
   }

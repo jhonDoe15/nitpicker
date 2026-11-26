@@ -8,4 +8,8 @@ public class StandardSubjectBuilder {
   public Subject that(Object actual) {
     return null;
   }
+
+  public <S extends Subject, A> SimpleSubjectBuilder<S, A> about(Subject.Factory<S, A> factory) {
+    return null;
+  }
 }
