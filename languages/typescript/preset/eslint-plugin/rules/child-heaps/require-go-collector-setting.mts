@@ -1,7 +1,13 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type { SourceContext } from '../analysis/constant-resolution.mts';
-import { nameOf } from '../typed/node-views.mts';
-import { argumentTexts, childCall, childStarts, envKeys, staticText } from './child-calls.mts';
+import {
+  argumentTexts,
+  childCall,
+  childStarts,
+  envKeys,
+  isCommand,
+  staticText,
+} from './child-calls.mts';
 
 const GO_TOOLS = /(?:^|[/\\])(?:tsgo|tsgolint|gopls)(?:\.exe)?$|@typescript\/native-preview/;
 const GO_NAMES = /^(?:tsgo|tsgolint|gopls)(?:Path|Bin|Binary|Exe|Executable|Command)?$/i;
@@ -9,14 +15,7 @@ const TSC_PATHS = /(?:^|[/\\])tsc(?:\.exe)?$/;
 const SHORT_RUNS = new Set(['--version', '-v', '--help', '-h', 'version', 'help']);
 const COLLECTOR_KEYS = ['GOGC', 'GOMEMLIMIT'];
 
-function isGoTool(context: SourceContext, command: TSESTree.Node | undefined): boolean {
-  const text = staticText(context, command);
-  if (text !== undefined) {
-    return GO_TOOLS.test(text);
-  }
-  const name = command?.type === AST_NODE_TYPES.MemberExpression ? command.property : command;
-  return GO_NAMES.test(nameOf(name) ?? '');
-}
+const GO = { path: GO_TOOLS, name: GO_NAMES };
 
 function startsGoServer(context: SourceContext, call: TSESTree.CallExpression): boolean {
   const { command, args } = childCall(context, call);
@@ -26,7 +25,7 @@ function startsGoServer(context: SourceContext, call: TSESTree.CallExpression): 
   }
   const literal = staticText(context, command);
   const apiServer = texts.includes('--api') && (literal === undefined || TSC_PATHS.test(literal));
-  return isGoTool(context, command) || apiServer;
+  return isCommand(context, command, GO) || apiServer;
 }
 
 export const rule: TSESLint.RuleModule<'noCollectorSetting'> = {
