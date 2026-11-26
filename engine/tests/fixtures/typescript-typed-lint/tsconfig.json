@@ -1,0 +1,4 @@
+{
+  "compilerOptions": { "strict": true, "types": [], "lib": ["ES2022", "DOM"], "noEmit": true },
+  "include": ["src/**/*.ts"]
+}
