@@ -55,6 +55,8 @@ pub struct Type {
     pub value: Option<Value>,
     #[serde(default, rename = "intrinsicName")]
     pub intrinsic_name: Option<String>,
+    #[serde(default)]
+    pub target: Option<u64>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
