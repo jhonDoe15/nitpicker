@@ -1073,7 +1073,9 @@ impl<'a> Resolver<'a> {
         let own = Type::class(&info.name);
         info.setter_like = info.methods.iter().any(|method| !method.is_static && super::model::setter_name(&method.name) && method.returns != own);
         if matches!(declaration.kind(), "class_declaration" | "enum_declaration") && !info.methods.iter().any(|method| method.name == "<init>") {
-            info.methods.push(plain("<init>", Vec::new(), Type::Primitive("void")));
+            let has = super::super::helpers::has_modifier;
+            let access = if declaration.kind() == "enum_declaration" || has(declaration, "private") { 2 } else if has(declaration, "public") { 1 } else if has(declaration, "protected") { 4 } else { 0 };
+            info.methods.push(Method { detail: super::model::Detail { access, ..Default::default() }, ..plain("<init>", Vec::new(), Type::Primitive("void")) });
         }
         if declaration.kind() == "enum_declaration" {
             let own = Type::class(&info.name);

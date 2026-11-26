@@ -30,7 +30,7 @@ pub fn flogger_log_string(context: &Context, call: Node) {
 }
 
 /// Error Prone's `CompileTimeConstantExpressionMatcher`.
-fn compile_time_constant(context: &Context, expression: Node) -> bool {
+pub(super) fn compile_time_constant(context: &Context, expression: Node) -> bool {
     let expression = unwrap(expression);
     match expression.kind() {
         "null_literal" => return true,
@@ -125,7 +125,7 @@ fn has_value(context: &Context, expression: Node) -> bool {
 }
 
 /// The declaration of the local variable or parameter a name stands for.
-fn declaration_of<'t>(context: &Context, usage: Node<'t>) -> Option<(Node<'t>, Option<Node<'t>>)> {
+pub(super) fn declaration_of<'t>(context: &Context, usage: Node<'t>) -> Option<(Node<'t>, Option<Node<'t>>)> {
     let name = context.text(usage);
     let mut inner = usage;
     let mut current = parent(usage);

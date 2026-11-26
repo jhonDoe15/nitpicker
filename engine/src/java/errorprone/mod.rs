@@ -194,6 +194,17 @@ mod auto_value;
 mod tz_data;
 mod zone_ids;
 mod time_constants;
+mod incompatible_calls;
+mod junit3;
+mod override_checks;
+mod annotation_impl;
+mod split_logging;
+mod conditional_promotion;
+mod compile_constant;
+mod descriptor_mixup;
+mod builder_defaults;
+mod android_injection;
+mod terminating_call;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -306,6 +317,24 @@ type Check = fn(&Context, Node);
 
 /// Each check with the names it reports under: a run that selects checks skips the others.
 const CHECKS: &[(&[&str], Check)] = &[
+    (&["PeriodTimeMath"], incompatible_calls::period_time_math),
+    (&["ArrayFillIncompatibleType"], incompatible_calls::array_fill_incompatible_type),
+    (&["IsInstanceOfClass"], incompatible_calls::is_instance_of_class),
+    (&["FuturesGetCheckedIllegalExceptionType"], incompatible_calls::futures_get_checked_illegal_exception_type),
+    (&["JUnit3TestNotRun"], junit3::junit3_test_not_run),
+    (&["DeadException"], junit3::dead_exception),
+    (&["ForOverride"], override_checks::for_override_invocation),
+    (&["ForOverride"], override_checks::for_override_method),
+    (&["MissingSuperCall"], override_checks::missing_super_call_annotation),
+    (&["MissingSuperCall"], override_checks::missing_super_call_method),
+    (&["FunctionalInterfaceMethodChanged"], override_checks::functional_interface_method_changed),
+    (&["BadAnnotationImplementation"], annotation_impl::bad_annotation_implementation),
+    (&["FloggerSplitLogStatement"], split_logging::flogger_split_log_statement),
+    (&["ConditionalExpressionNumericPromotion"], conditional_promotion::conditional_expression_numeric_promotion),
+    (&["MixedDescriptors"], descriptor_mixup::mixed_descriptors),
+    (&["AutoValueBuilderDefaultsInConstructor"], builder_defaults::auto_value_builder_defaults_in_constructor),
+    (&["AndroidInjectionBeforeSuper"], android_injection::android_injection_before_super),
+    (&["MissingTestCall"], terminating_call::missing_test_call),
     (&["OperatorPrecedence"], operators::operator_precedence),
     (&["ReferenceEquality"], operators::reference_equality),
     (&["UngroupedOverloads"], members::ungrouped_overloads),
@@ -478,6 +507,8 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["JavaDurationGetSecondsGetNano"], time_checks::duration_get_seconds_get_nano),
     (&["JavaDurationGetSecondsToToSeconds"], time_checks::duration_get_seconds_to_seconds),
     (&["ObjectToString"], object_to_string::object_to_string),
+    (&["StreamToString"], object_to_string::stream_to_string),
+    (&["CompileTimeConstant"], compile_constant::compile_time_constant_check),
     (&["ConstantPatternCompile"], constant_pattern::constant_pattern_compile),
     (&["ReturnValueIgnored"], returns_ignored::return_value_ignored),
     (&["FuzzyEqualsShouldNotBeUsedInEqualsMethod"], odd_calls::fuzzy_equals_in_equals),
