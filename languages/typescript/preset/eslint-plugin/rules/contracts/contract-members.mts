@@ -4,6 +4,7 @@ import { isNestController } from './decorators.mts';
 import { infrastructureOf, type Infrastructure } from './infrastructure-types.mts';
 import { callSignatureTypes, findInType, typeSymbols } from './type-walk.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
+import { compareText } from '../../../../../../shared/paths/path-order.mts';
 
 type Checker = TypeScript.TypeChecker;
 type Leak = { readonly member: string; readonly found: Infrastructure };
@@ -14,13 +15,6 @@ const HIDDEN = ts.ModifierFlags.Private | ts.ModifierFlags.Protected;
 
 function resolved(checker: Checker, symbol: TypeScript.Symbol): TypeScript.Symbol {
   return (symbol.flags & ts.SymbolFlags.Alias) !== 0 ? checker.getAliasedSymbol(symbol) : symbol;
-}
-
-function compareText(left: string, right: string): number {
-  if (left === right) {
-    return 0;
-  }
-  return left < right ? -1 : 1;
 }
 
 function compareInfrastructure(left: Infrastructure, right: Infrastructure): number {
