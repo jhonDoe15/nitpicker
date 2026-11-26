@@ -135,6 +135,7 @@ function honestyRulesBlock(
       'nitpicker/no-unowned-async-assertion': ERROR,
       'nitpicker/no-weak-assertion': ERROR,
       'nitpicker/no-fixed-port-in-tests': ERROR,
+      'nitpicker/no-listing-order-in-assertions': ERROR,
       ...matcherRules(runner),
     },
   };

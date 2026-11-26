@@ -39,6 +39,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   worker (`nitpicker/no-worker-state-in-concurrent-tests`). Put those tests in `describe.sequential`.
 - Start test servers on port 0 and read the port they got (`server.address().port`), not a fixed port
   (`nitpicker/no-fixed-port-in-tests`).
+- Sort directory listings and glob results before an ordered comparison
+  (`expect(readdirSync(dir).sort()).toEqual([...])`): `nitpicker/no-listing-order-in-assertions`.
 - In Playwright tests, assert with the retrying form (`await expect(locator).toHaveText('42')`), not a
   one-time read (`expect(await locator.textContent())`); do not wait for `networkidle`, use element
   handles or leave an action without `await`. In Cypress tests, do not keep a command's result in a
