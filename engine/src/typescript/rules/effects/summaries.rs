@@ -2,6 +2,7 @@
 //! deep. A function's summary at budget `b` is what its own calls do plus, for calls of other functions, what
 //! all of those functions have in common at budget `b - 1`, each path prefixed with the call's label.
 use super::callees::calls::{Resolved, resolve_call};
+use super::callees::declarations::{callee_declaration, function_like};
 use super::callees::implementations::{Index, index};
 use super::callees::test_sources::TestSources;
 use super::flow::{is_class_like, is_function_like, runs_with_caller};
@@ -137,5 +138,13 @@ impl State {
         let found = Rc::new(found);
         self.calls.insert(key, Rc::clone(&found));
         found
+    }
+
+    /// `typedReferenceEffects`: what calling the function a reference names does, each path starting with
+    /// `<text>()`; nothing when the reference names no function with a body.
+    pub fn reference_effects(&mut self, types: &mut Types, node: &At, text: &str) -> Effects {
+        let Some(function) = callee_declaration(types, node).and_then(|declaration| function_like(&declaration)) else { return Vec::new() };
+        let summary = self.summary(types, &function.handle(), MAX_HOPS);
+        prefixed(&format!("{text}()"), &summary)
     }
 }

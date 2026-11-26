@@ -213,6 +213,7 @@ const DETECTORS: &[Detector] = &[
     constructors::constructor_throw as Detector,
     statements::statements as Detector,
     classes::class_shape as Detector,
+    methods::methods as Detector,
     methods::method_patterns as Detector,
     attributes::should_be_static as Detector,
 ];

@@ -150,6 +150,11 @@ function pmdArguments(files: { report: string; rulesets: string[]; aux: string; 
   ];
 }
 
+function stderrOf(result: unknown): string {
+  const stderr = fieldOf(result, 'stderr');
+  return typeof stderr === 'string' ? stderr : '';
+}
+
 export function runPmd(options: PmdOptions): void {
   const { module, reportDir, tools, classpaths, configs, spawn, timeoutMs } = options;
   const report = path.join(reportDir, 'pmd.sarif');
@@ -180,8 +185,7 @@ export function runPmd(options: PmdOptions): void {
     spawn,
     timeoutMs,
   });
-  const stderr = fieldOf(result, 'stderr');
-  writeFileSync(path.join(reportDir, PMD_LOG), typeof stderr === 'string' ? stderr : '');
+  writeFileSync(path.join(reportDir, PMD_LOG), stderrOf(result));
 }
 
 function auxiliaryEntries(outputDirectory: string, auxClasspath: readonly string[]): string[] {

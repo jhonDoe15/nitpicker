@@ -18,21 +18,21 @@ pub enum ScopeKind {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Role {
+pub enum Role {
     Begins,
     Ends,
 }
 
-struct Marker<'v> {
-    call: Node<'v>,
-    role: Role,
+pub struct Marker<'v> {
+    pub call: Node<'v>,
+    pub role: Role,
     branch: Option<Node<'v>>,
 }
 
 /// The calls and markers of one body, found once per file and kind.
-struct BodyIndex<'v> {
+pub struct BodyIndex<'v> {
     calls: Vec<Node<'v>>,
-    markers: Vec<Marker<'v>>,
+    pub markers: Vec<Marker<'v>>,
 }
 
 /// What a file's check keeps between nodes: body indexes by body and kind.
@@ -130,7 +130,7 @@ fn branch_of<'v>(node: Node<'v>, body: Node<'v>) -> Option<Node<'v>> {
     node.ancestors().filter(|ancestor| body.contains(*ancestor)).find(|ancestor| is_branch(*ancestor) && !in_test(*ancestor, node))
 }
 
-fn closes(marker: &Marker, node: Node) -> bool {
+pub fn closes(marker: &Marker, node: Node) -> bool {
     marker.branch.is_none_or(|branch| branch.contains(node))
 }
 
@@ -190,7 +190,7 @@ fn ends_after(markers: &[Marker], marker: &Marker, node: Node) -> bool {
     !construct.is("CatchClause") && construct.end() <= node.start() && alternatives(construct).into_iter().all(|part| ends_alternative(markers, part))
 }
 
-fn body_index<'v>(types: &mut Types, held: &mut Held<'_, 'v>, kind: ScopeKind, body: Node<'v>) -> Rc<BodyIndex<'v>> {
+pub fn body_index<'v>(types: &mut Types, held: &mut Held<'_, 'v>, kind: ScopeKind, body: Node<'v>) -> Rc<BodyIndex<'v>> {
     let key = (body.start(), body.end(), kind == ScopeKind::Lock);
     if let Some(known) = held.bodies.get(&key) {
         return Rc::clone(known);

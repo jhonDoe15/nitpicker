@@ -17,7 +17,10 @@ import { testSourcesFact } from './test-sources-fact.mts';
 const stylesheetSpecifier: RegExp = untypedStylesheetSpecifier;
 
 const TYPED = { needs: 'types' } as const;
-const EFFECTS: EngineRule = { ...TYPED, facts: (_filename, _options, { root }) => testSourcesFact(root) };
+const EFFECTS: EngineRule = {
+  ...TYPED,
+  facts: (_filename, _options, { root }) => testSourcesFact(root),
+};
 
 const layout = readLayout();
 
@@ -95,6 +98,10 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-parameter-mutation', TYPED],
   ['no-remote-call-in-transaction', EFFECTS],
   ['no-remote-call-under-lock', EFFECTS],
+  ['no-retry-without-idempotency', EFFECTS],
+  ['no-dual-write', EFFECTS],
+  ['no-stale-retry-after-conflict', EFFECTS],
+  ['no-unisolated-job-loop', EFFECTS],
   [
     'no-production-console',
     {
