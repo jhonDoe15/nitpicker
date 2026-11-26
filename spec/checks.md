@@ -583,9 +583,10 @@ Java `FilteredPositionalPairing` (main PMD ruleset, #2129, label bug) reports tw
 one index of a counting `for` loop where one came from `stream().filter(...)` or had `removeIf` and
 the other was not filtered.
 
-Java `ReplacingCollectionMerge` (main PMD ruleset, #2209, label bug) reports `putAll`, or `put` of
-an entry value from a nested `entrySet()` loop or `Map.forEach`, into a map declared with a
-collection or map value type (`Map<K, Set<V>>`) outside the loop or iteration callback that runs it.
+Java `ReplacingCollectionMerge` (main PMD ruleset, #2209, label bug) reports `putAll` of the loop
+element (or of anything in a parallel stream callback), or an unguarded `put` of an entry value
+from a nested `entrySet()` loop or `Map.forEach`, into a map declared with a collection or map value
+type (`Map<K, Set<V>>`) outside the loop or iteration callback that runs it.
 The value type is read from the declaration, so a `var` target is not reported.
 
 Java `RepeatedKeyedScan` (main PMD ruleset, #2210) reports `map.get(key).stream().anyMatch(test)`

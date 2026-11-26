@@ -960,14 +960,19 @@ return (
 let $bodies := (//ForeachStatement/*[last()] | //ForStatement/*[last()] | //WhileStatement/*[last()] | //DoStatement/*[1]
       | //LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining',
           'map', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch', 'mapToObj', 'mapToInt', 'mapToLong')][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
-          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]/*[last()])
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]/*[last()]),
+    $calls := $bodies//MethodCall
+      [ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
+          or self::LambdaExpression][1]
+        [not(self::LambdaExpression) or exists(*[last()] intersect $bodies)]
+        [not(self::ForeachStatement/*[2][self::MethodCall[@MethodName = ('of', 'asList')] or self::ArrayAllocation])]]
 return
-$bodies//MethodCall[@MethodName = ('getMethod', 'getDeclaredMethod', 'getField', 'getDeclaredField', 'getConstructor',
+$calls[@MethodName = ('getMethod', 'getDeclaredMethod', 'getField', 'getDeclaredField', 'getConstructor',
     'getDeclaredConstructor')]
   [*[1][self::ClassLiteral]]
   [empty(ArgumentList/*[not(self::StringLiteral or self::ClassLiteral)])]
 |
-$bodies//MethodCall[@MethodName = 'forName'][*[1][self::TypeExpression][pmd-java:typeIs('java.lang.Class')]]
+$calls[@MethodName = 'forName'][*[1][self::TypeExpression][pmd-java:typeIs('java.lang.Class')]]
   [ArgumentList/@Size = 1][ArgumentList/*[1][self::StringLiteral]]
 ]]></value>
       </property>
@@ -1482,7 +1487,8 @@ return
          $others := distinct-values($loop/*[last()]//MethodCall[@MethodName = 'get'][ArgumentList/@Size = 1]
            [ArgumentList/*[1][self::VariableAccess][@Name = $index]]/*[1][self::VariableAccess]/@Name[. != $name])
      return exists($name) and $filtered($name, $scope)
-       and (some $other in $others satisfies not($filtered($other, $scope)))]
+       and (some $other in $others satisfies not($filtered($other, $scope)
+         or exists($scope//VariableDeclarator[VariableId/@Name = $other]/*[2]//VariableAccess[@Name = $name])))]
 ]]></value>
       </property>
     </properties>
@@ -2871,7 +2877,7 @@ let $iterations := ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'fla
     }
 return
 //(ConstructorCall | MethodCall)[$stored(.)]
-  [let $from := $source(.),
+  [let $copy := ., $from := $source(.),
        $name := $from/@Name,
        $pass := ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
          or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
@@ -2884,6 +2890,9 @@ return
      and empty($pass//AssignmentExpression[*[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess][@Name = $name]])
      and empty($pass//MethodCall[@MethodName = $changes][*[1][self::VariableAccess or self::FieldAccess][@Name = $name]])
      and empty($pass//UnaryExpression[@Operator = ('++', '--')]//*[@Name = $name])
+     and empty($pass//ArgumentList/*[self::VariableAccess or self::FieldAccess][@Name = $name][not(../.. is $copy)])
+     and not(empty($scope//VariableDeclarator[VariableId/@Name = $name] | $scope//FormalParameter[VariableId/@Name = $name])
+       and exists($pass//MethodCall[empty(*[1][not(self::ArgumentList)]) or *[1][self::ThisExpression]]))
      and empty($declared/*[2][self::ArrayInitializer or self::ArrayAllocation[ArrayInitializer]
        or self::MethodCall[@MethodName = ('of', 'asList')]])]
 ]]></value>
@@ -3832,6 +3841,7 @@ return
   //MethodCall[@MethodName = ancestor::MethodDeclaration[1]/@Name]
     [empty(*[1][not(self::ArgumentList) and not(self::ThisExpression)])]
     [ArgumentList/@Size > 0][$settled(ArgumentList)]
+    [empty(ArgumentList/*[self::VariableAccess or self::FieldAccess or self::ThisExpression])]
     [ArgumentList/@Size = count(ancestor::MethodDeclaration[1]/FormalParameters/FormalParameter)]
     [let $call := ., $wanted := $key(.), $arm := $branch(.), $statement := ancestor::*[self::ExpressionStatement
         or self::ReturnStatement or self::LocalVariableDeclaration][1]
@@ -3938,8 +3948,13 @@ let $iterations := ('forEach', 'forEachOrdered', 'map', 'flatMap', 'peek', 'mapT
     }
 return
 //MethodCall[@MethodName = 'putAll'][ArgumentList/@Size = 1][*[1][self::VariableAccess or self::FieldAccess]]
-  [let $outer := $passes(.)[last()]
-   return exists($outer) and $collectionValued(*[1], $outer)]
+  [let $outer := $passes(.)[last()],
+       $elements := ($outer/self::ForeachStatement/LocalVariableDeclaration | $outer/self::LambdaExpression/LambdaParameterList)
+         //VariableId/@Name
+   return exists($outer) and $collectionValued(*[1], $outer)
+     and (exists(ArgumentList/*[1][self::VariableAccess][@Name = $elements])
+       or exists($outer/self::LambdaExpression/parent::ArgumentList/parent::MethodCall
+         /*[1]/descendant-or-self::MethodCall[@MethodName = ('parallelStream', 'parallel')]))]
 |
 //MethodCall[@MethodName = 'put'][ArgumentList/@Size = 2][*[1][self::VariableAccess or self::FieldAccess]]
   [let $value := ArgumentList/*[2],
@@ -3950,8 +3965,12 @@ return
            [*[1][pmd-java:typeIs('java.util.Map')]]]
          [LambdaParameterList/*[2]//VariableId/@Name = $value[self::VariableAccess]/@Name][1],
        $inner := ($entryLoop | $entryLambda)[1],
-       $outer := $passes($inner)[last()]
-   return exists($inner) and exists($outer) and $collectionValued(*[1], $outer)]
+       $outer := $passes($inner)[last()],
+       $target := *[1]/@Name
+   return exists($inner) and exists($outer) and $collectionValued(*[1], $outer)
+     and exists(ArgumentList/*[1][self::VariableAccess or self::MethodCall[@MethodName = 'getKey'][ArgumentList/@Size = 0]])
+     and empty(ancestor::IfStatement[ancestor::* intersect $inner]/*[1]//MethodCall
+       [@MethodName = ('containsKey', 'get', 'isEmpty')][*[1][self::VariableAccess or self::FieldAccess][@Name = $target]])]
 ]]></value>
       </property>
     </properties>
@@ -4335,9 +4354,16 @@ return (
     <properties>
       <property name="xpath">
         <value><![CDATA[
-let $bounded := function($test, $element) {
-      $test/self::InfixExpression[@Operator = ('<', '<=', '>', '>=')]
-        [exists(.//VariableAccess[@Name = $element])]
+let $isElement := function($node, $element) {
+      exists($node/self::VariableAccess[@Name = $element]
+        | $node/self::MethodCall[@MethodName = 'getKey'][ArgumentList/@Size = 0][*[1][self::VariableAccess][@Name = $element]])
+    },
+    $side := function($test, $element) {
+      if ($test/self::InfixExpression[@Operator = ('<', '<=', '>', '>=')][$isElement(*[1], $element)])
+      then (if ($test/@Operator = ('>', '>=')) then 'low' else 'high')
+      else if ($test/self::InfixExpression[@Operator = ('<', '<=', '>', '>=')][$isElement(*[2], $element)])
+      then (if ($test/@Operator = ('<', '<=')) then 'low' else 'high')
+      else 'none'
     }
 return
 //ForeachStatement
@@ -4347,7 +4373,7 @@ return
   [let $element := LocalVariableDeclaration//VariableId/@Name,
        $body := *[3]/(self::Block[count(*) = 1]/* | self::IfStatement)
    return exists($body[self::IfStatement][count(*) = 2]
-     [*[1][self::InfixExpression][@Operator = '&&'][count(*) = 2][every $side in * satisfies $bounded($side, $element)]]
+     [*[1][self::InfixExpression][@Operator = '&&'][count(*) = 2][let $sides := (for $test in * return $side($test, $element)) return $sides = 'low' and $sides = 'high']]
      [*[2]/descendant-or-self::*[self::ReturnStatement or self::BreakStatement]])]
 ]]></value>
       </property>
@@ -4587,6 +4613,8 @@ let $up := ('getParent', 'getParentNode', 'parent', 'getParentElement', 'getEncl
       'getAllElements', 'findAll', 'findFirst', 'findDescendant', 'findDescendants', 'descendants', 'getDescendants')
 return
 //MethodCall[@MethodName = $searches]
+  [empty(ancestor::ReturnStatement)]
+  [empty(ancestor::*[parent::Block][1]/following-sibling::*[self::BreakStatement or self::ReturnStatement])]
   [let $name := *[1][self::VariableAccess]/@Name
    return exists($name) and exists(ancestor::*[self::WhileStatement or self::DoStatement or self::ForStatement]
      [let $climbers := .//AssignmentExpression[@Operator = '=']
@@ -6344,7 +6372,8 @@ let $verbs := '^_*(accept|acquire|add|advance|append|apply|call|clear|close|cons
       (exists($init/self::MethodCall[@MethodName = ('toList', 'collect', 'count', 'anyMatch', 'allMatch', 'noneMatch',
           'toArray', 'sum', 'max', 'min', 'reduce')][*[1]/descendant-or-self::MethodCall[@MethodName = ('stream', 'parallelStream')]])
         or exists($init/self::ConstructorCall[ClassType/@SimpleName = ('ArrayList', 'HashMap', 'HashSet', 'LinkedHashMap',
-          'LinkedHashSet', 'TreeMap', 'TreeSet')][ArgumentList/@Size = 1])
+          'LinkedHashSet', 'TreeMap', 'TreeSet')][ArgumentList/@Size = 1]
+          [ArgumentList/*[1][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]])
         or exists($init/self::MethodCall[@MethodName = 'copyOf'][ArgumentList/@Size = 1]
           [*[1][self::TypeExpression][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]))
       and empty($init//MethodCall[matches(@MethodName, $verbs)] | $init//AssignmentExpression
@@ -6373,6 +6402,8 @@ return
      [*[2]/(self::Block/*[last()] | self::*[not(self::Block)])
        [self::BreakStatement or self::ContinueStatement or self::ReturnStatement or self::ThrowStatement]]
      [empty(.//VariableAccess[@Name = $name])]
+     [empty(*[1]/descendant-or-self::InfixExpression[@Operator = ('==', '!=')][NullLiteral]/VariableAccess
+       [@Name = $init/descendant-or-self::VariableAccess/@Name])]
      [$settled(*[1]) or ($cheapTest(*[1]) and $looping)])]
 ]]></value>
       </property>

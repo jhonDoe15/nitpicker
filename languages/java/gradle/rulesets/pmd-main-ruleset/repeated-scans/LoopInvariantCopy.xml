@@ -41,7 +41,7 @@ let $iterations := ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'fla
     }
 return
 //(ConstructorCall | MethodCall)[$stored(.)]
-  [let $from := $source(.),
+  [let $copy := ., $from := $source(.),
        $name := $from/@Name,
        $pass := ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
          or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterations][*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
@@ -54,6 +54,9 @@ return
      and empty($pass//AssignmentExpression[*[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess][@Name = $name]])
      and empty($pass//MethodCall[@MethodName = $changes][*[1][self::VariableAccess or self::FieldAccess][@Name = $name]])
      and empty($pass//UnaryExpression[@Operator = ('++', '--')]//*[@Name = $name])
+     and empty($pass//ArgumentList/*[self::VariableAccess or self::FieldAccess][@Name = $name][not(../.. is $copy)])
+     and not(empty($scope//VariableDeclarator[VariableId/@Name = $name] | $scope//FormalParameter[VariableId/@Name = $name])
+       and exists($pass//MethodCall[empty(*[1][not(self::ArgumentList)]) or *[1][self::ThisExpression]]))
      and empty($declared/*[2][self::ArrayInitializer or self::ArrayAllocation[ArrayInitializer]
        or self::MethodCall[@MethodName = ('of', 'asList')]])]
 ]]></value>

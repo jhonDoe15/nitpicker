@@ -18,7 +18,8 @@ let $verbs := '^_*(accept|acquire|add|advance|append|apply|call|clear|close|cons
       (exists($init/self::MethodCall[@MethodName = ('toList', 'collect', 'count', 'anyMatch', 'allMatch', 'noneMatch',
           'toArray', 'sum', 'max', 'min', 'reduce')][*[1]/descendant-or-self::MethodCall[@MethodName = ('stream', 'parallelStream')]])
         or exists($init/self::ConstructorCall[ClassType/@SimpleName = ('ArrayList', 'HashMap', 'HashSet', 'LinkedHashMap',
-          'LinkedHashSet', 'TreeMap', 'TreeSet')][ArgumentList/@Size = 1])
+          'LinkedHashSet', 'TreeMap', 'TreeSet')][ArgumentList/@Size = 1]
+          [ArgumentList/*[1][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]])
         or exists($init/self::MethodCall[@MethodName = 'copyOf'][ArgumentList/@Size = 1]
           [*[1][self::TypeExpression][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]))
       and empty($init//MethodCall[matches(@MethodName, $verbs)] | $init//AssignmentExpression
@@ -47,6 +48,8 @@ return
      [*[2]/(self::Block/*[last()] | self::*[not(self::Block)])
        [self::BreakStatement or self::ContinueStatement or self::ReturnStatement or self::ThrowStatement]]
      [empty(.//VariableAccess[@Name = $name])]
+     [empty(*[1]/descendant-or-self::InfixExpression[@Operator = ('==', '!=')][NullLiteral]/VariableAccess
+       [@Name = $init/descendant-or-self::VariableAccess/@Name])]
      [$settled(*[1]) or ($cheapTest(*[1]) and $looping)])]
 ]]></value>
       </property>

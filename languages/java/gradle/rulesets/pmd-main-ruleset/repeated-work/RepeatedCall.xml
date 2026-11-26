@@ -42,6 +42,7 @@ return
   //MethodCall[@MethodName = ancestor::MethodDeclaration[1]/@Name]
     [empty(*[1][not(self::ArgumentList) and not(self::ThisExpression)])]
     [ArgumentList/@Size > 0][$settled(ArgumentList)]
+    [empty(ArgumentList/*[self::VariableAccess or self::FieldAccess or self::ThisExpression])]
     [ArgumentList/@Size = count(ancestor::MethodDeclaration[1]/FormalParameters/FormalParameter)]
     [let $call := ., $wanted := $key(.), $arm := $branch(.), $statement := ancestor::*[self::ExpressionStatement
         or self::ReturnStatement or self::LocalVariableDeclaration][1]

@@ -23,7 +23,8 @@ return
          $others := distinct-values($loop/*[last()]//MethodCall[@MethodName = 'get'][ArgumentList/@Size = 1]
            [ArgumentList/*[1][self::VariableAccess][@Name = $index]]/*[1][self::VariableAccess]/@Name[. != $name])
      return exists($name) and $filtered($name, $scope)
-       and (some $other in $others satisfies not($filtered($other, $scope)))]
+       and (some $other in $others satisfies not($filtered($other, $scope)
+         or exists($scope//VariableDeclarator[VariableId/@Name = $other]/*[2]//VariableAccess[@Name = $name])))]
 ]]></value>
       </property>
     </properties>

@@ -4,9 +4,16 @@
     <properties>
       <property name="xpath">
         <value><![CDATA[
-let $bounded := function($test, $element) {
-      $test/self::InfixExpression[@Operator = ('<', '<=', '>', '>=')]
-        [exists(.//VariableAccess[@Name = $element])]
+let $isElement := function($node, $element) {
+      exists($node/self::VariableAccess[@Name = $element]
+        | $node/self::MethodCall[@MethodName = 'getKey'][ArgumentList/@Size = 0][*[1][self::VariableAccess][@Name = $element]])
+    },
+    $side := function($test, $element) {
+      if ($test/self::InfixExpression[@Operator = ('<', '<=', '>', '>=')][$isElement(*[1], $element)])
+      then (if ($test/@Operator = ('>', '>=')) then 'low' else 'high')
+      else if ($test/self::InfixExpression[@Operator = ('<', '<=', '>', '>=')][$isElement(*[2], $element)])
+      then (if ($test/@Operator = ('<', '<=')) then 'low' else 'high')
+      else 'none'
     }
 return
 //ForeachStatement
@@ -16,7 +23,7 @@ return
   [let $element := LocalVariableDeclaration//VariableId/@Name,
        $body := *[3]/(self::Block[count(*) = 1]/* | self::IfStatement)
    return exists($body[self::IfStatement][count(*) = 2]
-     [*[1][self::InfixExpression][@Operator = '&&'][count(*) = 2][every $side in * satisfies $bounded($side, $element)]]
+     [*[1][self::InfixExpression][@Operator = '&&'][count(*) = 2][let $sides := (for $test in * return $side($test, $element)) return $sides = 'low' and $sides = 'high']]
      [*[2]/descendant-or-self::*[self::ReturnStatement or self::BreakStatement]])]
 ]]></value>
       </property>

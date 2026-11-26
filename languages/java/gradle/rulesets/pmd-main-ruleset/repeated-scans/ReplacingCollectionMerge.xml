@@ -22,8 +22,13 @@ let $iterations := ('forEach', 'forEachOrdered', 'map', 'flatMap', 'peek', 'mapT
     }
 return
 //MethodCall[@MethodName = 'putAll'][ArgumentList/@Size = 1][*[1][self::VariableAccess or self::FieldAccess]]
-  [let $outer := $passes(.)[last()]
-   return exists($outer) and $collectionValued(*[1], $outer)]
+  [let $outer := $passes(.)[last()],
+       $elements := ($outer/self::ForeachStatement/LocalVariableDeclaration | $outer/self::LambdaExpression/LambdaParameterList)
+         //VariableId/@Name
+   return exists($outer) and $collectionValued(*[1], $outer)
+     and (exists(ArgumentList/*[1][self::VariableAccess][@Name = $elements])
+       or exists($outer/self::LambdaExpression/parent::ArgumentList/parent::MethodCall
+         /*[1]/descendant-or-self::MethodCall[@MethodName = ('parallelStream', 'parallel')]))]
 |
 //MethodCall[@MethodName = 'put'][ArgumentList/@Size = 2][*[1][self::VariableAccess or self::FieldAccess]]
   [let $value := ArgumentList/*[2],
@@ -34,8 +39,12 @@ return
            [*[1][pmd-java:typeIs('java.util.Map')]]]
          [LambdaParameterList/*[2]//VariableId/@Name = $value[self::VariableAccess]/@Name][1],
        $inner := ($entryLoop | $entryLambda)[1],
-       $outer := $passes($inner)[last()]
-   return exists($inner) and exists($outer) and $collectionValued(*[1], $outer)]
+       $outer := $passes($inner)[last()],
+       $target := *[1]/@Name
+   return exists($inner) and exists($outer) and $collectionValued(*[1], $outer)
+     and exists(ArgumentList/*[1][self::VariableAccess or self::MethodCall[@MethodName = 'getKey'][ArgumentList/@Size = 0]])
+     and empty(ancestor::IfStatement[ancestor::* intersect $inner]/*[1]//MethodCall
+       [@MethodName = ('containsKey', 'get', 'isEmpty')][*[1][self::VariableAccess or self::FieldAccess][@Name = $target]])]
 ]]></value>
       </property>
     </properties>

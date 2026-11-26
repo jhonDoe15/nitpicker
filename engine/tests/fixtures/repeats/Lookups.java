@@ -167,6 +167,14 @@ public class Lookups {
     return copy;
   }
 
+  List<Item> sizedFirst(boolean skip) {
+    List<Item> sized = new ArrayList<>(16);
+    if (skip) {
+      return List.of();
+    }
+    return sized;
+  }
+
   void checkedFirst(List<String> keys) {
     for (String key : keys) {
       Item found = checkFound(key, 1);

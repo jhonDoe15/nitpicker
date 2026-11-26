@@ -10,6 +10,8 @@ let $up := ('getParent', 'getParentNode', 'parent', 'getParentElement', 'getEncl
       'getAllElements', 'findAll', 'findFirst', 'findDescendant', 'findDescendants', 'descendants', 'getDescendants')
 return
 //MethodCall[@MethodName = $searches]
+  [empty(ancestor::ReturnStatement)]
+  [empty(ancestor::*[parent::Block][1]/following-sibling::*[self::BreakStatement or self::ReturnStatement])]
   [let $name := *[1][self::VariableAccess]/@Name
    return exists($name) and exists(ancestor::*[self::WhileStatement or self::DoStatement or self::ForStatement]
      [let $climbers := .//AssignmentExpression[@Operator = '=']
