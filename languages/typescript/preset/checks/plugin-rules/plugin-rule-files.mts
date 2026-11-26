@@ -242,6 +242,7 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/tree-sitter/require-tree-sitter-error-check.mjs',
   'languages/typescript/preset/eslint-plugin/rules/tree-sitter/tree-sitter-module.mjs',
   'languages/typescript/preset/eslint-plugin/rules/positional-elements/no-unchecked-positional-element.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/positional-elements/positional-usage.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/results/no-stderr-as-failure.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/results/stderr-sources.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/results/no-status-only-spawn-check.mjs',

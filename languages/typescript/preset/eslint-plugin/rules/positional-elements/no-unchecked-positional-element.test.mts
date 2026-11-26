@@ -38,8 +38,47 @@ tester.run('no-unchecked-positional-element', rule, {
     ),
     script('const f = (text) => { const [, key] = /a=(.*)/u.exec(text); return keyOf(key); };'),
     script('const f = ({ children: [first] }) => { const g = () => first; return g; };'),
+    script('const f = (text, { range: [start, end] }) => text.slice(start, end);'),
+    script('const f = ({ size: [w, h] }) => resize(w, h);'),
+    script('const f = (opts) => opts.pairs.map(([k, v]) => g(k, v));'),
+    script('const f = ({ paths: [b] } = {}) => keyOf(b);'),
+    script('const f = ({ opts: { paths: [b] } = {} }) => keyOf(b);'),
+    script(
+      'const f = (opts) => { const [start, end] = opts.range; return text.slice(start, end); };',
+    ),
+    script('const f = (opts) => { const [first = empty] = opts.items; return first.length; };'),
+    script('const f = (opts) => { const [first] = load(opts); return first.length; };'),
+    script('const f = () => { const [first] = shared.items; return first.length; };'),
+    script('const f = (tree) => { const [first] = tree.items; return first?.length; };'),
+    script('const f = (tree) => { const [first] = tree[key]; return first.length; };'),
+    script(
+      'const f = (tree) => { const types = tree.children.map(({ children: [type] }) => type); return types.map((type) => type && keyOf(type)); };',
+    ),
+    script(
+      'const f = (tree) => { const types = tree.children.map(({ children: [type] }) => type).filter(Boolean); return types.map((type) => keyOf(type)); };',
+    ),
+    script(
+      'const f = (tree) => { const types = tree.children.map(({ children: [type] }) => type); return types.map((type) => type); };',
+    ),
   ],
   invalid: [
+    invalid('const f = (tree) => { const [first] = tree.items; return first.length; };'),
+    invalid('const f = (tree) => { const [, second] = tree.items; return keyOf(second); };'),
+    invalid(
+      'const f = (tree) => { const [returned, parameters] = tree.children; return parameters.children; };',
+    ),
+    invalid(
+      'const f = (tree) => { const [returned, parameters] = tree.namedChildren; return keyOf(returned); };',
+    ),
+    invalid(
+      'const f = (tree) => { const types = [tree.head, ...tree.children.map(({ children: [type] }) => type)]; return types.map((type) => keyOf(type)); };',
+    ),
+    invalid(
+      'const f = (tree) => { const types = tree.children.map(({ children: [type] }) => type); return types.map((type) => keyOf(type)); };',
+    ),
+    invalid(
+      'const f = (tree) => { const types = [...tree.children.map(({ children: [type] }) => { return type; })]; return types.map((type) => keyOf(type)); };',
+    ),
     invalid('const f = ({ children: [first] }) => keyOf(first);'),
     invalid('const f = ({ children: [first] }) => first.length;'),
     invalid('function f({ node: { children: [, second] } }) { return second.text; }'),

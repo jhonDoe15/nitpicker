@@ -91,29 +91,6 @@ function functionNames(fn: FunctionNode): string[] {
   return names.filter((name): name is string => name !== undefined);
 }
 
-function exportedNamesOf(
-  node: TSESTree.ExportNamedDeclaration | TSESTree.ExportDefaultDeclaration,
-): string[] {
-  if (node.type === AST_NODE_TYPES.ExportDefaultDeclaration) {
-    const { declaration } = node;
-    return [
-      declaration.type === AST_NODE_TYPES.FunctionDeclaration
-        ? nameOf(declaration.id)
-        : nameOf(declaration),
-    ].filter((name): name is string => name !== undefined);
-  }
-  const { declaration } = node;
-  const declared =
-    declaration?.type === AST_NODE_TYPES.FunctionDeclaration
-      ? [nameOf(declaration.id)]
-      : declaration?.type === AST_NODE_TYPES.VariableDeclaration
-        ? declaration.declarations.map((declarator) => nameOf(declarator.id))
-        : [];
-  return [...declared, ...node.specifiers.map((specifier) => nameOf(specifier.local))].filter(
-    (name): name is string => name !== undefined,
-  );
-}
-
 function isDeclarationName(node: TSESTree.Identifier): boolean {
   const { parent } = node;
   switch (parent.type) {
@@ -149,7 +126,6 @@ export const rule: TSESLint.RuleModule<'unhandledErrorNodes'> = {
     let usesTreeSitter = false;
     const walks: TSESTree.Node[] = [];
     const checks: TSESTree.Node[] = [];
-    const exported = new Set<string>();
     const callers = new Map<string, Set<FunctionNode | undefined>>();
     const visitSource = (node: TSESTree.Node): void => {
       const source = sourceOf(node);
@@ -158,12 +134,6 @@ export const rule: TSESLint.RuleModule<'unhandledErrorNodes'> = {
     return {
       ImportDeclaration: visitSource,
       ImportExpression: visitSource,
-      ExportNamedDeclaration(node) {
-        exportedNamesOf(node).forEach((name) => exported.add(name));
-      },
-      ExportDefaultDeclaration(node) {
-        exportedNamesOf(node).forEach((name) => exported.add(name));
-      },
       Identifier(node) {
         if (isCheck(node)) {
           checks.push(node);
@@ -203,7 +173,7 @@ export const rule: TSESLint.RuleModule<'unhandledErrorNodes'> = {
           seen: Set<FunctionNode | undefined>,
         ): boolean => {
           if (fn === undefined) {
-            return true;
+            return checksIn(undefined);
           }
           if (seen.has(fn)) {
             return false;
@@ -212,12 +182,8 @@ export const rule: TSESLint.RuleModule<'unhandledErrorNodes'> = {
           if (checksIn(fn)) {
             return true;
           }
-          const names = fn === undefined ? [] : functionNames(fn);
-          return (
-            names.some((name) => exported.has(name)) ||
-            names.some((name) =>
-              [...(callers.get(name) ?? [])].some((caller) => handled(caller, seen)),
-            )
+          return functionNames(fn).some((name) =>
+            [...(callers.get(name) ?? [])].some((caller) => handled(caller, seen)),
           );
         };
         const chainOfFunctions = (node: TSESTree.Node): FunctionNode[] => {

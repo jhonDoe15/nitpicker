@@ -1,22 +1,11 @@
 import path from 'node:path';
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { nameOf } from '../typed/node-views.mts';
+import { isCallback, isGuard, isUnchecked, returnedElementUse } from './positional-usage.mts';
 import { enclosingFunction, type FunctionNode } from '../typed/syntax-views.mts';
 
 const PLAIN_SCRIPTS = new Set(['.js', '.mjs', '.cjs']);
-const ITERATORS = new Set(['map', 'flatMap', 'forEach', 'filter']);
-const GUARD_OPERATORS = new Set(['===', '!==', '==', '!=']);
-
-function isCallback(fn: FunctionNode): fn is FunctionNode & { parent: TSESTree.CallExpression } {
-  const { parent } = fn;
-  return (
-    parent.type === AST_NODE_TYPES.CallExpression &&
-    parent.arguments[0] === fn &&
-    parent.callee.type === AST_NODE_TYPES.MemberExpression &&
-    !parent.callee.computed &&
-    ITERATORS.has(nameOf(parent.callee.property) ?? '')
-  );
-}
+const TREE_LISTS = new Set(['children', 'namedChildren', 'childNodes']);
 
 function memberRootName(node: TSESTree.Node): string | undefined {
   let current = node;
@@ -33,6 +22,21 @@ function parameterNames(fn: FunctionNode): Set<string> {
       return name === undefined ? [] : [name];
     }),
   );
+}
+
+function isFixedShape(pattern: TSESTree.ArrayPattern): boolean {
+  return pattern.elements.filter((element) => element !== null).length >= 2;
+}
+
+function plainMemberRoot(node: TSESTree.MemberExpression): string | undefined {
+  let current: TSESTree.Node = node;
+  while (current.type === AST_NODE_TYPES.MemberExpression) {
+    if (current.computed || current.optional) {
+      return undefined;
+    }
+    current = current.object;
+  }
+  return current.type === AST_NODE_TYPES.Identifier ? current.name : undefined;
 }
 
 function arrayPatternsOf(fn: FunctionNode): TSESTree.ArrayPattern[] {
@@ -71,9 +75,9 @@ function fromParameter(fn: FunctionNode & { parent: TSESTree.CallExpression }): 
   return owner !== undefined && root !== undefined && parameterNames(owner).has(root);
 }
 
-function isTuple(fn: FunctionNode, sourceCode: Readonly<TSESLint.SourceCode>): boolean {
+function isTuple(start: TSESTree.Node, sourceCode: Readonly<TSESLint.SourceCode>): boolean {
   for (
-    let current: TSESTree.Node = fn;
+    let current: TSESTree.Node = start;
     current.type !== AST_NODE_TYPES.Program;
     current = current.parent
   ) {
@@ -84,44 +88,6 @@ function isTuple(fn: FunctionNode, sourceCode: Readonly<TSESLint.SourceCode>): b
     }
   }
   return false;
-}
-
-function isGuard(reference: TSESTree.Node): boolean {
-  const { parent } = reference;
-  if (parent === undefined) {
-    return false;
-  }
-  switch (parent.type) {
-    case AST_NODE_TYPES.IfStatement:
-    case AST_NODE_TYPES.ConditionalExpression:
-      return parent.test === reference;
-    case AST_NODE_TYPES.LogicalExpression:
-    case AST_NODE_TYPES.UnaryExpression:
-    case AST_NODE_TYPES.AssignmentPattern:
-      return true;
-    case AST_NODE_TYPES.BinaryExpression:
-      return GUARD_OPERATORS.has(parent.operator);
-    case AST_NODE_TYPES.MemberExpression:
-      return parent.object === reference && parent.optional;
-    case AST_NODE_TYPES.CallExpression:
-      return parent.callee === reference && parent.optional;
-    default:
-      return false;
-  }
-}
-
-function isUnchecked(reference: TSESTree.Node): boolean {
-  const { parent } = reference;
-  if (parent === undefined) {
-    return false;
-  }
-  if (parent.type === AST_NODE_TYPES.MemberExpression) {
-    return parent.object === reference && !parent.optional;
-  }
-  return (
-    parent.type === AST_NODE_TYPES.CallExpression &&
-    parent.arguments.includes(reference as TSESTree.CallExpressionArgument)
-  );
 }
 
 export const rule: TSESLint.RuleModule<'uncheckedElement'> = {
@@ -143,31 +109,42 @@ export const rule: TSESLint.RuleModule<'uncheckedElement'> = {
     if (context.sourceCode.text.includes('@ts-check')) {
       return {};
     }
+    const { sourceCode } = context;
+    const checkElements = (
+      pattern: TSESTree.ArrayPattern,
+      variables: readonly TSESLint.Scope.Variable[],
+      fn: FunctionNode | undefined,
+    ): void => {
+      for (const element of pattern.elements) {
+        if (element?.type !== AST_NODE_TYPES.Identifier) {
+          continue;
+        }
+        const references =
+          variables
+            .find((candidate) => candidate.name === element.name)
+            ?.references.filter((reference) => reference.identifier !== element) ?? [];
+        if (references.some((reference) => isGuard(reference.identifier))) {
+          continue;
+        }
+        const use =
+          references.find((reference) => isUnchecked(reference.identifier))?.identifier ??
+          (fn === undefined ? undefined : returnedElementUse(sourceCode, fn, references));
+        if (use !== undefined) {
+          context.report({
+            node: use,
+            messageId: 'uncheckedElement',
+            data: { name: element.name },
+          });
+        }
+      }
+    };
     const check = (fn: FunctionNode): void => {
-      if (isTuple(fn, context.sourceCode)) {
+      if (isTuple(fn, sourceCode)) {
         return;
       }
       for (const pattern of arrayPatternsOf(fn)) {
-        for (const element of pattern.elements) {
-          if (element?.type !== AST_NODE_TYPES.Identifier) {
-            continue;
-          }
-          const variable = context.sourceCode
-            .getDeclaredVariables(fn)
-            .find((candidate) => candidate.name === element.name);
-          const references =
-            variable?.references.filter((reference) => reference.identifier !== element) ?? [];
-          if (references.some((reference) => isGuard(reference.identifier))) {
-            continue;
-          }
-          const use = references.find((reference) => isUnchecked(reference.identifier));
-          if (use !== undefined) {
-            context.report({
-              node: use.identifier,
-              messageId: 'uncheckedElement',
-              data: { name: element.name },
-            });
-          }
+        if (!isFixedShape(pattern)) {
+          checkElements(pattern, sourceCode.getDeclaredVariables(fn), fn);
         }
       }
     };
@@ -175,6 +152,29 @@ export const rule: TSESLint.RuleModule<'uncheckedElement'> = {
       FunctionDeclaration: check,
       FunctionExpression: check,
       ArrowFunctionExpression: check,
+      VariableDeclarator(node) {
+        const { id, init } = node;
+        const owner = enclosingFunction(node);
+        if (
+          id.type !== AST_NODE_TYPES.ArrayPattern ||
+          init?.type !== AST_NODE_TYPES.MemberExpression ||
+          owner === undefined ||
+          isTuple(node, sourceCode)
+        ) {
+          return;
+        }
+        const property = init.computed ? undefined : nameOf(init.property);
+        const root = plainMemberRoot(init);
+        if (
+          root === undefined ||
+          property === undefined ||
+          !parameterNames(owner).has(root) ||
+          (isFixedShape(id) && !TREE_LISTS.has(property))
+        ) {
+          return;
+        }
+        checkElements(id, sourceCode.getDeclaredVariables(node), undefined);
+      },
     };
   },
 };

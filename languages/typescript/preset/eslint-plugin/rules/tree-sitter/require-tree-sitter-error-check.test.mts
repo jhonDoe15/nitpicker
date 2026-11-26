@@ -44,14 +44,30 @@ tester.run('require-tree-sitter-error-check', rule, {
     valid(
       'class Reader { parameters(node: Node) { return node.namedChildren[0]; } run(node: Node) { if (node.isError) { return; } return this.parameters(node); } }',
     ),
-    valid('export function parameters(node: Node) { return node.namedChildren[0]; }'),
-    valid('export const parameters = (node: Node) => node.namedChildren[0];'),
     valid(
-      'function parameters(node: Node) { return node.namedChildren[0]; }\nfunction unit(node: Node) { return parameters(node); }\nexport { unit };',
+      'export function parameters(node: Node) { if (node.hasError) { return []; } return node.namedChildren[0]; }',
+    ),
+    valid(
+      'function parameters(node: Node) { return node.namedChildren[0]; }\nexport function unit(node: Node) { if (node.hasError) { return; } return parameters(node); }',
+    ),
+    valid(
+      'function parameters(node: Node) { return node.namedChildren[0]; }\nif (root.hasError) { throw new Error(); }\nconst first = parameters(root);',
     ),
     valid('const first = (node: Node) => node.namedChildren.length;'),
   ],
   invalid: [
+    invalid('export function parameters(node: Node) { return node.namedChildren[0]; }'),
+    invalid('export const parameters = (node: Node) => node.namedChildren[0];'),
+    invalid('export default function (node: Node) { return node.namedChildren[0]; }'),
+    invalid(
+      'function parameters(node: Node) { return node.namedChildren[0]; }\nfunction unit(node: Node) { return parameters(node); }\nexport { unit };',
+    ),
+    invalid(
+      'function parameters(node: Node) { return node.namedChildren[0]; }\nconst first = parameters(root);',
+    ),
+    invalid(
+      'export function parametersOf(method: Node) { return method.childForFieldName("parameters").namedChildren.map((parameter) => ({ type: parameter.childForFieldName("type").text })); }',
+    ),
     invalid(
       'function parameters(method: Node) { return method.childForFieldName("parameters")!.namedChildren.map(read); }',
     ),

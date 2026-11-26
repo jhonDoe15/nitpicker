@@ -2132,12 +2132,20 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   or chains a member access directly on `childForFieldName(...)` (no `?.`), when neither the function nor a function in
   the same file that calls or references it mentions `hasError`, `isError`, `isMissing` or the type `"ERROR"`. A parser
   that recovers from errors puts an error node in place of any expected child, and the rest of the tree looks normal.
-  Not reported: exported functions (their callers are in other files), `?.` access, text-only reads.
+  Exported functions are reported too: only a check in the function itself or in a same-file caller counts, an export
+  or a mention at the top level of the file does not (a top-level mention counts only when the top level of the file
+  has a check). Not reported: `?.` access, text-only reads.
 - A positional element is tested before use in plain JavaScript (`nitpicker/no-unchecked-positional-element`,
   `.js`, `.mjs` and `.cjs` files without `@ts-check`). Reported: an element taken by position from an array that is a
   property of a parameter (`({ children: [first] }) => ...`, or a `map`/`flatMap`/`forEach`/`filter` callback
   `([, second]) => ...` over a member of a parameter) and passed to a call or read with `.` without a default and
-  without any test of it (`=== undefined`, `if`, `?.`, `??`, `&&`). TypeScript reports this with
+  without any test of it (`=== undefined`, `if`, `?.`, `??`, `&&`). A declaration `const [first] = param.items;` (the
+  array a member chain of a parameter, no computed member) is checked the same way, and so is an element that a `map`
+  callback returns untested when the mapped list is kept in a `const` (also spread into an array literal) and a later
+  `map`/`forEach`/`filter` callback over it passes its parameter to a call or reads it with `.` untested. A pattern
+  with two or more elements (`[start, end]`, `([key, value]) =>`) has its shape by construction and is not reported,
+  except `const [a, b] = param.children` (also `namedChildren`, `childNodes`), whose length the function does not
+  control. A pattern with a default (`{ paths: [b] } = {}`, `[first = x]`) is not reported. TypeScript reports this with
   `noUncheckedIndexedAccess`; plain JavaScript has nothing. Not reported: `Object.entries` pairs, regular expression
   results, tuples documented in the function's comment, literal arrays.
 - A finished child process is not judged by text on its standard error (`nitpicker/no-stderr-as-failure`,
