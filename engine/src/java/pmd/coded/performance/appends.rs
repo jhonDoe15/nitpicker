@@ -65,7 +65,7 @@ fn builder_append(ctx: &Ctx, id: u32) -> bool {
     ctx.is(id, "MethodCall")
         && ctx.method_name(id) == "append"
         && matches!(
-            ctx.declaring(id).as_deref(),
+            ctx.resolved(id).map(|(call, _)| call.declaring).as_deref(),
             Some("java.lang.StringBuilder" | "java.lang.StringBuffer")
         )
 }
