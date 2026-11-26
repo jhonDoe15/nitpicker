@@ -575,6 +575,10 @@ kind is read from it.
 is filtered and then paired by position (an index callback, a counted loop, `zip`) with a list that
 was not filtered the same way.
 
+`nitpicker/no-replacing-collection-merge` (production source, in `eslint-lint`) reports maps of
+collections merged from several sources with `set` or `Object.assign`, which replaces the values of
+a key seen twice.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

@@ -30,4 +30,6 @@ export const REPEATED_WORK_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/pairings/filtered-lists.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/pairings/positional-reads.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/pairings/no-filtered-positional-pairing.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/repeated-work/merges/collection-values.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/repeated-work/merges/no-replacing-collection-merge.mjs',
 ];

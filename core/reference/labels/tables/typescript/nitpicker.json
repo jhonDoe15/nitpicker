@@ -37,6 +37,7 @@
   "eslint/nitpicker/no-repeated-call": ["performance"],
   "eslint/nitpicker/no-work-before-early-exit": ["performance"],
   "eslint/nitpicker/no-read-all-before-pass": ["performance", "reliability"],
+  "eslint/nitpicker/no-replacing-collection-merge": ["bug"],
   "eslint/nitpicker/no-filtered-positional-pairing": ["bug"],
   "eslint/nitpicker/no-stat-per-listed-entry": ["performance"],
   "eslint/nitpicker/no-repeated-parse-per-item": ["performance"],

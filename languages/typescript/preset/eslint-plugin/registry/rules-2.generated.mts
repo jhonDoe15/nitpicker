@@ -38,6 +38,7 @@ import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-ca
 import { rule as ruleNoRepeatedCall } from '../rules/repeated-work/repeated-calls/no-repeated-call.mts';
 import { rule as ruleNoRepeatedParsePerItem } from '../rules/repeated-work/parses/no-repeated-parse-per-item.mts';
 import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeated-string-literal.mts';
+import { rule as ruleNoReplacingCollectionMerge } from '../rules/repeated-work/merges/no-replacing-collection-merge.mts';
 import { rule as ruleNoRetryWithoutIdempotency } from '../rules/writes/no-retry-without-idempotency.mts';
 import { rule as ruleNoRouteWithoutAuth } from '../rules/route-auth/no-route-without-auth.mts';
 import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/no-runtime-exclusive-props-check.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnguardedCyclicRecursion } from '../rules/recursion/no-un
 import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-unguarded-deleted-items.mts';
 import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
 import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/no-unguarded-option-list.mts';
-import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/registry/no-unguarded-registry-delete.mts';
 
 export const partRules = {
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
@@ -140,6 +140,7 @@ export const partRules = {
   'no-repeated-call': ruleNoRepeatedCall,
   'no-repeated-parse-per-item': ruleNoRepeatedParsePerItem,
   'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
+  'no-replacing-collection-merge': ruleNoReplacingCollectionMerge,
   'no-retry-without-idempotency': ruleNoRetryWithoutIdempotency,
   'no-route-without-auth': ruleNoRouteWithoutAuth,
   'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unguarded-deleted-items': ruleNoUnguardedDeletedItems,
   'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
   'no-unguarded-option-list': ruleNoUnguardedOptionList,
-  'no-unguarded-registry-delete': ruleNoUnguardedRegistryDelete,
 };

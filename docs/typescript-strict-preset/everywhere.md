@@ -362,6 +362,16 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `slice`, `toSorted` or `toReversed`) and the other is not filtered with the same callback. After
   the first dropped entry the positions no longer line up. Allowed forms: pair first and filter the
   pairs, or keep a placeholder for the dropped entries.
+- `nitpicker/no-replacing-collection-merge`: maps of collections merged by replacing the collection
+  of a key that an earlier source already filled, in all production code (not in tests). It reports
+  `all.set(key, values)` where `[key, values]` are the entries of the inner loop (`for (const [key,
+  values] of part)` or `part.forEach((values, key) => ...)`) of a loop over several sources, and
+  `Object.assign(all, part)` in a loop, when `all` is declared outside those loops as a `Map`,
+  `ReadonlyMap` or `Record` whose value type is an array, `Set`, `Map` or `Record`. With one key in
+  two sources, the values of the source merged last win, and with sources finishing in any order
+  the result changes from run to run. A target filled from one source, a target declared inside
+  the loop, scalar values and a merge of an object literal are not reported. Allowed form: get the
+  collection of the key and add to it, creating it when it is missing.
 - `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
   walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
   `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,
