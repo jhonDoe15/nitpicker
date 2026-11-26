@@ -14,6 +14,7 @@ import {
   rejectWholeRunOptions,
   submoduleHint,
   undeclaredHint,
+  derivedLayoutHint,
   unlistedHint,
   writeUndeclaredProjects,
 } from './messages.mts';
@@ -56,6 +57,7 @@ function noticesOf(plan: MonorepoPlan, prepared: Prepared, cli: MonorepoCli): st
     ),
     ...unlistedHint(unlistedFolders(plan, comparison.changed)),
     ...submoduleHint(submodulePaths(plan).filter((folder) => comparison.changed.includes(folder))),
+    ...derivedLayoutHint(plan.projects),
   ];
   for (const notice of notices) {
     cli.stderr.write(`nitpicker: ${notice}\n`);
