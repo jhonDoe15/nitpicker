@@ -223,6 +223,46 @@ describe('spotbugsResultOf', () => {
     expect(result.locations[0].logicalLocations[0].name).toBe('A.t');
   });
 
+  it('places a comparison in the file of the method it names, the variable in the called method', () => {
+    const result = spotbugsResultOf({
+      file: '/src/p/A.java',
+      rule: 'RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN',
+      line: 9,
+      message: '',
+      symbol: 'variable:java.util.Map.get(Object)#a',
+      priority: 2,
+      arguments: ['p.A.m(Boolean, Map)'],
+    });
+
+    expect(result.locations[0].physicalLocation.artifactLocation.uri).toBe('p/A.java');
+    expect(result.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'a',
+      kind: 'variable',
+      fullyQualifiedName: 'java.util.Map.get(Object)#a',
+    });
+  });
+
+  it('names a compared field by the class that declares it', () => {
+    const named = (symbol: string) =>
+      spotbugsResultOf({
+        file: '/src/p/q/A.java',
+        rule: 'RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN',
+        line: 9,
+        message: '',
+        symbol,
+        priority: 2,
+        arguments: ['p.q.A.m()'],
+      }).locations[0].logicalLocations[0];
+
+    expect(named('member:p.q.A.TRUE@java.lang.Boolean')).toStrictEqual({
+      name: 'Boolean.TRUE',
+      kind: 'member',
+      fullyQualifiedName: 'p.q.A.TRUE',
+    });
+    expect(named('member:p.q.A.flag@p.q.Base').name).toBe('Base.flag');
+    expect(named('member:p.q.A.flag@p.r.Base').name).toBe('p.r.Base.flag');
+  });
+
   it('refuses a message it cannot read', () => {
     expect(() => resultOf('EI_EXPOSE_REP', 'something else')).toThrow(/cannot read/u);
     expect(() => resultOf('OTHER_PATTERN', 'x')).toThrow(/OTHER_PATTERN/u);

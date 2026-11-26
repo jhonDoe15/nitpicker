@@ -1,7 +1,9 @@
 //! SpotBugs bug patterns rebuilt for the engine from the documented meaning of each pattern and from what
 //! SpotBugs 4.9.8 reports on test code: same pattern name, line and message, read from source instead of class files.
+mod attributes;
 mod calls;
 mod classes;
+mod compare;
 mod constructors;
 mod equality;
 mod expose;
@@ -197,6 +199,7 @@ const DETECTORS: &[Detector] = &[
     constructors::constructor_throw as Detector,
     statements::statements as Detector,
     classes::class_shape as Detector,
+    attributes::should_be_static as Detector,
 ];
 
 #[derive(Default)]
@@ -204,6 +207,7 @@ pub struct SpotBugs {
     known: known::Known,
     elsewhere: nulls::Elsewhere,
     serial: serial::Serial,
+    attributes: attributes::Attributes,
 }
 
 impl FileRule for SpotBugs {
@@ -226,8 +230,13 @@ impl FileRule for SpotBugs {
                 detector(&context, *node);
             }
         }
+        compare::ref_comparisons(&context);
         nulls::null_dereference(&context, &declared);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
+        if context.wants(attributes::PATTERNS) {
+            let names = self.attributes.names(&project.index, &project.sources);
+            self.attributes.note(attributes::gather(&context, names));
+        }
         if context.wants(&["SE_BAD_FIELD"]) {
             self.serial.note(serial::referenced(&context), context.serial.take());
         }
@@ -237,6 +246,7 @@ impl FileRule for SpotBugs {
         if let Some(project) = project.downcast_ref::<JavaProject>() {
             self.known.settle(&project.index, out);
             self.serial.settle(project, out);
+            self.attributes.settle(&project.index, || self.known.visits(&project.index), out);
         }
     }
 }

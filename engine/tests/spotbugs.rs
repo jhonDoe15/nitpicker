@@ -54,7 +54,7 @@ fn patterns_report_what_spotbugs_reports() {
     let missed: Vec<&Row> = expected.difference(&found).collect();
     let extra: Vec<&Row> = found.difference(&expected).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(expected.iter().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 30);
+    assert_eq!(expected.iter().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 35);
 }
 
 /// SpotBugs names the variable a stored value came from; `tests/expected/spotbugs-variables.json` holds the names
@@ -76,7 +76,8 @@ fn stores_name_the_variable_spotbugs_names() {
 }
 
 /// SpotBugs' SARIF report names a place for each finding: `tests/expected/spotbugs-places.json` holds them as
-/// `kind:fully qualified name`, one row per SARIF result, for the fixtures it lists.
+/// `kind:fully qualified name`, one row per SARIF result, for the fixtures it lists. The engine adds the class
+/// that declares a compared field after an `@`, for the name SARIF shows.
 #[test]
 fn findings_name_the_place_spotbugs_sarif_names() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
@@ -87,7 +88,8 @@ fn findings_name_the_place_spotbugs_sarif_names() {
     let mut found: Vec<Row> = Vec::new();
     for name in &cases {
         let case = root.join("fixtures").join("spotbugs").join(name);
-        found.extend(found_listed(&case, name, "symbol").into_iter().filter(|row| rules.contains(&row.1)));
+        let listed = found_listed(&case, name, "symbol").into_iter().filter(|row| rules.contains(&row.1));
+        found.extend(listed.map(|(file, rule, line, place)| (file, rule, line, place.split('@').next().unwrap_or_default().to_string())));
     }
     found.sort();
     assert_eq!(found, expected);

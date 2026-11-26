@@ -116,6 +116,18 @@ function withoutPackage(qualified: string, owner: string): string {
   return local === '' ? qualified : qualified.slice(local.length + 1);
 }
 
+const LANG = 'java.lang.';
+
+function shownClass(declaring: string, owner: string): string {
+  const simple = declaring.slice(LANG.length);
+  if (declaring.startsWith(LANG) && !simple.includes('.')) {
+    return simple;
+  }
+  return packageOf(declaring) === packageOf(owner)
+    ? withoutPackage(declaring, declaring)
+    : declaring;
+}
+
 function ownerOf(kind: string, qualified: string): string {
   if (kind === 'type') {
     return qualified;
@@ -162,9 +174,11 @@ function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): Spotbug
     throw new Error(`the engine wrote a ${finding.rule} finding nitpicker cannot place: ${place}`);
   }
   const kind = place.slice(0, colon);
-  const qualified = place.slice(colon + 1);
+  const [qualified = '', declaring] = place.slice(colon + 1).split('@');
   const owner = ownerOf(kind, qualified);
-  const subject = placed.byArguments === true ? (finding.arguments?.[0] ?? owner) : owner;
+  const method = placed.inMethodArgument === true ? finding.arguments?.[0] : undefined;
+  const byArgument = placed.byArguments === true ? (finding.arguments?.[0] ?? owner) : owner;
+  const subject = method === undefined ? byArgument : classOf(method);
   const directory = packageOf(subject).replaceAll('.', '/');
   const file = path.basename(finding.file);
   return {
@@ -179,7 +193,10 @@ function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): Spotbug
         },
         logicalLocations: [
           {
-            name: placedNameOf(finding, placed, [kind, qualified, owner]),
+            name:
+              declaring === undefined
+                ? placedNameOf(finding, placed, [kind, qualified, owner])
+                : `${shownClass(declaring, owner)}.${qualified.slice(qualified.lastIndexOf('.') + 1)}`,
             kind,
             fullyQualifiedName: qualified,
           },

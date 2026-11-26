@@ -59,8 +59,19 @@ export const ON_ENGINE: readonly string[] = [
   'BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS',
   'SE_BAD_FIELD',
   'SE_NO_SERIALVERSIONID',
+  'PA_PUBLIC_PRIMITIVE_ATTRIBUTE',
+  'MS_SHOULD_BE_FINAL',
+  'MS_PKGPROTECT',
+  'SS_SHOULD_BE_STATIC',
+  'RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN',
 ];
-const LOMBOK_WRITES = 'SING_';
+const LOMBOK_WRITES: readonly string[] = [
+  'SING_',
+  'PA_',
+  'MS_SHOULD_BE_FINAL',
+  'MS_PKGPROTECT',
+  'SS_',
+];
 const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   MultipleInstantiationsOfSingletons: [
     'SING_SINGLETON_GETTER_NOT_SYNCHRONIZED',
@@ -232,7 +243,7 @@ export function spotbugsOnEngine(
   }
   const lombok = processors === 'lombok';
   const patterns = lombok
-    ? ON_ENGINE.filter((pattern) => !pattern.startsWith(LOMBOK_WRITES))
+    ? ON_ENGINE.filter((pattern) => !LOMBOK_WRITES.some((prefix) => pattern.startsWith(prefix)))
     : ON_ENGINE;
   try {
     const report = engineReport(plan, lombok, { binary, environment, run });

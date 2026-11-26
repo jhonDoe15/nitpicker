@@ -744,6 +744,56 @@ On the six comparison code bases, SARIF results, same / missed / extra: commons-
 Guava 41 / 0 / 0, jackson-databind 42 / 0 / 0, javaparser-core 2 / 0 / 0, Nacos 82 / 0 / 0. `SerializableIdiom`
 still runs in SpotBugs for its other patterns.
 
+### Field and comparison patterns
+
+Field patterns (#2262, `src/java/spotbugs/attributes/`, labs in `tests/fixtures/spotbugs/attr_*`). Each file notes
+every load and store of the run's fields; the run decides once all files are read. SpotBugs meets a class's
+constructors and static initializer before its other methods, those in the order javac writes them, and the
+methods javac makes of lambdas last; field initializers and initializer blocks count from the first constructor
+that does not start with `this(...)`. A load or store gets the line of the last call made before it in its
+statement, else of the statement's start (a field initializer: the field's name).
+
+- PA_PUBLIC_PRIMITIVE_ATTRIBUTE, priority 2, level `note`: a public non-final field (any type, static too) of a
+  top-level class that is not an enum, interface or annotation, stored into by a method of that class: a lambda
+  counts; a constructor, the static initializer, a method named `init` or `initialize`, and nested, local or
+  anonymous classes do not. The finding sits on the first load or store of the field SpotBugs meets in the whole
+  run, in the classes' visiting order (see `order.rs`), in the file of the class that makes it.
+- MS_SHOULD_BE_FINAL and MS_PKGPROTECT, level `note`: a public or protected static field of a class whose compiled
+  form is public (a member class declared public or protected, or a member of an interface counts; interfaces
+  themselves report other patterns). Without a load anywhere in the run the finding has priority 3, which SpotBugs
+  hides. A final field is MS_PKGPROTECT (priority 2) when it is an array not known to be empty (`{}`, `new T[0]`).
+  A field stored outside its class's static initializer is MS_PKGPROTECT (priority 2). Otherwise an array not
+  known to be empty or a `Hashtable` is MS_FINAL_PKGPROTECT, a field the static initializer stores more than
+  once is MS_SHOULD_BE_REFACTORED_TO_BE_FINAL, and the rest are MS_SHOULD_BE_FINAL: priority 1 for a non-array
+  object, else 2. A load or store by a class of another package turns MS_PKGPROTECT into MS_MUTABLE_ARRAY or
+  MS_CANNOT_BE_FINAL. The finding sits on the first store of the static initializer, or on no line.
+- SS_SHOULD_BE_STATIC, priority 2, level `note`: a final instance field of a primitive type or `String` set to a
+  compile-time constant, in any class (nested, local, anonymous and enums too), on the line of the field's name.
+
+On the six comparison code bases, SARIF results, same / missed / extra: commons-lang 5 / 0 / 0, MyBatis 1 / 0 / 0,
+Guava 0 / 0 / 0, jackson-databind 5 / 1 / 1, javaparser-core 13 / 0 / 0, Nacos 39 / 0 / 0. The jackson-databind
+difference is the line of `PotentialCreators.propertiesBased`: SpotBugs visits `PotentialCreators` before
+`POJOPropertiesCollector`, the visiting order model puts both off and visits them the other way round.
+`FindPublicAttributes`, `MutableStaticFields` and `UnreadFields` still run in SpotBugs for their other patterns.
+
+RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN (`src/java/spotbugs/compare/`, labs in `tests/fixtures/spotbugs/ref_boolean*`),
+priority 2, level `note`: `==` or `!=` between two `Boolean` objects, or a `Boolean` and an object of one of its
+supertypes. A field or local has the type of what was stored in it (a local whose values disagree keeps its
+declared type); a value typed with a type variable is never a `Boolean`. The message names the method around, the
+lambda's own method for a lambda, and each constructor for a field initializer. SpotBugs notes what each compared
+value is, the right one first: a local variable (a local only ever copied from another names that one), a field
+(`val$x` for a variable an anonymous or local class captures; a field of an outer instance is not noted) or the
+result of a call. With `Boolean.TRUE` or `Boolean.FALSE` on one side only one value is noted: a final field on its
+left, else the constant. The SARIF place is the last local noted, named in the last method noted (the called method,
+`java.lang` classes without their package, else the method around); else the last field, in the class around; else
+the method around. Comparisons of one method with the same place are one finding, on the first one's line.
+
+Open difference, measured with a lab: a local that is set to `Boolean.TRUE` before the comparison is noted as that
+constant by SpotBugs; the engine notes the local.
+
+On the six comparison code bases, SARIF results, same / missed / extra: commons-lang 1 / 0 / 0, jackson-databind
+15 / 0 / 0, the other four 0 / 0 / 0. `FindRefComparison` still runs in SpotBugs for its other patterns.
+
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in

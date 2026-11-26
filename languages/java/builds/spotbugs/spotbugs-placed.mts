@@ -3,6 +3,7 @@ export type Placed = {
   readonly levels: Readonly<Record<number, string>>;
   readonly classNamed?: readonly number[];
   readonly byArguments?: boolean;
+  readonly inMethodArgument?: boolean;
 };
 
 const ERROR = 'error';
@@ -96,5 +97,26 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS: {
     text: 'Equals method should not assume anything about the type of its argument',
     levels: { 2: 'note' },
+  },
+  PA_PUBLIC_PRIMITIVE_ATTRIBUTE: {
+    text: 'Primitive field is public',
+    levels: { 2: NOTE },
+  },
+  MS_SHOULD_BE_FINAL: {
+    text: "Field isn't final but should be",
+    levels: { 1: NOTE, 2: NOTE },
+  },
+  MS_PKGPROTECT: {
+    text: 'Field should be package protected',
+    levels: { 2: NOTE },
+  },
+  SS_SHOULD_BE_STATIC: {
+    text: 'Unread field: should this field be static?',
+    levels: { 2: NOTE },
+  },
+  RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN: {
+    text: 'Suspicious reference comparison of Boolean values',
+    levels: { 2: NOTE },
+    inMethodArgument: true,
   },
 };
