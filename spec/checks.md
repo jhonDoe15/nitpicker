@@ -768,6 +768,14 @@ a key seen twice.
 collection looked up by the current element's key whose test reads nothing of the element, so
 elements sharing the key repeat the same scan.
 
+`nitpicker/no-scan-per-call-over-fixed-collection` (production source, in `eslint-lint`) reports a
+scan (`find`, `some`, `filter`, a `for...of` that returns on a match) of a class field set only in the
+constructor, or of a module-level `const`, for an element equal to a parameter of the enclosing
+function, when that function is called from a loop or iteration callback or from three or more places
+in the file. Java has `ScanPerCallOverFixedCollection` (main PMD ruleset) for the same scan of a field
+(or its `values()`, `keySet()`, `entrySet()`) changed only in constructors, as a stream
+`filter(...).findFirst()`, `anyMatch`, `noneMatch` or an enhanced `for` that returns on a match.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

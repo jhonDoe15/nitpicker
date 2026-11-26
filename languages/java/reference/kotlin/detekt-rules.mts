@@ -15,6 +15,7 @@ type Defaults = { version: string; active: Record<string, string[]> };
 
 const parseDefaults: (text: string) => Defaults = JSON.parse;
 const oneWayRules: readonly OneWayRule[] = ONE_WAY_RULES;
+const ONE_WAY_BY_ID = new Map(oneWayRules.map((oneWay) => [oneWay.id, oneWay]));
 
 const DEFAULTS_FILE = new URL('./detekt-default-rules.json', import.meta.url);
 const NITPICKER_CONFIG = new URL('../../detekt/nitpicker-detekt.yml', import.meta.url);
@@ -55,7 +56,7 @@ function detektEntry(
   oneWay: boolean,
   texts: ToolText<DetektText>,
 ): RuleEntry {
-  const hint = oneWayRules.find((candidate) => candidate.id === `detekt.${ruleset}.${rule}`);
+  const hint = ONE_WAY_BY_ID.get(`detekt.${ruleset}.${rule}`);
   const { first, rest } = detektText(ruleset, rule, texts);
   return ruleEntry({
     tool: 'detekt',

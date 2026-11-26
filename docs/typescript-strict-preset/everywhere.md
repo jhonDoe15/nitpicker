@@ -2424,6 +2424,18 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   handed on outside the loop (a lookup table), exported, reassigned or returned, a function-local map, and a loop over
   an array literal. The cost only matters when the loop is long and the cached value is large; keep the value in a
   local of the loop body, or delete the entry once the item is done.
+- A function called from a loop or from many places does not scan an unchanging collection for its parameter
+  (`nitpicker/no-scan-per-call-over-fixed-collection`, production files). Each call walks every element, so the
+  calls together cost the number of calls times the size of the collection, where an index built once answers each
+  call at once. Reported: `find`, `findIndex`, `findLast`, `findLastIndex`, `some`, `every` or `filter` with a
+  one-parameter callback that compares (`===`, `==`) a side reading the element with a side reading a parameter of the
+  enclosing function, and a `for...of` whose body returns from an `if` with such a test, over a class field that only
+  the constructor sets or changes (or its `values()`, `keys()`, `entries()`), or over a module-level `const` that is
+  not exported and never changed; the enclosing function or method is called from a loop or an iteration callback, or
+  from three or more places in the file. Not reported: a scan that itself runs in a loop (another rule covers it), a
+  collection changed outside the constructor, a collection written out in the source (an array or object literal, or
+  `new Map` or `new Set` of an array literal), and a test against a constant. Build a `Map` from the compared value to
+  the element where the collection is filled and look the parameter up in it.
 - A whole tool package is not loaded to use one member that ships as its own package
   (`nitpicker/no-aggregate-package-for-one-member`, production files). `typescript-eslint` loads its parser, its
   plugin and every rule definition; loading it to use only the parser costs about 0.5 CPU seconds more than

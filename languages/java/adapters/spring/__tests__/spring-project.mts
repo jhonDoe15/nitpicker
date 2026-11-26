@@ -280,6 +280,7 @@ const REVIEW_RULES = new Set([
   'PerItemCacheGrowth',
   'JvmHeapWithoutGoal',
   'WholeListJsonText',
+  'ScanPerCallOverFixedCollection',
   'UnboundedCollectionField',
   'OptionalOrElseGetNull',
   'NullableLibraryResult',
