@@ -88,8 +88,11 @@ describe('memory kill messages', () => {
   });
 
   it('says when the peak could not be measured', () => {
-    expect(memoryKillMessage(['a', 'b'], { limit: 8 * GIB, source: 'machine total' })).toContain(
-      'The memory limit is 8.0 GB (machine total); the peak could not be measured.',
+    expect(memoryKillMessage(['a', 'b'], { limit: 8 * GIB, source: 'machine total' })).toBe(
+      '2 analyzers were killed with SIGKILL in this run (a, b), which almost always means the run ' +
+        'ran out of memory. The memory limit is 8.0 GB (machine total); the peak could not be ' +
+        'measured. Run fewer jobs at once with NITPICKER_MAX_PARALLEL, or give the job more ' +
+        'memory, and rerun.',
     );
   });
 });

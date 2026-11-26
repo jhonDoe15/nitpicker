@@ -72,10 +72,6 @@ function namedStreams(
     .flatMap((node) => streamUse(node, nameOf(node)));
 }
 
-function nameText(node: TSESTree.Identifier | TSESTree.StringLiteral): string {
-  return node.type === AST_NODE_TYPES.Identifier ? node.name : node.value;
-}
-
 function restStreamReads(context: Context, pattern: TSESTree.ObjectPattern): StreamUse[] {
   return pattern.properties
     .flatMap((property) =>
@@ -177,13 +173,16 @@ function checkPattern(state: State, pattern: TSESTree.ObjectPattern): void {
 }
 
 function importedName(specifier: Specifier): string | undefined {
-  return specifier.type === AST_NODE_TYPES.ImportSpecifier
-    ? nameText(specifier.imported)
-    : undefined;
+  if (specifier.type !== AST_NODE_TYPES.ImportSpecifier) {
+    return undefined;
+  }
+  const { imported } = specifier;
+  return imported.type === AST_NODE_TYPES.Identifier ? imported.name : imported.value;
 }
 
 function localName(specifier: Specifier): string {
-  return nameText(specifier.local);
+  const { local } = specifier;
+  return local.type === AST_NODE_TYPES.Identifier ? local.name : local.value;
 }
 
 function checkImport(state: State, declaration: TSESTree.ImportDeclaration): void {

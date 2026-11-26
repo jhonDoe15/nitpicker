@@ -56,7 +56,9 @@ function ownStrings(value: TSESTree.Node): readonly string[] {
 }
 
 function stringsIn(context: SourceContext, node: TSESTree.Node): string[] {
-  return [...resolvedValues(context, node, stringOperands, MAX_STRINGS_DEPTH)].flatMap(ownStrings);
+  return [
+    ...resolvedValues({ context, node, operandsOf: stringOperands, maxDepth: MAX_STRINGS_DEPTH }),
+  ].flatMap(ownStrings);
 }
 
 function namesTsconfig(context: SourceContext, target: TSESTree.Node): boolean {

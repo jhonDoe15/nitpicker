@@ -1,14 +1,12 @@
 import { cachedValue } from '../../../../../../../shared/values/caching/cached-value.mts';
 import { TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { variableNamed, type SourceCode } from '../../typed/node-views.mts';
+import { variableNamed, type FileContext, type SourceCode } from '../../typed/node-views.mts';
 import {
   localValue,
   moduleFactsOf,
   type ModuleFacts,
   type ResolvedValue,
 } from './module-facts.mts';
-
-export type FileContext = { readonly sourceCode: SourceCode; readonly filename: string };
 
 const { ScopeType } = TSESLint.Scope;
 const moduleScopes = new Set<string>([ScopeType.module, ScopeType.global]);

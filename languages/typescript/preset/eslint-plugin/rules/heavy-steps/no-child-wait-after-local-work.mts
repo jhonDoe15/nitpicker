@@ -3,7 +3,7 @@ import { findVariable, type SourceContext } from '../analysis/constant-resolutio
 import type { ModuleBindings } from '../analysis/subprocess-calls.mts';
 import { trackedBindings } from '../processes/process-callees.mts';
 import { ancestorsOf, contains } from '../typed/node-views.mts';
-import { startsChild, stepCall, type ChildBodies } from './child-steps.mts';
+import { childStarter, stepCall, type ChildStarter } from './child-steps.mts';
 
 type Step = {
   readonly statement: TSESTree.Statement;
@@ -12,11 +12,15 @@ type Step = {
   readonly plain: boolean;
 };
 
+type Scan = {
+  readonly context: SourceContext;
+  readonly bindings: ModuleBindings;
+  readonly startsChild: ChildStarter;
+};
+
 function stepOf(
-  context: SourceContext,
+  { context, bindings, startsChild }: Scan,
   statement: TSESTree.Statement,
-  bindings: ModuleBindings,
-  known: ChildBodies,
 ): Step | undefined {
   if (
     statement.type !== AST_NODE_TYPES.VariableDeclaration ||
@@ -25,14 +29,14 @@ function stepOf(
     return undefined;
   }
   const [declarator] = statement.declarations;
-  const call = stepCall(declarator?.init);
-  if (declarator?.id.type !== AST_NODE_TYPES.Identifier || call === undefined) {
+  const call = stepCall(declarator.init ?? undefined);
+  if (declarator.id.type !== AST_NODE_TYPES.Identifier || call === undefined) {
     return undefined;
   }
   return {
     statement,
     id: declarator.id,
-    child: startsChild(context, call, bindings, known),
+    child: startsChild(context, call, bindings),
     plain: call.callee.type === AST_NODE_TYPES.Identifier,
   };
 }
@@ -65,13 +69,9 @@ function combined(context: SourceContext, local: Step, child: Step): boolean {
   );
 }
 
-function check(
-  context: SourceContext,
-  body: TSESTree.BlockStatement,
-  bindings: ModuleBindings,
-  known: ChildBodies,
-): Step[] {
-  const steps = body.body.flatMap((statement) => stepOf(context, statement, bindings, known) ?? []);
+function check(scan: Scan, body: TSESTree.BlockStatement): Step[] {
+  const { context } = scan;
+  const steps = body.body.flatMap((statement) => stepOf(scan, statement) ?? []);
   return steps.filter(
     (step, index) =>
       step.child &&
@@ -101,16 +101,16 @@ export const rule: TSESLint.RuleModule<'childAfterLocalWork'> = {
     },
   },
   create(context) {
-    const known: ChildBodies = new Map();
+    const startsChild = childStarter();
     return trackedBindings('plain', (current) => {
-      const visit = (node: TSESTree.FunctionLike) => {
+      function visit(node: TSESTree.FunctionLike): void {
         if (node.body?.type !== AST_NODE_TYPES.BlockStatement) {
           return;
         }
-        for (const step of check(context, node.body, current(), known)) {
+        for (const step of check({ context, bindings: current(), startsChild }, node.body)) {
           context.report({ node: step.statement, messageId: 'childAfterLocalWork' });
         }
-      };
+      }
       return {
         FunctionDeclaration: visit,
         FunctionExpression: visit,

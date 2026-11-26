@@ -21,7 +21,7 @@ tester.run('no-unchecked-positional-element', rule, {
     script('const f = ({ children: [first] }) => first?.length;'),
     script('const f = ({ children: [first = empty] }) => first.length;'),
     script('const f = ({ children: [first] }) => first;'),
-    script('const f = ({ children: [first] }) => `$' + '{first}`;'),
+    script(`const f = ({ children: [first] }) => \`\${first}\`;`),
     script('const f = ({ children: [first] }) => first && keyOf(first);'),
     script('const f = ({ children: [, second] }) => (second ?? fallback).length;'),
     script('const f = ({ children: [first] }) => first.length;', '/repo/src/signature.mts'),

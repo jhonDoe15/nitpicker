@@ -7,6 +7,7 @@ mod design;
 pub mod ctx;
 mod errorprone;
 mod exceptions;
+mod flow;
 mod frameworks;
 mod logging;
 mod loops;
@@ -28,7 +29,8 @@ pub fn port(class: &str) -> Option<Port> {
     if let Some(found) = text::port(name).or_else(|| unused::port(name)).or_else(|| exceptions::port(name))
         .or_else(|| checks::port(name))
         .or_else(|| loops::port(name))
-        .or_else(|| logging::port(name)) {
+        .or_else(|| logging::port(name))
+        .or_else(|| flow::port(name)) {
         return Some(found);
     }
     match category {

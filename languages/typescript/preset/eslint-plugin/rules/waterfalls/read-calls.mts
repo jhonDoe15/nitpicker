@@ -3,13 +3,8 @@ import { findVariable, stringValue } from '../analysis/constant-resolution.mts';
 import { wordsOf as untypedWordsOf } from '../../../../../../shared/naming/secret-words.mts';
 import { ormSite } from '../support/orm/sites.mts';
 import { callChain, rootNode } from '../support/orm/chains.mts';
-import { nameOf } from '../typed/node-views.mts';
+import { nameOf, type FileContext } from '../typed/node-views.mts';
 import { callsReadOnlyFunction } from './project-reads/read-only-functions.mts';
-
-export type FileContext = {
-  readonly sourceCode: TSESLint.SourceCode;
-  readonly filename: string;
-};
 
 export type ReadStatement = {
   readonly statement: TSESTree.VariableDeclaration;
@@ -101,7 +96,12 @@ function isReadOrReadOnlyCall(
 ): boolean {
   return (
     isReadCall(call, orms) ||
-    callsReadOnlyFunction(call, context, (inner) => isReadCall(inner, orms), orms.join('\0'))
+    callsReadOnlyFunction({
+      call,
+      context,
+      isRead: (inner) => isReadCall(inner, orms),
+      optionsKey: orms.join('\0'),
+    })
   );
 }
 

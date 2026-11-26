@@ -83,11 +83,11 @@ export const rule: TSESLint.RuleModule<'copyForOnePass'> = {
   create(context) {
     return {
       CallExpression(node) {
-        node.arguments.forEach((argument, index) => {
+        for (const [index, argument] of node.arguments.entries()) {
           if (copiedList(context, argument) && iteratesOnce(context, node, index)) {
             context.report({ node: argument, messageId: 'copyForOnePass' });
           }
-        });
+        }
       },
     };
   },

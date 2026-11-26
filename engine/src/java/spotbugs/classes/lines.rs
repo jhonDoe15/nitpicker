@@ -10,28 +10,93 @@ fn first_part(node: Node) -> Option<Node> {
     named_children(node).into_iter().find(|part| !part.kind().ends_with("comment"))
 }
 
-/// The line javac gives an expression statement's first instruction: where the statement starts, or the `(` of a
-/// call that has nothing to load before it.
-fn expression_line(context: &Context, expression: Node) -> usize {
+/// The line javac marks for a condition's code: a binary test is placed at its operator.
+fn condition_line(context: &Context, condition: Node) -> usize {
+    let operator = match condition.kind() {
+        "binary_expression" => condition.child_by_field_name("operator"),
+        "method_invocation" => condition.child_by_field_name("arguments"),
+        "instanceof_expression" => children(condition).into_iter().find(|part| part.kind() == "instanceof"),
+        "ternary_expression" => children(condition).into_iter().find(|part| part.kind() == "?"),
+        _ => None,
+    };
+    context.line(operator.unwrap_or(condition))
+}
+
+/// Whether the first instruction of an expression comes after javac marked a line of its own inside it: a
+/// conditional's test, or a call with nothing loaded before it.
+fn leads_inside(context: &Context, expression: Node) -> bool {
+    let expression = crate::java::types::expr::unwrap(expression);
+    let part = |field: &str| expression.child_by_field_name(field).is_some_and(|inner| leads_inside(context, inner));
     match expression.kind() {
-        "method_invocation" if expression.child_by_field_name("object").is_none() => expression
-            .child_by_field_name("arguments")
-            .filter(|arguments| named_children(*arguments).iter().all(|part| part.kind().ends_with("comment")))
-            .map_or_else(|| context.line(expression), |arguments| context.line(arguments)),
-        "parenthesized_expression" => first_part(expression).map_or_else(|| context.line(expression), |inner| expression_line(context, inner)),
-        _ => context.line(expression),
+        "ternary_expression" => match super::super::folds::fixed(context, expression.child_by_field_name("condition")) {
+            None => true,
+            Some(test) => part(if test { "consequence" } else { "alternative" }),
+        },
+        "cast_expression" => part("value"),
+        "unary_expression" | "instanceof_expression" | "array_access" => first_part(expression).is_some_and(|inner| leads_inside(context, inner)),
+        "binary_expression" => {
+            let left = expression.child_by_field_name("left");
+            let text = left.is_some_and(|left| context.resolver.constant_string(left).is_some()) && expression.child_by_field_name("operator").is_some_and(|operator| context.text(operator) == "+");
+            if text { part("right") } else { part("left") }
+        }
+        "assignment_expression" => {
+            let plain = expression.child_by_field_name("operator").is_some_and(|operator| context.text(operator) == "=");
+            let target = expression.child_by_field_name("left");
+            let direct = target.is_some_and(|target| match target.kind() {
+                "identifier" => match context.resolver.binding(target, context.text(target)) {
+                    Some(crate::java::types::expr::Binding::Local(_)) => true,
+                    Some(crate::java::types::expr::Binding::Field(_, _, field)) => field.flags & crate::java::types::model::flag::STATIC != 0,
+                    None => false,
+                },
+                _ => false,
+            });
+            plain && direct && part("right")
+        }
+        "method_invocation" => {
+            let first = expression.child_by_field_name("arguments").and_then(first_part);
+            let resolved = context.resolver.resolve_call(expression);
+            let is_static = resolved.as_ref().is_some_and(|call| call.method.is_static);
+            let loads = match expression.child_by_field_name("object") {
+                None => !is_static,
+                Some(object) if is_static && !matches!(object.kind(), "method_invocation" | "object_creation_expression") => false,
+                Some(object) => return object.kind() != "super" && object.kind() != "this" && leads_inside(context, object),
+            };
+            !loads && first.is_none_or(|first| leads_inside(context, first))
+        }
+        "field_access" => expression.child_by_field_name("object").is_some_and(|object| !matches!(object.kind(), "this" | "super") && leads_inside(context, object)),
+        _ => false,
     }
 }
 
-/// The value of a condition written as `true` or `false`, which javac makes no code for.
-fn fixed(condition: Option<Node>) -> Option<bool> {
-    let condition = crate::java::types::expr::unwrap(condition?);
-    match condition.kind() {
-        "true" => Some(true),
-        "false" => Some(false),
-        "unary_expression" if condition.child(0).is_some_and(|operator| operator.kind() == "!") => condition.child_by_field_name("operand").and_then(|operand| fixed(Some(operand))).map(|value| !value),
-        _ => None,
+/// The lines javac marks inside an expression: each conditional's test and each call, outside lambdas and classes.
+fn marked_lines(context: &Context, expression: Node, lines: &mut Vec<usize>) {
+    match expression.kind() {
+        "lambda_expression" | "class_body" => return,
+        "ternary_expression" => match super::super::folds::fixed(context, expression.child_by_field_name("condition")) {
+            None => lines.extend(expression.child_by_field_name("condition").map(|condition| condition_line(context, condition))),
+            Some(test) => {
+                if let Some(chosen) = expression.child_by_field_name(if test { "consequence" } else { "alternative" }) {
+                    marked_lines(context, chosen, lines);
+                }
+                return;
+            }
+        },
+        "method_invocation" => lines.extend(expression.child_by_field_name("arguments").map(|arguments| context.line(arguments))),
+        _ => {}
     }
+    for part in named_children(expression) {
+        marked_lines(context, part, lines);
+    }
+}
+
+/// The lowest line of an expression's code when the statement holding it starts on `start`.
+fn lowest(context: &Context, expression: Node, start: usize) -> usize {
+    if !leads_inside(context, expression) {
+        return start;
+    }
+    let mut lines = Vec::new();
+    marked_lines(context, expression, &mut lines);
+    lines.into_iter().min().unwrap_or(start)
 }
 
 /// The line of the first instruction of a statement, if it makes any.
@@ -39,22 +104,34 @@ pub fn statement_start(context: &Context, statement: Node) -> Option<usize> {
     match statement.kind() {
         "block" | "constructor_body" => named_children(statement).into_iter().filter(|part| !part.kind().ends_with("comment")).find_map(|part| statement_start(context, part)),
         "labeled_statement" => named_children(statement).into_iter().skip(1).find_map(|part| statement_start(context, part)),
-        "try_statement" => statement.child_by_field_name("body").and_then(|body| statement_start(context, body)),
-        "do_statement" => statement.child_by_field_name("body").and_then(|body| statement_start(context, body)),
-        "local_variable_declaration" => declarators(statement)
-            .into_iter()
-            .find(|declarator| declarator.child_by_field_name("value").is_some())
-            .and_then(|declarator| declarator.child_by_field_name("name"))
-            .map(|name| context.line(name)),
-        "expression_statement" => first_part(statement).map(|expression| expression_line(context, expression)),
+        "try_statement" => statement
+            .child_by_field_name("body")
+            .and_then(|body| statement_start(context, body))
+            .or_else(|| children(statement).into_iter().find(|part| part.kind() == "finally_clause").and_then(|clause| named_children(clause).into_iter().find(|part| part.kind() == "block")).and_then(|block| statement_start(context, block))),
+        "do_statement" => statement
+            .child_by_field_name("body")
+            .and_then(|body| statement_start(context, body))
+            .or_else(|| statement.child_by_field_name("condition").map(|condition| lowest(context, condition, context.line(condition)))),
+        "local_variable_declaration" => declarators(statement).into_iter().find_map(|declarator| {
+            let value = declarator.child_by_field_name("value")?;
+            Some(lowest(context, value, context.line(declarator.child_by_field_name("name")?)))
+        }),
+        "expression_statement" => first_part(statement).map(|expression| lowest(context, expression, context.line(expression))),
+        "if_statement" if super::super::folds::fixed(context, statement.child_by_field_name("condition")).is_none() => {
+            statement.child_by_field_name("condition").map(|condition| lowest(context, condition, context.line(statement)))
+        }
         "explicit_constructor_invocation" => Some(context.line(statement)),
-        "while_statement" if fixed(statement.child_by_field_name("condition")) == Some(true) => statement.child_by_field_name("body").and_then(|body| statement_start(context, body)),
+        "while_statement" if super::super::folds::fixed(context, statement.child_by_field_name("condition")) == Some(true) => statement.child_by_field_name("body").and_then(|body| statement_start(context, body)),
         "for_statement" if statement.child_by_field_name("condition").is_none() && statement.child_by_field_name("init").is_none() => {
             statement.child_by_field_name("body").and_then(|body| statement_start(context, body))
         }
-        "for_statement" => statement.child_by_field_name("init").and_then(|init| statement_start(context, init)).or(Some(context.line(statement))),
-        "if_statement" if fixed(statement.child_by_field_name("condition")).is_some() => {
-            let branch = if fixed(statement.child_by_field_name("condition")) == Some(true) { "consequence" } else { "alternative" };
+        "for_statement" => statement
+            .child_by_field_name("init")
+            .and_then(|init| statement_start(context, init))
+            .or_else(|| statement.child_by_field_name("condition").map(|condition| lowest(context, condition, context.line(condition))))
+            .or(Some(context.line(statement))),
+        "if_statement" if super::super::folds::fixed(context, statement.child_by_field_name("condition")).is_some() => {
+            let branch = if super::super::folds::fixed(context, statement.child_by_field_name("condition")) == Some(true) { "consequence" } else { "alternative" };
             statement.child_by_field_name(branch).and_then(|branch| statement_start(context, branch))
         }
         ";" | "empty_statement" | "line_comment" | "block_comment" => None,
@@ -160,7 +237,8 @@ pub fn class_first(context: &Context, own: &str, class: Node, members: &[Node]) 
         instance_code |= !delegates(*constructor);
     }
     if constructors.is_empty() && !interface && class.kind() != "enum_declaration" {
-        lines.extend(class.child_by_field_name("name").map(|name| context.line(name)));
+        let keyword = children(class).into_iter().find(|part| part.kind() == "class");
+        lines.extend(keyword.or_else(|| class.child_by_field_name("name")).map(|name| context.line(name)));
     }
     for member in members {
         let is_static = interface || matches!(member.kind(), "static_initializer" | "enum_constant" | "constant_declaration") || has_modifier(*member, "static");

@@ -17,6 +17,7 @@ import {
 export type Ranged = { readonly range: readonly [number, number] };
 
 export type SourceCode = Readonly<TSESLint.SourceCode>;
+export type FileContext = { readonly sourceCode: SourceCode; readonly filename: string };
 export type LibraryBinding = { readonly source: string; readonly name: string | undefined };
 
 export function stringSourceBinding(
@@ -157,4 +158,42 @@ export function isPlainString(node: TSESTree.Node): boolean {
     (node.type === AST_NODE_TYPES.Literal && typeof node.value === 'string') ||
     (node.type === AST_NODE_TYPES.TemplateLiteral && node.expressions.length === 0)
   );
+}
+
+type SoleStatement = 'ReturnStatement' | 'ExpressionStatement';
+
+export function soleBodyValue(
+  fn: TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression,
+  statement: SoleStatement,
+): TSESTree.Node | undefined {
+  const { body } = fn;
+  if (body.type !== AST_NODE_TYPES.BlockStatement) {
+    return body;
+  }
+  const [only] = body.body;
+  if (body.body.length !== 1) {
+    return undefined;
+  }
+  if (only?.type === AST_NODE_TYPES.ReturnStatement && statement === 'ReturnStatement') {
+    return only.argument ?? undefined;
+  }
+  if (only?.type === AST_NODE_TYPES.ExpressionStatement && statement === 'ExpressionStatement') {
+    return only.expression;
+  }
+  return undefined;
+}
+
+export function compositeOperands(value: TSESTree.Node): TSESTree.Node[] | undefined {
+  if (value.type === AST_NODE_TYPES.TemplateLiteral) {
+    return value.expressions;
+  }
+  return value.type === AST_NODE_TYPES.BinaryExpression ? [value.left, value.right] : undefined;
+}
+
+export function nameText(node: TSESTree.Identifier | TSESTree.StringLiteral): string {
+  return node.type === AST_NODE_TYPES.Identifier ? node.name : node.value;
+}
+
+export function unwrapAwait(node: TSESTree.Node | undefined): TSESTree.Node | undefined {
+  return node?.type === AST_NODE_TYPES.AwaitExpression ? node.argument : node;
 }

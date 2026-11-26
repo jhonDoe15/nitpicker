@@ -615,12 +615,22 @@ Lombok reads `lombok.config`: from the outermost file to the nearest, with `clea
 `src/java/spotbugs/classes/` looks at a class as a whole. Findings on a class are placed on its first line as
 SpotBugs reports it: the lowest line any of the class's methods has code on, as `javac` writes the line table
 (`classes/lines.rs`). A constructor's code starts at its `this(...)` or `super(...)` call, else at the `{` of its
-body; a default constructor at the class name; field initializers at the field name (copied into each
+body; a default constructor at the `class` keyword; field initializers at the field name (copied into each
 constructor that does not call `this(...)`); a static constant needs no code; a method at its first statement
-that makes code (a local variable at its name, any other statement where it starts, except a call with no receiver
-and no arguments, at its `(`), or the closing brace of an empty body. A static initializer starts at its first
-statement; `while (true)`, `for (;;)` and an `if` on `true` or `false` start at the code of the body or branch
-that runs; a `for` starts at its initializer. A static constant needs no code only when its value reads literals
+that makes code (a local variable at its name, any other statement where it starts), or the closing brace of an
+empty body. `javac` also marks the test of each conditional expression (at the operator of a binary test, else
+`instanceof` at its keyword, else where the test starts) and each call (at its `(`); when the first
+instruction of a statement comes after such a mark (the statement starts with a conditional expression, or with a call that loads nothing before it: static,
+no receiver value, first argument also leading), the statement's lowest line is the lowest of those marks. An
+`if` is placed the same way by its condition; a `return` always has code on its own line. A static initializer
+starts at its first statement; `while`, `for (;;)` and `if` on a condition `javac` folds to `true` or `false`
+(`int` literals in any base, `boolean` and `int` fields set from a literal in any class, unary, arithmetic,
+bit, shift and comparison operators in 32 bits, `&&`, `||`) start at the code of the body or branch that runs,
+and a conditional expression on such a test makes only the chosen branch; a `for` starts at its initializer,
+else at its condition; a `do` with an empty body at its condition; a `try` with an empty body starts at its
+`finally` block, else at the next statement. Not modelled: constants set from an expression, local constants,
+`long`, `char` and `String` constants, the boxing and unboxing calls `javac` adds, a `for` update or for-each
+variable on a line of its own, and cloneable anonymous classes (SpotBugs reports CN_IDIOM at the `new`). A static constant needs no code only when its value reads literals
 and other such constants. Enums, records, classes that hold an `assert` and classes that get a bridge method (a
 method overriding one of a generic supertype whose erased parameters or result differ) also have code on the
 first line of the declaration, annotations included.
@@ -658,9 +668,10 @@ Clone idiom (#2261, `tests/fixtures/spotbugs/clones`):
   cloneable, and that is no thrower; priority 1 when it calls `super.clone()`.
 - CN_IDIOM is not reported either when the class has a covariant `clone()` of any access.
 
-Review labs (`sing_lazy`, `sing_clone`, `sing_first`) are exact. Not modelled yet: conditions on named
-constants (`if (DEBUG)`), the line of a conditional expression split over lines, a `try` whose body is empty
-before a `finally`, a class header with `class` and its name on separate lines, and a native `clone()`.
+- A native public `clone()` counts as a `clone()` that does not call `super.clone()` and has no line: SpotBugs
+  reports it without a region (line 0).
+
+Review labs (`sing_lazy`, `sing_clone`, `sing_first`) and the line labs (#2459, `class_lines`) are exact.
 
 On the six comparison code bases built here (Elasticsearch not built), SARIF results, same / missed / extra:
 singletons 122 / 1 / 0, clone idiom 112 / 0 / 0. The missed one is SING_SINGLETON_HAS_NONPRIVATE_CONSTRUCTOR on
@@ -669,6 +680,80 @@ subclasses are singletons handed out as the abstract type; test classes of the s
 Real runs give both detectors to the engine (`MultipleInstantiationsOfSingletons` and `CloneIdiom` no longer
 run in SpotBugs), except the singleton patterns on Lombok modules, whose generated constructors the engine does
 not see.
+
+Equals patterns (#2261, labs in `tests/fixtures/spotbugs/eq_*` and `bc_equals*`), all priority 2 and level `note`:
+
+- EQ_DOESNT_OVERRIDE_EQUALS: a class (also an anonymous, local, nested or generic one) that is not abstract, not an
+  enum, record or interface, declares an instance field that is not `transient` (final and volatile count; static
+  fields, the hidden outer instance and captured variables do not), declares no `equals(Object)` and no public
+  `equals(Self)`, and whose nearest superclass that declares `equals(Object)` (not `Object`) is not abstract and
+  does not declare it `abstract` or `final`. An abstract class without `equals` on the way is skipped; a superclass
+  the class path does not hold stops the search. A public class below a package-private one that declares a public
+  `equals(Object)` gets a bridge from javac, which then is the class that declares it. Reported on line 1. The
+  message and the SARIF arguments name the declaring class with its package, or without it when it is in the same
+  package as the reported class (`Outer$Inner` kept); the place is always the full name, the file the reported
+  class's.
+- EQ_COMPARETO_USE_OBJECT_EQUALS: a concrete class that declares a non-static `int compareTo(Self)` or
+  `int compareTo(Object)` (any access; `Comparable` is not needed), and neither it nor any superclass declares
+  `equals(Object)`. `compareTo(Self)` wins over `compareTo(Object)`. A method that overrides a generic `compareTo(T)`
+  of a supertype with another parameter type brings javac's bridge `compareTo(Object)`, reported at the first line of
+  the class declaration (modifiers and annotations included, `tests/fixtures/spotbugs/eq_compareto3`). Otherwise
+  the line is the first instruction of the method. Abstract classes are priority 3, which SpotBugs hides, and
+  are not reported.
+- BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS: a `public boolean equals(Object)` whose first cast of the argument
+  (or of a local copy of it) to a type other than `Object` comes before any `instanceof` on it, `o.getClass()`,
+  `isInstance(o)` or `super.equals(o)`, and lies in no `try` with a `catch` or `finally`, nor in a `synchronized`
+  block. Lambdas and classes declared inside are separate methods. A `switch` on the argument with a type pattern
+  counts as a cast. The line is that of the statement (the name of the variable for a declaration, the operator of
+  an assignment).
+
+Open differences, each measured with a lab: a cast that is only reached when an `int` field or variable equals a
+non-zero constant (`x == 1 && ((C) o).x == 2`) is not reported by SpotBugs, the engine reports it. A cast in a
+statement that spans lines, after an argument that javac boxes, gets the line of that argument
+(`both(\n y,\n ((C) o).x)` is the second line), the engine gives the line of the statement. Casts in the branches of
+a `?:` over several lines were not modelled.
+
+On the six comparison code bases built here, SARIF results, same / missed / extra:
+commons-lang 1 / 0 / 0, MyBatis 1 / 0 / 0, Guava 5 / 0 / 0, jackson-databind 9 / 0 / 0, javaparser-core 1 / 0 / 0,
+Nacos 13 / 0 / 0 (Elasticsearch not built). The jackson-databind results are the seven BC findings, one
+EQ_COMPARETO and one EQ_DOESNT. Real runs give the three patterns to the engine; `FindHEmismatch` and `DumbMethods`
+still run in SpotBugs for their other patterns.
+
+Serialization patterns (#2261, `src/java/spotbugs/serial/`, labs in `tests/fixtures/spotbugs/serial_*`). Both look at
+a class that is `Serializable`, not `Externalizable`, not abstract, not an interface, enum or record:
+
+- SE_NO_SERIALVERSIONID, priority 2, level `note`: a named class (not anonymous, not a `Throwable`) that declares a
+  `transient` field (static ones count) and no `static final serialVersionUID` of a primitive type. Without a
+  `transient` field SpotBugs gives priority 3, which it hides. Class first line, place the class.
+- SE_BAD_FIELD: each instance field that is not `transient`, unless it is `final` and only ever given `null`. No line
+  (the SARIF result has no region), place the field, arguments the class and the field name. Priority 1 is level
+  `warning`, 2 `note`. The class *commits* to serialization when it lists `Serializable` itself, declares
+  `readObject(x)`, `writeObject(x)` or `readResolve()` (any access, static too), or a `transient` field. The field
+  holds the classes of its declared type: an array holds its elements; a `Collection` or `Map` holds its type
+  arguments (wildcards hold nothing) and, when it is a class that cannot be serialized, itself. When every
+  non-null value the class stores in the field has one type, the field holds that type instead (an anonymous class
+  that is not serializable is a sure case; a cast array holds its erased element). Each held class is judged:
+  - serializable, `Object`, `Iterable`, `CharSequence`, `Comparable`, `Cloneable`, a type variable: fine.
+  - a class (not abstract) that cannot be serialized: sure, unless a known serializable class extends it, then
+    likely.
+  - an interface or abstract class: likely, unless a known serializable class is the first class below it (its
+    superclass is the judged type itself or not below it), or a known serializable interface extends it; then fine.
+  Known classes are the classes of the run and the classes their compiled form names: created, cast to, tested,
+  caught, named by a class literal or in a method or field signature, or holding a called method or used static
+  field; member classes of the classes whose code is loaded count as known subtypes of interfaces and abstract
+  classes only. A local variable's declared type is not among them.
+  Priority: sure is 1 when the class commits, else 2; likely is 2 when the class commits or declares a
+  `serialVersionUID`, else 3. A `Throwable` adds one; a class with an outer instance (an inner class, or a local or anonymous class
+  declared in instance code) adds one unless it commits.
+  Priority 3 and above are hidden.
+
+Open differences, each measured with a lab: SpotBugs also knows JDK classes that the code of loaded JDK classes
+names (`Comparator.naturalOrder()`, or a run that loads `ObjectInputStream`, makes a serializable `Comparator` known,
+turning a `Comparator` field from priority 2 into 3); the engine does not, so it reports such a field at priority 2.
+
+On the six comparison code bases, SARIF results, same / missed / extra: commons-lang 0 / 0 / 0, MyBatis 4 / 0 / 0,
+Guava 41 / 0 / 0, jackson-databind 42 / 0 / 0, javaparser-core 2 / 0 / 0, Nacos 82 / 0 / 0. `SerializableIdiom`
+still runs in SpotBugs for its other patterns.
 
 ## Names the compiler makes up
 

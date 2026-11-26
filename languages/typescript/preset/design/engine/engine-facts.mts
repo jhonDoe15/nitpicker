@@ -71,16 +71,18 @@ function ownedFiles(rootNames: readonly string[], request: Request): Owned[] {
 }
 
 function hasTypedComment(text: string): boolean {
-  let start = text.indexOf(COMMENT_START);
-  while (start !== -1) {
+  const starts = [text.indexOf(COMMENT_START)];
+  for (const start of starts) {
+    if (start === -1) {
+      return false;
+    }
     const end = text.indexOf(COMMENT_END, start + COMMENT_START.length - 1);
     if (DOCUMENTATION_TYPE.test(text.slice(start, end === -1 ? text.length : end))) {
       return true;
     }
-    if (end === -1) {
-      return false;
+    if (end !== -1) {
+      starts.push(text.indexOf(COMMENT_START, end + COMMENT_END.length));
     }
-    start = text.indexOf(COMMENT_START, end + COMMENT_END.length);
   }
   return false;
 }

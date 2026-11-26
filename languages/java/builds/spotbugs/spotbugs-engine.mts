@@ -54,6 +54,11 @@ export const ON_ENGINE: readonly string[] = [
   'CN_IDIOM',
   'CN_IDIOM_NO_SUPER_CALL',
   'CN_IMPLEMENTS_CLONE_BUT_NOT_CLONEABLE',
+  'EQ_DOESNT_OVERRIDE_EQUALS',
+  'EQ_COMPARETO_USE_OBJECT_EQUALS',
+  'BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS',
+  'SE_BAD_FIELD',
+  'SE_NO_SERIALVERSIONID',
 ];
 const LOMBOK_WRITES = 'SING_';
 const DETECTORS: Readonly<Record<string, readonly string[]>> = {
@@ -225,12 +230,12 @@ export function spotbugsOnEngine(
   if (!usable(plan, binary) || processors === 'other') {
     return [];
   }
-  const patterns =
-    processors === 'lombok'
-      ? ON_ENGINE.filter((pattern) => !pattern.startsWith(LOMBOK_WRITES))
-      : ON_ENGINE;
+  const lombok = processors === 'lombok';
+  const patterns = lombok
+    ? ON_ENGINE.filter((pattern) => !pattern.startsWith(LOMBOK_WRITES))
+    : ON_ENGINE;
   try {
-    const report = engineReport(plan, processors === 'lombok', { binary, environment, run });
+    const report = engineReport(plan, lombok, { binary, environment, run });
     const sarif = engineSarif(report, patterns);
     writeFileSync(path.join(plan.reportDir, SPOTBUGS_ENGINE_SARIF), sarif);
     return spotbugsArgumentsFor(plan.reportDir, patterns);

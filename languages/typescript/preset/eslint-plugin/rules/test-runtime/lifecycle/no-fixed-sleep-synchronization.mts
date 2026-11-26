@@ -15,7 +15,13 @@ import {
   moduleBindings,
 } from '../../analysis/test-code-analysis.mts';
 import type { ModuleBindings } from '../../analysis/subprocess-calls.mts';
-import { depthFirst, isNode, nameOf, objectChildren } from '../../typed/node-views.mts';
+import {
+  depthFirst,
+  isNode,
+  nameOf,
+  objectChildren,
+  soleBodyValue,
+} from '../../typed/node-views.mts';
 
 type MessageId = 'fixedSleep' | 'negativeTimeoutAssertion' | 'playwrightTimeout' | 'cypressWait';
 
@@ -54,17 +60,7 @@ function isSchedulerWait(callee: TSESTree.Node, timerPromises: ModuleBindings): 
 }
 
 function singleExpression(callback: TSESTree.Node): TSESTree.Node | undefined {
-  if (!isFunctionNode(callback)) {
-    return undefined;
-  }
-  const { body } = callback;
-  if (body.type !== AST_NODE_TYPES.BlockStatement) {
-    return body;
-  }
-  const [only] = body.body;
-  return body.body.length === 1 && only?.type === AST_NODE_TYPES.ExpressionStatement
-    ? only.expression
-    : undefined;
+  return isFunctionNode(callback) ? soleBodyValue(callback, 'ExpressionStatement') : undefined;
 }
 
 function onlyCalls(callback: TSESTree.Node | undefined, resolveName: string): boolean {

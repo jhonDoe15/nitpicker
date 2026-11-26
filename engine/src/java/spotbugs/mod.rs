@@ -3,17 +3,20 @@
 mod calls;
 mod classes;
 mod constructors;
+mod equality;
 mod expose;
 mod fields;
 mod handlers;
 mod held;
 mod flow;
+mod folds;
 mod known;
 mod lombok;
 mod mutable;
 mod names;
 mod nulls;
 mod order;
+mod serial;
 pub mod place;
 mod observed;
 mod statements;
@@ -51,6 +54,8 @@ pub struct Context<'a> {
     compiled: std::cell::OnceCell<crate::java::javac::Names<'a>>,
     /// How many stores the file makes into each field, worked out once.
     pub store_counts: std::cell::OnceCell<HashMap<(String, String), usize>>,
+    /// SE_BAD_FIELD findings that wait for the classes the whole run knows.
+    pub serial: RefCell<Vec<serial::Pending>>,
 }
 
 impl<'a> Context<'a> {
@@ -85,6 +90,7 @@ impl<'a> Context<'a> {
             out,
             compiled: std::cell::OnceCell::new(),
             store_counts: std::cell::OnceCell::new(),
+            serial: RefCell::new(Vec::new()),
         };
         (context, declared)
     }
@@ -121,6 +127,10 @@ impl<'a> Context<'a> {
     pub fn report_listed(&self, pattern: &'static str, at: Node, line: usize, message: String, place: String, priority: u8, arguments: Vec<String>) {
         let found = self.finding(pattern, at, line, message).map(|finding| Finding { symbol: Some(place), priority: Some(priority), arguments: Some(arguments), ..finding });
         self.out.borrow_mut().extend(found);
+    }
+    /// A finding as `report_listed` makes it, kept back for the caller to decide its priority later.
+    pub fn finding_listed(&self, pattern: &'static str, at: Node, line: usize, message: String, place: String, arguments: Vec<String>) -> Option<Finding> {
+        self.finding(pattern, at, line, message).map(|finding| Finding { symbol: Some(place), arguments: Some(arguments), ..finding })
     }
     fn finding(&self, pattern: &'static str, at: Node, line: usize, message: String) -> Option<Finding> {
         if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == pattern)) || self.suppressed(pattern, at) {
@@ -194,6 +204,7 @@ const DETECTORS: &[Detector] = &[
 pub struct SpotBugs {
     known: known::Known,
     elsewhere: nulls::Elsewhere,
+    serial: serial::Serial,
 }
 
 impl FileRule for SpotBugs {
@@ -218,11 +229,15 @@ impl FileRule for SpotBugs {
         }
         nulls::null_dereference(&context, &declared);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
+        if context.wants(&["SE_BAD_FIELD"]) {
+            self.serial.note(serial::referenced(&context), context.serial.take());
+        }
         out.append(&mut context.out.into_inner());
     }
     fn finish(&self, project: &Project, out: &mut Vec<Finding>) {
         if let Some(project) = project.downcast_ref::<JavaProject>() {
             self.known.settle(&project.index, out);
+            self.serial.settle(project, out);
         }
     }
 }

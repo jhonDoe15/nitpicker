@@ -11,7 +11,7 @@ const MAPS = new Set(['Map', 'WeakMap']);
 const SHRINKS = new Set(['delete', 'clear']);
 const MODULE_SCOPES = new Set(['module', 'global']);
 
-function isNewMap(node: TSESTree.Node | null | undefined): boolean {
+function isNewMap(node: TSESTree.Node | undefined): boolean {
   return (
     node?.type === AST_NODE_TYPES.NewExpression &&
     MAPS.has(nameOf(node.callee) ?? '') &&
@@ -34,7 +34,7 @@ function moduleCache(context: SourceContext, node: TSESTree.Identifier): Cache |
     !MODULE_SCOPES.has(variable.scope.type) ||
     definition?.node.type !== AST_NODE_TYPES.VariableDeclarator ||
     definition.node.parent.parent.type === AST_NODE_TYPES.ExportNamedDeclaration ||
-    !isNewMap(definition.node.init)
+    !isNewMap(definition.node.init ?? undefined)
   ) {
     return undefined;
   }
@@ -84,7 +84,7 @@ function fieldCache(member: TSESTree.MemberExpression, fields: Fields): Cache | 
   if (
     owner === undefined ||
     field?.type !== AST_NODE_TYPES.PropertyDefinition ||
-    !isNewMap(field.value)
+    !isNewMap(field.value ?? undefined)
   ) {
     return undefined;
   }

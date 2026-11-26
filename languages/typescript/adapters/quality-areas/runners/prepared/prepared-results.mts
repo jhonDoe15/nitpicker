@@ -34,9 +34,13 @@ function shellOf(value: unknown): Record<string, unknown> {
   return Array.isArray(value) ? Object.assign<unknown[], Record<string, unknown>>([], {}) : {};
 }
 
+function rebasedLeaf(value: unknown, roots: Roots): unknown {
+  return typeof value === 'string' ? rebasedPath(value, roots) : value;
+}
+
 function rebased(value: unknown, roots: Roots): unknown {
   if (!isContainer(value)) {
-    return typeof value === 'string' ? rebasedPath(value, roots) : value;
+    return rebasedLeaf(value, roots);
   }
   const result: Record<string, unknown> = shellOf(value);
   const pending: [unknown, Record<string, unknown>][] = [[value, result]];
@@ -48,7 +52,7 @@ function rebased(value: unknown, roots: Roots): unknown {
       const copy = shellOf(item);
       target[Array.isArray(source) ? key : rebasedPath(key, roots)] = isContainer(item)
         ? copy
-        : rebased(item, roots);
+        : rebasedLeaf(item, roots);
       pending.push([item, copy]);
     }
   }
