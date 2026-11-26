@@ -91,8 +91,9 @@ impl<'t> Flow<'_, 't> {
         match unit.kind() {
             "method_declaration" => {
                 let Some(kind) = unit.child_by_field_name("type") else { return false };
-                let primitive = matches!(kind.kind(), "integral_type" | "floating_point_type" | "boolean_type" | "void_type");
-                !primitive && self.context.text(kind) != "Void" && !crate::java::helpers::marked_nullable(self.context.file, unit)
+                let array = unit.child_by_field_name("dimensions").is_some();
+                let primitive = !array && matches!(kind.kind(), "integral_type" | "floating_point_type" | "boolean_type" | "void_type");
+                !primitive && (array || self.context.text(kind) != "Void") && !crate::java::helpers::marked_nullable(self.context.file, unit)
             }
             "lambda_expression" => {
                 let resolver = self.context.resolver;
@@ -183,12 +184,16 @@ impl<'t> Flow<'_, 't> {
             "unary_expression" | "update_expression" => true,
             "assignment_expression" if operator == Some("=") => field("right") == Some(node) && field("left").is_some_and(|left| self.primitive(left)),
             "assignment_expression" => field("left").and_then(|left| self.context.resolver.type_of(left)).is_none_or(|kind| kind.name() != "java.lang.String"),
-            "variable_declarator" => field("value") == Some(node) && primitive_name(parent(above).and_then(|declaration| declaration.child_by_field_name("type"))),
+            "variable_declarator" => {
+                let declared = parent(above).and_then(|declaration| declaration.child_by_field_name("type"));
+                field("value") == Some(node) && field("dimensions").is_none() && primitive_name(declared)
+            }
             "cast_expression" => field("value") == Some(node) && primitive_name(field("type")),
             "array_access" => field("index") == Some(node),
             "return_statement" => {
                 let method = crate::engine::source::ancestor(above, &["lambda_expression", "method_declaration", "class_body"]);
-                primitive_name(method.filter(|method| method.kind() == "method_declaration").and_then(|method| method.child_by_field_name("type")))
+                let method = method.filter(|method| method.kind() == "method_declaration" && method.child_by_field_name("dimensions").is_none());
+                primitive_name(method.and_then(|method| method.child_by_field_name("type")))
             }
             "argument_list" => {
                 let Some(call) = parent(above) else { return false };

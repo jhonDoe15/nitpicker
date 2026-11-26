@@ -83,7 +83,7 @@ fn join(target: &mut Option<Store>, from: &Store) -> bool {
 
 fn annotated_packages() -> &'static [String] {
     static PACKAGES: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
-    PACKAGES.get_or_init(|| std::env::var("NP_NULLAWAY_PACKAGES").map(|list| list.split(',').map(String::from).collect()).unwrap_or_default())
+    PACKAGES.get_or_init(|| std::env::var("NP_NULLAWAY_PACKAGES").map(|list| list.split(',').map(str::trim).filter(|one| !one.is_empty()).map(String::from).collect()).unwrap_or_default())
 }
 
 /// Whether a debug switch (`NP_DBG` for call resolution, `NP_TRACE` for step values) names the line of a node,
@@ -962,8 +962,11 @@ fn unmarked(context: &Context, node: Node) -> bool {
         }
         current = parent(at);
     }
-    let package = &context.resolver.scope.package;
-    context.resolver.index.get(&format!("{package}.package-info")).is_some_and(|info| info.flags & flag::NULL_UNMARKED != 0)
+    let package = context.resolver.scope.package.as_str();
+    let packages = annotated_packages();
+    let listed = packages.is_empty() || packages.iter().any(|one| package.strip_prefix(one.as_str()).is_some_and(|rest| rest.is_empty() || rest.starts_with('.')));
+    let on_package = context.resolver.index.get(&format!("{package}.package-info")).map_or(0, |info| info.flags);
+    on_package & flag::NULL_UNMARKED != 0 || !listed && on_package & flag::NULL_MARKED == 0
 }
 
 pub fn null_away(context: &Context, root: Node) {
