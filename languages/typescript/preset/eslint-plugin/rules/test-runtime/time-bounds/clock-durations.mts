@@ -3,7 +3,9 @@ import { nameOf, variableNamed } from '../../typed/node-views.mts';
 import { isWallRead } from '../../wall-clock/no-wall-clock-elapsed.mts';
 
 type Context = Readonly<TSESLint.RuleContext<string, readonly unknown[]>>;
-type Clock = 'date' | 'performance';
+const PERFORMANCE = 'performance';
+
+type Clock = 'date' | typeof PERFORMANCE;
 
 function readClock(node: TSESTree.Node): Clock | undefined {
   if (isWallRead(node)) {
@@ -12,24 +14,25 @@ function readClock(node: TSESTree.Node): Clock | undefined {
   const isPerformanceNow =
     node.type === AST_NODE_TYPES.CallExpression &&
     node.callee.type === AST_NODE_TYPES.MemberExpression &&
-    nameOf(node.callee.object) === 'performance' &&
+    nameOf(node.callee.object) === PERFORMANCE &&
     nameOf(node.callee.property) === 'now';
-  return isPerformanceNow ? 'performance' : undefined;
+  return isPerformanceNow ? PERFORMANCE : undefined;
 }
 
-function writtenValues(variable: TSESLint.Scope.Variable): (TSESTree.Node | null | undefined)[] {
-  const initial = variable.defs
-    .map((definition) =>
-      definition.node.type === AST_NODE_TYPES.VariableDeclarator ? definition.node.init : undefined,
-    )
-    .filter((value) => value !== null);
+function writtenValues(variable: TSESLint.Scope.Variable): (TSESTree.Node | undefined)[] {
+  const initial = variable.defs.flatMap((definition) => {
+    if (definition.node.type !== AST_NODE_TYPES.VariableDeclarator) {
+      return [undefined];
+    }
+    return definition.node.init ? [definition.node.init] : [];
+  });
   const assigned = variable.references
     .filter((reference) => reference.isWrite() && reference.init !== true)
-    .map((reference) => reference.writeExpr);
+    .map((reference) => reference.writeExpr ?? undefined);
   return [...initial, ...assigned];
 }
 
-function heldValues(context: Context, node: TSESTree.Node): (TSESTree.Node | null | undefined)[] {
+function heldValues(context: Context, node: TSESTree.Node): (TSESTree.Node | undefined)[] {
   if (node.type !== AST_NODE_TYPES.Identifier) {
     return [node];
   }
@@ -79,13 +82,11 @@ export function isMeasuredDuration(context: Context, node: TSESTree.Node): boole
   const values = heldValues(context, node);
   return (
     values.length > 0 &&
-    values.every(
-      (value) => value !== null && value !== undefined && isClockDifference(context, value),
-    )
+    values.every((value) => value !== undefined && isClockDifference(context, value))
   );
 }
 
-const CLOCK_OWNERS = new Set(['Date', 'performance']);
+const CLOCK_OWNERS = new Set(['Date', PERFORMANCE]);
 const SPIES = new Set(['spyOn', 'stub', 'replace']);
 const FAKE_CLOCK_LIBRARIES = new Set(['FakeTimers', 'fakeTimers', 'lolex']);
 

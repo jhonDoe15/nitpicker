@@ -25,7 +25,7 @@ function isEndless(node: Loop): boolean {
   return isTrue(node.test);
 }
 
-function isTrue(node: TSESTree.Node): boolean {
+export function isTrue(node: TSESTree.Node): boolean {
   return node.type === AST_NODE_TYPES.Literal && node.value === true;
 }
 

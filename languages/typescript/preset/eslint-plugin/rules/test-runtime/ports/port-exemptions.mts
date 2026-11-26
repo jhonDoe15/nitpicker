@@ -6,7 +6,7 @@ import { forEachNode } from '../../analysis/node/wrapper-calls.mts';
 
 const MAX_PORT = 65_535;
 const TAKEN_PORT_TITLE =
-  /\bEADDRINUSE\b|\bport\b.*\b(?:not available|in use|occupied|taken|busy)\b/iu;
+  /\bEADDRINUSE\b|\bport\b.+\b(?:not available|in use|occupied|taken|busy)\b/iu;
 const FAIL_OWNERS = new Set(['assert', 't', 'expect', 'chai']);
 const LISTEN_DOUBLE = /^(?:listen|(?:spy|stub|mock)\w*Listen|listen(?:Spy|Stub|Mock))$/iu;
 
