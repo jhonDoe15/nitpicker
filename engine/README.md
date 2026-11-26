@@ -49,7 +49,10 @@ on (`NITPICKER_JDK`), and takes PMD's `--suppress-marker` from `NP_SUPPRESS_MARK
 as `pmd-engine.sarif` next to `pmd.sarif` and join PMD's findings when the reports are read.
 
 - A file the grammar cannot read in full (`syntaxErrorFiles` in the report) goes back to PMD with the XPath
-  rules that cover it, and the engine's findings in it are dropped.
+  rules that cover it, and the engine's findings in it are dropped. Grammar gaps in valid Java are masked before
+  parsing, keeping every byte in place (`src/java/grammar.rs`): an annotation before `...`, a qualified record
+  pattern, and a NUL character in a string, text block, character literal or comment, where the grammar would
+  stop. A NUL in code leaves the file broken.
 - The engine's findings in a file PMD could not read are dropped: PMD reports none there.
 - A project's own PMD ruleset stays with PMD as it is.
 - PMD runs every rule, as before, when `NITPICKER_ENGINE=off`, when there is no engine binary for the
