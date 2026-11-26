@@ -10,7 +10,7 @@ mod exceptions;
 mod frameworks;
 mod logging;
 mod loops;
-mod message;
+pub(crate) mod message;
 mod performance;
 mod text;
 mod unused;

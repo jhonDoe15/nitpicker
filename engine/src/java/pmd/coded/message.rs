@@ -1,6 +1,7 @@
 //! A finding's message as PMD writes it for a rule written in Java: `java.text.MessageFormat` with the arguments the
 //! rule gives, then `${name}` replaced by the variable the finding is about or by a rule property.
 use super::ctx::Ctx;
+use crate::java::types::model::Type;
 
 pub(super) const EXPRESSIONS: &[&str] = &[
     "AmbiguousName",
@@ -171,5 +172,113 @@ pub fn written_type(ctx: &Ctx, kind: u32, out: &mut String) {
         "IntersectionType" => join(out, ctx.kids(kind).to_vec(), " & "),
         "AmbiguousName" => out.push_str(&ctx.text(kind, "Name")),
         _ => {}
+    }
+}
+
+/// How PMD's `TypePrettyPrint` writes a type: simple or binary class names, `Outer#Inner` for inner classes, and the
+/// bounds of type variables once a generic declaration was written.
+pub struct TypePrinter<'i> {
+    pub index: &'i crate::java::types::index::TypeIndex,
+    pub qualify: bool,
+    pub bounds: Option<bool>,
+    /// Type variables in scope and their bound as PMD writes it; `None` for an `Object` bound.
+    pub known: Vec<(String, Option<String>)>,
+}
+
+impl TypePrinter<'_> {
+    fn outer(&self, name: &str) -> Option<String> {
+        if let Some((outer, _)) = name.rsplit_once('$') {
+            return Some(outer.to_string());
+        }
+        let (outer, _) = name.rsplit_once('.')?;
+        self.index.get(outer).is_some().then(|| outer.to_string())
+    }
+
+    fn inner(&self, name: &str) -> Option<String> {
+        use crate::java::types::model::flag;
+        let outer = self.outer(name)?;
+        let info = self.index.get(name)?;
+        let in_interface = self.index.get(&outer).is_some_and(|outer| outer.is_interface);
+        let implicit = in_interface || info.is_interface || info.flags & (flag::STATIC | flag::ENUM | flag::RECORD) != 0;
+        (!implicit).then_some(outer)
+    }
+
+    fn simple(name: &str) -> &str {
+        let tail = name.rsplit('.').next().unwrap_or(name);
+        tail.rsplit('$').next().unwrap_or(tail)
+    }
+
+    pub fn class(&mut self, name: &str, arguments: &[Type], out: &mut String) {
+        if let Some(outer) = self.inner(name) {
+            self.class(&outer, &[], out);
+            out.push('#');
+            out.push_str(Self::simple(name));
+        } else if self.qualify {
+            match self.outer(name) {
+                Some(outer) => {
+                    self.class(&outer, &[], out);
+                    out.push('$');
+                    out.push_str(Self::simple(name));
+                }
+                None => out.push_str(name),
+            }
+        } else {
+            out.push_str(Self::simple(name));
+        }
+        self.list(arguments, "<", ">", false, out);
+    }
+
+    pub fn list(&mut self, items: &[Type], open: &str, close: &str, varargs: bool, out: &mut String) {
+        if items.is_empty() {
+            return;
+        }
+        out.push_str(open);
+        for (at, item) in items.iter().enumerate() {
+            if at > 0 {
+                out.push_str(", ");
+            }
+            self.kind(item, varargs && at + 1 == items.len(), out);
+        }
+        out.push_str(close);
+    }
+
+    pub fn variable(&mut self, name: &str, out: &mut String) {
+        out.push_str(name);
+        let bound = self.known.iter().rev().find(|(known, _)| known == name).and_then(|(_, bound)| bound.clone());
+        if self.bounds == Some(true)
+            && let Some(bound) = bound
+        {
+            out.push_str(" extends ");
+            out.push_str(&bound);
+        }
+    }
+
+    /// A bound as PMD writes it: type variables inside it without their own bounds.
+    pub fn bound(&mut self, bound: &Type) -> Option<String> {
+        if bound.name() == crate::java::types::model::OBJECT {
+            return None;
+        }
+        let saved = self.bounds.replace(false);
+        let mut out = String::new();
+        self.kind(bound, false, &mut out);
+        self.bounds = saved;
+        Some(out)
+    }
+
+    pub fn kind(&mut self, kind: &Type, varargs: bool, out: &mut String) {
+        match kind {
+            Type::Class(name, arguments) => self.class(name, arguments, out),
+            Type::Array(element) => {
+                self.kind(element, false, out);
+                out.push_str(if varargs { "..." } else { "[]" });
+            }
+            Type::Wildcard => out.push('?'),
+            Type::Bounded(lower, bound) => {
+                out.push_str(if *lower { "? super " } else { "? extends " });
+                self.kind(bound, false, out);
+            }
+            Type::Variable(name) => self.variable(name, out),
+            other => out.push_str(&other.name()),
+        }
     }
 }
