@@ -36,6 +36,7 @@ import { rule as ruleNoReleaseOutsideFinally } from '../rules/resources/release/
 import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mts';
 import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-call-under-lock.mts';
 import { rule as ruleNoRepeatedCall } from '../rules/repeated-work/repeated-calls/no-repeated-call.mts';
+import { rule as ruleNoRepeatedKeyedScan } from '../rules/repeated-work/keyed-scans/no-repeated-keyed-scan.mts';
 import { rule as ruleNoRepeatedParsePerItem } from '../rules/repeated-work/parses/no-repeated-parse-per-item.mts';
 import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeated-string-literal.mts';
 import { rule as ruleNoReplacingCollectionMerge } from '../rules/repeated-work/merges/no-replacing-collection-merge.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnfilteredSoftDeleteRead } from '../rules/queries/soft-de
 import { rule as ruleNoUnguardedCyclicRecursion } from '../rules/recursion/no-unguarded-cyclic-recursion.mts';
 import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-unguarded-deleted-items.mts';
 import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
-import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/no-unguarded-option-list.mts';
 
 export const partRules = {
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
@@ -138,6 +138,7 @@ export const partRules = {
   'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
   'no-remote-call-under-lock': ruleNoRemoteCallUnderLock,
   'no-repeated-call': ruleNoRepeatedCall,
+  'no-repeated-keyed-scan': ruleNoRepeatedKeyedScan,
   'no-repeated-parse-per-item': ruleNoRepeatedParsePerItem,
   'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
   'no-replacing-collection-merge': ruleNoReplacingCollectionMerge,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unguarded-cyclic-recursion': ruleNoUnguardedCyclicRecursion,
   'no-unguarded-deleted-items': ruleNoUnguardedDeletedItems,
   'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
-  'no-unguarded-option-list': ruleNoUnguardedOptionList,
 };

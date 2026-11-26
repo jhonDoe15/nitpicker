@@ -579,6 +579,10 @@ was not filtered the same way.
 collections merged from several sources with `set` or `Object.assign`, which replaces the values of
 a key seen twice.
 
+`nitpicker/no-repeated-keyed-scan` (production source, in `eslint-lint`) reports a scan of a
+collection looked up by the current element's key whose test reads nothing of the element, so
+elements sharing the key repeat the same scan.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

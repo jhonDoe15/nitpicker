@@ -225,6 +225,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   need the value (`nitpicker/no-work-before-early-exit`).
 - Read and handle files one at a time (or through a bounded pool), not all into one array that a later
   loop walks once (`nitpicker/no-read-all-before-pass`).
+- Answer a question about the collection of a key once per key, not once per element that has the
+  key (`nitpicker/no-repeated-keyed-scan`).
 - Merge maps whose values are collections by adding to the collection of each key, never by
   replacing it with `set` or `Object.assign` (`nitpicker/no-replacing-collection-merge`).
 - Pair two lists by position before filtering either of them, never after

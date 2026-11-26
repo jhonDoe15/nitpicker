@@ -372,6 +372,16 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   the result changes from run to run. A target filled from one source, a target declared inside
   the loop, scalar values and a merge of an object literal are not reported. Allowed form: get the
   collection of the key and add to it, creating it when it is missing.
+- `nitpicker/no-repeated-keyed-scan`: the same scan of a collection repeated for every element that
+  shares its key, in all production code (not in tests). It reports `some`, `every`, `filter`,
+  `find`, `findIndex` or `findLast` with a callback, inside a loop body or an iteration callback,
+  on a collection read as `map.get(key)` (also with `?? []`, `?.` or through a `const`) when the
+  `map` does not change in the loop, the key reads the current element and the callback reads
+  nothing declared in the loop. Elements with the same key then repeat the same scan: with 10,000
+  elements of one key over a collection of 10,000 entries that is 100 million tests. A callback
+  that reads the element, a key that does not read it, and a map built in the loop are not
+  reported. Allowed form: work the answer out once per key, before the loop or kept in a `Map` by
+  key.
 - `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
   walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
   `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,
