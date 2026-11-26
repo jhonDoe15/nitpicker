@@ -433,6 +433,11 @@ impl<'a> Resolver<'a> {
         self.written(node, false)
     }
 
+    /// A written type with the type variables in it kept.
+    pub fn generic_type_node(&self, node: Node) -> Option<Type> {
+        self.written(node, true)
+    }
+
     fn with_dimensions(&self, holder: Node, mut kind: Type) -> Type {
         if let Some(dimensions) = holder.field("dimensions") {
             for _ in 0..self.file.text_of(dimensions).matches('[').count() {

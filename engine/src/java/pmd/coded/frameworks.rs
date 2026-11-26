@@ -58,6 +58,28 @@ impl Ctx<'_, '_, '_> {
         self.whole(method, "Arity").unwrap_or(0)
     }
 
+    /// A written type with its type variables kept rather than replaced by their bounds.
+    pub fn symbolic_type(&self, id: u32) -> Option<Type> {
+        let source = self.tree.nodes[id as usize].source?;
+        self.machine.resolver.generic_type_node(source)
+    }
+
+    /// The name the type model gives a type declaration of this file, local and anonymous classes included.
+    pub fn class_name(&self, declaration: u32) -> Option<String> {
+        let source = self.tree.nodes[declaration as usize].source?;
+        let names = &self.machine.resolver.scope.names;
+        names.get(&source.id()).or_else(|| source.parent().and_then(|parent| names.get(&parent.id()))).cloned()
+    }
+
+    /// PMD's `getBinaryName`: nested, local and anonymous classes joined to their top-level class with `$`.
+    pub fn binary_name(&self, declaration: u32) -> Option<String> {
+        let top = self.ancestors(declaration).filter(|at| super::ctx::TYPE_DECLARATIONS.contains(&self.name(*at))).last();
+        let name = self.class_name(declaration)?;
+        let Some(top) = top.and_then(|top| self.class_name(top)) else { return Some(name) };
+        let rest = name.strip_prefix(top.as_str())?;
+        Some(format!("{top}{}", rest.replace('.', "$")))
+    }
+
     pub fn enclosing_type(&self, id: u32) -> Option<u32> {
         self.enclosing(id, super::ctx::TYPE_DECLARATIONS)
     }

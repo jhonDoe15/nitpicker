@@ -6,7 +6,10 @@ use crate::java::pmd::coded::hit;
 const BUILDERS: [&str; 2] = ["java.lang.StringBuilder", "java.lang.StringBuffer"];
 
 fn builder(ctx: &Ctx, id: u32) -> bool {
-    BUILDERS.iter().any(|name| ctx.type_is_exactly(id, name))
+    let loose = || ctx.type_of(id).is_none() && ctx.is(id, "MethodCall");
+    BUILDERS.iter().any(|name| {
+        ctx.type_is_exactly(id, name) || loose() && ctx.loose_type(id).is_some_and(|kind| kind.erased().name() == *name)
+    })
 }
 
 /// PMD's `JavaRuleUtil.isStringBuilderCtorOrAppend`.

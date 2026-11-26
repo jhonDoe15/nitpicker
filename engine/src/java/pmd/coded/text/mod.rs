@@ -1,4 +1,5 @@
 //! Ports of PMD rules written in Java about string literals and log messages.
+mod addresses;
 mod literals;
 
 use super::Port;
@@ -6,6 +7,7 @@ use super::Port;
 pub fn port(class: &str) -> Option<Port> {
     Some(match class {
         "AvoidDuplicateLiteralsRule" => literals::avoid_duplicate_literals,
+        "AvoidUsingHardCodedIPRule" => addresses::avoid_using_hard_coded_ip,
         _ => return None,
     })
 }
