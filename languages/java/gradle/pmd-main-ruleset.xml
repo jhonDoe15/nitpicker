@@ -2714,6 +2714,35 @@ return //MethodCall[@MethodName = 'contains'][ArgumentList/@Size = 1][*[1][self:
       </property>
     </properties>
   </rule>
+  <rule name="LocalExecutorNeverShutDown" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This fixed thread pool is created in a local variable, and the method never shuts it down, returns it, stores it or hands it to another method. The worker threads of a fixed pool are not daemon threads and never time out, so they stay alive after the method returns and every call leaks a pool of threads until the process runs out of them. Create the pool once and share it (a field, or an injected bean that Spring shuts down), or shut it down here: try-with-resources on Java 19 and later (the pool is an AutoCloseable there), or pool.shutdown() in a finally block. An exception fits a pool that a callback shuts down later, which this rule cannot see.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodDeclaration[not(@Name = 'main')]
+  [not(ModifierList/Annotation[pmd-java:typeIs('jakarta.annotation.PostConstruct')
+                               or pmd-java:typeIs('javax.annotation.PostConstruct')
+                               or pmd-java:typeIs('org.springframework.context.annotation.Bean')])]
+  //LocalVariableDeclaration/VariableDeclarator[
+    MethodCall[@MethodName = 'newFixedThreadPool'][*[1][pmd-java:typeIs('java.util.concurrent.Executors')]]]
+  [not(ancestor::ResourceList)]
+  /VariableId[let $n := @Name, $m := ancestor::MethodDeclaration[1] return
+     not($m//MethodCall[@MethodName = ('shutdown', 'shutdownNow', 'close', 'awaitTermination')][*[1][@Name = $n]])
+     and not($m//ResourceList//VariableAccess[@Name = $n])
+     and not($m//ReturnStatement/*[1]/descendant-or-self::VariableAccess[@Name = $n][not(ancestor::ArgumentList)])
+     and not($m//AssignmentExpression/*[2]/descendant-or-self::VariableAccess[@Name = $n])
+     and not($m//VariableDeclarator/VariableAccess[@Name = $n])
+     and not($m//ArgumentList/VariableAccess[@Name = $n]
+               [not(parent::ArgumentList/parent::MethodCall[@MethodName = ('supplyAsync', 'runAsync',
+                  'thenApplyAsync', 'thenAcceptAsync', 'thenComposeAsync', 'thenRunAsync', 'whenCompleteAsync',
+                  'handleAsync')])])
+     and not($m//MethodReference/*[1][@Name = $n])
+     and not($m//LambdaExpression//MethodCall[@MethodName = ('shutdown', 'shutdownNow', 'close')])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="LockInFinally" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="A finally block locks a lock that the method took before (or inside) the try and never releases it. lock(), lockInterruptibly() and tryLock() here take the lock a second time, so a ReentrantLock stays held after the method returns and every other thread that needs it blocks for good, far from the typo. Release it with lock.unlock() in the finally block. An exception fits a method that also unlocks the same lock elsewhere, such as a lock downgrade or a wait that gives the lock up and takes it back; the rule does not read those.">
     <priority>3</priority>
