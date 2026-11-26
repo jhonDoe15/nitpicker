@@ -361,6 +361,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - When JVMs are started in a loop or pool with `-Xmx` or `-XX:MaxRAMPercentage`, add a heap goal next to the ceiling
   (`-XX:GCTimeRatio=4`, or `-XX:SoftMaxHeapSize` with ZGC): each JVM otherwise grows to its ceiling and keeps it
   (`nitpicker/require-jvm-heap-goal`).
+- Run a type-aware linter or compiler (`tsc`, `tsgo`, `tsgolint`, `--type-aware`) once per bounded batch of files (for
+  example 500, each with the files that change the global scope), not once over every file of the project, whose
+  program grows with the project (`nitpicker/no-unbatched-heavy-run`).
 - Time values carry their unit in the name (`timeoutMs`, `ttlSeconds`) and meet only the same unit: convert
   once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
   `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time

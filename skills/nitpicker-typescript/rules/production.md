@@ -163,6 +163,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - When JVMs are started in a loop or pool with `-Xmx` or `-XX:MaxRAMPercentage`, add a heap goal next to the ceiling
   (`-XX:GCTimeRatio=4`, or `-XX:SoftMaxHeapSize` with ZGC): each JVM otherwise grows to its ceiling and keeps it
   (`nitpicker/require-jvm-heap-goal`).
+- Run a type-aware linter or compiler (`tsc`, `tsgo`, `tsgolint`, `--type-aware`) once per bounded batch of files (for
+  example 500, each with the files that change the global scope), not once over every file of the project, whose
+  program grows with the project (`nitpicker/no-unbatched-heavy-run`).
 - A page of rows has an order: `limit`/`offset`/`take`/`skip`, a Prisma `cursor` or SQL `LIMIT` comes with
   `orderBy` on a unique key (or a tie-breaker after a non-unique one), and `json_agg`/`array_agg` or
   Kysely `jsonArrayFrom` lists sort inside (`json_agg(t ORDER BY t.name)`) (`nitpicker/no-unordered-query`).

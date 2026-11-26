@@ -478,6 +478,11 @@ set a heap ceiling (`-Xmx`, `-XX:MaxRAMPercentage`) and no goal (`-XX:GCTimeRati
 `-XX:MaxHeapFreeRatio`). Each such JVM grows to its ceiling and keeps it, so concurrent JVMs hold far more than their
 live data; the allowed form adds `-XX:GCTimeRatio=4` next to the ceiling.
 
+Unbatched heavy runs: `nitpicker/no-unbatched-heavy-run` (production source, in `eslint-lint`) reports a parameter or
+file listing spread whole into the arguments of a type-aware run (`tsc`, `tsgo`, `tsgolint`, `vue-tsc`,
+`--type-aware`) that is not started from a loop, a parallel map or a pool. One program over every file grows with the
+project; the allowed form runs once per bounded batch.
+
 Unbounded waits: `pmd/UnboundedWait` (Java, main sources) reports `get()` or `join()` without a timeout on a
 `Future` or `CompletableFuture`, `Thread.join()` and `CountDownLatch.await()`, and
 `pmd/ReactorBlockWithoutTimeout` (with `reactor-core` on the compile classpath) reports `block()`,

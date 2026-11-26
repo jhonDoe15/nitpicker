@@ -2117,6 +2117,17 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   (arguments from user configuration), and arrays with an element the rule cannot read whose name looks like a flag
   (`goalFlag`, `jvmArgs`); the ceiling and the goal count together across the arguments and the options variables. Add
   `-XX:GCTimeRatio=4` (or `-XX:SoftMaxHeapSize` with ZGC) next to the ceiling.
+- A whole file list that grows with the project is not handed to one type-aware run
+  (`nitpicker/no-unbatched-heavy-run`, production files). A type-aware linter or compiler builds one program over
+  every file it gets, so its memory grows with the project: 5.4 GB for a 4,400-file web app, against under 2 GB for
+  runs of at most 500 files with identical findings. Reported: a spread of a function parameter named like a file list
+  (`files`, `paths`, `allProjectFiles`) or of a file listing or glob result (as in
+  `nitpicker/no-growing-process-arguments`) in the argument array of `spawn`, `spawnSync`, `execFile`, `execFileSync`
+  or execa, when the command is `tsc`, `tsgo`, `tsgolint` or `vue-tsc` or the arguments include `--type-aware`,
+  `--type-check` or `--typecheck`, and the call does not sit in a loop, in a callback given to `map`, `forEach`,
+  `Promise.all` or a pool, or in a function of the same file called from one. Not reported: lists cut with `slice`,
+  literal lists and other commands. Split the list into bounded batches and run once per batch; splitting only by
+  command line length does not bound memory.
 - Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and
   Python presets) have no TypeScript or JavaScript counterpart: nothing blocks a thread on a promise, and a promise
   that never settles is a missing deadline for `await`, which `nitpicker/require-client-timeout` and

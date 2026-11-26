@@ -74,6 +74,7 @@ import { rule as ruleNoTypeLookupPerNode } from '../rules/type-lookups/no-type-l
 import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framework-in-domain.mts';
 import { rule as ruleNoUnanchoredAffixReplace } from '../rules/affixes/no-unanchored-affix-replace.mts';
 import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-writes.mts';
+import { rule as ruleNoUnbatchedHeavyRun } from '../rules/heavy-steps/no-unbatched-heavy-run.mts';
 import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mts';
 import { rule as ruleNoUncheckedResponseJson } from '../rules/response-json/no-unchecked-response-json.mts';
 import { rule as ruleNoUncheckedUrlSink } from '../rules/urls/links/no-unchecked-url-sink.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/regis
 import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
 import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mts';
-import { rule as ruleNoUninjectableDelay } from '../rules/test-runtime/lifecycle/no-uninjectable-delay.mts';
 
 export const partRules = {
   'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
@@ -176,6 +176,7 @@ export const partRules = {
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
   'no-unanchored-affix-replace': ruleNoUnanchoredAffixReplace,
   'no-unatomic-writes': ruleNoUnatomicWrites,
+  'no-unbatched-heavy-run': ruleNoUnbatchedHeavyRun,
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,
   'no-unchecked-response-json': ruleNoUncheckedResponseJson,
   'no-unchecked-url-sink': ruleNoUncheckedUrlSink,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
   'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
-  'no-uninjectable-delay': ruleNoUninjectableDelay,
 };
