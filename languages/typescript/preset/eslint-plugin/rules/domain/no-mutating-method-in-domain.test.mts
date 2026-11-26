@@ -52,4 +52,24 @@ describe('no-mutating-method-in-domain', () => {
 
     expect(result?.messages).toEqual([]);
   });
+
+  it('names the same owner whatever order the union of the receiver has', async () => {
+    mkdirSync(path.join(root, domain), { recursive: true });
+    const file = path.join(root, domain, 'keys.cjs');
+    const code = [
+      '/** @param {Set<string> | Map<string, number>} keys */',
+      'function drop(keys) {',
+      "  keys.delete('a');",
+      '}',
+      'module.exports = { drop };',
+      '',
+    ].join('\n');
+    writeFileSync(file, code);
+
+    const [result] = await typed.lintFiles([file]);
+
+    expect(result?.messages.map(({ message }) => message.split(' changes')[0])).toEqual([
+      'domain/ code does not mutate values, and Map.delete',
+    ]);
+  });
 });

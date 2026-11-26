@@ -1,11 +1,7 @@
-import {
-  angleStep,
-  between,
-  forward,
-  splitTopLevel,
-} from '../max-value-sums/source/source-file.mts';
+import { between, forward, splitTopLevel } from '../max-value-sums/source/source-file.mts';
 import type { Token } from '../../reuse/jvm-reuse-types.mts';
 import type { BareSource, Span } from '../max-value-sums/sum-types.mts';
+import { MODIFIERS, fieldsOf } from './member-fields.mts';
 import type { FieldDecl, MethodDecl, TypeKind } from './types.mts';
 
 const CLASS = 'class';
@@ -14,21 +10,6 @@ const RECORD = 'record';
 const SYNCHRONIZED = 'synchronized';
 const RETURN = 'return';
 const CALL_OFFSET = 3;
-const MODIFIERS = new Set([
-  'public',
-  'protected',
-  'private',
-  'static',
-  'final',
-  'abstract',
-  'default',
-  SYNCHRONIZED,
-  'native',
-  'transient',
-  'volatile',
-  'strictfp',
-  'sealed',
-]);
 const TYPE_KINDS = new Map<string, TypeKind>([
   [CLASS, CLASS],
   [INTERFACE, INTERFACE],
@@ -38,7 +19,7 @@ const TYPE_KINDS = new Map<string, TypeKind>([
 
 export type Member =
   | { readonly kind: 'method'; readonly method: MethodDecl; readonly end: number }
-  | { readonly kind: 'field'; readonly field: FieldDecl; readonly end: number }
+  | { readonly kind: 'field'; readonly fields: readonly FieldDecl[]; readonly end: number }
   | {
       readonly kind: 'type';
       readonly typeKind: TypeKind;
@@ -127,7 +108,6 @@ const NOT_CALLS = new Set([
   'while',
   'switch',
   'catch',
-  SYNCHRONIZED,
   RETURN,
   'throw',
   'super',
@@ -202,43 +182,6 @@ function methodOf(source: BareSource, { from, open }: { from: number; open: numb
   };
 }
 
-function typeName(head: readonly Token[]): string {
-  let name = '';
-  for (const token of head) {
-    if (token.kind !== 'identifier' && token.text !== '.') {
-      break;
-    }
-    name = token.text === '.' ? name : token.text;
-  }
-  return name;
-}
-
-function declaratorEnd(tokens: readonly Token[], span: Span): number {
-  let angle = 0;
-  for (const at of between(span.from, span.to)) {
-    const text = textAt(tokens, at);
-    if (angle <= 0 && ['=', ';', ','].includes(text)) {
-      return at;
-    }
-    angle += angleStep(text);
-  }
-  return span.to;
-}
-
-function fieldOf(
-  tokens: readonly Token[],
-  { from, end }: { from: number; end: number },
-): FieldDecl | undefined {
-  const stop = declaratorEnd(tokens, { from, to: end });
-  const last = stop - 1;
-  const declared = tokens.slice(from, last);
-  const head = declared.filter(({ text }) => !MODIFIERS.has(text));
-  const excluded = declared.some(({ text }) => text === 'static' || text === '[');
-  return tokens[last]?.kind === 'identifier' && head.length > 0 && !excluded
-    ? { name: textAt(tokens, last), type: typeName(head), generated: false }
-    : undefined;
-}
-
 function typeMember(source: BareSource, keyword: number): Member {
   const { tokens, partner } = source;
   const open = firstTop(source, keyword, ['{']);
@@ -279,10 +222,10 @@ export function memberAt(source: BareSource, from: number): Member {
   if (paren > start) {
     return { kind: 'method', method: methodOf(source, { from: start, open: paren }), end: bodyEnd };
   }
-  const field =
-    paren === -1 && index > start ? fieldOf(tokens, { from: start, end: index }) : undefined;
   const generated = tokens.slice(from, start).some(({ text }) => text === 'Delegate');
-  return field === undefined
+  const fields =
+    paren === -1 && index > start ? fieldsOf(source, { from: start, end: index, generated }) : [];
+  return fields.length === 0
     ? { kind: 'other', end: bodyEnd }
-    : { kind: 'field', field: { ...field, generated }, end: bodyEnd };
+    : { kind: 'field', fields, end: bodyEnd };
 }

@@ -110,6 +110,11 @@ fn rare_built_in_rules_and_switch_facts_match_pmd() {
 }
 
 #[test]
+fn concurrency_and_value_rules_report_what_pmd_reports() {
+    same_as_pmd("values", "all");
+}
+
+#[test]
 fn error_prone_checks_report_what_error_prone_reports() {
     let (found, expected) = rows_of("errorprone", "_ErrorProne", "all");
     let found: BTreeMap<Row, _> = found.into_iter().filter(|(row, _)| row.1 != "NullAway").collect();

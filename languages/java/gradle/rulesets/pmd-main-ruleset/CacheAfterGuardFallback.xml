@@ -1,0 +1,40 @@
+  <rule name="CacheAfterGuardFallback" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This method stores its answer in a cache although a recursion guard in the same method refuses turns that come back to a value already in progress (if (!inProgress.add(node)) return UNKNOWN). A deeper turn may have returned that fallback, so the stored answer may be partial, and what the cache holds then depends on which caller asked first. Do not store an answer that a refused turn fed into, or store it marked as partial and compute it again when asked from outside the cycle.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $qualifier := function($call) {
+      $call/*[1][self::VariableAccess or self::FieldAccess]/@Name
+    },
+    $firstArg := function($call) {
+      $call/ArgumentList/*[1]/descendant-or-self::VariableAccess[1]/@Name
+    }
+return
+//MethodDeclaration[Block]
+  [not(.//(VariableId | VariableAccess | FieldAccess)
+         [matches(@Name, 'partial|incomplete|provisional|truncated|cutShort', 'i')])]
+  [let $name := string(@Name),
+       $class := ancestor::ClassBody[1],
+       $direct := Block//MethodCall[*[1][self::ArgumentList or self::ThisExpression]]/@MethodName
+   return $direct = $name
+     or exists($class/MethodDeclaration[@Name = $direct][@Name != $name]
+                 /Block//MethodCall[@MethodName = $name][*[1][self::ArgumentList or self::ThisExpression]])]
+  /(let $params := FormalParameters/FormalParameter/VariableId/@Name
+    return Block//IfStatement
+      [*[2][descendant-or-self::ReturnStatement]]
+      /(let $branch := .,
+            $checks := *[1]/descendant-or-self::MethodCall
+                         [(@MethodName = 'add' and parent::UnaryExpression[@Operator = '!'])
+                          or @MethodName = ('contains', 'containsKey')]
+                         [$firstArg(.) = $params]
+        return for $check in $checks
+          return ancestor::MethodDeclaration[1]/Block//MethodCall
+            [@MethodName = ('put', 'putIfAbsent')]
+            [. >> $branch][not(ancestor::IfStatement[. is $branch])]
+            [$firstArg(.) = $firstArg($check)]
+            [not($qualifier(.) = $qualifier($check))])[1])
+]]></value>
+      </property>
+    </properties>
+  </rule>

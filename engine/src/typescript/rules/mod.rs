@@ -1,4 +1,5 @@
 //! Lint rules on the shared parse. Ids, messages and positions are those of the ESLint-plugin rule of the same name.
+mod domain;
 mod errors;
 mod events;
 mod lifecycles;
@@ -10,6 +11,7 @@ mod test_assertions;
 mod test_runtime;
 mod time;
 pub mod testing_library;
+pub mod typed;
 
 use super::ParsedFile;
 use crate::engine::finding::Finding;
@@ -26,6 +28,8 @@ pub struct Context<'a, 's> {
     pub selected: &'s [&'static str],
     /// Settings given for this file alone, as `key=value`.
     pub settings: &'s [String],
+    /// The compiler's answers about the file, for the rules that ask about types.
+    pub types: Option<&'s std::cell::RefCell<typed::types::Types>>,
     display: &'s str,
     scope: std::cell::OnceCell<testing_library::scope::Scope>,
     findings: Vec<Reported>,
@@ -98,7 +102,7 @@ impl<'a> Context<'a, '_> {
 pub type Rule = fn(&mut Context);
 
 /// Rules written against the ESTree-shaped view.
-const ON_VIEW: &[&str] = &["hover-test-needs-keyboard", "no-add-only-collection", "no-copied-constant", "no-external-executables-in-unit-tests", "no-internal-module-mocks", "no-wait-for-with-fake-timers", "preserve-error-cause", "react-test-no-implementation-details", "report-module-load-effects", "require-error-listener", "settle-pending-on-close", "structured-catch-logging", "test-must-use-production-runtime", "time-unit-mismatch"];
+const ON_VIEW: &[&str] = &["hover-test-needs-keyboard", "no-mutating-method-in-domain", "no-add-only-collection", "no-copied-constant", "no-external-executables-in-unit-tests", "no-internal-module-mocks", "no-wait-for-with-fake-timers", "preserve-error-cause", "react-test-no-implementation-details", "report-module-load-effects", "require-error-listener", "settle-pending-on-close", "structured-catch-logging", "test-must-use-production-runtime", "time-unit-mismatch"];
 
 pub const ALL: &[(&str, Rule)] = &[
     ("hover-test-needs-keyboard", react_tests::hover_test_needs_keyboard::check),
@@ -121,13 +125,14 @@ pub const ALL: &[(&str, Rule)] = &[
 ];
 
 fn known() -> impl Iterator<Item = (&'static str, Rule)> {
-    ALL.iter().copied().chain(testing_library::RULES.iter().map(|name| (*name, testing_library::check as Rule)))
+    ALL.iter().copied().chain(testing_library::RULES.iter().map(|name| (*name, testing_library::check as Rule))).chain(typed::TYPED.iter().copied())
 }
 
 
 pub struct Selection {
     names: Vec<&'static str>,
     rules: Vec<Rule>,
+    typed: Vec<Rule>,
     view: bool,
 }
 
@@ -139,39 +144,55 @@ pub fn unknown(only: &[String]) -> Vec<&str> {
 pub fn selected(only: Option<&[String]>) -> Selection {
     let chosen: Vec<_> = known().filter(|(name, _)| only.is_none_or(|names| names.iter().any(|wanted| wanted == name))).collect();
     let mut rules: Vec<Rule> = Vec::new();
-    for (_, rule) in &chosen {
+    for (_, rule) in chosen.iter().filter(|(name, _)| !typed::is_typed(name)) {
         if !rules.iter().any(|kept| std::ptr::fn_addr_eq(*kept, *rule)) {
             rules.push(*rule);
         }
     }
+    let typed = chosen.iter().filter(|(name, _)| typed::is_typed(name)).map(|(_, rule)| *rule).collect();
     let view = chosen.iter().any(|(name, _)| ON_VIEW.contains(name) || name.starts_with("testing-library/"));
-    Selection { names: chosen.iter().map(|(name, _)| *name).collect(), rules, view }
+    Selection { names: chosen.iter().map(|(name, _)| *name).collect(), rules, typed, view }
 }
 
 impl Selection {
     pub fn len(&self) -> usize {
         self.names.len()
     }
+
+    pub fn has_typed(&self) -> bool {
+        !self.typed.is_empty()
+    }
 }
 
-fn lint_file(path: &str, display: &str, settings: &[String], selection: &Selection) -> Vec<Reported> {
-    let unparsed = || vec![Finding { file: display.to_string(), line: 1, column: 1, rule: "!parse".into(), message: String::new(), symbol: None }.into()];
-    let Ok(text) = std::fs::read_to_string(path) else { return unparsed() };
+fn unparsed(display: &str, rule: &str) -> Vec<Reported> {
+    vec![Finding { file: display.to_string(), line: 1, column: 1, rule: rule.into(), message: String::new(), symbol: None }.into()]
+}
+
+fn lint_file(path: &str, display: &str, settings: &[String], (selected, rules, view): (&[&'static str], &[Rule], bool), types: Option<&std::cell::RefCell<typed::types::Types>>) -> Vec<Reported> {
+    let Ok(text) = std::fs::read_to_string(path) else { return unparsed(display, "!parse") };
+    if let Some(types) = types
+        && !types.borrow_mut().enter(path, &text)
+    {
+        return unparsed(display, "!types");
+    }
     super::with_parsed(path, &text, |file| {
         if file.panicked || !file.errors.is_empty() {
-            return unparsed();
+            return unparsed(display, "!parse");
         }
         let built = SemanticBuilder::new().with_build_nodes(true).with_check_syntax_error(true).build(file.program);
         if !built.diagnostics.is_empty() {
-            return unparsed();
+            return unparsed(display, "!parse");
         }
         let semantic = built.semantic;
-        let view = selection.view.then(|| support::view::View::of(file.program.to_estree_json(true, true)));
+        let view = view.then(|| support::view::View::of(file.program.to_estree_json(true, true)));
         let scopes = view.as_ref().map(|view| support::scope::Scopes::of(&semantic, view));
         let estree = view.as_ref().zip(scopes.as_ref());
-        let mut context = Context { file, semantic: &semantic, estree, selected: &selection.names, settings, display, scope: Default::default(), findings: Vec::new() };
-        for rule in &selection.rules {
+        let mut context = Context { file, semantic: &semantic, estree, selected, settings, types, display, scope: Default::default(), findings: Vec::new() };
+        for rule in rules {
             rule(&mut context);
+        }
+        if types.is_some_and(|types| types.borrow().refused.is_some()) {
+            return unparsed(display, "!types");
         }
         context.findings
     })
@@ -184,11 +205,27 @@ pub struct Listed {
     pub settings: Vec<String>,
 }
 
-pub fn lint_files(files: &[Listed], rules: &Selection) -> Vec<Reported> {
-    let mut findings: Vec<Reported> = files.par_iter().flat_map_iter(|file| lint_file(&file.path, &file.display, &file.settings, rules)).collect();
+/// Lints every file with the untyped rules, in parallel, then with the typed ones against `types`, one file after
+/// another. Without `types` the typed rules are left to the caller.
+pub fn lint_files(files: &[Listed], rules: &Selection, types: Option<typed::types::Types>) -> Vec<Reported> {
+    let mut findings: Vec<Reported> = files
+        .par_iter()
+        .flat_map_iter(|file| lint_file(&file.path, &file.display, &file.settings, (&rules.names, &rules.rules, rules.view), None))
+        .collect();
+    match types {
+        Some(types) if rules.has_typed() => {
+            let types = std::cell::RefCell::new(types);
+            for file in files {
+                findings.extend(lint_file(&file.path, &file.display, &file.settings, (&rules.names, &rules.typed, true), Some(&types)));
+            }
+        }
+        _ if rules.has_typed() => findings.extend(files.iter().flat_map(|file| unparsed(&file.display, "!types"))),
+        _ => {}
+    }
     findings.sort_by(|left, right| {
         let (left, right) = (&left.finding, &right.finding);
         left.file.cmp(&right.file).then(left.line.cmp(&right.line)).then(left.column.cmp(&right.column))
     });
+    findings.dedup_by(|later, earlier| later.finding.rule.starts_with('!') && later.finding == earlier.finding);
     findings
 }
