@@ -477,8 +477,11 @@ of the others. Other `parse` calls, `for...of`, `forEach` and Java are not cover
 Unknown tree-sitter field: `nitpicker/no-unknown-tree-sitter-field` (production source, in `eslint-lint`) reports a
 constant field name passed to `childForFieldName` or `childrenForFieldName`, or compared with `currentFieldName`,
 in a module that uses `web-tree-sitter` or `tree-sitter`, when the `node-types.json` of the grammar package defines no
-such field (for the node type, when a `node.type === '...'` check on the same node encloses the lookup). Nothing is
-reported when no grammar's `node-types.json` can be found.
+such field. The `node-types.json` files are read from `src/` of the package and of its direct subfolders (the union of
+their fields). The lookup is checked against the fields of one node type when the node's type is known from an enclosing
+`node.type === '...'` (or `nodeType`) in an `if`, a ternary, `&&` or a `case` of `switch (node.type)`, or from an earlier
+`if (node.type !== '...') return;` in the same block, unless the receiver is assigned in between. Nothing is reported
+when no grammar's `node-types.json` can be found.
 
 Parser error nodes: `nitpicker/require-tree-sitter-error-check` (production source, in `eslint-lint`) reports a function
 in a `web-tree-sitter` or `tree-sitter` module that indexes or maps the children of a node, or chains on

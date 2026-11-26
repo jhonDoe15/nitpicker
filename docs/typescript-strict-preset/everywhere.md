@@ -2116,10 +2116,15 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
 - A tree-sitter field name must exist in the grammar (`nitpicker/no-unknown-tree-sitter-field`, production files).
   Reported: in a module that imports `web-tree-sitter` or `tree-sitter`, a constant field name in
   `childForFieldName("x")`, `childrenForFieldName("x")` or `cursor.currentFieldName === "x"` that no node type of the
-  grammar defines. The grammar comes from the `src/node-types.json` of the grammar package (`tree-sitter-java`, found
+  grammar defines. The grammar comes from the `node-types.json` of the grammar package (`tree-sitter-java`, found
   through the module's imports, a `tree-sitter-java.wasm` name or the nearest `package.json`) resolved from the linted
-  file. Inside `node.type === "t"` (an `if`, a ternary or `&&`) the field is checked against the fields of type `t`
-  only. A field name that does not exist is not an error in the API, it is an empty answer. Not reported: field names
+  file; it is read from `src/` and from `src/` of the package's direct subfolders (`typescript/src`, `tsx/src`), and the
+  fields of all of them count. Where the node type is known from `node.type === "t"` (or `nodeType`), the field is
+  checked against the fields of type `t` only: inside an `if`, a ternary or `&&`, in a `case "t":` of
+  `switch (node.type)` (cases that fall through are all allowed), and after an early exit
+  `if (node.type !== "t") return;` in the same block. A cursor lookup is narrowed the same way
+  (`c.nodeType === "t" && c.currentFieldName === "x"`). The narrowing is dropped when the receiver is assigned between
+  the check and the lookup. A field name that does not exist is not an error in the API, it is an empty answer. Not reported: field names
   from variables, modules for which no `node-types.json` can be found.
 - A tree walked with tree-sitter decides what an error node does (`nitpicker/require-tree-sitter-error-check`,
   production files). Reported: in a module that imports `web-tree-sitter` or `tree-sitter`, a function that indexes
