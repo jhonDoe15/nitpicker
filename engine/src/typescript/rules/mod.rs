@@ -5,6 +5,7 @@ mod listeners;
 mod modules;
 mod react_tests;
 pub mod support;
+mod test_assertions;
 mod test_runtime;
 pub mod testing_library;
 
@@ -95,11 +96,12 @@ impl<'a> Context<'a, '_> {
 pub type Rule = fn(&mut Context);
 
 /// Rules written against the ESTree-shaped view.
-const ON_VIEW: &[&str] = &["hover-test-needs-keyboard", "no-add-only-collection", "no-external-executables-in-unit-tests", "no-internal-module-mocks", "no-wait-for-with-fake-timers", "preserve-error-cause", "react-test-no-implementation-details", "settle-pending-on-close", "structured-catch-logging"];
+const ON_VIEW: &[&str] = &["hover-test-needs-keyboard", "no-add-only-collection", "no-copied-constant", "no-external-executables-in-unit-tests", "no-internal-module-mocks", "no-wait-for-with-fake-timers", "preserve-error-cause", "react-test-no-implementation-details", "report-module-load-effects", "settle-pending-on-close", "structured-catch-logging", "test-must-use-production-runtime"];
 
 pub const ALL: &[(&str, Rule)] = &[
     ("hover-test-needs-keyboard", react_tests::hover_test_needs_keyboard::check),
     ("no-add-only-collection", lifecycles::no_add_only_collection::check),
+    ("no-copied-constant", test_assertions::no_copied_constant::check),
     ("no-external-executables-in-unit-tests", test_runtime::no_external_executables_in_unit_tests::check),
     ("no-internal-module-mocks", test_runtime::no_internal_module_mocks::check),
     ("no-listen-on-all-interfaces", listeners::no_listen_on_all_interfaces::check),
@@ -108,8 +110,10 @@ pub const ALL: &[(&str, Rule)] = &[
     ("no-wait-for-with-fake-timers", test_runtime::no_wait_for_with_fake_timers::check),
     ("preserve-error-cause", errors::preserve_error_cause::check),
     ("react-test-no-implementation-details", react_tests::no_implementation_details::check),
+    ("report-module-load-effects", modules::load_effects::check),
     ("settle-pending-on-close", lifecycles::settle_pending_on_close::check),
     ("structured-catch-logging", errors::logging::structured_catch_logging::check),
+    ("test-must-use-production-runtime", test_runtime::production_runtime::check),
 ];
 
 fn known() -> impl Iterator<Item = (&'static str, Rule)> {

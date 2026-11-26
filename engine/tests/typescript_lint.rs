@@ -63,12 +63,16 @@ fn imports_resolve_through_the_path_mapping_of_the_nearest_config() {
     assert_eq!(engine_on_scope_fixtures(&["typescript-imports"]), std::fs::read_to_string(expected).expect("expected"));
 }
 
+fn testing_library(found: Vec<Row>) -> Vec<Row> {
+    found.into_iter().filter(|row| row[1].as_str().is_some_and(|rule| rule.starts_with("testing-library/"))).collect()
+}
+
 #[test]
 fn a_test_file_takes_its_utilities_from_the_helper_its_imports_reach() {
     let expected = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("expected").join("typescript-scope.json");
     let found: Vec<Row> = serde_json::from_str(&engine_on_scope_fixtures(&["typescript-lint", "--testing-library-scope"])).expect("json");
-    assert_eq!(sorted(found), rows(&expected));
-    let unscoped: Vec<Row> = serde_json::from_str(&engine_on_scope_fixtures(&["typescript-lint"])).expect("json");
+    assert_eq!(sorted(testing_library(found)), rows(&expected));
+    let unscoped: Vec<Row> = testing_library(serde_json::from_str(&engine_on_scope_fixtures(&["typescript-lint"])).expect("json"));
     assert_eq!(unscoped.len(), 1, "without the scope only the direct import counts");
 }
 

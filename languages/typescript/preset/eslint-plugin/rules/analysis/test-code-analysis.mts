@@ -45,6 +45,10 @@ export function memberName(node: TSESTree.Node): string | undefined {
 
 const browserTestModule = /^(?:@playwright\/|cypress(?:\/|$))/u;
 
+export function isBrowserTestModule(source: string): boolean {
+  return browserTestModule.test(source);
+}
+
 export function isBrowserEndToEndTest({
   sources,
   projectFile,
@@ -54,9 +58,7 @@ export function isBrowserEndToEndTest({
   readonly projectFile: string;
   readonly layout: PluginLayout;
 }): boolean {
-  return (
-    sources.some((source) => browserTestModule.test(source)) || layout.isEndToEndTest(projectFile)
-  );
+  return sources.some(isBrowserTestModule) || layout.isEndToEndTest(projectFile);
 }
 
 export function propertyKeyName(property: TSESTree.Property): string | undefined {

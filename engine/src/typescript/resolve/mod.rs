@@ -1,8 +1,8 @@
 //! Module resolution as the TypeScript compiler does it for a bundler, the modules a file names, and a bounded walk
 //! over the files reachable from one. Shared by every check that follows imports.
-use oxc_ast::ast::{Argument, CallExpression, ExportAllDeclaration, ExportFromDeclaration, Expression};
-use oxc_ast::ast::{ImportDeclaration, ImportExpression, TSImportEqualsDeclaration, TSModuleReference, TemplateLiteral};
-use oxc_ast_visit::{Visit, walk};
+mod lenient_config;
+mod named;
+
 use oxc_resolver::{ResolveOptions, Resolver, TsConfig, TsconfigDiscovery, TsconfigOptions, TsconfigReferences};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -115,73 +115,18 @@ impl Project {
     fn mapped_json(&self, specifier: &str) -> Option<PathBuf> {
         self.mapping.as_ref()?.resolve_path_alias_or_base_url(specifier).iter().find_map(|target| json_file(target))
     }
-}
 
-struct Named(Vec<String>);
-
-impl Named {
-    fn text(&mut self, template: &TemplateLiteral) {
-        if let ([only], []) = (template.quasis.as_slice(), template.expressions.as_slice()) {
-            self.0.extend(only.value.cooked.and_then(|cooked| cooked.as_str()).map(String::from));
-        }
+    /// The project file the compiler finds for `specifier` through `paths`, or else through `baseUrl`, before it
+    /// looks in `node_modules`: the first target that resolves, unless it lies in `node_modules`, which makes it an
+    /// external library. None when no target resolves and the compiler goes on to look for a package.
+    fn mapped_file(&self, specifier: &str, containing: &Path) -> Option<PathBuf> {
+        let targets = self.mapping.as_ref()?.resolve_path_alias_or_base_url(specifier);
+        let (target, found) = targets.iter().find_map(|target| {
+            let found = self.unmapped.resolve_dts(containing, target.to_str()?).ok().map(|found| found.into_path_buf());
+            Some((target, found.or_else(|| json_file(target))?))
+        })?;
+        (!is_installed(target) && !is_installed(&found)).then_some(found)
     }
-}
-
-impl<'a> Visit<'a> for Named {
-    fn visit_import_declaration(&mut self, it: &ImportDeclaration<'a>) {
-        self.0.extend(it.source.value.as_str().map(String::from));
-        walk::walk_import_declaration(self, it);
-    }
-
-    fn visit_export_from_declaration(&mut self, it: &ExportFromDeclaration<'a>) {
-        self.0.extend(it.source.value.as_str().map(String::from));
-        walk::walk_export_from_declaration(self, it);
-    }
-
-    fn visit_export_all_declaration(&mut self, it: &ExportAllDeclaration<'a>) {
-        self.0.extend(it.source.value.as_str().map(String::from));
-        walk::walk_export_all_declaration(self, it);
-    }
-
-    fn visit_ts_import_equals_declaration(&mut self, it: &TSImportEqualsDeclaration<'a>) {
-        if let TSModuleReference::ExternalModuleReference(reference) = &it.module_reference {
-            self.0.extend(reference.expression.value.as_str().map(String::from));
-        }
-        walk::walk_ts_import_equals_declaration(self, it);
-    }
-
-    fn visit_import_expression(&mut self, it: &ImportExpression<'a>) {
-        match &it.source {
-            Expression::StringLiteral(literal) => self.0.extend(literal.value.as_str().map(String::from)),
-            Expression::TemplateLiteral(template) => self.text(template),
-            _ => {}
-        }
-        walk::walk_import_expression(self, it);
-    }
-
-    fn visit_call_expression(&mut self, it: &CallExpression<'a>) {
-        if matches!(&it.callee, Expression::Identifier(callee) if callee.name == "require") {
-            match it.arguments.first() {
-                Some(Argument::StringLiteral(literal)) => self.0.extend(literal.value.as_str().map(String::from)),
-                Some(Argument::TemplateLiteral(template)) => self.text(template),
-                _ => {}
-            }
-        }
-        walk::walk_call_expression(self, it);
-    }
-}
-
-fn scanned(file: &Path) -> Vec<String> {
-    let path = file.to_string_lossy();
-    let known = file.extension().and_then(|extension| extension.to_str()).is_some_and(|extension| super::EXTENSIONS.contains(&extension));
-    let Some(text) = known.then(|| std::fs::read_to_string(file).ok()).flatten() else { return Vec::new() };
-    super::with_parsed(&path, &text, |parsed| {
-        let mut named = Named(Vec::new());
-        if !parsed.panicked {
-            named.visit_program(parsed.program);
-        }
-        named.0
-    })
 }
 
 impl Modules {
@@ -198,16 +143,16 @@ impl Modules {
 
     /// The config whose path mapping applies: the file's own, or else the first one it references that has a mapping.
     fn mapping(&self, file: &Path) -> Option<(PathBuf, Arc<TsConfig>)> {
-        let own = self.plain.resolve_tsconfig(file).ok()?;
+        let (own_file, own) = lenient_config::load(&self.plain, file)?;
         if is_mapped(&own) {
-            return Some((file.to_path_buf(), own));
+            return Some((own_file, own));
         }
         let directory = file.parent()?;
         own.references.iter().find_map(|reference| {
             let target = directory.join(&reference.path);
             let target = if target.extension().is_some_and(|extension| extension == "json") { target } else { target.join(CONFIG_NAMES[0]) };
-            let config = target.exists().then(|| self.plain.resolve_tsconfig(&target).ok()).flatten()?;
-            is_mapped(&config).then_some((target, config))
+            let (config_file, config) = target.exists().then(|| lenient_config::load(&self.plain, &target)).flatten()?;
+            is_mapped(&config).then_some((config_file, config))
         })
     }
 
@@ -263,8 +208,23 @@ impl Modules {
         if !pattern && is_package_specifier(specifier) && !installed && !is_declaration(&found) {
             return Some(found);
         }
-        let through_packages = || project.unmapped.resolve_dts(containing, specifier).is_ok_and(|plain| plain.path() == found);
-        ((pattern || project.base_url) && !installed && !through_packages()).then_some(found)
+        if pattern || project.base_url { project.mapped_file(specifier, containing) } else { None }
+    }
+
+    /// What `followed` leaves out of its answer: only the project files the compiler resolves for a specifier that is
+    /// relative, mapped by `paths` or found through `baseUrl`; the source of a workspace package is none of them.
+    pub fn project_file(&self, specifier: &str, containing: &Path) -> Option<PathBuf> {
+        if specifier.contains('?') {
+            return None;
+        }
+        let project = self.nearest(containing.parent()?);
+        let local = specifier.starts_with('.') || Path::new(specifier).is_absolute();
+        if local {
+            let found = project.resolver.resolve_dts(containing, specifier).map(|found| found.into_path_buf());
+            return found.ok().or_else(|| json_file(&containing.parent()?.join(specifier)));
+        }
+        let pattern = project.patterns.iter().any(|pattern| pattern_matches(pattern, specifier));
+        if pattern || project.base_url { project.mapped_file(specifier, containing) } else { None }
     }
 
     /// Every module the file names, anywhere in it and in source order: imports, re-exports, `require` and `import()`.
@@ -272,7 +232,7 @@ impl Modules {
         if let Some(known) = self.sources.lock().expect("lock").get(file) {
             return known.clone();
         }
-        let found = Arc::new(scanned(file));
+        let found = Arc::new(named::scanned(file));
         self.sources.lock().expect("lock").insert(file.to_path_buf(), found.clone());
         found
     }
