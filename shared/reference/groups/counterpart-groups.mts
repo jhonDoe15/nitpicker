@@ -56,6 +56,26 @@ export const GROUPS: readonly Group[] = [
     python: 'read-all-before-pass',
   },
   {
+    java: 'StatPerListedEntry',
+    typescript: 'nitpicker/no-stat-per-listed-entry',
+  },
+  {
+    java: 'FilteredPositionalPairing',
+    typescript: 'nitpicker/no-filtered-positional-pairing',
+  },
+  {
+    java: 'ReplacingCollectionMerge',
+    typescript: 'nitpicker/no-replacing-collection-merge',
+  },
+  {
+    java: 'RepeatedKeyedScan',
+    typescript: 'nitpicker/no-repeated-keyed-scan',
+  },
+  {
+    java: 'LoopInvariantCopy',
+    typescript: 'nitpicker/no-loop-invariant-copy',
+  },
+  {
     java: 'SurrogateSplittingCut',
     typescript: 'nitpicker/no-surrogate-splitting-cut',
     go: 'go-rules/byte-cut-splits-rune',

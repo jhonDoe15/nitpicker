@@ -30,7 +30,6 @@ import {
   type BaselinePolicy,
   type BoundEntry,
   type Definition,
-  type Entry,
   type Parsed,
   type ReuseFacts,
   type ReuseFactsOptions,
@@ -129,7 +128,10 @@ function neutralDefinition(
   return { file, ...rest, key: definitionKey(definition, context) };
 }
 
-export function jvmReuseFacts(projectRoot: string, options: ReuseFactsOptions): ReuseFacts {
+function parsedFacts(
+  projectRoot: string,
+  options: ReuseFactsOptions,
+): Omit<ReuseFacts, 'nearDuplicateUnits'> {
   const owners = projectSourceFiles(projectRoot, options);
   const files = [...owners].map(([file, project]) => ({
     file,
@@ -162,12 +164,22 @@ export function jvmReuseFacts(projectRoot: string, options: ReuseFactsOptions): 
       ),
     ),
     imports: [...bound.flatMap((entry) => importFacts(index, entry)), ...aliases],
-    nearDuplicateUnits: unitFacts(projectRoot, files),
   };
 }
 
-function unitFacts(projectRoot: string, files: readonly Entry[]) {
-  const sources = files.map(({ file }) => file).filter((file) => /\.(?:java|kt)$/u.test(file));
+export function jvmReuseFacts(projectRoot: string, options: ReuseFactsOptions): ReuseFacts {
+  const facts = parsedFacts(projectRoot, options);
+  return {
+    ...facts,
+    nearDuplicateUnits: unitFacts(
+      projectRoot,
+      facts.modules.map(({ file }) => file),
+    ),
+  };
+}
+
+function unitFacts(projectRoot: string, files: readonly string[]) {
+  const sources = files.filter((file) => /\.(?:java|kt)$/u.test(file));
   return readJvmUnits(projectRoot, sources).map(
     ({ file, name, start, end, tokens, final, tree }) => ({
       file,

@@ -43,7 +43,53 @@ const COMPILE = failure(
   '> Compilation failed; see the compiler output below.',
 );
 
+function validationFailure(index: number, project: string, problem: string): string {
+  return [
+    `${String(index)}: Task failed with an exception.`,
+    '-----------',
+    '* What went wrong:',
+    `${problem} found with the configuration of task '${project}:nitpickerCpd' (type 'DefaultTask').`,
+    "  - Gradle detected a problem with the following location: '/k/clients/build/generated/main/java'.",
+    '    ',
+    `    Reason: Task '${project}:nitpickerCpd' uses this output of task '${project}:processMessages' without ` +
+      'declaring an explicit or implicit dependency.',
+    '    ',
+    '    Possible solutions:',
+    `      1. Declare task '${project}:processMessages' as an input of '${project}:nitpickerCpd'.`,
+    '',
+    '* Try:',
+    "> Declare task ':clients:processMessages' as an input of ':clients:nitpickerCpd'",
+    '==============================================================================',
+  ].join('\n');
+}
+
 describe('failed nitpicker tool tasks in a Gradle failure', () => {
+  it('lists a tool task that Gradle refused to run over its configuration, with the reason Gradle gave', () => {
+    const output =
+      'FAILURE: Build completed with 2 failures.\n\n' +
+      `${validationFailure(1, ':clients', 'Some problems were')}\n\n` +
+      `${validationFailure(2, ':raft', 'A problem was')}\n`;
+
+    expect(failedToolTasks(output)).toEqual(
+      [':clients', ':raft'].map((project) => ({
+        project,
+        task: 'nitpickerCpd',
+        reason:
+          `Task '${project}:nitpickerCpd' uses this output of task '${project}:processMessages' without ` +
+          'declaring an explicit or implicit dependency.',
+      })),
+    );
+  });
+
+  it('treats a configuration problem of a build task as a failed build', () => {
+    const output = validationFailure(1, ':clients', 'A problem was').replace(
+      "task ':clients:nitpickerCpd' (type",
+      "task ':clients:compileJava' (type",
+    );
+
+    expect(failedToolTasks(output)).toBe(undefined);
+  });
+
   it('lists each failed tool task with its project and reason', () => {
     const output = `FAILURE: Build completed with 2 failures.\n\n${FORBIDDEN}\n\n${ROOT_PMD}\n`;
 

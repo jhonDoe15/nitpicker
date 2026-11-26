@@ -558,7 +558,8 @@ Java projects showed that other names in this position are mostly cheap accessor
 `nitpicker/no-work-before-early-exit` (production source, in `eslint-lint`) reports effect-free
 in-memory work (a collection pass, a `Map` or `Set` built; file reads and parses are left alone, since
 moving them would change which error the exit path raises) declared right before an early exit
-that does not read it. Java has `WorkBeforeEarlyExit` (main PMD ruleset), where PMD
+that does not read it, and in a loop or iteration callback a type checker query made before an exit
+whose test makes no call other than `is...` or `has...` guards. Java has `WorkBeforeEarlyExit` (main PMD ruleset), where PMD
 `PrematureDeclaration` treats calls as impure and so skips this case: a stream pass or a collection
 copy right before an `if` without `else` that ends in an exit, makes no calls and does not read the
 local. Inside a loop body, an iteration callback or a `visit*` method (#2184) a local set from a
@@ -603,6 +604,33 @@ Java `SortedRangeScan` (main PMD ruleset, #2312, Java only) reports an enhanced 
 `SortedSet` or the key set or entry set of a `SortedMap` whose body is only an `if` testing the
 element against a lower and an upper bound that returns or breaks on the first hit, and suggests
 `subSet`, `tailSet`, `ceiling` or `subMap`.
+
+`nitpicker/no-accumulating-group-spread` (production source, in `eslint-lint`) reports a group of a
+`Map` or object spread into a new array that replaces it on every step of a loop or iteration
+callback (`m.set(k, [...(m.get(k) ?? []), v])`).
+
+`nitpicker/no-loop-invariant-copy` (production source, in `eslint-lint`, broad) reports a full copy
+of a value that does not change in a loop, made and stored on every pass of it.
+
+`nitpicker/no-repeated-parse-per-item` (production source, in `eslint-lint`) reports a pure parse
+function of the same file called on a shared field of every item of a loop (`message`, `rule`,
+`path` and the like), where each distinct value could be parsed once.
+
+`nitpicker/no-stat-per-listed-entry` (production source, in `eslint-lint`) reports a `stat` or
+`lstat` call per entry of a `readdir` listing made without `withFileTypes`, when only the entry's
+kind is read from it.
+
+`nitpicker/no-filtered-positional-pairing` (production source, in `eslint-lint`) reports a list that
+is filtered and then paired by position (an index callback, a counted loop, `zip`) with a list that
+was not filtered the same way.
+
+`nitpicker/no-replacing-collection-merge` (production source, in `eslint-lint`) reports maps of
+collections merged from several sources with `set` or `Object.assign`, which replaces the values of
+a key seen twice.
+
+`nitpicker/no-repeated-keyed-scan` (production source, in `eslint-lint`) reports a scan of a
+collection looked up by the current element's key whose test reads nothing of the element, so
+elements sharing the key repeat the same scan.
 
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a

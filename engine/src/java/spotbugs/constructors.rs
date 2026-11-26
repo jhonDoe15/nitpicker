@@ -2,7 +2,7 @@
 //! half-built object a finalizer could get hold of. An anonymous class counts too: its field initializers and
 //! initializer blocks run in the constructor the compiler writes for it.
 use super::handlers::{caught, catch_types, closing, declares, Guard, UNKNOWN};
-use super::{Context, names};
+use super::{Context, lombok, names};
 use crate::engine::source::{children, named_children, parent};
 use crate::java::helpers::has_modifier;
 use crate::java::types::model::flag;
@@ -125,8 +125,19 @@ impl<'t> Scan<'_, '_, 't> {
                 self.walk(*member, &Guard::Open, false, &mut sites);
             }
         }
-        self.walk(body, &Guard::Open, target.kind() != "constructor_declaration", &mut sites);
-        sites
+        if target.kind() != "constructor_declaration" {
+            self.walk(body, &Guard::Open, true, &mut sites);
+            return sites;
+        }
+        sites.extend(lombok::checked_parameter(self.context, target).map(|checked| (checked, "java.lang.NullPointerException".to_string(), false)));
+        let mut inside = Vec::new();
+        self.walk(body, &Guard::Open, false, &mut inside);
+        let delegated = named_children(body).into_iter().find(|part| part.kind() == "explicit_constructor_invocation");
+        if lombok::annotated(self.context, target, "SneakyThrows") {
+            inside.retain(|site| within(delegated, site.0));
+        }
+        let (early, late): (Vec<Site<'t>>, Vec<Site<'t>>) = inside.into_iter().partition(|site| site.2 || within(delegated, site.0));
+        early.into_iter().chain(sites).chain(late).collect()
     }
 
     /// Every place under `node`, in source order, where an exception starts that the handler around it does not
@@ -245,7 +256,7 @@ pub fn constructor_throw(context: &Context, class: Node) {
         let message = format!("Exception thrown in class {} at {label} {TAIL}", names::binary(context, &own));
         context.report("CT_CONSTRUCTOR_THROW", declaration, site_line(context, site), message);
     };
-    if constructors.is_empty() {
+    if constructors.is_empty() && (anonymous || !lombok::writes_constructors(context, class)) {
         let mut sites = Vec::new();
         for member in &scan.shared {
             scan.walk(*member, &Guard::Open, false, &mut sites);
@@ -259,6 +270,10 @@ pub fn constructor_throw(context: &Context, class: Node) {
             report(constructor, *site);
         }
     }
+}
+
+fn within(outer: Option<Node>, node: Node) -> bool {
+    outer.is_some_and(|outer| outer.start_byte() <= node.start_byte() && node.end_byte() <= outer.end_byte())
 }
 
 /// `this` or `super` when a constructor body starts by calling another constructor.
