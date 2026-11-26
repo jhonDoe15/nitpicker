@@ -1,0 +1,21 @@
+  <rule name="ConstantLookupInLoop" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This reflective lookup finds the same class, method, field or constructor on every pass of this loop or callback: its arguments are constants and nothing in the loop changes what it finds. Look it up once before the loop (or in a static final field) and reuse the result.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $bodies := (//ForeachStatement/*[last()] | //ForStatement/*[last()] | //WhileStatement/*[last()] | //DoStatement/*[1]
+      | //LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining',
+          'map', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch', 'mapToObj', 'mapToInt', 'mapToLong')]]/*[last()])
+return
+$bodies//MethodCall[@MethodName = ('getMethod', 'getDeclaredMethod', 'getField', 'getDeclaredField', 'getConstructor',
+    'getDeclaredConstructor')]
+  [*[1][self::ClassLiteral]]
+  [empty(ArgumentList/*[not(self::StringLiteral or self::ClassLiteral)])]
+|
+$bodies//MethodCall[@MethodName = 'forName'][*[1][self::TypeExpression][pmd-java:typeIs('java.lang.Class')]]
+  [ArgumentList/@Size = 1][ArgumentList/*[1][self::StringLiteral]]
+]]></value>
+      </property>
+    </properties>
+  </rule>

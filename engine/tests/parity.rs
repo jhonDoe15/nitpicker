@@ -100,6 +100,11 @@ fn review_rules_report_what_pmd_reports() {
 }
 
 #[test]
+fn repeated_work_rules_report_what_pmd_reports() {
+    same_as_pmd("repeats", "all");
+}
+
+#[test]
 fn rare_built_in_rules_and_switch_facts_match_pmd() {
     same_as_pmd("builtins", "all");
 }

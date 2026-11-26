@@ -1,0 +1,32 @@
+  <rule name="WorkBeforeEarlyExit" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This local is worked out before the early exit on the next line, which leaves without reading it, so every pass that takes the exit pays for the call and throws the result away. Move the declaration below the exit; keep it here only if its exception must be raised on that path too.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $cheap := ('get', 'getOrDefault', 'contains', 'containsKey', 'containsValue', 'equals', 'equalsIgnoreCase', 'charAt',
+      'substring', 'startsWith', 'endsWith', 'indexOf', 'lastIndexOf', 'trim', 'strip', 'toLowerCase', 'toUpperCase', 'split',
+      'replace', 'replaceAll', 'valueOf', 'toString', 'hashCode', 'size', 'isEmpty', 'length', 'of', 'ofNullable', 'compareTo',
+      'format', 'requireNonNull', 'getAttribute', 'getProperty', 'getParameter', 'getHeader', 'getOrNull', 'orElse'),
+    $verbs := '^_*(accept|acquire|add|advance|append|apply|call|clear|close|consume|create|dec|decrement|delete|dequeue|eat|emit|enqueue|exec|expect|fetch|generate|inc|increment|insert|lex|match|next|now|open|poll|pop|post|push|put|random|read|release|remove|reset|run|save|scan|send|set|shift|skip|splice|start|stop|take|test|unshift|update|uuid|write)([A-Z_$0-9]|$)',
+    $settled := function($node) {
+      empty($node/descendant-or-self::*[self::MethodCall or self::ConstructorCall or self::AssignmentExpression
+        or self::UnaryExpression[@Operator = ('++', '--')] or self::LambdaExpression or self::MethodReference])
+    },
+    $costly := function($call) {
+      $call/ArgumentList/@Size > 0 and not($call/@MethodName = $cheap) and not(matches($call/@MethodName, $verbs))
+        and $settled($call/ArgumentList) and $settled($call/*[1][not(self::ArgumentList)])
+    }
+return
+//LocalVariableDeclaration[parent::Block][count(VariableDeclarator) = 1]
+  [VariableDeclarator/*[2][self::MethodCall][$costly(.)]]
+  [let $name := VariableDeclarator/VariableId/@Name
+   return exists(following-sibling::*[1][self::IfStatement][count(*) = 2]
+     [*[2]/(self::Block/*[last()] | self::*[not(self::Block)])
+       [self::BreakStatement or self::ContinueStatement or self::ReturnStatement or self::ThrowStatement]]
+     [empty(.//VariableAccess[@Name = $name])]
+     [$settled(*[1])])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

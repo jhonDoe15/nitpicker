@@ -1,0 +1,32 @@
+  <rule name="ReadAllBeforePass" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Every input is read into this list before the one pass over it, so all of them sit in memory at once and peak memory grows with the number of inputs. Read and handle one input at a time (read, handle and drop each in one loop), use a bounded pool for parallel reads, or keep only what the pass needs from each input.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $reader := function($node) {
+      exists($node/descendant-or-self::*[self::MethodCall or self::MethodReference]
+        [@MethodName = ('readString', 'readAllBytes', 'readAllLines')][*[1][pmd-java:typeIs('java.nio.file.Files')]]
+      | $node/descendant-or-self::*[self::MethodCall or self::MethodReference]
+        [@MethodName = ('readValue', 'readTree')][*[1][pmd-java:typeIs('com.fasterxml.jackson.databind.ObjectMapper')]])
+    }
+return
+//LocalVariableDeclaration[count(VariableDeclarator) = 1]
+  [let $name := VariableDeclarator/VariableId/@Name,
+       $init := VariableDeclarator/*[2],
+       $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][1],
+       $uses := $method//VariableAccess[@Name = $name],
+       $passes := $uses[parent::ForeachStatement][. is ../*[2]],
+       $adds := $uses[parent::MethodCall[@MethodName = 'add'][ArgumentList/@Size = 1][$reader(ArgumentList)]]
+         [ancestor::ForeachStatement or ancestor::ForStatement or ancestor::WhileStatement]
+   return count($passes) = 1 and empty($passes/ancestor::LocalVariableDeclaration)
+     and (($init[self::ConstructorCall][pmd-java:typeIs('java.util.Collection')][ArgumentList/@Size = 0]
+           and exists($adds) and count($uses) = count($adds) + 1
+           and empty($adds[not(. << $passes)]))
+       or ($init[self::MethodCall][@MethodName = ('toList', 'collect')]
+           [*[1][self::MethodCall][@MethodName = 'map'][$reader(ArgumentList)]]
+           and count($uses) = 1))]
+]]></value>
+      </property>
+    </properties>
+  </rule>

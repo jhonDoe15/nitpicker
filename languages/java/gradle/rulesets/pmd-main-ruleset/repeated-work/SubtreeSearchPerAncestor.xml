@@ -1,0 +1,26 @@
+  <rule name="SubtreeSearchPerAncestor" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This loop climbs from a node towards the root and searches the children or the whole subtree of every level, so one lookup costs depth times width, and near the root that is the whole document or tree. Check the kind of the level first and search only the levels that can answer (closest(selector) for a Jsoup element), or keep the answer per level.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $up := ('getParent', 'getParentNode', 'parent', 'getParentElement', 'getEnclosingElement'),
+    $searches := ('getElementsByTagName', 'getElementsByTagNameNS', 'getElementsByClassName', 'querySelector',
+      'querySelectorAll', 'select', 'selectFirst', 'getElementsByTag', 'getElementsByClass', 'getElementsByAttribute',
+      'getAllElements', 'findAll', 'findFirst', 'findDescendant', 'findDescendants', 'descendants', 'getDescendants')
+return
+//MethodCall[@MethodName = $searches]
+  [let $name := *[1][self::VariableAccess]/@Name
+   return exists($name) and exists(ancestor::*[self::WhileStatement or self::DoStatement or self::ForStatement]
+     [let $climbers := .//AssignmentExpression[@Operator = '=']
+         [*[2]/(self::MethodCall | self::CastExpression/MethodCall)[@MethodName = $up][ArgumentList/@Size = 0]
+           /*[1][self::VariableAccess]/@Name = *[1][self::VariableAccess]/@Name]
+         /*[1]/@Name,
+          $aliases := (.//VariableDeclarator[*[2]/(self::VariableAccess | self::CastExpression/VariableAccess)/@Name = $climbers]
+            | .//InfixExpression[@Operator = 'instanceof'][*[1][self::VariableAccess]/@Name = $climbers]//VariableId
+              /parent::*)/descendant-or-self::VariableId/@Name
+      return $name = ($climbers, $aliases)])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

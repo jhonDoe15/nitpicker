@@ -31,22 +31,27 @@ export const GROUPS: readonly Group[] = [
     python: 'status-only-spawn-check',
   },
   {
+    java: 'ConstantLookupInLoop',
     typescript: 'nitpicker/no-constant-lookup-in-loop',
     python: 'constant-lookup-in-loop',
   },
   {
+    java: 'SubtreeSearchPerAncestor',
     typescript: 'nitpicker/no-subtree-search-per-ancestor',
     python: 'subtree-search-per-ancestor',
   },
   {
+    java: 'RepeatedCall',
     typescript: 'nitpicker/no-repeated-call',
     python: 'repeated-call',
   },
   {
+    java: 'WorkBeforeEarlyExit',
     typescript: 'nitpicker/no-work-before-early-exit',
     python: 'work-before-early-exit',
   },
   {
+    java: 'ReadAllBeforePass',
     typescript: 'nitpicker/no-read-all-before-pass',
     python: 'read-all-before-pass',
   },

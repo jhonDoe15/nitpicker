@@ -46,6 +46,7 @@
   "pmd/ConcurrentMapCheckThenAct": ["bug", "async"],
   "pmd/ConfigurationReadOutsideCompositionRoot": ["maintainability"],
   "pmd/ConstantIndexBeyondGuard": ["bug"],
+  "pmd/ConstantLookupInLoop": ["performance"],
   "pmd/ConstructorLeaksResourceOnFailure": ["bug", "reliability"],
   "pmd/CopyConstructorSharesCollection": ["bug"],
   "pmd/CopyMethodDropsField": ["bug"],
@@ -165,6 +166,7 @@
   "pmd/ProcessWaitWithoutTimeout": ["reliability"],
   "pmd/ProperLogger": ["style"],
   "pmd/RandomInTest": ["tests"],
+  "pmd/ReadAllBeforePass": ["performance", "reliability"],
   "pmd/RealClockInTest": ["tests"],
   "pmd/ReceiverPassedAsArgument": ["bug"],
   "pmd/RecursiveMapUpdate": ["bug"],
@@ -172,6 +174,7 @@
   "pmd/RedundantStreamStep": ["simplification"],
   "pmd/RegexPartDefect": ["bug"],
   "pmd/RemoveByKeyDropsNewerValue": ["bug", "async"],
+  "pmd/RepeatedCall": ["performance"],
   "pmd/ReplaceWithWrongLiteralKind": ["bug"],
   "pmd/RetryInTest": ["tests"],
   "pmd/ReturnFromFinallyBlock": ["reliability"],
@@ -258,6 +261,7 @@
   "pmd/StreamedRowsCollected": ["performance", "persistence"],
   "pmd/StringToString": ["simplification"],
   "pmd/SubtractionComparison": ["bug"],
+  "pmd/SubtreeSearchPerAncestor": ["performance"],
   "pmd/SwallowedInterrupt": ["reliability", "async"],
   "pmd/SwitchStmtsShouldHaveDefault": ["bug"],
   "pmd/TaskOutlivesTryResource": ["bug", "async"],
@@ -305,5 +309,6 @@
   "pmd/WallClockBoundInTest": ["tests"],
   "pmd/WeakAssertionInTest": ["tests"],
   "pmd/WeakHmac": ["security"],
-  "pmd/WhileLoopWithLiteralBoolean": ["simplification"]
+  "pmd/WhileLoopWithLiteralBoolean": ["simplification"],
+  "pmd/WorkBeforeEarlyExit": ["performance"]
 }

@@ -534,27 +534,38 @@ and Go in #2133.
 
 `nitpicker/no-constant-lookup-in-loop` (production source, in `eslint-lint`) reports a DOM lookup on
 `document` by constant arguments in a loop or iteration callback that leaves the page alone, and a
-`new URL(constant)` there of which only parts are read. Java reflective and registry lookups by a
-constant name and the other presets follow in #2133.
+`new URL(constant)` there of which only parts are read. Java has `ConstantLookupInLoop` (main PMD
+ruleset): `getMethod`, `getDeclaredMethod`, `getField`, `getDeclaredField`, `getConstructor` on a class
+literal with literal arguments, and `Class.forName("literal")`, in a loop or iteration callback.
+Kotlin, Python and Go follow in #2133.
 
 `nitpicker/no-subtree-search-per-ancestor` (production source, in `eslint-lint`) reports a loop that
 climbs a parent chain and searches the children or the whole subtree of every level without testing
-the level's kind first. Java, Kotlin, Python and Go follow in #2133.
+the level's kind first. Java has `SubtreeSearchPerAncestor` (main PMD ruleset) for a loop that
+assigns `x = x.getParentNode()` (or `getParent`, `parent`, `getParentElement`, `getEnclosingElement`)
+and searches the subtree of `x`, or of a cast or pattern variable taken from it. Kotlin, Python and
+Go follow in #2133.
 
 `nitpicker/no-repeated-call` (production source, in `eslint-lint`) reports a call made once to test
 its result and again to use it, and a recursive call repeated with the same arguments on one path.
-Java (`resolve(x).isPresent() && resolve(x).get()`), Kotlin, Python and Go follow in #2133.
+Java has `RepeatedCall` (main PMD ruleset): `resolve(x).isPresent() && resolve(x).get()`, a
+`find(x) != null` test followed by `find(x)` in the guarded branch or arm, and a recursive call
+repeated with the same arguments in one statement. Kotlin, Python and Go follow in #2133.
 
 `nitpicker/no-work-before-early-exit` (production source, in `eslint-lint`) reports effect-free
 in-memory work (a collection pass, a `Map` or `Set` built; file reads and parses are left alone, since
 moving them would change which error the exit path raises) declared right before an early exit
-that does not read it. Java (where PMD `PrematureDeclaration` treats calls as impure and so skips this
-case), Kotlin, Python and Go follow in #2133.
+that does not read it. Java has `WorkBeforeEarlyExit` (main PMD ruleset), where PMD
+`PrematureDeclaration` treats calls as impure and so skips this case: a local initialised by a call
+with arguments right before an `if` without `else` that ends in an exit and reads neither the local
+nor any call. Kotlin, Python and Go follow in #2133.
 
 `nitpicker/no-read-all-before-pass` (production source, in `eslint-lint`) reports every file read
 into one array that is then only walked once. `nitpicker/no-collected-stream-rows` is the same idea
-for streamed rows. Java (`Files.readString`, `readAllBytes`, `readAllLines`, `ObjectMapper.readValue`),
-Kotlin, Python and Go follow in #2133.
+for streamed rows. Java has `ReadAllBeforePass` (main PMD ruleset): a list filled in a loop, or
+collected from a stream `map`, with `Files.readString`, `readAllBytes`, `readAllLines` or Jackson
+`ObjectMapper.readValue`/`readTree`, then walked once by an enhanced `for`. Kotlin, Python and Go
+follow in #2133.
 
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a

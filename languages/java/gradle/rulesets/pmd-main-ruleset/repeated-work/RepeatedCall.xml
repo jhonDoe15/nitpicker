@@ -1,0 +1,50 @@
+  <rule name="RepeatedCall" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This call runs again with the same arguments: once to test the result and once more to use it, or twice in one expression of a recursive method, with nothing in between that could change the answer. Keep the first result in a local and use that (var found = resolve(key); if (found.isPresent()) ...).">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $cheap := ('get', 'getOrDefault', 'contains', 'containsKey', 'containsValue', 'equals', 'equalsIgnoreCase', 'charAt',
+      'substring', 'startsWith', 'endsWith', 'indexOf', 'lastIndexOf', 'trim', 'strip', 'toLowerCase', 'toUpperCase', 'split',
+      'replace', 'replaceAll', 'valueOf', 'toString', 'hashCode', 'size', 'isEmpty', 'length', 'of', 'ofNullable', 'compareTo',
+      'format', 'requireNonNull', 'getAttribute', 'getProperty', 'getParameter', 'getHeader', 'getOrNull', 'orElse'),
+    $verbs := '^_*(accept|acquire|add|advance|append|apply|call|clear|close|consume|create|dec|decrement|delete|dequeue|eat|emit|enqueue|exec|expect|fetch|generate|inc|increment|insert|lex|match|next|now|open|poll|pop|post|push|put|random|read|release|remove|reset|run|save|scan|send|set|shift|skip|splice|start|stop|take|test|unshift|update|uuid|write)([A-Z_$0-9]|$)',
+    $settled := function($node) {
+      empty($node/descendant-or-self::*[self::MethodCall or self::ConstructorCall or self::AssignmentExpression
+        or self::UnaryExpression[@Operator = ('++', '--')] or self::LambdaExpression or self::MethodReference])
+    },
+    $costly := function($call) {
+      $call/ArgumentList/@Size > 0 and not($call/@MethodName = $cheap) and not(matches($call/@MethodName, $verbs))
+        and $settled($call/ArgumentList) and $settled($call/*[1][not(self::ArgumentList)])
+    },
+    $key := function($node) {
+      string-join(for $part in $node/descendant-or-self::*
+        return concat(local-name($part), ':', string($part/@Name), string($part/@MethodName), string($part/@Image),
+          string($part/@Operator)), ' ')
+    },
+    $after := function($test) {
+      $test/ancestor::IfStatement[exists(*[1]/descendant-or-self::* intersect $test)]/*[2]
+          /(self::Block/*[1] | self::*[not(self::Block)])
+      | $test/ancestor::ConditionalExpression[exists(*[1]/descendant-or-self::* intersect $test)]/(*[2] | *[3])
+      | $test/ancestor::InfixExpression[@Operator = ('&&', '||')][exists(*[1]/descendant-or-self::* intersect $test)]/*[2]
+    },
+    $tested := //MethodCall[$costly(.)]
+      [parent::MethodCall[@MethodName = ('isPresent', 'isEmpty')][ArgumentList/@Size = 0]
+       or parent::InfixExpression[@Operator = ('==', '!=')][NullLiteral]]
+return
+(for $first in $tested
+ return let $wanted := $key($first)
+   return $after($first/parent::*)/descendant-or-self::MethodCall[$key(.) = $wanted])
+|
+//MethodDeclaration[not(.//AssignmentExpression[*[1][self::FieldAccess]])][not(matches(@Name, $verbs))]
+  [let $own := @Name return count(.//MethodCall[@MethodName = $own]) > 1]
+  //MethodCall[@MethodName = ancestor::MethodDeclaration[1]/@Name]
+    [empty(*[1][not(self::ArgumentList) and not(self::ThisExpression)])]
+    [ArgumentList/@Size > 0][$settled(ArgumentList)]
+    [let $call := ., $wanted := $key(.), $statement := ancestor::*[self::ExpressionStatement or self::ReturnStatement
+        or self::LocalVariableDeclaration][1]
+     return exists($statement//MethodCall[. << $call][$key(.) = $wanted])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

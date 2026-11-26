@@ -164,6 +164,13 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `filter(...).findFirst().isPresent()` or `filter(...).count() > 0`, and `size()` or `isEmpty()` on
   the source instead of on a `toList()` or `new ArrayList<>(source)` copy
   (`pmd/RedundantStreamStep`).
+- Do repeated work once: look a reflective member up by its constant name before the loop, not in it
+  (`pmd/ConstantLookupInLoop`); test the kind of a level before you search its subtree while you climb
+  a parent chain (`pmd/SubtreeSearchPerAncestor`); keep the result of `resolve(key)` in a local
+  instead of calling it again after `isPresent()` or a null test, and call a recursive method once per
+  sub-result (`pmd/RepeatedCall`); declare a local after the early exit that does not read it
+  (`pmd/WorkBeforeEarlyExit`); and read and handle one file at a time instead of reading every file
+  into a list that is walked once (`pmd/ReadAllBeforePass`).
 - A `Collectors.toMap`, `toUnmodifiableMap`, `toConcurrentMap` value function and a `groupingBy`
   classifier never return `null` (they throw on it): filter the nulls first, map them
   (`Objects.toString`), or collect into a `HashMap` with `collect(HashMap::new, ..., Map::putAll)`
