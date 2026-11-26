@@ -163,6 +163,36 @@ impl Session {
         Ok(())
     }
 
+    /// Many questions of one method, asked without waiting for each answer.
+    pub fn ask_many<T: for<'de> serde::Deserialize<'de>>(&mut self, method: &str, parameters: Vec<serde_json::Value>) -> Result<Vec<T>, String> {
+        if parameters.is_empty() {
+            return Ok(Vec::new());
+        }
+        self.server.answer_many(&self.project, method, parameters)
+    }
+
+    /// Fills the kept answers of `aliased` for the aliases among these symbols.
+    pub fn aliased_ahead<'s>(&mut self, symbols: impl IntoIterator<Item = &'s Symbol>) -> Result<(), String> {
+        let mut missing: Vec<u64> = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        for symbol in symbols {
+            if symbol.flags & super::tables::symbol_flags::ALIAS != 0 && !self.aliased.contains_key(&symbol.id) && seen.insert(symbol.id) {
+                missing.push(symbol.id);
+            }
+        }
+        let questions = missing.iter().map(|id| serde_json::json!({ "symbol": id })).collect();
+        let found: Vec<Option<Symbol>> = self.ask_many("getAliasedSymbol", questions)?;
+        for (id, target) in missing.into_iter().zip(found) {
+            self.aliased.insert(id, target.map(Rc::new));
+        }
+        Ok(())
+    }
+
+    /// The kept answer of `symbol_at`, when it was asked.
+    pub fn known_symbol_at(&self, handle: &str) -> Option<Option<Rc<Symbol>>> {
+        self.located.get(handle).cloned()
+    }
+
     /// What an alias stands for; `None` when it resolves to nothing.
     pub fn aliased(&mut self, symbol: &Symbol) -> Result<Option<Rc<Symbol>>, String> {
         if let Some(known) = self.aliased.get(&symbol.id) {

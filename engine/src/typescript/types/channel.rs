@@ -63,23 +63,67 @@ impl Channel {
         }
     }
 
-    fn exchange(&mut self, method: &str, payload: &[u8]) -> std::io::Result<(u8, Vec<u8>)> {
-        self.input.write_all(&[0x93, REQUEST])?;
-        write_bin(&mut self.input, method.as_bytes())?;
-        write_bin(&mut self.input, payload)?;
-        self.input.flush()?;
-        let mut head = [0u8; 2];
-        self.output.read_exact(&mut head)?;
-        let kind = if head[1] == 0xcc {
-            let mut byte = [0u8; 1];
-            self.output.read_exact(&mut byte)?;
-            byte[0]
-        } else {
-            head[1]
-        };
-        read_bin(&mut self.output)?;
-        Ok((kind, read_bin(&mut self.output)?))
+    /// Many questions of one method, written while the answers are read, so the server never waits for the
+    /// next question. The answers come in the order of the questions.
+    pub fn request_many(&mut self, method: &str, payloads: &[Vec<u8>]) -> Result<Vec<Vec<u8>>, String> {
+        let started = Instant::now();
+        let Channel { child, input, output, .. } = self;
+        let answers = std::thread::scope(|scope| {
+            let writer = scope.spawn(move || -> std::io::Result<()> {
+                for payload in payloads {
+                    write_request(input, method, payload)?;
+                }
+                input.flush()
+            });
+            let answers: std::io::Result<Vec<(u8, Vec<u8>)>> = payloads.iter().map(|_| read_answer(output)).collect();
+            if answers.is_err() {
+                let _ = child.kill();
+            }
+            let written = writer.join().unwrap_or_else(|_| Err(std::io::Error::other("the writer stopped")));
+            written.and(answers)
+        })
+        .map_err(|error| format!("{method}: {error}"))?;
+        self.requests += payloads.len() as u64;
+        self.sent += payloads.iter().map(|payload| payload.len() as u64).sum::<u64>();
+        self.waited += started.elapsed();
+        answers
+            .into_iter()
+            .map(|answer| match answer {
+                (RESPONSE, body) => {
+                    self.received += body.len() as u64;
+                    Ok(body)
+                }
+                (ERROR, body) => Err(format!("{method}: {}", String::from_utf8_lossy(&body))),
+                (kind, _) => Err(format!("{method}: unexpected message kind {kind}")),
+            })
+            .collect()
     }
+
+    fn exchange(&mut self, method: &str, payload: &[u8]) -> std::io::Result<(u8, Vec<u8>)> {
+        write_request(&mut self.input, method, payload)?;
+        self.input.flush()?;
+        read_answer(&mut self.output)
+    }
+}
+
+fn write_request(input: &mut impl Write, method: &str, payload: &[u8]) -> std::io::Result<()> {
+    input.write_all(&[0x93, REQUEST])?;
+    write_bin(input, method.as_bytes())?;
+    write_bin(input, payload)
+}
+
+fn read_answer(output: &mut impl Read) -> std::io::Result<(u8, Vec<u8>)> {
+    let mut head = [0u8; 2];
+    output.read_exact(&mut head)?;
+    let kind = if head[1] == 0xcc {
+        let mut byte = [0u8; 1];
+        output.read_exact(&mut byte)?;
+        byte[0]
+    } else {
+        head[1]
+    };
+    read_bin(output)?;
+    Ok((kind, read_bin(output)?))
 }
 
 impl Drop for Channel {
