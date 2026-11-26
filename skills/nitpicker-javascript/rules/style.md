@@ -357,6 +357,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Look for a tool's config file (`tsconfig.json`, `.eslintrc*`, `.prettierrc*`, `pyproject.toml`) in the parent
   folders, up to the repository root, before falling back to a default: the tool searches upward too, so a package
   covered by a workspace config gets the default otherwise (`nitpicker/no-single-folder-config-lookup`).
+- Handle each input of a `Promise.all(files.map(...))` batch on its own (a `try` or `.catch` in the callback, or
+  `Promise.allSettled`): one unreadable or unparsable file must not discard the results of the others
+  (`nitpicker/no-all-or-nothing-batch`).
 - Decide whether a child process failed by its exit status (`status !== 0`, `exitCode`, the callback's `error`), not
   by text on its standard error, which also carries warnings and notices (`nitpicker/no-stderr-as-failure`).
 - Read `error` and `signal` of a `spawnSync` result before its `status`: a child that could not start, timed out or

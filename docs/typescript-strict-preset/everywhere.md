@@ -2078,6 +2078,14 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   parent folder gets the default instead. Not reported: other names (`package.json`, lockfiles, `.git`), a directory
   named for the repository root, and a function or a same-file caller that walks the parent folders (`dirname`,
   `'..'`, `findUp`, `escalade`, or a helper named for ancestors, nearest or covering configs).
+- One failing input does not discard a whole batch (`nitpicker/no-all-or-nothing-batch`, production files).
+  Reported: `return`ed or stored `Promise.all(files.map(callback))` where the list is file paths (the result of
+  `readdir`, `glob`, `fastGlob` or `globby`, or a value named `files`, `paths`, `filePaths`, `fileNames`, `modules`,
+  `projects` or `packages`) and the callback (inline, or a function of the same file) calls `readFile`,
+  `readFileSync`, `JSON.parse` or another `parse` outside a `try` with a `catch` and without `.catch(...)`. One
+  unreadable or unparsable file rejects the call and loses every finished result. Not reported:
+  `Promise.allSettled`, callbacks that catch per input, a `Promise.all` inside a `try`, results that are not
+  collected, other collections and `throw` statements.
 - A finished child process is not judged by text on its standard error (`nitpicker/no-stderr-as-failure`,
   production files). Reported: an `if` or a ternary whose test (alone, or as one side of `||`) checks that the
   standard error is not empty (`stderr`, `stderr.length`, `stderr.length > 0`, `stderr !== ''`, also through

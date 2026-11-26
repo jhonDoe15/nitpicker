@@ -460,6 +460,9 @@ reports a check or read of `path.join(directory, name)` for a fixed config file 
 parent folders (`tsconfig.json`, `.eslintrc*`, `.prettierrc*`, `pyproject.toml`, ...) when its absence leads to a
 default and neither the function nor a same-file caller walks the parent folders. A package covered by a config
 higher up gets the default.
+All-or-nothing batch: `nitpicker/no-all-or-nothing-batch` (production source, in `eslint-lint`) reports a collected
+`Promise.all(files.map(callback))` over file paths whose callback reads or parses a file with no per-input `try` or
+`.catch`. One bad file rejects the call and discards the finished results of the others.
 
 Standard error as failure: `nitpicker/no-stderr-as-failure` (production source, in `eslint-lint`) and
 `pmd/StderrAsFailure` (Java, main sources) report a condition that fails a finished subprocess because its standard

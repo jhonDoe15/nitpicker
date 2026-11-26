@@ -189,6 +189,7 @@
   "eslint/nitpicker/no-unescaped-html-interpolation": ["bug", "security"],
   "eslint/nitpicker/no-unescaped-pattern-translation": ["bug", "security"],
   "eslint/nitpicker/no-unfiltered-soft-delete-read": ["bug", "persistence"],
+  "eslint/nitpicker/no-all-or-nothing-batch": ["reliability"],
   "eslint/nitpicker/no-unguarded-cyclic-recursion": ["bug", "reliability"],
   "eslint/nitpicker/no-unguarded-deleted-items": ["bug"],
   "eslint/nitpicker/no-unguarded-json-parse": ["bug", "reliability"],

@@ -86,6 +86,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-case-mixed-header-merge',
   'nitpicker/no-time-only-unique-name',
   'nitpicker/no-unguarded-json-parse',
+  'nitpicker/no-all-or-nothing-batch',
   'nitpicker/no-truncating-split-limit',
   'nitpicker/no-lossy-json-stringify',
   'nitpicker/no-prototype-key-access',

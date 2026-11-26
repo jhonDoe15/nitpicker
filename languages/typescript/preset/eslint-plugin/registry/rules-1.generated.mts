@@ -13,6 +13,7 @@ import { rule as ruleNamingConvention } from '../rules/wrapped/naming-convention
 import { rule as ruleNoAccumulatingSpread } from '../rules/collections/no-accumulating-spread.mts';
 import { rule as ruleNoAccumulatorConcat } from '../rules/collections/no-accumulator-concat.mts';
 import { rule as ruleNoAddOnlyCollection } from '../rules/lifecycles/growth/no-add-only-collection.mts';
+import { rule as ruleNoAllOrNothingBatch } from '../rules/batches/no-all-or-nothing-batch.mts';
 import { rule as ruleNoAmbiguousLookupKey } from '../rules/lookup-keys/no-ambiguous-lookup-key.mts';
 import { rule as ruleNoArraySpreadArguments } from '../rules/collections/call-spreads/no-array-spread-arguments.mts';
 import { rule as ruleNoAssertionInLoop } from '../test-assertions/loop-assertions/no-assertion-in-loop.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/ass
 import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
 import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
 import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multiple-collection-joins.mts';
-import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -115,6 +115,7 @@ export const partRules = {
   'no-accumulating-spread': ruleNoAccumulatingSpread,
   'no-accumulator-concat': ruleNoAccumulatorConcat,
   'no-add-only-collection': ruleNoAddOnlyCollection,
+  'no-all-or-nothing-batch': ruleNoAllOrNothingBatch,
   'no-ambiguous-lookup-key': ruleNoAmbiguousLookupKey,
   'no-array-spread-arguments': ruleNoArraySpreadArguments,
   'no-assertion-in-loop': ruleNoAssertionInLoop,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-module-level-let': ruleNoModuleLevelLet,
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
   'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
-  'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
 };
