@@ -17,15 +17,19 @@ afterEach(() => {
   }
 });
 
-function countingEngine(real: string): { readonly binary: string; readonly calls: () => number } {
+function loggingEngine(real: string): { readonly binary: string; readonly calls: () => string[] } {
   const folder = mkdtempSync(path.join(tmpdir(), 'nitpicker-engine-calls-'));
   folders.push(folder);
   const log = path.join(folder, 'calls.log');
   const binary = path.join(folder, 'engine');
   writeFileSync(log, '');
-  writeFileSync(binary, `#!/bin/sh\necho "$1" >> '${log}'\nexec '${real}' "$@"\n`);
+  writeFileSync(binary, `#!/bin/sh\necho "$@" >> '${log}'\nexec '${real}' "$@"\n`);
   chmodSync(binary, 0o755);
-  return { binary, calls: () => readFileSync(log, 'utf8').split('\n').filter(Boolean).length };
+  return { binary, calls: () => readFileSync(log, 'utf8').split('\n').filter(Boolean) };
+}
+
+function checksOf(call: string): string | undefined {
+  return /--checks (?<checks>\S+)/u.exec(call)?.groups?.['checks'];
 }
 
 it.runIf(hasEngine)(
@@ -42,7 +46,7 @@ it.runIf(hasEngine)(
       },
     });
     folders.push(root);
-    const counted = countingEngine(engine ?? '');
+    const counted = loggingEngine(engine ?? '');
 
     const viaEngine = typedStructureOf(root, {
       NITPICKER_ENGINE: counted.binary,
@@ -50,11 +54,37 @@ it.runIf(hasEngine)(
     });
     const viaNode = typedStructureOf(root, { NITPICKER_TYPED_ENGINE: 'off' });
 
-    expect(counted.calls()).toBe(1);
+    expect(counted.calls().map(checksOf)).toEqual(['unused-api,design']);
     expect(viaEngine).toEqual(viaNode);
     expect(
       Object.values(viaEngine).map((findings) => Array.isArray(findings) && findings.length > 0),
     ).toEqual([true, true]);
+  },
+);
+
+it.runIf(hasEngine)(
+  'leaves design signals to Node without asking the engine when a script declares types in comments',
+  () => {
+    const root = createProject({
+      fixture: 'signals',
+      files: {
+        'src/legacy.mjs':
+          '/**\n * @param {{ title: string, verbose?: boolean }} options\n * @returns {string}\n */\n' +
+          "export function legacy(options) {\n  return options.verbose === true ? options.title : '';\n}\n",
+        'src/use.mjs':
+          "import { legacy } from './legacy.mjs';\n\nexport const shown = legacy({ title: 'a' });\n",
+      },
+    });
+    folders.push(root);
+    const logged = loggingEngine(engine ?? '');
+
+    const viaEngine = typedStructureOf(root, {
+      NITPICKER_ENGINE: logged.binary,
+      NITPICKER_TYPED_ENGINE: 'required',
+    });
+
+    expect(logged.calls().map(checksOf)).toEqual(['unused-api']);
+    expect(viaEngine).toEqual(typedStructureOf(root, { NITPICKER_TYPED_ENGINE: 'off' }));
   },
 );
 

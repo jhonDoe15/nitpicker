@@ -3,20 +3,13 @@ import path from 'node:path';
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../typed/typescript-program.mts';
 import {
-  baseUrlOf,
-  baseUrlPaths,
-  removedOptions,
+  optionOverrides,
+  type Typescript7Overrides,
 } from '../../../typescript-api/typescript7-options.mts';
 import { fieldsOf, parseJson } from '../../../../../shared/values/readers.mts';
 
 const NO_INPUT_CODES = new Set([18002, 18003]);
-const UNMAPPED_OPTIONS = new Set(['module', 'outFile', 'out']);
-const LOWEST_TARGET = 'ES2015';
-
-export type Typescript7Overrides = {
-  readonly set: Readonly<Record<string, unknown>>;
-  readonly unset: readonly string[];
-};
+export type { Typescript7Overrides };
 
 function parsedOptions(
   configPath: string,
@@ -41,21 +34,7 @@ export function typescript7Overrides(
   ts: typeof TypeScript = typescriptApi(),
 ): Typescript7Overrides | undefined {
   const options = parsedOptions(configPath, ts);
-  if (options === undefined) {
-    return undefined;
-  }
-  const removed = removedOptions(options);
-  const hasBaseUrl = baseUrlOf(options) !== undefined;
-  if ((removed.length === 0 && !hasBaseUrl) || removed.some((name) => UNMAPPED_OPTIONS.has(name))) {
-    return undefined;
-  }
-  return {
-    set: {
-      ...baseUrlPaths(options),
-      ...(removed.includes('target') ? { target: LOWEST_TARGET } : {}),
-    },
-    unset: [...(hasBaseUrl ? ['baseUrl'] : []), ...removed.filter((name) => name !== 'target')],
-  };
+  return options === undefined ? undefined : optionOverrides(options);
 }
 
 function jsonObject(text: string): Readonly<Record<string, unknown>> | undefined {
