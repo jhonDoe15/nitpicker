@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { nameOf, variableNamed } from '../../typed/node-views.mts';
-import { moduleValueOf, type FileContext } from '../module-values/bound-values.mts';
+import { nameOf, variableNamed, type FileContext } from '../../typed/node-views.mts';
+import { moduleValueOf } from '../module-values/bound-values.mts';
 import {
   calleeBinding,
   type CalleeShape,

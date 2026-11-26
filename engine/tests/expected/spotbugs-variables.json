@@ -152,5 +152,9 @@
 ["held/p/T5.java", "EI_EXPOSE_REP2", 11, "new p.T5(Map)#?"],
 ["held/p/T6.java", "EI_EXPOSE_REP2", 11, "new p.T6(Map)#raw"],
 ["held/p/T8.java", "EI_EXPOSE_REP2", 11, "new p.T8(Map)#raw"],
-["held/p/T8.java", "EI_EXPOSE_REP2", 15, "p.T8.copy()#?"]
+["held/p/T8.java", "EI_EXPOSE_REP2", 15, "p.T8.copy()#?"],
+["serial_review_b/p/B.java", "EI_EXPOSE_REP2", 12, "new p.B(List, Map, Collection)#m"],
+["serial_review_b/p/B.java", "EI_EXPOSE_REP2", 12, "new p.B(List, Map, Collection)#ts"],
+["serial_review_b/p/B.java", "EI_EXPOSE_REP2", 12, "new p.B(List, Map, Collection)#xs"],
+["serial_review_c/p/C.java", "EI_EXPOSE_REP2", 8, "new p.C(List)#xs"]
 ]

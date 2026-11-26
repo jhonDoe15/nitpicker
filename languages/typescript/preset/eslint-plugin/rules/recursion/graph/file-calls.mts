@@ -141,11 +141,12 @@ export function reachable(graph: FileCalls, start: string): ReadonlySet<string> 
   const seen = new Set<string>();
   const pending = [...(graph.calls.get(start) ?? [])];
   for (const key of pending) {
-    if (!seen.has(key)) {
-      seen.add(key);
-      for (const next of graph.calls.get(key) ?? []) {
-        pending.push(next);
-      }
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    for (const next of graph.calls.get(key) ?? []) {
+      pending.push(next);
     }
   }
   return seen;

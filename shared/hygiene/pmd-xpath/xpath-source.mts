@@ -27,7 +27,7 @@ function decoded(value: string): string {
     : (cdata[1] ?? '');
 }
 
-export function plainXPath(xpath: string): string {
+function plainXPath(xpath: string): string {
   return xpath.replaceAll(XPATH_COMMENT, ' ').replaceAll(STRING_LITERAL, "''");
 }
 

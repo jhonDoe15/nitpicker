@@ -1,9 +1,9 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { ancestorsOf } from '../../typed/node-views.mts';
+import { ancestorsOf, type FileContext } from '../../typed/node-views.mts';
 import { nodesOutsideNestedFunctions } from '../react-effects.mts';
 import { calleeNameOf, isFunction } from '../../typed/syntax-views.mts';
 import { enclosingComponent } from '../support/component-names.mts';
-import { testsBrowser, type FileContext } from './browser-tests.mts';
+import { testsBrowser } from './browser-tests.mts';
 
 export type BrowserInitialValue = {
   readonly initializer: TSESTree.Node;

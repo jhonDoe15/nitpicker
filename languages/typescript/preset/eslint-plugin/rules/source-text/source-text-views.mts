@@ -167,10 +167,7 @@ function isMaskingCall(value: TSESTree.CallExpression): boolean {
   return (MASKING_VALUE.test(name) && !isJsonCall(value)) || isMaskingHelper(name);
 }
 
-export function passesThroughMasking(
-  context: SourceContext,
-  start: TSESTree.Node | undefined,
-): boolean {
+function passesThroughMasking(context: SourceContext, start: TSESTree.Node | undefined): boolean {
   const pending: Pending[] = [{ node: start, depth: 0 }];
   const seen = new Set<TSESTree.Node>();
   for (const { node, depth } of pending) {

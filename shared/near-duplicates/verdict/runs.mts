@@ -40,7 +40,7 @@ function* cells<Row, Column>(
 }
 
 function runLengths(left: readonly number[], right: readonly number[]): Table {
-  return suffixTable(left, right, (table, width, i, j) =>
+  return suffixTable(left, right, ({ table, width }, i, j) =>
     left[i] === right[j] ? cellAt(table, (i + 1) * width + j + 1) + 1 : 0,
   );
 }

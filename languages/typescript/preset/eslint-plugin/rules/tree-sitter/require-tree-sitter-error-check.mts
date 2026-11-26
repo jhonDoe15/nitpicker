@@ -152,14 +152,8 @@ function callersOf(facts: Facts, fn: FunctionNode): (FunctionNode | undefined)[]
 
 function isHandled(facts: Facts, start: FunctionNode | undefined): boolean {
   const pending = [start];
-  const seen = new Set<FunctionNode>();
+  const seen = new Set<FunctionNode | undefined>();
   for (const fn of pending) {
-    if (fn === undefined) {
-      if (checksIn(facts, undefined)) {
-        return true;
-      }
-      continue;
-    }
     if (seen.has(fn)) {
       continue;
     }
@@ -167,7 +161,8 @@ function isHandled(facts: Facts, start: FunctionNode | undefined): boolean {
     if (checksIn(facts, fn)) {
       return true;
     }
-    for (const caller of callersOf(facts, fn)) {
+    const callers = fn === undefined ? [] : callersOf(facts, fn);
+    for (const caller of callers) {
       pending.push(caller);
     }
   }

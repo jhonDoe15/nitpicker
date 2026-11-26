@@ -1,7 +1,7 @@
 //! Patterns about the shape of a class as a whole: its supertypes, constructors and special methods.
 mod clones;
 mod instances;
-mod lines;
+pub mod lines;
 mod singletons;
 
 use super::{Context, place};
@@ -20,7 +20,9 @@ pub struct Shape<'t> {
 }
 
 pub fn class_shape(context: &Context, class: Node) {
-    if !context.wants(singletons::PATTERNS) && !context.wants(clones::PATTERNS) {
+    let [equals, casts] = super::equality::PATTERNS;
+    let wanted = [singletons::PATTERNS, clones::PATTERNS, equals, casts, super::serial::PATTERNS];
+    if !wanted.iter().any(|patterns| context.wants(patterns)) {
         return;
     }
     let Some(own) = context.resolver.scope.names.get(&class.id()).cloned() else { return };
@@ -39,4 +41,6 @@ pub fn class_shape(context: &Context, class: Node) {
     let shape = Shape { class, own, members, statics, first_line };
     singletons::check(context, &shape);
     clones::check(context, &shape);
+    super::equality::check(context, &shape);
+    super::serial::check(context, &shape);
 }

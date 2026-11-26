@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { chainOf, nodeChildren } from '../typed/node-views.mts';
+import { chainOf, nodeChildren, soleBodyValue } from '../typed/node-views.mts';
 import { preOrder } from '../../../../../../shared/traversal.mts';
 
 const SINGLETON_FLAGS = new Set([
@@ -121,17 +121,6 @@ function conjuncts(node: TSESTree.Node): TSESTree.Node[] {
   );
 }
 
-function returnedValue(callback: TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression) {
-  const { body } = callback;
-  if (body.type !== AST_NODE_TYPES.BlockStatement) {
-    return body;
-  }
-  const [only] = body.body;
-  return body.body.length === 1 && only?.type === AST_NODE_TYPES.ReturnStatement
-    ? (only.argument ?? undefined)
-    : undefined;
-}
-
 export function picksAtMostOne(callback: TSESTree.Node | undefined): boolean {
   if (
     (callback?.type !== AST_NODE_TYPES.ArrowFunctionExpression &&
@@ -141,6 +130,6 @@ export function picksAtMostOne(callback: TSESTree.Node | undefined): boolean {
     return false;
   }
   const parameter = callback.params[0].name;
-  const value = returnedValue(callback);
+  const value = soleBodyValue(callback, 'ReturnStatement');
   return value !== undefined && conjuncts(value).some((part) => matchesOneMember(part, parameter));
 }

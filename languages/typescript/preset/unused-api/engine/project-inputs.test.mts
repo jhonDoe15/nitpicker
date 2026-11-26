@@ -31,6 +31,7 @@ beforeAll(() => {
         module: 'commonjs',
         moduleResolution: 'node',
         esModuleInterop: false,
+        types: [],
         lib: ['ES2022'],
         baseUrl: 'src',
         paths: { '@app/*': ['app/*'] },
@@ -87,6 +88,9 @@ it.runIf(hasEngine)(
 
     expect(logged.statuses()).toEqual(['0']);
     expect(viaEngine).toEqual(typedStructure({ NITPICKER_TYPED_ENGINE: 'off' }));
-    expect(viaEngine['unused-api']).not.toEqual([]);
+    const unused = viaEngine['unused-api'];
+    expect(
+      Array.isArray(unused) ? unused.map(({ rule, identity }) => [rule, identity]) : unused,
+    ).toEqual([['unused-option', 'render.verbose']]);
   },
 );
