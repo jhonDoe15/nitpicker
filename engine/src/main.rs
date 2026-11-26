@@ -215,7 +215,8 @@ fn typescript_structure(args: &[String]) {
     );
 }
 
-/// `typescript-lint --files <list> [--rules <a,b>] [--out <file>] [--testing-library-utils-module <suffix>]`: each line of
+/// `typescript-lint --files <list> [--rules <a,b>] [--out <file>] [--testing-library-utils-module <suffix>]
+/// [--compiler <tsc of TypeScript 7> --project <tsconfig.json>]`: each line of
 /// the list is the path to read, the path to report and `key=value` settings for that file, tabs between them; a
 /// setting `<rule>.<fact>=<answer>` is a fact the caller worked out for that rule and file from its options. The
 /// module suffix is `test-utils` unless given, and empty for none; `testing-library/utils-module=<suffix>` sets it for
@@ -224,12 +225,17 @@ fn typescript_structure(args: &[String]) {
 /// for a point), then, when the finding holds only if the caller agrees, the `[kind, value]` questions to ask.
 /// `--testing-library-scope` has the engine decide both for every file without such settings, by following the file's
 /// imports as the preset does; `--end-to-end-root <folder>` names the folder of browser tests for that decision.
+/// Rules that ask about types run only with `--compiler` and `--project`, on the files of that program; every other
+/// file gets a `!types` row, and so does every file when the compiler's types are not available.
 fn typescript_lint(args: &[String]) {
     let (mut list, mut out, mut only) = (None, None, None::<Vec<String>>);
+    let (mut compiler, mut project) = (None, None);
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
             "--files" => { index += 1; list = Some(&args[index]); }
+            "--compiler" => { index += 1; compiler = Some(PathBuf::from(&args[index])); }
+            "--project" => { index += 1; project = Some(args[index].clone()); }
             "--out" => { index += 1; out = Some(&args[index]); }
             "--rules" => { index += 1; only = Some(args[index].split(',').map(String::from).collect()); }
             "--testing-library-utils-module" => {
@@ -261,7 +267,13 @@ fn typescript_lint(args: &[String]) {
         std::process::exit(2);
     }
     let rules = typescript::rules::selected(only.as_deref());
-    let findings = typescript::rules::lint_files(&files, &rules);
+    let types = match (compiler, project) {
+        (Some(compiler), Some(project)) if rules.has_typed() => typescript::rules::typed::types::Types::open(&compiler, &project)
+            .map_err(|reason| eprintln!("types unavailable: {reason}"))
+            .ok(),
+        _ => None,
+    };
+    let findings = typescript::rules::lint_files(&files, &rules, types);
     let rows: Vec<_> = findings
         .iter()
         .map(|reported| {
