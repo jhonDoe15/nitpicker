@@ -455,6 +455,13 @@ a buffered `child_process` or `execa` call whose output is read when the command
 constant, or when `maxBuffer` is a constant and the output is parsed whole (`JSON.parse`, `split`). Past the limit
 the child is killed and the call fails with `ENOBUFS`; the allowed forms read the output as a stream or from a file.
 
+Whole-list JSON text: `nitpicker/no-whole-list-json-text` (production source, in `eslint-lint`) reports
+`JSON.stringify` or `join` of a list that grows with the input (a findings, results, files or rows list, or an array
+filled in a loop) whose result is written with `writeFileSync`, `appendFileSync`, `writeSync` or a stream's `write`,
+and `JSON.parse(readFileSync(...))` read for such a list. Past about 512 million characters the string cannot be built
+and the output is lost; below it the text doubles the memory of the data. The allowed form writes and reads one
+element per line.
+
 Unbounded waits: `pmd/UnboundedWait` (Java, main sources) reports `get()` or `join()` without a timeout on a
 `Future` or `CompletableFuture`, `Thread.join()` and `CountDownLatch.await()`, and
 `pmd/ReactorBlockWithoutTimeout` (with `reactor-core` on the compile classpath) reports `block()`,

@@ -257,6 +257,7 @@
   "eslint/nitpicker/require-process-timeout": ["reliability"],
   "eslint/nitpicker/no-unguarded-option-list": ["bug"],
   "eslint/nitpicker/no-growing-process-arguments": ["bug"],
+  "eslint/nitpicker/no-whole-list-json-text": ["performance", "reliability"],
   "eslint/nitpicker/no-wrapper-only-timeout": ["bug"],
   "eslint/nitpicker/no-head-cut-error-output": ["bug"],
   "eslint/nitpicker/no-stderr-as-failure": ["bug"],

@@ -152,6 +152,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Output that grows with the project (`git ls-files`, `git diff`, `find`, a tool's JSON report) is read as a stream
   (`spawn` and its `stdout` line by line) or from a file the tool writes, not through `execFileSync`/`spawnSync`
   and a `maxBuffer`, which fails with `ENOBUFS` on a large project (`nitpicker/no-buffered-growing-output`).
+- Write a list that grows with the input (findings, results, rows) one element per line or in batches, and read it
+  back line by line: one `JSON.stringify` or `join` of the whole list throws `Invalid string length` past about 512
+  million characters, exactly when the output is largest (`nitpicker/no-whole-list-json-text`).
 - A page of rows has an order: `limit`/`offset`/`take`/`skip`, a Prisma `cursor` or SQL `LIMIT` comes with
   `orderBy` on a unique key (or a tie-breaker after a non-unique one), and `json_agg`/`array_agg` or
   Kysely `jsonArrayFrom` lists sort inside (`json_agg(t ORDER BY t.name)`) (`nitpicker/no-unordered-query`).

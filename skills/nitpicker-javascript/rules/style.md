@@ -350,6 +350,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Output that grows with the project (`git ls-files`, `git diff`, `find`, a tool's JSON report) is read as a stream
   (`spawn` and its `stdout` line by line) or from a file the tool writes, not through `execFileSync`/`spawnSync`
   and a `maxBuffer`, which fails with `ENOBUFS` on a large project (`nitpicker/no-buffered-growing-output`).
+- Write a list that grows with the input (findings, results, rows) one element per line or in batches, and read it
+  back line by line: one `JSON.stringify` or `join` of the whole list throws `Invalid string length` past about 512
+  million characters, exactly when the output is largest (`nitpicker/no-whole-list-json-text`).
 - Time values carry their unit in the name (`timeoutMs`, `ttlSeconds`) and meet only the same unit: convert
   once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
   `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time

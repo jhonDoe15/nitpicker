@@ -22,6 +22,7 @@ import { rule as ruleNoWallClockElapsed } from '../rules/wall-clock/no-wall-cloc
 import { rule as ruleNoWastedCollectionStep } from '../rules/collections/pipelines/no-wasted-collection-step.mts';
 import { rule as ruleNoWeakAssertion } from '../test-assertions/weak-assertion/no-weak-assertion.mts';
 import { rule as ruleNoWeakHash } from '../rules/security/hash/no-weak-hash.mts';
+import { rule as ruleNoWholeListJsonText } from '../rules/whole-lists/no-whole-list-json-text.mts';
 import { rule as ruleNoWholeRowsForOneValue } from '../rules/queries/columns/no-whole-rows-for-one-value.mts';
 import { rule as ruleNoWorkBeforeEarlyExit } from '../rules/repeated-work/early-exits/no-work-before-early-exit.mts';
 import { rule as ruleNoWorkerStateInConcurrentTests } from '../test-quality/concurrent-tests/no-worker-state-in-concurrent-tests.mts';
@@ -100,6 +101,7 @@ export const partRules = {
   'no-wasted-collection-step': ruleNoWastedCollectionStep,
   'no-weak-assertion': ruleNoWeakAssertion,
   'no-weak-hash': ruleNoWeakHash,
+  'no-whole-list-json-text': ruleNoWholeListJsonText,
   'no-whole-rows-for-one-value': ruleNoWholeRowsForOneValue,
   'no-work-before-early-exit': ruleNoWorkBeforeEarlyExit,
   'no-worker-state-in-concurrent-tests': ruleNoWorkerStateInConcurrentTests,

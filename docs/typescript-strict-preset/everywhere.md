@@ -2070,6 +2070,20 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `--`), argument lists with a spread, and shell commands with a pipe, a
   redirection or a list (`git log | head -5`). Allowed forms: `spawn` with the output read as a stream, `stdio` set
   to a file descriptor, or a tool that writes its report to a file.
+- A list that grows with the input is not turned into one string before it is written or after it is read
+  (`nitpicker/no-whole-list-json-text`, production files). A string holds at most about 512 million characters: past
+  that `JSON.stringify` and `join` throw `RangeError: Invalid string length` and the output is lost exactly when it is
+  largest, and below it the process holds the whole text next to the objects (500 MB of JSON for 360,000 findings
+  peaks at 2.0 GB, against 0.45 GB read one record per line). Reported: `JSON.stringify(x)` or `x.join(...)` whose
+  result (alone, in a template or a `+`, or through a `const`) is the data of `writeFileSync`, `writeFile`,
+  `appendFileSync`, `appendFile`, `writeSync` or a `.write(...)` call, when `x` is a list that grows with the input: a
+  name or field whose last word is `findings`, `results`, `files`, `rows`, `entries`, `items`, `records`, `issues`,
+  `diagnostics`, `violations`, `lines` or `paths`, an empty array filled with `push` in a loop, an object or array
+  that holds one of those, or `map`, `filter`, `flatMap`, `sort` and the like of one; and
+  `JSON.parse(readFileSync(...))` (or an awaited `readFile`) whose result is read through such a field. Not reported:
+  a value of fixed shape (a summary, a config, a `const` set to an object literal or a string), a list cut with
+  `slice` first, and an array literal of fixed items. Write one element per line (JSON Lines) or in batches, and read
+  the file back line by line.
 - Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and
   Python presets) have no TypeScript or JavaScript counterpart: nothing blocks a thread on a promise, and a promise
   that never settles is a missing deadline for `await`, which `nitpicker/require-client-timeout` and
