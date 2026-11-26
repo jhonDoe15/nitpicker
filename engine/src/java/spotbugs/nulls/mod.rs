@@ -19,8 +19,10 @@
 //! - Results of one method dereferenced on one line make one finding.
 //! - What is known about a field of `this` ends at a call on `this` (written with or without `this.`, or with
 //!   `super.`), a call or constructor handed `this`, `this(...)` or `super(...)`, and a `synchronized` block. A `volatile` field is read anew each time. Static fields and fields of other objects are kept.
-//! - Lambda bodies are not looked at; an anonymous class inside one is.
+//! - In a lambda body only the redundant tests and reads of known nulls are reported; an anonymous class inside one
+//!   is looked at as any class.
 //! - A `switch` statement of the old form without `default`: the way past every case counts as not taken.
+mod copies;
 mod effects;
 mod elsewhere;
 mod forward;
@@ -28,6 +30,7 @@ mod jdk;
 mod marks;
 mod must;
 mod paths;
+mod redundant;
 
 use super::{Context, names};
 use crate::engine::source::{children, parent};
@@ -168,14 +171,45 @@ fn class<'a>(shared: &Shared<'_, 'a>, class: Node<'a>, own: &str) {
             let mut flow = Flow::new(&unit, &starts, &ends);
             flow.run();
             report(context, &unit, &flow, &label);
+            redundant::report(context, &unit, &flow, &label);
+            for lambda in lambdas(body) {
+                lambda_body(shared, own, lambda);
+            }
         }
     }
+}
+
+/// The lambdas inside a body, those inside other lambdas too, but not those of anonymous classes.
+fn lambdas(body: Node) -> Vec<Node> {
+    let mut found = Vec::new();
+    let mut pending = vec![body];
+    while let Some(node) = pending.pop() {
+        match node.kind() {
+            "class_body" => continue,
+            "lambda_expression" => found.push(node),
+            _ => {}
+        }
+        pending.extend(children(node));
+    }
+    found
+}
+
+/// The body of a lambda is a method of its own: only the redundant tests and known-null reads are reported in it.
+fn lambda_body<'a>(shared: &Shared<'_, 'a>, own: &str, lambda: Node<'a>) {
+    let context = shared.context;
+    let (Some(body), Some(label)) = (lambda.child_by_field_name("body"), names::lambda(context, lambda)) else { return };
+    let parameters = lambda.child_by_field_name("parameters").filter(|parameters| parameters.kind() == "formal_parameters");
+    let unit = Unit::build(shared, own, body, parameters, Mode::Report);
+    let (starts, ends) = must::run(&unit);
+    let mut flow = Flow::new(&unit, &starts, &ends);
+    flow.run();
+    redundant::report(context, &unit, &flow, &label);
 }
 
 /// Reports where a value that may be null is dereferenced in the methods, constructors and initializers of the
 /// classes of a file. Callee summaries are shared by the classes of the file.
 pub fn null_dereference<'a>(context: &Context<'a>, declared: &[Node<'a>]) {
-    if !context.wants(&[FROM_RETURN, SOME_PATH, ALWAYS]) {
+    if !context.wants(&[FROM_RETURN, SOME_PATH, ALWAYS, redundant::NONNULL_CHECK, redundant::NULL_CHECK, redundant::WOULD_THROW, redundant::KNOWN_NULL]) {
         return;
     }
     let shared = Shared::new(context);
@@ -184,4 +218,30 @@ pub fn null_dereference<'a>(context: &Context<'a>, declared: &[Node<'a>]) {
         shared.next_class();
         class(&shared, *declaration, own);
     }
+}
+
+/// A bit per parameter that a method or constructor of the file dereferences on every path that leaves it
+/// normally, as the null patterns work it out for calls; with `locks` off, locking on a parameter does not count.
+pub fn dereferenced_parameters<'a>(context: &Context<'a>, own: &str, declaration: Node<'a>, locks: bool) -> u64 {
+    let Some(body) = declaration.child_by_field_name("body") else { return 0 };
+    let shared = Shared::new(context);
+    let unit = Unit::build_with(&shared, own, body, declaration.child_by_field_name("parameters"), Mode::Dereferences, locks);
+    let (entry, _) = must::run(&unit);
+    unit.parameters.iter().enumerate().take(64).filter(|(_, path)| must::has(&entry[0], **path)).fold(0, |bits, (position, _)| bits | 1 << position)
+}
+
+/// Whether SpotBugs takes the result of a method declared in the file as possibly null on purpose: marked
+/// `@CheckForNull` (or a nickname, also on a method it overrides) or JSR-305 or SpotBugs `@Nullable` on itself.
+pub fn declared_nullable(context: &Context, own: &str, declaration: Node) -> bool {
+    const NULLABLE: &[&str] = &["javax.annotation.Nullable", "edu.umd.cs.findbugs.annotations.Nullable"];
+    let resolver = context.resolver;
+    let written = crate::java::helpers::annotation_names(context.file, declaration);
+    if written.iter().any(|name| resolver.class_name(declaration, name).is_some_and(|full| NULLABLE.contains(&full.as_str()))) {
+        return true;
+    }
+    let name = declaration.child_by_field_name("name").map(|name| context.text(name)).unwrap_or_default();
+    let parameters = resolver.parameters(declaration.child_by_field_name("parameters")).0;
+    let index = resolver.index;
+    let found = index.get(own).and_then(|info| info.methods.iter().find(|method| method.name == name && method.parameters == parameters));
+    found.is_some_and(|method| marks::method(index, own, method))
 }
