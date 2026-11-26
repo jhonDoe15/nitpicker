@@ -293,7 +293,7 @@ fn null_away_reports_what_null_away_reports() {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join("nullaway");
     let (missed, extra, count) = null_away_differences(&source, &source, "n", None, "nullaway.json");
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(count, 122);
+    assert_eq!(count, 124);
 }
 
 /// A library compiled with javac carries its `@Nullable` in type annotations; NullAway reads them from the class files.

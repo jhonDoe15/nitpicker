@@ -120,5 +120,7 @@
 ["n/Marked.java", 135, 20, "[NullAway] passing @Nullable parameter 'null' where @NonNull is required"],
 ["n/Marked.java", 136, 21, "[NullAway] dereferenced expression 'given.find()' is @Nullable"],
 ["n/off/Off.java", 25, 25, "[NullAway] dereferenced expression 'value' is @Nullable"],
-["n/off/On.java", 16, 21, "[NullAway] dereferenced expression 'value' is @Nullable"]
+["n/off/On.java", 16, 21, "[NullAway] dereferenced expression 'value' is @Nullable"],
+["plain/Unchecked.java", 48, 16, "[NullAway] initializer method does not guarantee @NonNull field 'value' (line 46) is initialized along all control-flow paths (remember to check for exceptions or early returns)."],
+["plain/Unchecked.java", 51, 13, "[NullAway] returning @Nullable expression from method with @NonNull return type"]
 ]
