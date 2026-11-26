@@ -18,4 +18,8 @@ public interface LoggingApi<API extends LoggingApi<API>> {
     API withCause(Throwable cause);
 
     boolean isEnabled();
+
+    void log(String message, Object p1, Object p2);
+
+    void log(String message, Object p1, Object p2, Object p3);
 }

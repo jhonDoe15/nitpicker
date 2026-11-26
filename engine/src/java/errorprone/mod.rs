@@ -253,6 +253,15 @@ mod strong_byte_string;
 mod self_and_stream_calls;
 mod call_arguments;
 mod declaration_warnings;
+mod future_transform;
+mod class_declaration_checks;
+mod method_call_checks;
+mod thread_time_checks;
+mod flogger_causes;
+mod android_fragments;
+mod rule_not_run;
+mod unnecessary_copy;
+mod matcher_wrapping;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -796,6 +805,24 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["TruthContainsExactlyElementsInUsage"], truth_exactly::truth_contains_exactly_elements_in_usage),
     (&["PreferTestParameter"], test_parameter::prefer_test_parameter),
     (&["RobolectricShadowDirectlyOn"], robolectric_shadow::robolectric_shadow_directly_on),
+    (&["MissingImplementsComparable"], class_declaration_checks::missing_implements_comparable),
+    (&["IterableAndIterator"], class_declaration_checks::iterable_and_iterator),
+    (&["Overrides"], class_declaration_checks::overrides),
+    (&["InjectOnBugCheckers"], class_declaration_checks::inject_on_bug_checkers),
+    (&["OverridesGuiceInjectableMethod"], class_declaration_checks::overrides_guice_injectable_method),
+    (&["OverridingMethodInconsistentArgumentNamesChecker"], class_declaration_checks::overriding_method_inconsistent_argument_names),
+    (&["JUnitMethodInvoked"], method_call_checks::junit_method_invoked),
+    (&["ThrowIfUncheckedKnownUnchecked"], method_call_checks::throw_if_unchecked_known_unchecked),
+    (&["GuiceNestedCombine"], method_call_checks::guice_nested_combine),
+    (&["TypeEquals"], method_call_checks::type_equals),
+    (&["ThreadJoinLoop"], thread_time_checks::thread_join_loop),
+    (&["FloggerWithoutCause"], flogger_causes::flogger_without_cause),
+    (&["FloggerWithCause"], flogger_causes::flogger_with_cause),
+    (&["FutureTransformAsync"], future_transform::future_transform_async),
+    (&["FragmentNotInstantiable"], android_fragments::fragment_not_instantiable),
+    (&["FragmentInjection"], android_fragments::fragment_injection),
+    (&["UnnecessaryMethodInvocationMatcher"], matcher_wrapping::unnecessary_method_invocation_matcher),
+    (&["TimeInStaticInitializer"], thread_time_checks::time_in_static_initializer),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
@@ -827,6 +854,8 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["UnusedLabel"], labels::unused_label),
     (&["UnnecessaryTestMethodPrefix"], framework_methods::unnecessary_test_method_prefix),
     (&["MemoizeConstantVisitorStateLookups"], visitor_state::memoize_constant_visitor_state_lookups),
+    (&["RuleNotRun"], rule_not_run::rule_not_run),
+    (&["UnnecessaryCopy"], unnecessary_copy::unnecessary_copy),
 ];
 
 pub struct ErrorProne;

@@ -18,4 +18,8 @@ public abstract class ImmutableMap<K, V> implements java.util.Map<K, V> {
       return null;
     }
   }
+
+  public static <K, V> ImmutableMap<K, V> copyOf(java.util.Map<? extends K, ? extends V> map) {
+    return null;
+  }
 }

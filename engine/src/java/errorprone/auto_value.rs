@@ -37,7 +37,7 @@ fn in_generated_code(context: &Context, class: Node) -> bool {
     false
 }
 
-fn parents(class: Node) -> Vec<Node> {
+pub(super) fn parents(class: Node) -> Vec<Node> {
     let mut found = Vec::new();
     if class.kind() == "object_creation_expression" {
         found.extend(class.child_by_field_name("type"));

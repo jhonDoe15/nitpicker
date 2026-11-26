@@ -12,4 +12,8 @@ public abstract class ImmutableList<E> extends ImmutableCollection<E> implements
   public static <E> ImmutableList<E> of(E first, E second, E... rest) {
     return null;
   }
+
+  public static <E> ImmutableList<E> copyOf(java.util.Collection<? extends E> elements) {
+    return null;
+  }
 }
