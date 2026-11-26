@@ -11,6 +11,7 @@ import { rule as ruleNoOperandSlip } from '../rules/operands/no-operand-slip.mts
 import { rule as ruleNoOrmQueryLogging } from '../rules/database/no-orm-query-logging.mts';
 import { rule as ruleNoOrmSchemaSync } from '../rules/database/no-orm-schema-sync.mts';
 import { rule as ruleNoOverflowingBackoff } from '../rules/backoff/no-overflowing-backoff.mts';
+import { rule as ruleNoOverlappingTypescriptPrograms } from '../rules/program-lifetimes/no-overlapping-typescript-programs.mts';
 import { rule as ruleNoParameterMutation } from '../rules/signatures/no-parameter-mutation.mts';
 import { rule as ruleNoPartialOutputAssertion } from '../rules/test-runtime/assertions/no-partial-output-assertion.mts';
 import { rule as ruleNoPatternCompiledInLoop } from '../rules/repeated-work/patterns/no-pattern-compiled-in-loop.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-
 import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/no-unguarded-option-list.mts';
 import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/registry/no-unguarded-registry-delete.mts';
 import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
-import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
 
 export const partRules = {
   'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
@@ -113,6 +113,7 @@ export const partRules = {
   'no-orm-query-logging': ruleNoOrmQueryLogging,
   'no-orm-schema-sync': ruleNoOrmSchemaSync,
   'no-overflowing-backoff': ruleNoOverflowingBackoff,
+  'no-overlapping-typescript-programs': ruleNoOverlappingTypescriptPrograms,
   'no-parameter-mutation': ruleNoParameterMutation,
   'no-partial-output-assertion': ruleNoPartialOutputAssertion,
   'no-pattern-compiled-in-loop': ruleNoPatternCompiledInLoop,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unguarded-option-list': ruleNoUnguardedOptionList,
   'no-unguarded-registry-delete': ruleNoUnguardedRegistryDelete,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
-  'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
 };

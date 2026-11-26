@@ -488,6 +488,12 @@ a statement that starts a child process (directly or through a function of the s
 whose result it does not read, when both results are later combined in one array. The parent holds the
 memory of its own step while the child runs; the allowed form runs the child step first.
 
+Overlapping TypeScript programs: `nitpicker/no-overlapping-typescript-programs` (production source, in `eslint-lint`)
+reports a second `createProgram`, `createWatchProgram`, `createLanguageService` or
+`createSemanticDiagnosticsBuilderProgram` from `typescript` in a function that still reads the first program, or its
+type checker, after it. Both programs stay live at once; the allowed form finishes with the first before building the
+second.
+
 Unbounded waits: `pmd/UnboundedWait` (Java, main sources) reports `get()` or `join()` without a timeout on a
 `Future` or `CompletableFuture`, `Thread.join()` and `CountDownLatch.await()`, and
 `pmd/ReactorBlockWithoutTimeout` (with `reactor-core` on the compile classpath) reports `block()`,

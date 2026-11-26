@@ -367,6 +367,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - When a function combines in-process work with the result of a memory-heavy child process that does not depend on it,
   start the child step first: the parent otherwise keeps the memory of its own work while the child runs
   (`nitpicker/no-child-wait-after-local-work`).
+- Read everything you need from one TypeScript program before building the next one in the same function, or build
+  each in its own function that returns plain data: two live programs need room for both
+  (`nitpicker/no-overlapping-typescript-programs`).
 - Time values carry their unit in the name (`timeoutMs`, `ttlSeconds`) and meet only the same unit: convert
   once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
   `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time

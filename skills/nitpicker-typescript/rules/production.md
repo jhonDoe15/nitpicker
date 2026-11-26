@@ -169,6 +169,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - When a function combines in-process work with the result of a memory-heavy child process that does not depend on it,
   start the child step first: the parent otherwise keeps the memory of its own work while the child runs
   (`nitpicker/no-child-wait-after-local-work`).
+- Read everything you need from one TypeScript program before building the next one in the same function, or build
+  each in its own function that returns plain data: two live programs need room for both
+  (`nitpicker/no-overlapping-typescript-programs`).
 - A page of rows has an order: `limit`/`offset`/`take`/`skip`, a Prisma `cursor` or SQL `LIMIT` comes with
   `orderBy` on a unique key (or a tie-breaker after a non-unique one), and `json_agg`/`array_agg` or
   Kysely `jsonArrayFrom` lists sort inside (`json_agg(t ORDER BY t.name)`) (`nitpicker/no-unordered-query`).

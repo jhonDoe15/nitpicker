@@ -2139,6 +2139,16 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   bindings are later put together in one array literal (`[...local, ...typed]`). Not reported: a child step that reads
   the earlier result, results used apart or only gathered in an object, and two child steps. Run the child step first
   and the in-process step after it.
+- A second TypeScript program is not built while the first is still in use
+  (`nitpicker/no-overlapping-typescript-programs`, production files). A program holds its syntax trees, binder symbols
+  and checker caches; while a binding still reads it, a full collection cannot free it, so the process needs room for
+  both, and on a machine with less memory than the heap limit it is killed. Reported: a call to `createProgram`,
+  `createWatchProgram`, `createLanguageService` or `createSemanticDiagnosticsBuilderProgram` imported from
+  `typescript` (namespace, default or named import) when an earlier such call in the same function was bound to a
+  variable that is read after it, before that variable is reassigned, directly or through a `const` set from its
+  `getTypeChecker()`. Not reported: a first program last read before the second build, builds in separate functions,
+  and functions of the same name from other packages. Read what you need from the first program before building the
+  second, or build each in its own function that returns plain data.
 - Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and
   Python presets) have no TypeScript or JavaScript counterpart: nothing blocks a thread on a promise, and a promise
   that never settles is a missing deadline for `await`, which `nitpicker/require-client-timeout` and
