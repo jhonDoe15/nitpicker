@@ -3,7 +3,7 @@ import type { EverywhereSuppression } from './checkstyle-suppressions.mts';
 
 const RULESET = /<ruleset[\s>]/u;
 const EXCLUDE_ALL = /<exclude-pattern>\s*(?:\^?\.[*+]\$?|\(\?s\)\.[*+])\s*<\/exclude-pattern>/u;
-const INCLUDE = /<include-pattern>/u;
+const INCLUDE = '<include-pattern>';
 const SUPPRESS_ALL =
   /name="violationSuppressRegex"[^>]*?(?:value="(?:\^?\(\?s\))?\^?\.[*+]\$?"|>\s*<value>\s*\^?\.[*+]\$?\s*<\/value>)/u;
 const RULE_ELEMENT = /<rule\b([^>]*?)(\/>|>[\s\S]*?<\/rule>)/gu;
@@ -26,7 +26,7 @@ export function pmdEverywhereSuppressions(
     }));
     const outside = text.replaceAll(RULE_ELEMENT, ' ');
     const named = rules.flatMap(({ name }) => name ?? []);
-    const everyRule = EXCLUDE_ALL.test(outside) && !INCLUDE.test(text) ? named : [];
+    const everyRule = EXCLUDE_ALL.test(outside) && !text.includes(INCLUDE) ? named : [];
     const own = rules.flatMap(({ name, text: ruleText }) =>
       name !== undefined && (SUPPRESS_ALL.test(ruleText) || EXCLUDE_ALL.test(ruleText))
         ? [name]

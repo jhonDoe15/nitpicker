@@ -65,7 +65,9 @@ export function searchesParents(program: TSESTree.Node, lookup: TSESTree.Node): 
     if (walksUp(fn)) {
       return true;
     }
-    queue.push(...unseenCallers(program, fn, seen));
+    for (const caller of unseenCallers(program, fn, seen)) {
+      queue.push(caller);
+    }
   }
   return false;
 }

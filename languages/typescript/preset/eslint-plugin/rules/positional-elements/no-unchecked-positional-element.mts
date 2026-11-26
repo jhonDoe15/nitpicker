@@ -68,8 +68,13 @@ function nestedArrayPatterns(root: TSESTree.ObjectPattern): TSESTree.ArrayPatter
     const values = pattern.properties.flatMap((property) =>
       property.type === AST_NODE_TYPES.Property ? [property.value] : [],
     );
-    found.push(...values.filter(isArrayPattern));
-    pending.push(...values.filter(isObjectPattern));
+    for (const value of values) {
+      if (isArrayPattern(value)) {
+        found.push(value);
+      } else if (isObjectPattern(value)) {
+        pending.push(value);
+      }
+    }
   }
   return found;
 }

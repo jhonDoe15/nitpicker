@@ -167,7 +167,9 @@ function isHandled(facts: Facts, start: FunctionNode | undefined): boolean {
     if (checksIn(facts, fn)) {
       return true;
     }
-    pending.push(...callersOf(facts, fn));
+    for (const caller of callersOf(facts, fn)) {
+      pending.push(caller);
+    }
   }
   return false;
 }

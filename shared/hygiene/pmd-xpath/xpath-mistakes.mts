@@ -81,14 +81,14 @@ export function predicateScans(xpath: string): string[] {
   return [...absolute, ...ancestors];
 }
 
+const BRACKET = /[()[\]{}]/gu;
+
 function closingParenthesis(xpath: string, open: number): number {
   let depth = 0;
-  for (let index = open; index < xpath.length; index += 1) {
-    const character = xpath[index] ?? '';
-    depth += OPENING.has(character) ? 1 : 0;
-    depth -= CLOSING.has(character) ? 1 : 0;
+  for (const { 0: character, index } of xpath.slice(open).matchAll(BRACKET)) {
+    depth += OPENING.has(character) ? 1 : -1;
     if (depth === 0) {
-      return index;
+      return open + index;
     }
   }
   return -1;
