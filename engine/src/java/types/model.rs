@@ -226,6 +226,10 @@ pub struct Field {
     pub mock: bool,
     /// Full names of the annotations on the field.
     pub annotations: Vec<String>,
+    /// The lock expressions the field's `@GuardedBy` annotations name, in order.
+    pub guards: Vec<super::guards::Expr>,
+    /// The value of a final field of a source file whose initializer is made of literals, `+` and names.
+    pub folded: Option<super::guards::Expr>,
     pub flags: u32,
 }
 
@@ -272,6 +276,8 @@ pub struct Detail {
     /// Full names of the annotations on the method, and on each parameter, with `.` before a member class.
     pub annotations: Vec<String>,
     pub parameter_annotations: Vec<Vec<String>>,
+    /// The lock expressions the method's `@GuardedBy` annotations name, in order.
+    pub guards: Vec<super::guards::Expr>,
     /// The parameter types as javac prints them when they carry type annotations from a class file; empty otherwise.
     pub marked: String,
     /// Each parameter position and type path that carries a type-use annotation named `Nullable`, from a class file.
@@ -339,6 +345,22 @@ pub struct ClassInfo {
     pub class_annotations: Vec<String>,
     /// The reason a `@DoNotMock` on the class gives: its value, or the annotation's default.
     pub do_not_mock: Option<String>,
+    /// For a class read from a class file: whether it has an enclosing instance.
+    pub outer_instance: Option<bool>,
+    /// For a class read from a class file: its private members, which a `@GuardedBy` string may still name.
+    pub hidden: Vec<Hidden>,
+}
+
+/// A private field or method of a class file.
+#[derive(Clone, Debug)]
+pub struct Hidden {
+    pub name: String,
+    /// The type descriptor of a field, the method descriptor of a method.
+    pub descriptor: String,
+    pub is_static: bool,
+    pub is_method: bool,
+    /// For a method: how many methods that are not private were declared before it.
+    pub before: usize,
 }
 
 const SETTER_STARTS: &[&str] =

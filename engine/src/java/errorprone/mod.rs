@@ -276,6 +276,7 @@ mod list_remove;
 mod package_location;
 mod null_pointer_tester;
 mod guarded_writes;
+mod guarded_by;
 mod immutable_set_contains;
 mod framework_assignments;
 mod ignored_values;
@@ -938,6 +939,7 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["OptionalNotPresent"], constant_expression_checks::optional_not_present),
     (&["NoAllocation"], no_allocation::no_allocation),
     (&["MustBeClosedChecker", "MustBeClosed"], must_be_closed::must_be_closed),
+    (&["GuardedBy"], guarded_by::guarded_by),
 ];
 
 pub struct ErrorProne;

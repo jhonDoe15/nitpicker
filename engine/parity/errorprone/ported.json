@@ -19,6 +19,7 @@
  "FutureReturnValueIgnored",
  "FuzzyEqualsShouldNotBeUsedInEqualsMethod",
  "GetClassOnAnnotation",
+ "GuardedBy",
  "GuiceAssistedInjectScoping",
  "GuiceAssistedParameters",
  "GuiceInjectOnFinalField",
