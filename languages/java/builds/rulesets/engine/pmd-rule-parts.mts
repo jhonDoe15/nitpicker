@@ -38,6 +38,7 @@ const PORTED_RULES: ReadonlySet<string> = new Set(
     'errorprone.AssignmentInOperandRule',
     'errorprone.AssignmentToNonFinalStaticRule',
     'errorprone.AvoidBranchingStatementAsLastInLoopRule',
+    'errorprone.AvoidDuplicateLiteralsRule',
     'errorprone.AvoidUsingOctalValuesRule',
     'errorprone.BrokenNullCheckRule',
     'errorprone.CheckSkipResultRule',
