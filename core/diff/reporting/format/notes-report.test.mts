@@ -96,6 +96,15 @@ describe('red-base notes in the reports', () => {
     ]);
   });
 
+  it('says the tests were not run when only the head has prepared test results', () => {
+    const notRun = { ...JAVA_NOTE, tool: 'coverage', rule: 'tests-not-run-on-base' };
+
+    expect([noteSummaryLines([notRun])[0], noteSummaryLines([notRun, NOTE])[0]]).toEqual([
+      "Note: the project's tests were not run on the base (coverage).",
+      "Note: the project's tests fail on the base (coverage, python).",
+    ]);
+  });
+
   it('says the head counts as new when the change removes tests', () => {
     const removed = { ...NOTE, tool: 'nitpicker', snapshot: 'head', rule: 'tests-removed' };
 
