@@ -1060,6 +1060,12 @@ Operand depth recursion: `nitpicker/no-operand-depth-recursion` (production sour
 operator, a binary or infix node or an operand, and no parameter is named like a depth or limit or compared with one.
 The stack grows with the length of an operand chain, which generated code makes very long.
 
+Unguarded recursion entry: `nitpicker/no-unguarded-recursion-entry` (production source, in `eslint-lint`) and
+`pmd/UnguardedRecursionEntry` (Java, main sources) report a function of a file or class that enters a recursion through
+a function shared with a sibling (both call it, it calls both back; Java follows up to two calls back) while only the
+sibling checks a `Set` or `Map` field keyed by its parameter. The reported entry point does not touch that guard and
+does not call the guarded sibling.
+
 Shrinking worklist join: `nitpicker/no-shrinking-worklist-join` (production source, in `eslint-lint`) and
 `pmd/ShrinkingWorklistJoin` (Java, main sources) report the join in a worklist loop that pushes a successor when a
 join into its stored state changed (`join`, `merge`, `union`, `meet`, `widen`, Java `addAll`, on `state.get(next)`),

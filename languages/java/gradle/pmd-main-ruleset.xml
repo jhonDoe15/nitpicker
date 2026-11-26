@@ -5136,6 +5136,49 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="UnguardedRecursionEntry" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This method enters the same recursion as a sibling method of the class (both call a method that calls them back), but only the sibling checks a re-entry guard (a visited set, an in-progress map, a turn counter or a memo) before going on. A turn that comes in through this method is never refused, so nested input makes each turn redo the whole recursion and the work grows exponentially. Check the same guard here, or route this entry point through the guarded sibling.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//ClassBody
+  /(let $body := .,
+        $methods := MethodDeclaration[Block],
+        $names := MethodDeclaration/@Name,
+        $guards := FieldDeclaration/VariableDeclarator/VariableId
+                     [pmd-java:typeIs('java.util.Set') or pmd-java:typeIs('java.util.Map')]/@Name,
+        $calls := function($n) {
+          distinct-values($body/MethodDeclaration[@Name = $n]/Block//MethodCall
+                            [*[1][self::ArgumentList or self::ThisExpression]]/@MethodName[. = $names])
+        },
+        $guardsOf := function($m) {
+          $m/Block//MethodCall
+            [@MethodName = ('add', 'contains', 'containsKey', 'put', 'get', 'remove', 'computeIfAbsent',
+                            'putIfAbsent', 'merge', 'getOrDefault')]
+            [ArgumentList/*[1]/descendant-or-self::VariableAccess[1]/@Name
+               = $m/FormalParameters/FormalParameter/VariableId/@Name]
+            /*[1][self::VariableAccess or self::FieldAccess][@Name = $guards]/@Name
+        }
+    return
+      let $reach := function($n) {
+            let $direct := $calls($n)
+            return distinct-values(($direct, for $x in $direct return $calls($x)))
+          },
+          $sentries := $methods[exists($guardsOf(.))]
+      return $methods
+        [let $node := .,
+             $entry := string(@Name),
+             $out := $calls($entry)
+         return some $a in $sentries[@Name != $entry] satisfies
+           not($node//(VariableAccess | FieldAccess)[@Name = $guardsOf($a)])
+           and not($out = string($a/@Name))
+           and (some $s in $calls(string($a/@Name))[. = $out][. != string($a/@Name)][. != $entry] satisfies
+                  ($reach($s) = string($a/@Name)) and ($reach($s) = $entry))])
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="UnorderedQuery" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This query takes a page of rows (setMaxResults, setFirstResult, an unsorted PageRequest passed to findAll, or SQL LIMIT, OFFSET or FETCH) or builds an array_agg, json_agg or jsonb_agg list with no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key, or add a tie-breaker after a non-unique key: order by a.createdAt desc, a.id in the query text, criteria.orderBy(...), PageRequest.of(page, size, Sort.by(&quot;createdAt&quot;, &quot;id&quot;)), or json_agg(t.name order by t.name). setMaxResults(1) or LIMIT 1 is fine when the query selects only a constant or a count. setMaxResults(1) or (2) is fine when the result is only tested with isEmpty() or size(). An exception fits only a query whose rows come back in one order anyway, or a nested list that is a set whose callers never depend on its order.">
     <priority>3</priority>

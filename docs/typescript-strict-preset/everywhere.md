@@ -692,6 +692,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   length of an operand chain, and generated code (thousands of `+` operands, a long `else if` ladder) overflows it.
   Allowed form: walk the left-leaning chain in a loop and recurse only into the right operand, use an explicit stack,
   or pass a depth and stop with an ordinary error past a limit.
+- `nitpicker/no-unguarded-recursion-entry`: a function that enters the same recursion as a sibling but skips the
+  sibling's re-entry guard. The sibling reads or writes a module-level or class-field `Set`, `Map`, `WeakSet` or
+  `WeakMap` keyed by its own parameter (`add`, `has`, `set`, `get`, `delete`); the reported function does not touch
+  that guard, does not call the guarded sibling itself, and calls a function of the same file that the guarded
+  sibling also calls and that calls both of them back. A turn that comes in through the unguarded entry is never
+  refused, so nested input redoes the whole recursion on every turn. Allowed form: check the same guard in every entry
+  point, or route the entry point through the guarded one.
 - `nitpicker/no-shrinking-worklist-join`: a worklist loop (`for...of` over an array it pushes to, or a `while` loop
   that `pop`s or `shift`s it) that pushes a successor when a join into the stored state of that successor reports a
   change (`join`, `merge`, `union`, `meet` or `widen` on `state.get(next)` or `state[next]`), while the transfer

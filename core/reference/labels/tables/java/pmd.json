@@ -280,6 +280,7 @@
   "pmd/UnconditionalIfStatement": ["simplification"],
   "pmd/UnguardedCyclicRecursion": ["bug", "reliability"],
   "pmd/UnguardedOptionList": ["bug"],
+  "pmd/UnguardedRecursionEntry": ["performance"],
   "pmd/UnitTestShouldIncludeAssert": ["tests"],
   "pmd/UnitTestShouldUseAfterAnnotation": ["tests"],
   "pmd/UnitTestShouldUseBeforeAnnotation": ["tests"],

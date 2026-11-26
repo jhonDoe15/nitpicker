@@ -270,6 +270,7 @@ export const GROUPS: readonly Group[] = [
   },
   { java: 'OperandDepthRecursion', typescript: 'nitpicker/no-operand-depth-recursion' },
   { java: 'UnguardedCyclicRecursion', typescript: 'nitpicker/no-unguarded-cyclic-recursion' },
+  { java: 'UnguardedRecursionEntry', typescript: 'nitpicker/no-unguarded-recursion-entry' },
   { java: 'ShrinkingWorklistJoin', typescript: 'nitpicker/no-shrinking-worklist-join' },
   { java: 'DepthOnlyWorklist', typescript: 'nitpicker/no-depth-only-worklist' },
 ];

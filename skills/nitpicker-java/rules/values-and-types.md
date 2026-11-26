@@ -262,6 +262,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `getInterfaces()`) passes a visited `Set` or a depth limit down (`pmd/UnguardedCyclicRecursion`).
 - A walk over both operands of an expression (`getLeft()` and `getRight()`) loops over the left-leaning chain and
   recurses only into the right operand, or takes a depth limit (`pmd/OperandDepthRecursion`).
+- Every entry point into a guarded recursion checks the same in-progress `Set` or `Map` as its sibling, or calls the
+  guarded sibling (`pmd/UnguardedRecursionEntry`).
 - A worklist that can add several items per turn keeps a `Set` of the items already expanded
   (`if (!expanded.add(item)) continue;`): a depth limit alone does not bound the number of paths
   (`pmd/DepthOnlyWorklist`).

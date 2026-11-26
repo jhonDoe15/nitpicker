@@ -386,6 +386,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A walk over operands stays shallow on generated input: a function does not recurse into both `left` and
   `right` of its parameter without a depth limit; loop over the left-leaning chain and recurse only into the right
   operand, or use an explicit stack (`nitpicker/no-operand-depth-recursion`).
+- Every entry point into a guarded recursion checks the same guard: when one function refuses a turn through an
+  in-progress `Set` or `Map`, a sibling that reaches the same recursion checks it too, or calls the guarded one
+  (`nitpicker/no-unguarded-recursion-entry`).
 - A worklist pass whose transfer can remove facts keeps the last output per edge and recomputes each input from them,
   instead of joining into one stored input (`nitpicker/no-shrinking-worklist-join`).
 - A worklist that can add several items per turn keeps a `Set` of the items already expanded; a depth limit alone
