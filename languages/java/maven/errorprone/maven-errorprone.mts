@@ -3,7 +3,6 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mts';
 import { isJavaModule } from '../../builds/lint/lint-arguments.mts';
-import { javaFiles } from '../maven-lint.mts';
 import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
 import { runJava } from '../programs/java-command.mts';
 import { compiledProgram } from '../programs/helper-programs.mts';
@@ -11,6 +10,12 @@ import { fieldOf, numberOr, textsOf } from '../../../../shared/values/readers.mt
 import type { Classpaths } from '../typed/maven-values.mts';
 import { type ToolClasspaths, resolvedTool } from '../typed/kotlin-types.mts';
 import { type CompilerSettings, type SourceModule, compilerOf } from './compiler-types.mts';
+import {
+  type CompileSet,
+  type Modular,
+  compileSets,
+  isModular,
+} from '../compile-sets/compile-sets.mts';
 import { ERROR_PRONE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mts';
 import { errorProneJava, isNoFittingJdk, skipWithoutJdk } from './maven-jdk.mts';
 import { toolHeapFlags, toolSlots } from '../parallel/slots/tool-slots.mts';
@@ -19,7 +24,6 @@ import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mts';
 import { errorProneOnEngine, javaHomeOf } from '../../builds/errorprone/errorprone-engine.mts';
 import { ENGINE_REPORT } from '../../builds/errorprone/engine-diagnostics.mts';
 
-type Modular = boolean | 'all';
 type ErrorProneContext = {
   readonly module: SourceModule;
   readonly reportDir: string;
@@ -30,18 +34,8 @@ type ErrorProneContext = {
   readonly timeoutMs?: number | undefined;
   readonly environment: JavaEnvironment;
 };
-type CompileSet = {
-  readonly name: string;
-  readonly roots: readonly string[];
-  readonly classpath: readonly string[];
-  readonly compiled?: readonly string[];
-  readonly own: readonly string[];
-  readonly test: boolean;
-  readonly modular: Modular;
-};
 type ArgumentSet = CompileSet & {
   readonly processors: readonly string[];
-  readonly compiler: CompilerSettings;
   readonly flags: readonly string[];
   readonly skipRoots: readonly string[] | undefined;
 };
@@ -64,7 +58,6 @@ const JVM_FLAGS = [
 const ERROR_PRONE_SHARES = 2;
 const DEADLINE_MARGIN_MS = 30_000;
 const OWN_JARS = /^(?:error_prone_|nullaway-)/u;
-const MODULE_INFO = 'module-info.java';
 
 export function processorTool(compiler: Pick<CompilerSettings, 'processorPaths'>):
   | {
@@ -123,10 +116,7 @@ function lookupLines({ classpath: sourcePath, compiled = [], own, modular }: Com
 }
 
 function writeArguments(work: string, set: ArgumentSet): string[] {
-  const { name, roots, own, processors, compiler, test, modular, flags, skipRoots } = set;
-  const sources = javaFiles(roots).filter(
-    (file) => modular !== false || path.basename(file) !== MODULE_INFO,
-  );
+  const { name, sources, own, processors, compiler, test, flags, skipRoots } = set;
   if (sources.length === 0) {
     return [];
   }
@@ -154,35 +144,6 @@ function writeArguments(work: string, set: ArgumentSet): string[] {
   const file = path.join(work, `${name}.args`);
   writeFileSync(file, lines.map((line) => `${line}\n`).join(''), 'utf8');
   return [file];
-}
-
-function isModular(module: SourceModule): boolean {
-  return javaFiles(module.sourceRoots).some((file) => path.basename(file) === MODULE_INFO);
-}
-
-function compileSets(
-  { module, classpaths }: Pick<ErrorProneContext, 'module' | 'classpaths'>,
-  modular: Modular,
-): CompileSet[] {
-  return [
-    {
-      name: 'main',
-      roots: module.sourceRoots,
-      classpath: [...classpaths.mainCompile, module.outputDirectory],
-      own: [module.outputDirectory],
-      test: false,
-      modular,
-    },
-    {
-      name: 'test',
-      roots: module.testSourceRoots,
-      classpath: [module.outputDirectory, ...classpaths.testCompile],
-      compiled: [module.testOutputDirectory],
-      own: [module.outputDirectory, module.testOutputDirectory],
-      test: true,
-      modular: false,
-    },
-  ];
 }
 
 function usesPreview(compiler: CompilerSettings): boolean {
@@ -223,10 +184,9 @@ function analyze(
   rmSync(path.join(reportDir, ENGINE_REPORT), { force: true });
   const compiler = compilerOf(module.compiler);
   const declaredFlags = textsOf(fieldOf(fieldOf(configs, ERROR_PRONE), 'arguments'));
-  const argumentFiles = compileSets({ module, classpaths }, modular).flatMap((set) =>
+  const argumentFiles = compileSets({ module, classpaths }, compiler, modular).flatMap((set) =>
     writeArguments(work, {
       ...set,
-      compiler: set.test ? { ...compiler, ...compiler.test } : compiler,
       processors: [
         ...resolvedTool(tools, ERROR_PRONE),
         ...processorPath(set.classpath, compiler, tools),

@@ -4,8 +4,13 @@ import {
   childrenAt,
   childrenNamed,
 } from '../../../../shared/ingest/report-records.mts';
-import type { CompilerLevel, CompilerSettings } from './compiler-types.mts';
-import { textAt } from '../configuration/pom-elements.mts';
+import type {
+  CompilerLevel,
+  CompilerSettings,
+  ExtraCompile,
+  SourcePatterns,
+} from './compiler-types.mts';
+import { executionsWithGoal, textAt } from '../configuration/pom-elements.mts';
 
 const COMPILER = 'maven-compiler-plugin';
 const PLACEHOLDER_OPEN = ['$', '{'].join('');
@@ -131,6 +136,67 @@ function levelOf(
   return { release: undefined, source: fallback, target: fallback };
 }
 
+function patternsAt(configurations: readonly XmlElement[], list: string, item: string): string[] {
+  const element = configurations
+    .map((configuration) => childAt(configuration, list))
+    .find((found) => found !== undefined);
+  return (element === undefined ? [] : childrenNamed(element, item))
+    .map((entry) => entry.text?.trim())
+    .filter(isArgument);
+}
+
+function sourcePatterns(configurations: readonly XmlElement[], test: boolean): SourcePatterns {
+  return test
+    ? {
+        includes: patternsAt(configurations, 'testIncludes', 'testInclude'),
+        excludes: patternsAt(configurations, 'testExcludes', 'testExclude'),
+      }
+    : {
+        includes: patternsAt(configurations, 'includes', 'include'),
+        excludes: patternsAt(configurations, 'excludes', 'exclude'),
+      };
+}
+
+function isExtraCompile(execution: XmlElement): boolean {
+  return (
+    textAt(execution, 'id') !== 'default-compile' &&
+    textAt(execution, 'phase') !== 'none' &&
+    childAt(execution, 'configuration', 'compileSourceRoots') === undefined
+  );
+}
+
+function extraCompiles(
+  project: XmlElement,
+  plugin: XmlElement | undefined,
+  pluginVersion: string | undefined,
+): ExtraCompile[] {
+  return executionsWithGoal(plugin, 'compile')
+    .filter(isExtraCompile)
+    .map((execution) => {
+      const configurations = [
+        childAt(execution, 'configuration'),
+        childAt(plugin, 'configuration'),
+      ].filter((configuration) => configuration !== undefined);
+      const setting = settingOf(project, configurations);
+      return {
+        id: textAt(execution, 'id') ?? 'compile',
+        ...levelOf(setting, false, pluginVersion),
+        compilerArgs: argumentsOf(configurations, setting),
+        sources: sourcePatterns(configurations, false),
+      };
+    });
+}
+
+function executionsField(executions: ExtraCompile[]): { readonly executions?: ExtraCompile[] } {
+  return executions.length === 0 ? {} : { executions };
+}
+
+function patternsField(patterns: SourcePatterns): { readonly sources?: SourcePatterns } {
+  return patterns.includes.length === 0 && patterns.excludes.length === 0
+    ? {}
+    : { sources: patterns };
+}
+
 export function compilerSettings(project: XmlElement): CompilerSettings {
   const plugin = compilerPlugin(project);
   const pluginVersion = textAt(plugin, 'version');
@@ -144,12 +210,15 @@ export function compilerSettings(project: XmlElement): CompilerSettings {
       setting('encoding', 'maven.compiler.encoding') ??
       textAt(project, 'properties', 'project.build.sourceEncoding'),
     compilerArgs: argumentsOf(configurations, setting),
+    ...patternsField(sourcePatterns(configurations, false)),
     proc: setting('proc', 'maven.compiler.proc'),
     processorPaths: processorPaths(project, configurations),
     test: {
       ...levelOf(testSetting, true, pluginVersion),
       compilerArgs: argumentsOf(testConfigurations, testSetting),
+      ...patternsField(sourcePatterns(testConfigurations, true)),
     },
+    ...executionsField(extraCompiles(project, plugin, pluginVersion)),
   };
 }
 

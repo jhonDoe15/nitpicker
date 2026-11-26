@@ -13,13 +13,28 @@ export type CompilerLevel = {
   readonly source: string | undefined;
   readonly target: string | undefined;
 };
-type TestCompiler = CompilerLevel & { readonly compilerArgs: string[] };
+export type SourcePatterns = { readonly includes: string[]; readonly excludes: string[] };
+type TestCompiler = CompilerLevel & {
+  readonly compilerArgs: string[];
+  readonly sources?: SourcePatterns | undefined;
+};
+export type ExtraCompile = TestCompiler & { readonly id: string };
 export type CompilerSettings = TestCompiler & {
   readonly encoding: string | undefined;
   readonly proc: string | undefined;
   readonly processorPaths: string[] | undefined;
   readonly test: TestCompiler | undefined;
+  readonly executions?: ExtraCompile[] | undefined;
 };
+
+function patternsOf(value: unknown): SourcePatterns | undefined {
+  return objectOf(value) === undefined
+    ? undefined
+    : {
+        includes: textsOf(fieldOf(value, 'includes')),
+        excludes: textsOf(fieldOf(value, 'excludes')),
+      };
+}
 
 function testCompilerOf(value: unknown): TestCompiler {
   return {
@@ -27,7 +42,17 @@ function testCompilerOf(value: unknown): TestCompiler {
     source: optionalText(fieldOf(value, 'source')),
     target: optionalText(fieldOf(value, 'target')),
     compilerArgs: textsOf(fieldOf(value, 'compilerArgs')),
+    sources: patternsOf(fieldOf(value, 'sources')),
   };
+}
+
+function executionsOf(value: unknown): ExtraCompile[] {
+  return Array.isArray(value)
+    ? value.map((execution) => ({
+        ...testCompilerOf(execution),
+        id: optionalText(fieldOf(execution, 'id')) ?? 'compile',
+      }))
+    : [];
 }
 
 export function compilerOf(value: unknown): CompilerSettings {
@@ -39,5 +64,6 @@ export function compilerOf(value: unknown): CompilerSettings {
     proc: optionalText(fieldOf(value, 'proc')),
     processorPaths: Array.isArray(paths) ? textsOf(paths) : undefined,
     test: objectOf(test) === undefined ? undefined : testCompilerOf(test),
+    executions: executionsOf(fieldOf(value, 'executions')),
   };
 }
