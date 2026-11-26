@@ -33,7 +33,7 @@ fn takes_exactly_object(context: &Context, parameter: Node) -> bool {
 }
 
 /// Error Prone's `Matchers.equalsMethodDeclaration`.
-fn equals_declaration(context: &Context, method: Node) -> bool {
+pub fn equals_declaration(context: &Context, method: Node) -> bool {
     if method.kind() != "method_declaration" || name_of(context, method) != "equals" || !is_public(method) {
         return false;
     }

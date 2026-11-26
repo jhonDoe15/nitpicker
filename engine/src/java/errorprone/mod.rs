@@ -149,6 +149,15 @@ mod already_checked;
 mod already_pure;
 mod ignored_matchers;
 mod returns_ignored;
+mod odd_calls;
+mod flogger;
+mod odd_types;
+mod time_from;
+mod guice;
+mod junit_init;
+mod junit_tests;
+mod recursion;
+mod equals_wrong;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -435,6 +444,29 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["ObjectToString"], object_to_string::object_to_string),
     (&["ConstantPatternCompile"], constant_pattern::constant_pattern_compile),
     (&["ReturnValueIgnored"], returns_ignored::return_value_ignored),
+    (&["FuzzyEqualsShouldNotBeUsedInEqualsMethod"], odd_calls::fuzzy_equals_in_equals),
+    (&["GetClassOnAnnotation"], odd_calls::get_class_on_annotation),
+    (&["IndexOfChar"], odd_calls::index_of_char),
+    (&["InexactVarargsConditional"], odd_calls::inexact_varargs_conditional),
+    (&["IdentityHashMapBoxing"], odd_calls::identity_hash_map_boxing),
+    (&["FloggerLogString"], flogger::flogger_log_string),
+    (&["IsInstanceIncompatibleType"], odd_types::is_instance_incompatible_type),
+    (&["Incomparable"], odd_types::incomparable),
+    (&["IterablePathParameter"], odd_types::iterable_path_parameter),
+    (&["FromTemporalAccessor"], time_from::from_temporal_accessor),
+    (&["InstantTemporalUnit"], time_from::instant_temporal_unit),
+    (&["GuiceAssistedInjectScoping"], guice::assisted_inject_scoping),
+    (&["GuiceAssistedParameters"], guice::assisted_parameters),
+    (&["GuiceInjectOnFinalField"], guice::inject_on_final_field),
+    (&["InjectMoreThanOneScopeAnnotationOnClass"], guice::more_than_one_scope_annotation),
+    (&["InjectOnMemberAndConstructor"], guice::inject_on_member_and_constructor),
+    (&["IncompatibleModifiers"], guice::incompatible_modifiers),
+    (&["JUnit4SetUpNotRun"], junit_init::set_up_not_run),
+    (&["JUnit4TearDownNotRun"], junit_init::tear_down_not_run),
+    (&["JUnit4ClassAnnotationNonStatic"], junit_init::class_annotation_non_static),
+    (&["JUnit4TestNotRun"], junit_tests::junit4_test_not_run),
+    (&["InfiniteRecursion"], recursion::infinite_recursion),
+    (&["EqualsWrongThing"], equals_wrong::equals_wrong_thing),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
@@ -452,6 +484,7 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["FieldCanBeLocal"], fieldlocal::field_can_be_local),
     (&["UnusedNestedClass"], unused_nested::unused_nested_class),
     (&["AlreadyChecked"], already_checked::already_checked),
+    (&["JUnit4TestsNotRunWithinEnclosed"], junit_tests::junit4_tests_not_run_within_enclosed),
 ];
 
 pub struct ErrorProne;

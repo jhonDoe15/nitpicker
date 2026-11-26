@@ -202,6 +202,8 @@ struct Attributes<'a> {
     marks: u32,
     /// Constant pool entries of the strings in `containerOf` of `@Immutable`.
     held: Vec<u16>,
+    /// Constant names listed by `@IncompatibleModifiers`.
+    incompatible: Vec<&'a [u8]>,
     /// Positions of the type parameters with `@ImmutableTypeParameter`.
     strict: Vec<u8>,
     annotations: Vec<&'a [u8]>,
@@ -387,6 +389,13 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                         } else {
                             skip_element(reader)?;
                         }
+                    }
+                }
+                if kind == b"Lcom/google/errorprone/annotations/IncompatibleModifiers;" {
+                    reader.at = begin + 2;
+                    for _ in 0..reader.u2()? {
+                        reader.skip(2)?;
+                        enum_names(reader, utf8, &mut found.incompatible)?;
                     }
                 }
                 found.deprecated |= kind == b"Ljava/lang/Deprecated;";
@@ -807,5 +816,6 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         targets: found.targets,
         setter_like,
         null_nicknames,
+        incompatible: found.incompatible.iter().map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
     })
 }

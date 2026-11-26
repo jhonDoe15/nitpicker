@@ -692,7 +692,37 @@ impl<'a> Resolver<'a> {
             immutable_parameters,
             setter_like: false,
             null_nicknames: Vec::new(),
+            incompatible: if kind == "annotation_type_declaration" { self.incompatible_modifiers(declaration) } else { Vec::new() },
         }
+    }
+
+    /// The constant names `@IncompatibleModifiers` lists on an annotation type, in the order written.
+    fn incompatible_modifiers(&self, declaration: Node) -> Vec<String> {
+        let mut found = Vec::new();
+        let annotations = super::super::helpers::modifiers(declaration).map(children).unwrap_or_default();
+        for annotation in annotations.into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation")) {
+            let written = annotation.child_by_field_name("name").map(|name| self.file.text_of(name)).unwrap_or_default();
+            if self.class_name(declaration, written).as_deref() != Some("com.google.errorprone.annotations.IncompatibleModifiers") {
+                continue;
+            }
+            let Some(list) = annotation.child_by_field_name("arguments") else { continue };
+            for argument in children(list).into_iter().filter(|part| part.is_named() && !part.kind().ends_with("comment")) {
+                let (key, value) = match argument.kind() {
+                    "element_value_pair" => (argument.child_by_field_name("key").map(|key| self.file.text_of(key)), argument.child_by_field_name("value")),
+                    _ => (Some("value"), Some(argument)),
+                };
+                let Some(value) = value.filter(|_| matches!(key, Some("value" | "modifier"))) else { continue };
+                crate::engine::source::walk(value, |part| {
+                    let name = match part.kind() {
+                        "identifier" if part.parent().is_none_or(|up| up.kind() != "field_access") => Some(part),
+                        "field_access" => part.child_by_field_name("field"),
+                        _ => None,
+                    };
+                    found.extend(name.map(|name| self.file.text_of(name).to_string()));
+                });
+            }
+        }
+        found
     }
 
     /// What `containerOf` of the class's `@Immutable` names, and the type parameters with `@ImmutableTypeParameter`.

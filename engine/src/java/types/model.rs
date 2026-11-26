@@ -147,6 +147,10 @@ pub mod flag {
     pub const NULL_UNMARKED: u32 = 1 << 25;
     /// A class file with type annotations on the class or a member: nullness written that way is not read.
     pub const TYPE_MARKS: u32 = 1 << 26;
+    /// An annotation class that is itself a scope annotation: `@Scope` or `@ScopeAnnotation`.
+    pub const SCOPE: u32 = 1 << 27;
+    /// A field or parameter with `@CompileTimeConstant`.
+    pub const COMPILE_TIME_CONSTANT: u32 = 1 << 28;
 
     pub const IMMUTABLE_NAME: &str = "com.google.errorprone.annotations.Immutable";
     pub const IMMUTABLE_PARAMETER_NAME: &str = "com.google.errorprone.annotations.ImmutableTypeParameter";
@@ -165,8 +169,10 @@ pub mod flag {
         let exact = match name {
             "com.google.errorprone.annotations.CanIgnoreReturnValue" => MAY_IGNORE,
             IMMUTABLE_NAME => IMMUTABLE,
+            "com.google.errorprone.annotations.CompileTimeConstant" => COMPILE_TIME_CONSTANT,
             _ => 0,
         };
+        let exact = exact | if matches!(name, "javax.inject.Scope" | "jakarta.inject.Scope" | "com.google.inject.ScopeAnnotation") { SCOPE } else { 0 };
         exact | match name.rsplit('.').next().unwrap_or(name) {
             "CheckReturnValue" | "MustUseReturnValues" => CHECK_RESULT,
             "CanIgnoreReturnValue" | "IgnorableReturnValue" => IGNORE_RESULT,
@@ -297,6 +303,8 @@ pub struct ClassInfo {
     /// For a class read from a class file: the annotation classes on its members that may be nicknames for
     /// `@CheckForNull`.
     pub null_nicknames: Vec<String>,
+    /// For an annotation type read from source: the modifiers its `@IncompatibleModifiers` lists, as constant names.
+    pub incompatible: Vec<String>,
 }
 
 const SETTER_STARTS: &[&str] =
