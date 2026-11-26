@@ -1,6 +1,6 @@
 //! Ports of PMD's performance and security rules written in Java.
 mod appends;
-mod builders;
+pub(super) mod builders;
 pub(super) mod fields;
 pub(super) mod fold;
 mod strings;
