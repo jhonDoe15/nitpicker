@@ -2,6 +2,7 @@ import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './no-repeated-parse-per-item.mts';
 
 const tester = typescriptRuleTester();
+const cases = (block: string) => block.trim().split('\n\n');
 
 const PARSE = (call: string, field: string) => ({
   messageId: 'parsePerItem',
@@ -15,16 +16,26 @@ const SAVED =
 
 tester.run('no-repeated-parse-per-item', rule, {
   valid: [
-    'const isTs = (p: string) => /\\.tsx?$/u.test(p);\nexport function f(xs: Finding[]) { return xs.filter((x) => isTs(x.message)); }',
+    ...cases(`
+const isTs = (p: string) => /\\.tsx?$/u.test(p);
+export function f(xs: Finding[]) { return xs.filter((x) => isTs(x.message)); }
+
+function upper(text: string) { return text.toUpperCase(); }
+export function f(items: Finding[]) { return items.map((item) => upper(item.message)); }
+
+let sep = ",";
+function parts(text: string) { return text.split(sep); }
+export function f(items: Finding[]) { return items.map((item) => parts(item.message)); }
+
+export function f(items: Finding[]) { return items.map((item) => parse(item.message)); }
+declare function parse(text: string): string[];
+`),
     `${ROUTE}\nexport function f(xs: Finding[], cache: Map<string, unknown>) { return xs.map((x) => cache.get(x.message) ?? splitRoute(x.message)); }`,
     `${ONE_LINE}\nexport function f(item: Finding) { return oneLine(item.message); }`,
     `${ONE_LINE}\nexport function f(items: Finding[]) { return items.map((item) => oneLine(item.id)); }`,
     `${ONE_LINE}\nexport function f(items: Finding[], other: Finding) { return items.map((item) => oneLine(other.message)); }`,
     `${SAVED}\nexport function f(items: Finding[]) { return items.map((item) => counted(item.message)); }`,
-    'function upper(text: string) { return text.toUpperCase(); }\nexport function f(items: Finding[]) { return items.map((item) => upper(item.message)); }',
-    'let sep = ",";\nfunction parts(text: string) { return text.split(sep); }\nexport function f(items: Finding[]) { return items.map((item) => parts(item.message)); }',
     `${ONE_LINE}\nexport function f() { return [{ message: "a" }].map((item) => oneLine(item.message)); }`,
-    'export function f(items: Finding[]) { return items.map((item) => parse(item.message)); }\ndeclare function parse(text: string): string[];',
     `${ONE_LINE}\nexport function f(items: Finding[]) { return items.map((item) => oneLine(item.message, 1)); }`,
   ],
   invalid: [

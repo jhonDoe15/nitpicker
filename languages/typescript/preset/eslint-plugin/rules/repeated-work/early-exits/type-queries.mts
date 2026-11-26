@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { memberName, someNode } from '../../collections/costly-forms/repeated-runs.mts';
 import { isFunction, unwrapped } from '../../typed/syntax-views.mts';
+import { nameOf } from '../../typed/node-views.mts';
 
 const TYPE_QUERIES = new Set([
   'getApparentType',
@@ -24,24 +25,19 @@ const UNSETTLED = new Set<string>([
   AST_NODE_TYPES.YieldExpression,
 ]);
 
-function ownerName(node: TSESTree.Node): string | undefined {
-  const owner = unwrapped(node);
-  if (owner.type === AST_NODE_TYPES.Identifier) {
-    return owner.name;
-  }
-  return owner.type === AST_NODE_TYPES.MemberExpression ? memberName(owner) : undefined;
+function receiverName(callee: TSESTree.MemberExpression): string {
+  const owner = unwrapped(callee.object);
+  const name = owner.type === AST_NODE_TYPES.MemberExpression ? memberName(owner) : nameOf(owner);
+  return name ?? '';
 }
 
 export function isTypeQuery(node: TSESTree.Node): boolean {
   const call = unwrapped(node);
-  if (call.type !== AST_NODE_TYPES.CallExpression) {
-    return false;
-  }
-  const callee = unwrapped(call.callee);
+  const callee = call.type === AST_NODE_TYPES.CallExpression ? unwrapped(call.callee) : undefined;
   return (
-    callee.type === AST_NODE_TYPES.MemberExpression &&
+    callee?.type === AST_NODE_TYPES.MemberExpression &&
     TYPE_QUERIES.has(memberName(callee) ?? '') &&
-    CHECKER.test(ownerName(callee.object) ?? '')
+    CHECKER.test(receiverName(callee))
   );
 }
 

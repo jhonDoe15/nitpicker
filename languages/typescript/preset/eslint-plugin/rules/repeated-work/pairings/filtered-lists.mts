@@ -23,7 +23,7 @@ function sourceOf(sourceCode: SourceCode, node: TSESTree.Node): TSESTree.Node {
     : value;
 }
 
-export function filterOf(
+function filterOf(
   sourceCode: SourceCode,
   node: TSESTree.Node,
 ): TSESTree.CallExpression | undefined {
@@ -66,11 +66,7 @@ function initializerReads(
   );
 }
 
-export function derivedFrom(
-  sourceCode: SourceCode,
-  first: TSESTree.Node,
-  second: TSESTree.Node,
-): boolean {
+function derivedFrom(sourceCode: SourceCode, first: TSESTree.Node, second: TSESTree.Node): boolean {
   return initializerReads(sourceCode, first, second) || initializerReads(sourceCode, second, first);
 }
 
