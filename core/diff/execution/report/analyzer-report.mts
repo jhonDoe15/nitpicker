@@ -8,6 +8,7 @@ import { textOf } from '../../../../shared/values/readers.mts';
 import type { AnalyzerTask } from '../tasks.mts';
 import { parseJsonDescriptor } from '../../../../shared/report-output/pieces/json-lines.mts';
 import { MEMORY_ADVICE, isOutOfMemory } from '../../../../shared/processes/memory/node-heap.mts';
+import { KILL_SENTENCE } from '../../../../shared/processes/memory/memory-kills.mts';
 
 export type AnalyzerReport = { readonly findings: readonly { readonly tool?: unknown }[] };
 
@@ -78,10 +79,7 @@ function crashMessage(
   }
   const exit = status === null ? `signal ${textOf(signal ?? 'unknown')}` : `exit ${textOf(status)}`;
   const detail = stderrText.trim() || stdoutText.trim() || 'no diagnostic output';
-  const killed =
-    signal === 'SIGKILL'
-      ? ' A SIGKILL usually means the system ran out of memory. ' + MEMORY_ADVICE
-      : '';
+  const killed = signal === 'SIGKILL' ? KILL_SENTENCE : '';
   return `${name} crashed with ${exit}: ${detail}${killed}`;
 }
 
