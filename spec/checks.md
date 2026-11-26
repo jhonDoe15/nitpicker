@@ -433,7 +433,9 @@ never reads `descendants()`. The timed-out wrapper dies and its child keeps runn
 
 A package.json field in several shapes: `nitpicker/no-single-shape-manifest-field` (production source, in
 `eslint-lint`) reports a list member read from `bundleDependencies`, `bundledDependencies`, `workspaces` or `man` of a
-manifest without an `Array.isArray` or `typeof` check, since npm also accepts `true`, an object or a string there.
+manifest (also a destructured name) without an `Array.isArray`, `typeof`, `instanceof`, `in`, `true`/`false` comparison,
+guard-call or assignment on it, since npm also accepts `true`, an object or a string there. `bin`, `browser`, `exports`
+and `directories` are not covered yet.
 Keyword regex over source text: `nitpicker/no-keyword-regex-over-source` (production source, in `eslint-lint`) and
 `pmd/KeywordRegexOverSource` (Java, main sources) report a regex with a language keyword between word boundaries
 (`\bcase\b`) applied to source text (a variable named `source` or `sourceText`, or a file read with a source extension)

@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable } from '../analysis/constant-resolution.mts';
 import { depthFirst, nameOf, nodeChildren } from '../typed/node-views.mts';
-import { enclosingFunction } from '../typed/syntax-views.mts';
+import { enclosingFunction, unwrapped } from '../typed/syntax-views.mts';
 import {
   SINGLE_SHAPE_MEMBERS,
   fieldNameOf,
@@ -39,7 +39,8 @@ function isManifestVariable(context: Context, node: TSESTree.Identifier): boolea
   const defNode = definition.node;
   if (defNode.type === AST_NODE_TYPES.VariableDeclarator) {
     return (
-      isManifestType(defNode.id.typeAnnotation?.typeAnnotation) || parsedPackageJson(defNode.init ?? undefined)
+      isManifestType(defNode.id.typeAnnotation?.typeAnnotation) ||
+      parsedPackageJson(defNode.init ?? undefined)
     );
   }
   return (
@@ -64,12 +65,33 @@ function isManifest(context: Context, node: TSESTree.Node): boolean {
   );
 }
 
+function declaresList(context: Context, leaf: TSESTree.MemberExpression): boolean {
+  const object = unwrapped(leaf.object);
+  const declared =
+    object.type === AST_NODE_TYPES.Identifier
+      ? findVariable(context, object, object.name)?.defs[0]?.name
+      : undefined;
+  const type = declared?.type === AST_NODE_TYPES.Identifier ? declared.typeAnnotation : undefined;
+  return (
+    type?.typeAnnotation.type === AST_NODE_TYPES.TSTypeLiteral &&
+    type.typeAnnotation.members.some(
+      (member) =>
+        member.type === AST_NODE_TYPES.TSPropertySignature &&
+        nameOf(member.key) === fieldNameOf(leaf) &&
+        (member.typeAnnotation?.typeAnnotation.type === AST_NODE_TYPES.TSArrayType ||
+          member.typeAnnotation?.typeAnnotation.type === AST_NODE_TYPES.TSTupleType),
+    )
+  );
+}
+
 function manifestField(context: Context, node: TSESTree.Node): string | undefined {
   const leaves = leavesOf(node);
   const fields = leaves
     .filter((leaf) => !isEmptyList(leaf))
     .map((leaf) =>
-      leaf.type === AST_NODE_TYPES.MemberExpression && isManifest(context, leaf.object)
+      leaf.type === AST_NODE_TYPES.MemberExpression &&
+      isManifest(context, leaf.object) &&
+      !declaresList(context, leaf)
         ? fieldNameOf(leaf)
         : undefined,
     );
@@ -81,28 +103,98 @@ function manifestField(context: Context, node: TSESTree.Node): string | undefine
     : undefined;
 }
 
+function destructuredField(context: Context, node: TSESTree.Identifier): string | undefined {
+  const definition = findVariable(context, node, node.name)?.defs[0]?.node;
+  if (
+    definition?.type !== AST_NODE_TYPES.VariableDeclarator ||
+    definition.id.type !== AST_NODE_TYPES.ObjectPattern ||
+    definition.init === null ||
+    !isManifest(context, definition.init)
+  ) {
+    return undefined;
+  }
+  const property = definition.id.properties.find(
+    (entry) =>
+      entry.type === AST_NODE_TYPES.Property &&
+      !entry.computed &&
+      (entry.value.type === AST_NODE_TYPES.AssignmentPattern ? entry.value.left : entry.value)
+        .type === AST_NODE_TYPES.Identifier &&
+      nameOf(
+        entry.value.type === AST_NODE_TYPES.AssignmentPattern ? entry.value.left : entry.value,
+      ) === node.name,
+  );
+  const key = property?.type === AST_NODE_TYPES.Property ? nameOf(property.key) : undefined;
+  return key !== undefined && SINGLE_SHAPE_MEMBERS.has(key) ? key : undefined;
+}
+
 function aliasField(context: Context, node: TSESTree.Identifier): string | undefined {
   const definition = findVariable(context, node, node.name)?.defs[0]?.node;
   return definition?.type === AST_NODE_TYPES.VariableDeclarator &&
     definition.id.type === AST_NODE_TYPES.Identifier &&
     definition.init !== null
     ? manifestField(context, definition.init)
-    : undefined;
+    : destructuredField(context, node);
+}
+
+const GUARD_CALL = /^(?:is|has|assert|ensure)[A-Z]/u;
+const SHAPE_LITERALS = new Set([true, false]);
+
+function shapeProbe(node: TSESTree.Node): TSESTree.Node | undefined {
+  switch (node.type) {
+    case AST_NODE_TYPES.UnaryExpression:
+      return node.operator === 'typeof' ? node.argument : undefined;
+    case AST_NODE_TYPES.AssignmentExpression:
+      return node.left.type === AST_NODE_TYPES.MemberExpression &&
+        !SINGLE_SHAPE_MEMBERS.has(fieldNameOf(node.left) ?? '')
+        ? undefined
+        : node.left;
+    case AST_NODE_TYPES.BinaryExpression:
+      if (node.operator === 'instanceof') {
+        return node.left;
+      }
+      if (node.operator === 'in') {
+        return node.right;
+      }
+      return ['===', '!==', '==', '!='].includes(node.operator) &&
+        node.right.type === AST_NODE_TYPES.Literal &&
+        SHAPE_LITERALS.has(node.right.value as boolean)
+        ? node.left
+        : undefined;
+    case AST_NODE_TYPES.CallExpression: {
+      const name =
+        node.callee.type === AST_NODE_TYPES.MemberExpression
+          ? nameOf(node.callee.object)
+          : nameOf(node.callee);
+      const method =
+        node.callee.type === AST_NODE_TYPES.MemberExpression ? nameOf(node.callee.property) : '';
+      return (name === 'Array' && method === 'isArray') ||
+        GUARD_CALL.test(method === '' ? (name ?? '') : (method ?? ''))
+        ? node.arguments[0]
+        : undefined;
+    }
+    default:
+      return undefined;
+  }
 }
 
 function narrowed(context: Context, scope: TSESTree.Node, subject: string): boolean {
   return [...depthFirst<TSESTree.Node>(scope, nodeChildren)].some((node) => {
-    const probe =
-      node.type === AST_NODE_TYPES.UnaryExpression && node.operator === 'typeof'
-        ? node.argument
-        : node.type === AST_NODE_TYPES.CallExpression &&
-            node.callee.type === AST_NODE_TYPES.MemberExpression &&
-            nameOf(node.callee.object) === 'Array' &&
-            nameOf(node.callee.property) === 'isArray'
-          ? node.arguments[0]
-          : undefined;
+    const probe = shapeProbe(node);
     return probe !== undefined && context.sourceCode.getText(probe).includes(subject);
   });
+}
+
+function fallsBackToObject(context: Context, node: TSESTree.MemberExpression): boolean {
+  let current: TSESTree.Node = node;
+  while (current.parent?.type === AST_NODE_TYPES.ChainExpression) {
+    current = current.parent;
+  }
+  const parent = current.parent;
+  return (
+    parent?.type === AST_NODE_TYPES.LogicalExpression &&
+    parent.left === current &&
+    context.sourceCode.getText(parent.right).includes(context.sourceCode.getText(node.object))
+  );
 }
 
 function unwrappedObject(node: TSESTree.Node): TSESTree.Node {
@@ -141,7 +233,11 @@ export const rule: TSESLint.RuleModule<'singleShape', []> = {
         }
         const scope = enclosingFunction(node) ?? context.sourceCode.ast;
         const subject = object.type === AST_NODE_TYPES.Identifier ? object.name : field;
-        if (!narrowed(context, scope, subject) && !narrowed(context, scope, field)) {
+        if (
+          !narrowed(context, scope, subject) &&
+          !narrowed(context, scope, field) &&
+          !fallsBackToObject(context, node)
+        ) {
           context.report({ node, messageId: 'singleShape', data: { field, member } });
         }
       },

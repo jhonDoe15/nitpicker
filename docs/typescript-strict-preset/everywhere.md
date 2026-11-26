@@ -2049,9 +2049,13 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `bundleDependencies` or `bundledDependencies` (a list or `true`) or `workspaces` (a list or an object with
   `packages`), `.packages` of `workspaces`, or a list method of `man` (a string or a list), read from a value
   named `manifest`, `pkg`, `packageJson` (or ending in `Manifest` or `PackageJson`), from `JSON.parse` of a read of a
-  `package.json` file, or typed `PackageJson`, also through a variable or `a || b` / `a ?? []`. A manifest in the
-  other shape throws `includes is not a function` or reads `undefined`. Not reported: code in the same function
-  that checks the value with `Array.isArray` or `typeof`, and other values.
+  `package.json` file, or typed `PackageJson`, also through a variable, a destructured name
+  (`const { bundleDependencies } = pkg`) or `a || b` / `a ?? []`. A manifest in the other shape throws
+  `includes is not a function` or reads `undefined`. Not reported: code in the same function that checks the value
+  (`Array.isArray`, `typeof`, `instanceof`, `in`, a comparison with `true` or `false`, a call named `is...`, `has...`,
+  `assert...` or `ensure...` on it, or an assignment to the field), `workspaces?.packages ?? workspaces`, a manifest
+  whose declared type lists the field as an array, and other values. `bin`, `browser`, `exports` and `directories`
+  are not covered yet.
 - A project staged in a temporary folder keeps the `node_modules` of its parent folders
   (`nitpicker/require-staged-parent-node-modules`, production files). Reported: a `mkdtemp` or `mkdtempSync` folder
   that receives the entries of another folder (`symlink`, `cp` or `copyFile` in a `for...of` or `forEach`/`map` over
