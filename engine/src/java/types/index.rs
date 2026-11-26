@@ -206,6 +206,15 @@ impl TypeIndex {
         checked
     }
 
+    /// The member classes, at any depth, of the listed classes.
+    pub fn nested_in(&self, outers: &HashSet<String>) -> Vec<String> {
+        self.classes.keys().filter(|name| name.rsplit_once('.').is_some_and(|(outer, _)| outers.contains(outer) || self.nested_of(outer, outers))).cloned().collect()
+    }
+
+    fn nested_of(&self, name: &str, outers: &HashSet<String>) -> bool {
+        name.rsplit_once('.').is_some_and(|(outer, _)| outers.contains(outer) || (self.classes.contains_key(outer) && self.nested_of(outer, outers)))
+    }
+
     pub fn has(&self, name: &str) -> bool {
         self.classes.contains_key(name)
     }
