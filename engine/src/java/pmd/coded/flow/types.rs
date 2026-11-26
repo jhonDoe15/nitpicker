@@ -3,6 +3,7 @@
 use super::span::{Pass, SpanId};
 use super::{Special, Sym};
 use crate::java::pmd::coded::ctx::TYPE_DECLARATIONS;
+use std::rc::Rc;
 
 const BODY_DECLARATIONS: &[&str] = &[
     "MethodDeclaration",
@@ -21,7 +22,8 @@ impl Pass<'_, '_, '_, '_> {
         body.map(|body| ctx.kids(body).to_vec()).unwrap_or_default()
     }
 
-    pub fn declared_fields(&mut self, class: u32) -> Vec<u32> {
+    /// The fields a class declares, each with whether it is static.
+    pub fn declared_fields(&mut self, class: u32) -> Rc<Vec<(u32, bool)>> {
         if let Some(known) = self.fields.get(&class) {
             return known.clone();
         }
@@ -41,6 +43,8 @@ impl Pass<'_, '_, '_, '_> {
                 _ => {}
             }
         }
+        let fields: Rc<Vec<(u32, bool)>> =
+            Rc::new(fields.into_iter().map(|field| (field, super::field_static(ctx, super::plain(field)))).collect());
         self.fields.insert(class, fields.clone());
         fields
     }
@@ -114,18 +118,18 @@ impl Pass<'_, '_, '_, '_> {
     }
 
     pub fn use_all_self_fields(&mut self, state: SpanId, in_static: bool, class: u32) {
-        for field in self.declared_fields(class) {
+        for &(field, fixed) in self.declared_fields(class).iter() {
             let sym = super::plain(field);
-            if !in_static || super::field_static(self.ctx, sym) {
+            if !in_static || fixed {
                 self.assign_out_of_scope(state, sym, class, Special::InitialField);
             }
         }
     }
 
     fn declare_special(&mut self, span: SpanId, class: u32, only_static: bool) {
-        for field in self.declared_fields(class) {
+        for &(field, fixed) in self.declared_fields(class).iter() {
             let sym = super::plain(field);
-            if !only_static || super::field_static(self.ctx, sym) {
+            if !only_static || fixed {
                 self.assign(span, sym, field, Some(Special::InitialField));
             }
         }
@@ -140,9 +144,9 @@ impl Pass<'_, '_, '_, '_> {
     }
 
     fn record_this_leak(&mut self, state: SpanId, escaping: u32) {
-        for field in self.declared_fields(self.class) {
+        for &(field, fixed) in self.declared_fields(self.class).iter() {
             let sym = super::plain(field);
-            if !super::field_static(self.ctx, sym) {
+            if !fixed {
                 self.assign_out_of_scope(state, sym, escaping, Special::UnknownCall);
             }
         }

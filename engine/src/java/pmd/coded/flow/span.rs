@@ -34,7 +34,8 @@ pub struct Pass<'c, 'm, 'a, 't> {
     pub continues: Targets,
     pub class: u32,
     pub in_static: bool,
-    pub fields: HashMap<u32, Vec<u32>>,
+    pub fields: HashMap<u32, Rc<Vec<(u32, bool)>>>,
+    final_fields: HashMap<Sym, bool>,
     pub flow: Flow,
 }
 
@@ -52,6 +53,7 @@ impl<'c, 'm, 'a, 't> Pass<'c, 'm, 'a, 't> {
             class: 0,
             in_static: false,
             fields: HashMap::new(),
+            final_fields: HashMap::new(),
             flow: Flow::default(),
         };
         let tops: Vec<u32> = ctx
@@ -174,7 +176,12 @@ impl<'c, 'm, 'a, 't> Pass<'c, 'm, 'a, 't> {
 
     pub fn update_reaching(&mut self, sink: u32, var: Sym, info: Option<&Defs>) {
         let Some(info) = info else { return };
-        if super::is_field(self.ctx, var) && super::field_final(self.ctx, var) {
+        let ctx = self.ctx;
+        let final_field = *self
+            .final_fields
+            .entry(var)
+            .or_insert_with(|| super::is_field(ctx, var) && super::field_final(ctx, var));
+        if final_field {
             return;
         }
         let entries = &self.flow.entries;
