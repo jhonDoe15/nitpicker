@@ -10,6 +10,7 @@ import { rule as ruleHermeticGitInTests } from '../rules/test-runtime/processes/
 import { rule as ruleHoverTestNeedsKeyboard } from '../rules/react-tests/hover-test-needs-keyboard.mts';
 import { rule as ruleIntegrationTestUsesApprovedHarness } from '../rules/test-runtime/processes/integration-test-uses-approved-harness.mts';
 import { rule as ruleNamingConvention } from '../rules/wrapped/naming-convention.mts';
+import { rule as ruleNoAccumulatingGroupSpread } from '../rules/repeated-work/groups/no-accumulating-group-spread.mts';
 import { rule as ruleNoAccumulatingSpread } from '../rules/collections/no-accumulating-spread.mts';
 import { rule as ruleNoAccumulatorConcat } from '../rules/collections/no-accumulator-concat.mts';
 import { rule as ruleNoAddOnlyCollection } from '../rules/lifecycles/growth/no-add-only-collection.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/ass
 import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
 import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
 import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multiple-collection-joins.mts';
-import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -112,6 +112,7 @@ export const partRules = {
   'hover-test-needs-keyboard': ruleHoverTestNeedsKeyboard,
   'integration-test-uses-approved-harness': ruleIntegrationTestUsesApprovedHarness,
   'naming-convention': ruleNamingConvention,
+  'no-accumulating-group-spread': ruleNoAccumulatingGroupSpread,
   'no-accumulating-spread': ruleNoAccumulatingSpread,
   'no-accumulator-concat': ruleNoAccumulatorConcat,
   'no-add-only-collection': ruleNoAddOnlyCollection,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-module-level-let': ruleNoModuleLevelLet,
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
   'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
-  'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
 };

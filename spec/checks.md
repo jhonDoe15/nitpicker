@@ -556,6 +556,10 @@ into one array that is then only walked once. `nitpicker/no-collected-stream-row
 for streamed rows. Java (`Files.readString`, `readAllBytes`, `readAllLines`, `ObjectMapper.readValue`),
 Kotlin, Python and Go follow in #2133.
 
+`nitpicker/no-accumulating-group-spread` (production source, in `eslint-lint`) reports a group of a
+`Map` or object spread into a new array that replaces it on every step of a loop or iteration
+callback (`m.set(k, [...(m.get(k) ?? []), v])`).
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

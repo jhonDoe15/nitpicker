@@ -20,4 +20,5 @@ export const REPEATED_WORK_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/read-all/input-reads.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/read-all/filled-lists.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/read-all/no-read-all-before-pass.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/repeated-work/groups/no-accumulating-group-spread.mjs',
 ];

@@ -225,6 +225,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   need the value (`nitpicker/no-work-before-early-exit`).
 - Read and handle files one at a time (or through a bounded pool), not all into one array that a later
   loop walks once (`nitpicker/no-read-all-before-pass`).
+- Grow a group of a `Map` by pushing onto it, not by spreading it into a new array on every item
+  (`nitpicker/no-accumulating-group-spread`).
 - Never run a query or a request once per item of a loop: fetch or write the items in one query
   (`findByIds`, `createMany`, `WHERE id IN (...)`), also when a helper of yours does the I/O and inside
   `Promise.all(items.map(...))`. For a remote API without a batch endpoint use a limiter or fixed-size

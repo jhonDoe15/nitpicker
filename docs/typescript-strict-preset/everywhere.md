@@ -311,6 +311,15 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   largest one. A literal list of inputs, an array that is returned, sorted, sized, indexed or passed
   on, and reads through a project function are not reported. Allowed forms: read and handle one input
   at a time, a bounded pool for parallel reads, or keep only what the pass needs from each input.
+- `nitpicker/no-accumulating-group-spread`: a group of a `Map` or object copied into a new array on
+  every step of a loop or iteration callback, in all production code (not in tests). It reports
+  `m.set(k, [...(m.get(k) ?? []), v])` and `o[k] = [...(o[k] ?? []), v]` (also with `||` and with
+  `...vs` after the spread) when the read and the write name the same target and the same key. A
+  group of n items then costs n²/2 element copies. A loop over a literal list, a spread of a
+  different list, a spread that is not the first element and a single write outside any loop are
+  not reported. Allowed form: get the group once and push onto it, creating it with `[v]` when it is
+  missing. `nitpicker/no-accumulating-spread` reports the same copy when the accumulator is a
+  variable; this rule is separate because oxlint's native port of that rule does not see groups.
 - `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
   walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
   `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,
