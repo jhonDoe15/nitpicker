@@ -261,6 +261,7 @@
   "eslint/nitpicker/no-head-cut-error-output": ["bug"],
   "eslint/nitpicker/require-compiler-file-name": ["bug"],
   "eslint/nitpicker/no-single-shape-manifest-field": ["bug"],
+  "eslint/nitpicker/require-staged-parent-node-modules": ["bug"],
   "eslint/nitpicker/require-moved-tsconfig-type-roots": ["bug"],
   "eslint/nitpicker/no-stderr-as-failure": ["bug"],
   "eslint/nitpicker/no-status-only-spawn-check": ["bug"],

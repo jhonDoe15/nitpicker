@@ -450,6 +450,11 @@ Moved tsconfig without type roots: `nitpicker/require-moved-tsconfig-type-roots`
 reports an object literal with an `extends` key that is serialized with `JSON.stringify` and written under
 `os.tmpdir()` or a `mkdtemp` folder without `compilerOptions.typeRoots`. The default type roots are the
 `node_modules/@types` folders above the opened config, so in a temporary folder global types are not found.
+Staged project without parent node_modules: `nitpicker/require-staged-parent-node-modules` (production source, in
+`eslint-lint`) reports a temporary folder filled with the entries of another folder that then holds a written
+`tsconfig*.json` or `package.json` or is the working folder of a spawned tool, when nothing links `node_modules` or sets
+`NODE_PATH`, `typeRoots`, `paths` or `--preserve-symlinks`. Packages hoisted to a parent `node_modules` are not
+found from the copy.
 Standard error as failure: `nitpicker/no-stderr-as-failure` (production source, in `eslint-lint`) and
 `pmd/StderrAsFailure` (Java, main sources) report a condition that fails a finished subprocess because its standard
 error is not empty, when the condition stands alone or is one side of `||` and its branch throws (or rejects, or

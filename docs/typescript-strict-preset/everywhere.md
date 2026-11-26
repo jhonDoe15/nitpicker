@@ -2052,6 +2052,14 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `package.json` file, or typed `PackageJson`, also through a variable or `a || b` / `a ?? []`. A manifest in the
   other shape throws `includes is not a function` or reads `undefined`. Not reported: code in the same function
   that checks the value with `Array.isArray` or `typeof`, and other values.
+- A project staged in a temporary folder keeps the `node_modules` of its parent folders
+  (`nitpicker/require-staged-parent-node-modules`, production files). Reported: a `mkdtemp` or `mkdtempSync` folder
+  that receives the entries of another folder (`symlink`, `cp` or `copyFile` in a `for...of` or `forEach`/`map` over
+  `readdir` of it) when, in the same function, a `tsconfig*.json` or `package.json` is written into it or it is the
+  `cwd`, or follows `--tsconfig`, `-p` or `--project`, of a `spawn`, `exec`, `execFile`, `fork` or `execa` call.
+  Module resolution in the copy walks up from the temporary folder, so packages in a parent `node_modules` (a hoisted
+  workspace) are not found. Not reported: a file that mentions `node_modules`, `NODE_PATH`, `typeRoots`, `paths` or
+  `--preserve-symlinks`, and a copy that is only read.
 - A tsconfig that extends another and is written to a temporary folder sets `typeRoots`
   (`nitpicker/require-moved-tsconfig-type-roots`, production files). Reported: an object literal with an `extends` key,
   serialized with `JSON.stringify` and written with `writeFile` or `writeFileSync` under `os.tmpdir()` or a `mkdtemp`
