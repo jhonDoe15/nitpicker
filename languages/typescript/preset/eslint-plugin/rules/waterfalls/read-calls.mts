@@ -101,7 +101,7 @@ function isReadOrReadOnlyCall(
 ): boolean {
   return (
     isReadCall(call, orms) ||
-    callsReadOnlyFunction(call, context, (inner) => isReadCall(inner, orms))
+    callsReadOnlyFunction(call, context, (inner) => isReadCall(inner, orms), orms.join('\0'))
   );
 }
 

@@ -120,6 +120,53 @@ class EarlyThreadWaits {
         return merge(found.get(0), names, sizes);
     }
 
+    String threadWritesStaticField(List<String> files) throws InterruptedException {
+        int[] box = new int[1];
+        Thread worker = new Thread(() -> Holder.put(box[0]));
+        worker.start();
+        worker.join();
+        List<String> names = listNames(files);
+        int sizes = measureAll(files);
+        return merge(String.valueOf(box[0]), names, sizes);
+    }
+
+    String threadAliasesSharedList(List<String> files) throws InterruptedException {
+        List<String> alias = shared;
+        Thread worker = new Thread(() -> alias.add("x"));
+        worker.start();
+        worker.join();
+        List<String> names = listNames(files);
+        int sizes = measureAll(files);
+        return merge(alias.get(0), names, sizes);
+    }
+
+    String threadReassigned(List<String> files) throws InterruptedException {
+        AtomicReference<String> report = new AtomicReference<>();
+        Thread worker = new Thread(() -> report.set(String.join(",", files)));
+        worker.start();
+        worker = new Thread(() -> report.set("y"));
+        worker.start();
+        worker.join();
+        List<String> names = listNames(files);
+        int sizes = measureAll(files);
+        return merge(report.get(), names, sizes);
+    }
+
+    String threadSubclass(List<String> files) throws InterruptedException {
+        AtomicReference<String> report = new AtomicReference<>();
+        Thread worker = new Thread(() -> report.set("x")) {
+            @Override
+            public void run() {
+                shared.add("y");
+            }
+        };
+        worker.start();
+        worker.join();
+        List<String> names = listNames(files);
+        int sizes = measureAll(files);
+        return merge(report.get(), names, sizes);
+    }
+
     private String buildReport(List<String> files) {
         return String.join(",", files);
     }
@@ -134,5 +181,10 @@ class EarlyThreadWaits {
 
     private String merge(String report, List<String> names, int sizes) {
         return report + names + sizes;
+    }
+
+    static final class Holder {
+        static void put(int value) {
+        }
     }
 }

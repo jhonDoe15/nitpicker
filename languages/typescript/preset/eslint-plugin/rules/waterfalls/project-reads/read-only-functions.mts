@@ -17,7 +17,7 @@ const MAX_CHARACTERS = 500_000;
 const MAX_HOPS = 4;
 const SOURCE = /\.(?:[cm]?[jt]s|[jt]sx)$/u;
 const programs: StampedCache<TSESTree.Program | undefined> = new Map();
-const verdicts = new WeakMap<TSESTree.Node, { readonly readOnly: boolean }>();
+const verdicts = new WeakMap<TSESTree.Node, Map<string, { readonly readOnly: boolean }>>();
 
 function readProgram(path: string): TSESTree.Program | undefined {
   const read = readTextFile(path);
@@ -100,6 +100,7 @@ export function callsReadOnlyFunction(
   call: TSESTree.CallExpression,
   context: { readonly sourceCode: TSESLint.SourceCode; readonly filename: string },
   isRead: IsRead,
+  optionsKey: string,
 ): boolean {
   const { callee } = call;
   if (callee.type !== AST_NODE_TYPES.Identifier) {
@@ -109,5 +110,6 @@ export function callsReadOnlyFunction(
   if (fn === undefined || !isFunction(fn)) {
     return false;
   }
-  return cachedValue(verdicts, fn, () => ({ readOnly: isReadOnlyBody(fn, isRead) })).readOnly;
+  const known = cachedValue(verdicts, fn, () => new Map<string, { readonly readOnly: boolean }>());
+  return cachedValue(known, optionsKey, () => ({ readOnly: isReadOnlyBody(fn, isRead) })).readOnly;
 }

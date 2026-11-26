@@ -34,6 +34,15 @@ const root = projects.projectWith({
     '  rows.forEach((row) => prisma.audit.create({ data: { row } }));',
     '  return rows;',
     '}',
+    'export async function loadInto(ctx: { id: string; user?: unknown }) {',
+    '  ctx.user = await prisma.user.findUnique({ where: { id: ctx.id } });',
+    '  return ctx.user;',
+    '}',
+    'export async function keysOf(id: string) {',
+    '  const row = await prisma.user.findUnique({ where: { id } });',
+    '  Object.assign(shared, row);',
+    '  return row;',
+    '}',
     'export async function getTeam(id: string) {',
     '  const team = await prisma.team.findFirst({ where: { id } });',
     "  if (!team) throw new Error('not found');",
@@ -49,7 +58,7 @@ const root = projects.projectWith({
 });
 const filename = path.join(root, 'src/page.ts');
 const NAMES =
-  'getUser, listOrders, loadProfile, touchUser, cachedUser, auditedOrders, rememberUser, getTeam';
+  'getUser, listOrders, loadProfile, touchUser, cachedUser, auditedOrders, rememberUser, getTeam, loadInto, keysOf';
 const IMPORTS = `import { ${NAMES} } from './users';`;
 
 function inPage(body: string, head = IMPORTS) {
@@ -80,6 +89,8 @@ typescriptRuleTester().run('no-sequential-independent-reads (project functions)'
     inPage('const user = await getUser(id); const orders = await auditedOrders(id);'),
     inPage('const user = await rememberUser(id); const orders = await listOrders(id);'),
     inPage('const team = await getTeam(id); const orders = await listOrders(id);'),
+    inPage('const user = await loadInto(ctx); const orders = await listOrders(id);'),
+    inPage('const user = await keysOf(id); const orders = await listOrders(id);'),
     inPage(
       'const user = await local(id); const orders = await listOrders(id);',
       `${IMPORTS}\nasync function local(id: string) { const user = await prisma.user.findUnique({ where: { id } }); return audit(user); }`,

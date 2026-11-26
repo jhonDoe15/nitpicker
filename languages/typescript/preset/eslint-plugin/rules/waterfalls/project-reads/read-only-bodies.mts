@@ -1,18 +1,12 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { memberRoot, nodeChildren, nodesWithoutNested } from '../../typed/node-views.mts';
+import { memberRoot, nameOf, nodeChildren, nodesWithoutNested } from '../../typed/node-views.mts';
 
 export type IsRead = (call: TSESTree.CallExpression) => boolean;
 
-const CHEAP_RECEIVERS = new Set([
-  'console',
-  'logger',
-  'log',
-  'Math',
-  'JSON',
-  'Object',
-  'Array',
-  'Number',
-  'String',
+const CHEAP_RECEIVERS = new Set(['console', 'logger', 'log', 'Math', 'JSON']);
+const PURE_STATICS = new Map([
+  ['Object', new Set(['keys', 'values', 'entries', 'fromEntries'])],
+  ['Array', new Set(['isArray', 'from', 'of'])],
 ]);
 const BODY_READS = new Set(['json', 'text', 'blob', 'arrayBuffer']);
 const SYNC_TRANSFORMS = new Set([
@@ -56,11 +50,8 @@ function boundNames(pattern: TSESTree.Node, names: Set<string>): void {
   }
 }
 
-function localNames(fn: TSESTree.FunctionLike, nodes: readonly TSESTree.Node[]): Set<string> {
+function localNames(nodes: readonly TSESTree.Node[]): Set<string> {
   const names = new Set<string>();
-  for (const parameter of fn.params) {
-    boundNames(parameter, names);
-  }
   for (const node of nodes) {
     if (node.type === AST_NODE_TYPES.VariableDeclarator) {
       boundNames(node.id, names);
@@ -70,6 +61,9 @@ function localNames(fn: TSESTree.FunctionLike, nodes: readonly TSESTree.Node[]):
 }
 
 function writeTarget(node: TSESTree.Node): TSESTree.Node | undefined {
+  if (node.type === AST_NODE_TYPES.UnaryExpression && node.operator === 'delete') {
+    return node.argument;
+  }
   if (node.type === AST_NODE_TYPES.AssignmentExpression) {
     return node.left;
   }
@@ -81,8 +75,7 @@ function writesOutside(node: TSESTree.Node, locals: ReadonlySet<string>): boolea
   if (target === undefined) {
     return false;
   }
-  const root = memberRoot(target);
-  return root.type !== AST_NODE_TYPES.Identifier || !locals.has(root.name);
+  return target.type !== AST_NODE_TYPES.Identifier || !locals.has(target.name);
 }
 
 function transforms(call: TSESTree.CallExpression): boolean {
@@ -94,7 +87,9 @@ function transforms(call: TSESTree.CallExpression): boolean {
   return (
     (callee.property.type === AST_NODE_TYPES.Identifier &&
       SYNC_TRANSFORMS.has(callee.property.name)) ||
-    (root.type === AST_NODE_TYPES.Identifier && CHEAP_RECEIVERS.has(root.name))
+    (root.type === AST_NODE_TYPES.Identifier && CHEAP_RECEIVERS.has(root.name)) ||
+    (callee.object.type === AST_NODE_TYPES.Identifier &&
+      (PURE_STATICS.get(callee.object.name)?.has(nameOf(callee.property) ?? '') ?? false))
   );
 }
 
@@ -130,7 +125,7 @@ export function isReadOnlyBody(fn: TSESTree.FunctionLike, isRead: IsRead): boole
   const calls = nodes.filter(
     (node): node is TSESTree.CallExpression => node.type === AST_NODE_TYPES.CallExpression,
   );
-  const locals = localNames(fn, nodes);
+  const locals = localNames(nodes);
   const reads = calls.filter(isRead);
   return (
     reads.length > 0 &&

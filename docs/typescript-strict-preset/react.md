@@ -145,7 +145,7 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
 - **Server and client render the same markup** (`nitpicker/react-no-hydration-mismatch`,
   report-only, only in a package that depends on `next`, `@remix-run/react`, `gatsby`, `vike`,
   `vike-react`, `@astrojs/react`, `waku` or `@tanstack/react-start`, or that depends on `react-dom` and
-  calls `hydrateRoot` or `ReactDOM.hydrate` in its sources). A ternary or `&&` that a
+  imports `hydrateRoot` from `react-dom/client` in a source that is not a test or story). A ternary or `&&` that a
   component renders (a JSX child or the value it returns) whose test checks `typeof window`,
   `document`, `navigator`, `localStorage`, `sessionStorage` or `matchMedia` (also `typeof
 globalThis.window` and `'window' in globalThis`, a module-level
@@ -153,18 +153,18 @@ globalThis.window` and `'window' in globalThis`, a module-level
   and a project hook such as `useIsClient()` whose every `return` is such a test) renders one thing on
   the server and another in the first client render: React reports a hydration mismatch and renders
   that part again. The same holds for the initial value of `useState` (a value or a lazy initializer)
-  and the factory of `useMemo` when they test the browser this way and the value is rendered (a JSX
-  child, or an attribute of an HTML element other than an event handler, `key` or `ref`).
-  A file loaded with `dynamic(() => import('./file'), { ssr: false })` anywhere in the project never
-  renders on the server and is not checked.
+  and the factory of `useMemo` when such a test decides the value (a returned value, or the test of an `if`
+  that returns) and the value is rendered (a JSX child, or an attribute of an HTML element other than an
+  event handler, `key` or `ref`). A file named directly in `dynamic(() => import('./file'), { ssr: false })`
+  (with `ssr: false` written in the call) never renders on the server and is not checked.
   Render the same output on both and switch after mounting: `useSyncExternalStore(subscribe,
 getSnapshot, () => serverValue)` or state set in an effect. Not reported: a branch that renders a
   portal (`createPortal`), a value in an attribute (`menuPortalTarget={...}`), an element with
   `suppressHydrationWarning`, a local variable named like a browser global, branches that all render
   nothing (`null`, `false`, `undefined`), tests in effects, handlers and nested functions, and a branch inside
   another conditional branch (the outer condition may already be client-only, such as data fetched
-  after mount). Components loaded with `ssr: false` are not followed across files; mark such a finding
-  as an exception. `useState` and `useMemo` initial values that test the browser are not read.
+  after mount). Files that a file loaded with `ssr: false` imports are not followed; mark such a finding as an
+  exception.
 - **No double-escaped i18next values** (`nitpicker/react-i18next-escape-value`, needs
   `react-i18next` in `package.json`). A `t(...)` call (from `useTranslation()`, `i18next` or
   `i18n.t`) or a `<Trans values={{ ... }}>` that passes interpolation values and whose text React

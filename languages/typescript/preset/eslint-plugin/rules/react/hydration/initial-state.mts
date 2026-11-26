@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { ancestorsOf } from '../../typed/node-views.mts';
+import { nodesOutsideNestedFunctions } from '../react-effects.mts';
 import { calleeNameOf, isFunction } from '../../typed/syntax-views.mts';
 import { enclosingComponent } from '../support/component-names.mts';
 import { testsBrowser, type FileContext } from './browser-tests.mts';
@@ -91,6 +92,32 @@ function isRendered(
   );
 }
 
+function returns(node: TSESTree.Node): boolean {
+  return nodesOutsideNestedFunctions(node).some(
+    (each) => each.type === AST_NODE_TYPES.ReturnStatement,
+  );
+}
+
+function decidingParts(initializer: TSESTree.Node): TSESTree.Node[] {
+  if (!isFunction(initializer)) {
+    return [initializer];
+  }
+  const { body } = initializer;
+  if (body.type !== AST_NODE_TYPES.BlockStatement) {
+    return [body];
+  }
+  return nodesOutsideNestedFunctions(body).flatMap((node) => {
+    if (node.type === AST_NODE_TYPES.ReturnStatement) {
+      return node.argument ? [node.argument] : [];
+    }
+    return node.type === AST_NODE_TYPES.IfStatement && returns(node.consequent) ? [node.test] : [];
+  });
+}
+
+function decidedByBrowser(initializer: TSESTree.Node, context: FileContext): boolean {
+  return decidingParts(initializer).some((part) => testsBrowser(part, context));
+}
+
 export function browserInitialValue(
   call: TSESTree.CallExpression,
   context: FileContext,
@@ -103,7 +130,7 @@ export function browserInitialValue(
     binding === undefined ||
     (LAZY_ONLY.has(hook) && !isFunction(initializer)) ||
     !inComponentRender(call) ||
-    !testsBrowser(initializer, context) ||
+    !decidedByBrowser(initializer, context) ||
     !isRendered(binding, call, context)
   ) {
     return undefined;

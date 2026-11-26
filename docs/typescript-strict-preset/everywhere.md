@@ -1114,8 +1114,10 @@ return;`), and a symbol lookup of the node's name whose answer is only checked w
   `export { name } from` re-exports) does nothing but such reads: every call in it is a read, a call
   inside a read, a body read of a response (`json()`, `text()`, `blob()`, `arrayBuffer()`), an array
   method (`map`, `filter`, `find`, `some`, `every`, `reduce`, `flatMap`, `slice`, `at`, `includes`,
-  `join`) or a call on `console`, `logger`, `log`, `Math`, `JSON`, `Object`, `Array`, `Number` or
-  `String`; it awaits only reads, assigns only its own variables and throws nothing (a function that
+  `join`) a call on `console`, `logger`, `log`, `Math` or `JSON`, or `Object.keys`, `Object.values`,
+  `Object.entries`, `Object.fromEntries`, `Array.isArray`, `Array.from` or `Array.of`; it awaits only
+  reads, assigns only variables declared in its body (no property, no parameter, no `delete`) and throws
+  nothing (a function that
   throws when a row is missing or not allowed is a check). Start them together with
   `Promise.all`. Not reported: a write, a guard (`if (!user) return`) or any other statement between
   them, blocks inside a loop (`nitpicker/no-io-in-loop`) or a transaction callback, a client named like

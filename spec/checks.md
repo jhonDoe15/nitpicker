@@ -166,14 +166,16 @@ files are left alone; timers, `fetch`, `window` listeners, sockets and observers
 `react-x/purity`.
 
 React hydration: `nitpicker/react-no-hydration-mismatch` (production source in a package that depends on a
-server-rendering React framework, or on `react-dom` with a `hydrateRoot` or `ReactDOM.hydrate` call in its sources, in
+server-rendering React framework, or on `react-dom` with a non-test source that imports `hydrateRoot` from
+`react-dom/client`, in
 `eslint-lint`, report-only) reports a ternary or `&&` rendered by a component (a JSX child or the returned value, in the
 component's own body) whose test checks `typeof window`, `document`, `navigator`, `localStorage`, `sessionStorage` or
 `matchMedia` (or `globalThis.window`), directly, through a module-level `const` made only of such tests or through a
-project hook that returns only such tests. It also reports a `useState` initial value or `useMemo` factory that tests the
-browser this way when the value is a JSX child or an attribute of an HTML element. Portals, attributes, `suppressHydrationWarning`, shadowed globals,
-branches that render nothing, nested functions, branches inside another conditional branch and files loaded with
-`dynamic(..., { ssr: false })` are left alone.
+project hook that returns only such tests. It also reports a `useState` initial value or `useMemo` factory whose value
+such a test decides (a returned value, or the test of an `if` that returns) when the value is a JSX child or an attribute
+of an HTML element. Portals, attributes, `suppressHydrationWarning`, shadowed globals, branches that render nothing,
+nested functions, branches inside another conditional branch and a file named directly in
+`dynamic(() => import('./file'), { ssr: false })` are left alone.
 
 React i18next: `nitpicker/react-i18next-escape-value` (production source in a React project that depends on
 `react-i18next`, in `eslint-lint`) reports a `t(...)` or `<Trans values>` call that interpolates values into text React
@@ -738,9 +740,8 @@ Early waits: `nitpicker/no-early-wait-on-started-work` (production source, in `e
 first read three or more statements later after statements that do work (calls other than accessors, logging, `Math` and
 `JSON`), do not mention `task` and do not leave the block. Java runs the same check as `pmd/EarlyWaitOnStartedWork` on
 `Future.get()`, `get(timeout, unit)` and `join()` of a future started by `supplyAsync`, `runAsync`, `submit`, `schedule`
-or `sendAsync`, `Process.waitFor()` of a process started by `start()` or `exec()`, and `Thread.join()` of a thread
-started in the same block whose lambda touches only local variables (its result is first used where a later statement
-reads one of the locals it captures).
+or `sendAsync`, and on `Thread.join()` of a thread started in the same block whose lambda only calls methods of locals
+created in the block before it (its result is first used where a later statement reads one of those locals).
 
 `nitpicker/no-accumulating-group-spread` (production source, in `eslint-lint`) reports a group of a
 `Map` or object spread into a new array that replaces it on every step of a loop or iteration

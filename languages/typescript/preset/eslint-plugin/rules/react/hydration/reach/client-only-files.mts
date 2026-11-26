@@ -12,7 +12,7 @@ const resolveModuleSpecifier: (written: string, containingFile: string) => Resol
   untypedResolve;
 
 const NO_SSR = /\bssr\s*:\s*false\b/u;
-const HYDRATES = /\bhydrateRoot\s*\(|\bReactDOM\.hydrate\s*\(/u;
+const HYDRATES = /\bimport\s*\{[^}]*\bhydrateRoot\b[^}]*\}\s*from\s*['"]react-dom\/client['"]/u;
 const clientOnly = new WeakMap<readonly string[], ReadonlySet<string>>();
 
 function turnsOffSsr(options: TypeScript.Expression | undefined): boolean {

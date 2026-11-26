@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable } from '../../analysis/constant-resolution.mts';
 import { nodesOutsideNestedFunctions } from '../react-effects.mts';
 import { BROWSER_GLOBALS, isBrowserTestHook } from './reach/browser-hooks.mts';
@@ -8,6 +8,8 @@ export type FileContext = {
   readonly filename: string;
 };
 type SourceCode = TSESLint.SourceCode;
+
+const { ScopeType } = TSESLint.Scope;
 
 const EQUALITY = new Set(['===', '!==', '==', '!=']);
 const GLOBAL_THIS = new Set(['globalThis']);
@@ -84,12 +86,19 @@ function namesValue(node: TSESTree.Identifier): boolean {
 }
 
 function isHookCall(node: TSESTree.Node, context: FileContext): boolean {
+  if (
+    node.type !== AST_NODE_TYPES.CallExpression ||
+    node.callee.type !== AST_NODE_TYPES.Identifier
+  ) {
+    return false;
+  }
+  const { callee } = node;
+  const scope = findVariable({ sourceCode: context.sourceCode }, callee, callee.name)?.scope.type;
   return (
-    node.type === AST_NODE_TYPES.CallExpression &&
     node.arguments.length === 0 &&
-    node.callee.type === AST_NODE_TYPES.Identifier &&
-    /^use[A-Z]/u.test(node.callee.name) &&
-    isBrowserTestHook(context.filename, context.sourceCode, node.callee.name)
+    (scope === ScopeType.module || scope === ScopeType.global) &&
+    /^use[A-Z]/u.test(callee.name) &&
+    isBrowserTestHook(context.filename, context.sourceCode, callee.name)
   );
 }
 

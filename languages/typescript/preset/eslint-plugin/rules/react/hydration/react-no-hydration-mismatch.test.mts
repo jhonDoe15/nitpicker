@@ -26,6 +26,7 @@ const root = projects.projectWith({
   'ssr/src/client.tsx':
     "import { hydrateRoot } from 'react-dom/client'; hydrateRoot(document, <App />);",
   'csr/package.json': '{"name":"csr","dependencies":{"react":"19.0.0","react-dom":"19.0.0"}}',
+  'csr/src/client.test.tsx': "// import { hydrateRoot } from 'react-dom/client' in a test",
   'csr/src/client.tsx':
     "import { createRoot } from 'react-dom/client'; createRoot(root).render(<App />);",
 });
@@ -110,6 +111,13 @@ tester.run('react-no-hydration-mismatch', rule, {
     ok(`${LAZY_WIDE} return <div suppressHydrationWarning>{wide ? 'a' : 'b'}</div>;`),
     ok("const [open] = useState(false); return <div>{open ? 'a' : 'b'}</div>;"),
     ok(`${LAZY_WIDE} return <Grid wide={wide} />;`),
+    ok(
+      "const [n] = useState(() => { if (typeof window !== 'undefined') track(); return 0; }); return <div>{n}</div>;",
+    ),
+    ok(
+      'const useIsClient = () => mounted; return <div>{useIsClient() && <Wide />}</div>;',
+      IS_CLIENT.replace('useIsClient', 'useIsClient as unused'),
+    ),
     ok(`${LAZY_WIDE} return <input key={String(wide)} onChange={() => wide} />;`),
     ok('const size = useMemo(() => compute(items), [items]); return <div>{size}</div>;'),
     ok("const size = useMemo(typeof window !== 'undefined', []); return <div>{size}</div>;"),
@@ -141,6 +149,10 @@ tester.run('react-no-hydration-mismatch', rule, {
     badStart(
       "const [theme] = useState(typeof window === 'undefined' ? 'light' : 'dark'); return <main className={theme} />;",
       'theme',
+    ),
+    badStart(
+      "const [saved] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.x; }); return <p>{saved}</p>;",
+      'saved',
     ),
     badStart(
       "const label = useMemo(() => { if (typeof navigator === 'undefined') return ''; return navigator.language; }, []); return <p>{label}</p>;",

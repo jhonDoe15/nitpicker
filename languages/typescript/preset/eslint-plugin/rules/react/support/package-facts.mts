@@ -109,12 +109,16 @@ export function projectSourceMatches(filename: string, pattern: RegExp): boolean
   );
 }
 
+const TEST_FILE = /(?:^|[/\\])__tests__[/\\]|\.(?:test|spec|stories)\.[^/\\]+$/u;
+
 export function packageSourceMatches(filename: string, pattern: RegExp): boolean {
   const root = nearestPackage(filename);
   const key = `package\0${root ?? ''}\0${pattern.flags}\0${pattern.source}`;
   return cachedValue(
     verdicts,
     key,
-    () => root !== undefined && projectFiles(root).some((file) => fileMatches(file, pattern)),
+    () =>
+      root !== undefined &&
+      projectFiles(root).some((file) => !TEST_FILE.test(file) && fileMatches(file, pattern)),
   );
 }
