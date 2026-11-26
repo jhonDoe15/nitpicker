@@ -312,7 +312,7 @@ purpose, and its source is not read. A finding carries the SpotBugs pattern name
 
 Done: `EI_EXPOSE_REP`, `MS_EXPOSE_REP`, `EI_EXPOSE_REP2` and `EI_EXPOSE_STATIC_REP2` (#2098) and
 `CT_CONSTRUCTOR_THROW` (#2112), together 76% of what SpotBugs with FindSecBugs reports on the seven code bases
-below. The rest is planned in #2097.
+below, and the statement patterns of #2113 (see "Statement patterns"). The rest is planned in #2097.
 
 `tests/expected/spotbugs.json` holds what SpotBugs reported for the compiled `tests/fixtures/spotbugs`; each
 fixture folder is one experiment on SpotBugs' behaviour. `parity/spotbugs/run.sh` runs SpotBugs the way a Java
@@ -537,3 +537,45 @@ All 29 SpotBugs findings inside lambdas on the seven code bases name a method th
 Not rebuilt, found on test code only: two implicitly typed lambdas handed to a generic method can be numbered
 in the opposite order when the type of the first depends on the second; an anonymous class written with `<>`
 whose argument holds another anonymous class skips a number; a lambda parameter typed with an anonymous class.
+
+### Statement patterns
+
+Patterns that look at single statements or at one method's switches (`src/java/spotbugs/statements/`), measured on
+the same seven code bases (same / missed / extra, all seven together):
+
+| Pattern | Findings |
+| --- | --- |
+| `DCN_NULLPOINTER_EXCEPTION` | 26 / 0 / 0 |
+| `JLM_JSR166_UTILCONCURRENT_MONITORENTER`, `JLM_JSR166_LOCK_MONITORENTER` | 35 / 0 / 0 |
+| `PREDICTABLE_RANDOM` (FindSecBugs) | 41 / 0 / 0 |
+| `VO_VOLATILE_INCREMENT` | 22 / 0 / 0 |
+| `WMI_WRONG_MAP_ITERATOR` | 33 / 0 / 0 |
+| `SF_SWITCH_FALLTHROUGH`, `SF_SWITCH_NO_DEFAULT` | 52 / 0 / 0 |
+
+With these the engine takes 13.2 s wall, 46.6 CPU s and 0.6 GB on Elasticsearch `server`, 10.2 s on Nacos.
+
+What was measured (fixtures `tests/fixtures/spotbugs/stmt_*`):
+
+- Lock patterns use the type a field was given, not its declared type. SpotBugs forgets those types for a class
+  whose class literal (`X.class`) appears anywhere in the analysed code, and an `assert` reads the class literal
+  of its top-level class; the declared type is used then. A parameter typed by a type variable is never reported.
+- `PREDICTABLE_RANDOM`: `new Random(...)`, `ThreadLocalRandom.current()`, `Math.random()`, also inside lambdas, and
+  every constructor of a class that extends `java.util.Random` (at `super(...)`, or at the constructor or class
+  line when the call is implicit).
+- `VO_VOLATILE_INCREMENT`: `++`, `--`, `+= 1`, `-= 1` (only `+= 1` for `long`) and `f = f + 1` on a volatile
+  `int` or `long` instance field, when the value is not used.
+- `WMI_WRONG_MAP_ITERATOR`: a `get(key)` on the map whose `keySet()` produced the key (enhanced `for`, an
+  iterator's `next()`), not for `TreeMap`'s sorted siblings, `EnumMap` or `ConcurrentHashMap`; once per method
+  and map field, plus once for all local maps.
+- The switch patterns read the compiled switch, so the cases are laid out the way javac emits them: a `break`
+  at the very end emits nothing, pending jumps join the `break` that follows, a block that declares variables
+  ends on its closing brace, a loop's back jump counts as running on, `finally` and `synchronized` end in a
+  rethrow, and a jump that lands on a loop's back jump becomes a jump back. A fall through is reported when a
+  method has fewer than 4 of them in all its switches, or one stores a field the next case stores again. The
+  default is missing when the code before the default jump target runs on into it and no forward jump goes
+  further; a loop's back jump counts too when javac emits a table with holes (they jump to the default). A last
+  `case null -> {}` in a pattern switch is a fall through for SpotBugs.
+
+Not done: `REC_CATCH_EXCEPTION` needs the checked exceptions each `try` block can throw and the rule for its
+priority (most findings are low priority and hidden at `-medium`); it is left for a later batch. Code inside
+lambdas is named as SpotBugs names it once the javac names (#2150) are used here.

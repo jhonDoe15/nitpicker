@@ -107,5 +107,7 @@
 ["names/p/Rv.java", "EI_EXPOSE_REP2", 24, "p.Rv.loopMerge(Date, Date, boolean)#x"],
 ["names/p/Rv.java", "EI_EXPOSE_REP2", 30, "p.Rv.storeInLoop(Date, Date, boolean)#x"],
 ["names/p/Rv.java", "EI_EXPOSE_REP2", 42, "p.Rv.sibling(Date, List)#t"],
-["names/p/Rv.java", "EI_EXPOSE_REP2", 51, "p.Rv.pattern(Object, Date, String)#u"]
+["names/p/Rv.java", "EI_EXPOSE_REP2", 51, "p.Rv.pattern(Object, Date, String)#u"],
+["stmt_catch/p/Catches.java", "EI_EXPOSE_REP2", 15, "new p.Catches(Map)#values"],
+["stmt_lock/p/Locks.java", "EI_EXPOSE_REP2", 21, "new p.Locks(ConcurrentMap)#declared"]
 ]
