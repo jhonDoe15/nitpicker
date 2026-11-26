@@ -1,0 +1,35 @@
+  <rule name="OperandDepthRecursion" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This method calls itself on both operands of its parameter (getLeft() and getRight()), so the call stack grows with the length of an operand chain. Generated code (a string of thousands of + operands, a long else-if ladder, a builder chain) nests far deeper than hand-written tests, and the walk ends in a StackOverflowError that no caller catches. Walk the left-leaning chain in a loop and recurse only into the right operand, use an explicit Deque, or pass a depth and throw an ordinary exception past a limit.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $operand := function($e, $p, $name) {
+      let $inner := ($e/self::CastExpression/*[last()], $e)[1]
+      return exists($inner/self::MethodCall[@MethodName = $name][ArgumentList/@Size = 0]
+                      [*[1][self::VariableAccess[@Name = $p]]]
+                    | $inner/self::FieldAccess[@Name = $name][*[1][self::VariableAccess[@Name = $p]]])
+    },
+    $lefts := ('getLeft', 'getLeftOperand', 'left', 'getLhs', 'lhs'),
+    $rights := ('getRight', 'getRightOperand', 'right', 'getRhs', 'rhs'),
+    $context := 'operator|binary|infix|operand'
+return
+//MethodDeclaration[Block]
+  [not(FormalParameters/FormalParameter/VariableId[matches(@Name, 'depth|level|limit|remaining|budget', 'i')])]
+  [let $params := FormalParameters/FormalParameter/VariableId/@Name
+   return not(.//InfixExpression[@Operator = ('<', '<=', '>', '>=')][*[self::VariableAccess][@Name = $params]])]
+  [.//(MethodCall/@MethodName | ClassType/@SimpleName | VariableAccess/@Name | FieldAccess/@Name | StringLiteral/@Image)
+     [matches(., $context, 'i')]]
+  /(let $m := ., $name := @Name, $arity := count(FormalParameters/FormalParameter)
+    return (for $p in FormalParameters/FormalParameter/VariableId/@Name,
+                $index in 1 to count($lefts)
+            return
+              let $self := $m/Block//MethodCall[@MethodName = $name][ArgumentList/@Size = $arity]
+                             [*[1][self::ArgumentList or self::ThisExpression]]
+              return if (exists($self[ArgumentList/*[$operand(., $p, $rights[$index])]]))
+                     then ($self[ArgumentList/*[$operand(., $p, $lefts[$index])]])[1]
+                     else ())[1])
+]]></value>
+      </property>
+    </properties>
+  </rule>

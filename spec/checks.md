@@ -1076,6 +1076,45 @@ function that calls itself with a typed value reached through `cause`, `parents`
 `base` and `getTypeArguments`) when the function has no visited set, map or depth limit. Single-pointer walks (`parent`,
 `next`, `prev`, `owner`), tree children, syntax tree nodes and untyped parameters are not reported.
 
+Cyclic recursion in Java: `pmd/UnguardedCyclicRecursion` (main sources) reports the same walk: a method that calls
+itself, with the same number of arguments, with an element reached from its parameter through `getDependencies()`,
+`getReferences()`, `getInterfaces()`, `getEdges()` and similar getters or fields (through a `for` loop variable, a
+local or a lambda parameter), or with `getCause()` directly, when the method names no visited set or depth and uses no
+`Collection` or `Map` other than its own locals.
+
+Operand depth recursion: `nitpicker/no-operand-depth-recursion` (production source, in `eslint-lint`) and
+`pmd/OperandDepthRecursion` (Java, main sources) report a function that calls itself on both operands of its parameter
+(`left`/`right`, `lhs`/`rhs`, `getLeft()`/`getRight()`, `getLeftOperand()`/`getRightOperand()`) when it names an
+operator, a binary or infix node or an operand, and no parameter is named like a depth or limit or compared with one.
+The stack grows with the length of an operand chain, which generated code makes very long.
+
+Unguarded recursion entry: `nitpicker/no-unguarded-recursion-entry` (production source, in `eslint-lint`) and
+`pmd/UnguardedRecursionEntry` (Java, main sources) report a function of a file or class that enters a recursion through
+a function shared with a sibling (both call it, it calls both back; Java follows up to two calls back) while only the
+sibling checks a `Set` or `Map` field keyed by its parameter. The reported entry point does not touch that guard and
+does not call the guarded sibling.
+
+Cache after guard fallback: `nitpicker/no-cache-after-guard-fallback` (production source, in `eslint-lint`) and
+`pmd/CacheAfterGuardFallback` (Java, main sources) report a cache write keyed by the same parameter as an earlier
+recursion guard check that returns early (TypeScript: `set` after `has` or `add`; Java: `put` or `putIfAbsent` after
+`!inProgress.add(node)`, `contains` or `containsKey`), in a function that recurses (TypeScript: through any functions
+of the file; Java: directly or through one other method of the class), unless the function names a partial result.
+The cached value may be one that a refused deeper turn cut short.
+
+Shrinking worklist join: `nitpicker/no-shrinking-worklist-join` (production source, in `eslint-lint`) and
+`pmd/ShrinkingWorklistJoin` (Java, main sources) report the join in a worklist loop that pushes a successor when a
+join into its stored state changed (`join`, `merge`, `union`, `meet`, `widen`, Java `addAll`, on `state.get(next)`),
+when the loop or a function it calls with the state removes facts from a copy of the state depending on the facts it
+holds (TypeScript: `clear`, or `delete`/`splice` of a value taken from the copy or the state; Java: `removeIf`,
+`retainAll`, `clear`, or `remove`/`removeAll` of a value taken from the copy or the state). A join cannot take back a
+fact an earlier pass sent along the same edge. A fixed kill set taken from the node is not reported.
+
+Depth-only worklist: `nitpicker/no-depth-only-worklist` (production source, in `eslint-lint`) and
+`pmd/DepthOnlyWorklist` (Java, main sources) report a worklist loop that can append more than one item per turn and
+compares the depth of an item (a property, accessor or variable declared in the loop) with a limit, with no visited set
+or mark anywhere in the loop (`has`, `add`, `includes`, Java `contains`, `containsKey`, `add` or `put` on a `Set` or
+`Map`, `computeIfAbsent`). Tree children (`children`, `getChildren()`, TypeScript `forEachChild`) are not reported.
+
 Chunkwise stream text: `nitpicker/no-chunkwise-stream-text` (production source, in `eslint-lint`, type-aware) reports,
 inside a `'data'` listener or a `for await` loop over a stream whose chunk is a `Buffer`, `Uint8Array` or untyped
 stream chunk without `setEncoding`, string accumulation of the chunk (`text += chunk`, `chunk.toString()`), a

@@ -3,6 +3,7 @@ import { SECURITY_TIME_RULE_FILES } from './security-time-rule-files.mts';
 import { VALUE_WEB_RULE_FILES } from './value-web-rule-files.mts';
 import { TEXT_PATH_NUMBER_RULE_FILES } from './text-path-number-rule-files.mts';
 import { REPEATED_WORK_RULE_FILES } from './repeated-work-rule-files.mts';
+import { RECURSION_RULE_FILES } from './recursion-rule-files.mts';
 
 export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/checks/plugin-rules/plugin-rule-files.mjs',
@@ -275,4 +276,5 @@ export const PLUGIN_RULE_FILES = [
   ...VALUE_WEB_RULE_FILES,
   ...TEXT_PATH_NUMBER_RULE_FILES,
   ...REPEATED_WORK_RULE_FILES,
+  ...RECURSION_RULE_FILES,
 ];

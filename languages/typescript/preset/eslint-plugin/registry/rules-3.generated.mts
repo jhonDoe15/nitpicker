@@ -1,6 +1,11 @@
+import { rule as ruleNoUnescapedHtmlInterpolation } from '../rules/patterns/html/no-unescaped-html-interpolation.mts';
+import { rule as ruleNoUnescapedPatternTranslation } from '../rules/patterns/no-unescaped-pattern-translation.mts';
+import { rule as ruleNoUnfilteredSoftDeleteRead } from '../rules/queries/soft-delete/no-unfiltered-soft-delete-read.mts';
+import { rule as ruleNoUnguardedCyclicRecursion } from '../rules/recursion/no-unguarded-cyclic-recursion.mts';
 import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-unguarded-deleted-items.mts';
 import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
 import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/no-unguarded-option-list.mts';
+import { rule as ruleNoUnguardedRecursionEntry } from '../rules/recursion/guards/no-unguarded-recursion-entry.mts';
 import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/registry/no-unguarded-registry-delete.mts';
 import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
@@ -86,9 +91,14 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-unescaped-html-interpolation': ruleNoUnescapedHtmlInterpolation,
+  'no-unescaped-pattern-translation': ruleNoUnescapedPatternTranslation,
+  'no-unfiltered-soft-delete-read': ruleNoUnfilteredSoftDeleteRead,
+  'no-unguarded-cyclic-recursion': ruleNoUnguardedCyclicRecursion,
   'no-unguarded-deleted-items': ruleNoUnguardedDeletedItems,
   'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
   'no-unguarded-option-list': ruleNoUnguardedOptionList,
+  'no-unguarded-recursion-entry': ruleNoUnguardedRecursionEntry,
   'no-unguarded-registry-delete': ruleNoUnguardedRegistryDelete,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,

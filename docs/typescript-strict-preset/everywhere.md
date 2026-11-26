@@ -770,6 +770,43 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `ref`: a chain ends), tree children (`children`, `body`, `left`, `right`),
   and parameters typed as syntax tree nodes (`ts.Node`, ESTree nodes) are left alone. Allowed form: pass a `Set` of
   visited values down and return when the value is in it (`if (seen.has(error)) return [];`), or a depth limit.
+- `nitpicker/no-operand-depth-recursion`: a function that calls itself on both operands of its parameter
+  (`node.left` and `node.right`, or `lhs` and `rhs`; also `this.name(...)`) when its text names an operator, a binary
+  or infix node or an operand (an expression walk, not a plain binary tree), and no parameter is named like a depth or
+  limit (`depth`, `level`, `limit`, `remaining`, `budget`) or compared with a limit. The call stack then grows with the
+  length of an operand chain, and generated code (thousands of `+` operands, a long `else if` ladder) overflows it.
+  Allowed form: walk the left-leaning chain in a loop and recurse only into the right operand, use an explicit stack,
+  or pass a depth and stop with an ordinary error past a limit.
+- `nitpicker/no-unguarded-recursion-entry`: a function that enters the same recursion as a sibling but skips the
+  sibling's re-entry guard. The sibling reads or writes a module-level or class-field `Set`, `Map`, `WeakSet` or
+  `WeakMap` keyed by its own parameter (`add`, `has`, `set`, `get`, `delete`); the reported function does not touch
+  that guard, does not call the guarded sibling itself, and calls a function of the same file that the guarded
+  sibling also calls and that calls both of them back. A turn that comes in through the unguarded entry is never
+  refused, so nested input redoes the whole recursion on every turn. Allowed form: check the same guard in every entry
+  point, or route the entry point through the guarded one.
+- `nitpicker/no-cache-after-guard-fallback`: a recursive function (directly, or through other functions of the file,
+  also when passed as a callback) that returns early when a guard `has` its parameter or refuses to `add` it, and later
+  `set`s the same parameter in another map. A deeper turn may have returned the fallback, so the stored answer may be
+  partial and what the cache holds depends on which caller asked first. A function that names a partial or incomplete
+  result (`partial`, `incomplete`, `provisional`, `truncated`, `cutShort`) is taken as handling it. Allowed form: do
+  not store an answer a refused turn fed into, or store it marked as partial.
+- `nitpicker/no-shrinking-worklist-join`: a worklist loop (`for...of` over an array it pushes to, or a `while` loop
+  that `pop`s or `shift`s it) that pushes a successor when a join into the stored state of that successor reports a
+  change (`join`, `merge`, `union`, `meet` or `widen` on `state.get(next)` or `state[next]`), while the transfer
+  removes facts depending on the facts it holds: in the loop body or a function of the file it calls with the state, a
+  copy of the state is cleared, or a key or value taken from the copy or the state is deleted (`delete`, `splice`, the
+  `delete` operator). A join never takes back what an earlier pass sent along the same edge, so the stored input keeps
+  an old, stronger fact. A fixed kill set (names that come from the node, as in liveness) only shrinks monotonically
+  and is not reported. Allowed form: keep the last output per edge and recompute the input of a node from all of them,
+  or make the transfer only add.
+- `nitpicker/no-depth-only-worklist`: a worklist loop (also over `this.name`) that can append more than one item per
+  iteration (a spread, more than one argument, two pushes, or a push inside an inner loop or callback), compares a
+  depth (`depth`, `level`, `hops`, `distance`: a property, or a variable declared in the loop) with a limit, and has no
+  set or mark anywhere in the loop (no `has`, `add`, `set` or `includes` on another collection, no
+  `item.visited = true`). A depth limit bounds how long one path is, not how many paths there are, so shared children
+  are expanded once per path. Children of a tree (`.children`, `.childNodes`, `getChildren()`, `forEachChild`, in the
+  pushed value or in the `for...of` loop around the push) are not reported. Allowed form: keep a `Set` of the items
+  already expanded and skip an item that is in it.
 - `nitpicker/no-chunkwise-stream-text` (needs the type checker): stream data decoded or matched one chunk at a time,
   so text or a message split across two chunks breaks. Inside a `'data'` listener (`on`, `once`, `addListener`,
   `prependListener`) or a `for await` loop over a stream, where the chunk is typed `Buffer`, `Uint8Array` or `ArrayBuffer`
