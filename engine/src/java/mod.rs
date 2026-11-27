@@ -4,7 +4,7 @@ pub mod cpd;
 mod spotbugs;
 mod facts;
 mod annotations_run;
-mod grammar;
+pub(crate) mod grammar;
 pub(crate) mod fields;
 mod flow;
 mod helpers;
