@@ -765,6 +765,39 @@ runs and SpotBugs no longer runs the detector. Measured (`tests/fixtures/spotbug
 - Instance initializer blocks and field initializers are reported once per constructor that does not start with
   `this(...)`, as javac copies them there; static ones in the static initializer.
 
+### Unreleased locks
+
+`src/java/spotbugs/resources/` rebuilds FindUnreleasedLock: `UL_UNRELEASED_LOCK` and
+`UL_UNRELEASED_LOCK_EXCEPTION_PATH`. On the seven code bases SpotBugs reports 5 (Elasticsearch `server` 4, Guava 1);
+the engine gives the same 4 of them, misses `Cache.forEach` and adds `IndexShard.withEngine` on Elasticsearch, so
+SpotBugs still runs FindUnreleasedLock in real runs until those are explained.
+`resources/flow.rs` follows each `lock()` call (a site) over the flow graph to every way out of the method, telling
+paths that took an exception edge from those that did not. SpotBugs never reports `CWO_CLOSED_WITHOUT_OPENED` on
+lab code (an `unlock()` with no `lock()` before it, twice in a row or on some paths only), so the engine does not
+either.
+
+What SpotBugs does, as measured (`tests/fixtures/spotbugs/unreleased*`):
+
+- Only `lock()` without arguments on a value whose type is `java.util.concurrent.locks.Lock` or a subtype takes a
+  lock; `lockInterruptibly()` and `tryLock()` take nothing, and calls named `lock`/`unlock` on other classes count
+  for nothing. A method that never calls `unlock()` on a `Lock` is not reported (it takes the lock for its caller);
+  an `unlock()` of another lock is enough. Methods whose name holds `lock` in any case are skipped, lambdas too
+  when the method around them is (javac names them after it).
+- `unlock()` releases the locks taken on the same object as the code names it: a field by its name (even after a
+  store to it), the same parameter or local value, any array element (`a[0]` and `b[1]` alike), and any call result
+  (`readLock()` and `writeLock()` alike). A call result, a field, a parameter and each `new` are told apart. A lock
+  taken twice is released by one `unlock()`. A lock reached through the instance around an inner class (javac's
+  `this$0`) takes nothing, nor does a field of the file that nothing stores into (SpotBugs takes it to be null).
+- A way out still holding a lock is a `return`, the end of the method, or an exception leaving it. Exception edges
+  are those of dead stores (above), except that `lock()` and `unlock()` themselves, a `ReadWriteLock`'s
+  `readLock()` and `writeLock()`, reading a field of another
+  object, a cast to a type the value already has and arithmetic on two literals throw nothing; writing a field of
+  another object, `++` on it and an array's `length` do throw, and so does a failing `assert`.
+- `UL_UNRELEASED_LOCK` (priority 1) when a path that took no exception edge holds the lock where it leaves,
+  `UL_UNRELEASED_LOCK_EXCEPTION_PATH` (priority 2) when only paths through an exception edge do (a `catch` that
+  returns counts as such a path). Each pattern at most once per method, on the line of the first such `lock()` call;
+  both when one lock leaks on a normal path and another only on exception paths. Lambda bodies count as methods.
+
 ### Unchecked reads and uninitialized reads
 
 `src/java/spotbugs/values/` rebuilds ReadReturnShouldBeChecked (`SR_NOT_CHECKED`, `RR_NOT_CHECKED`) and

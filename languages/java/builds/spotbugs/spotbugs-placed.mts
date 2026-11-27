@@ -1,5 +1,6 @@
 import { CAST_PLACED } from './casts/spotbugs-casts-placed.mts';
 import { DUMB_PLACED } from './spotbugs-dumb-placed.mts';
+import { RESOURCE_PLACED } from './resources/spotbugs-resources-placed.mts';
 import { TAIL_PLACED } from './tail/spotbugs-tail-placed.mts';
 import { VALUES_PLACED } from './values/spotbugs-values-placed.mts';
 
@@ -294,6 +295,7 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     levels: { 1: NOTE, 2: NOTE },
   },
   ...DUMB_PLACED,
+  ...RESOURCE_PLACED,
   ...CAST_PLACED,
   ...TAIL_PLACED,
   ...VALUES_PLACED,
