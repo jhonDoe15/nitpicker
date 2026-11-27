@@ -2,7 +2,7 @@
 //! a property, the owner of a declaration. Answers are kept for the run; the first error of the server ends it.
 use super::offsets::Utf16;
 use crate::typescript::types::nodes::parse_handle;
-use crate::typescript::types::server::{Signature, Symbol, Type, escaped};
+use crate::typescript::types::server::{Signature, Symbol, Type};
 use crate::typescript::types::session::Session;
 use crate::typescript::types::tables::{kind, type_flags};
 use serde::Deserialize;
@@ -187,10 +187,6 @@ impl Types {
     pub fn properties(&mut self, kind: &Type) -> Vec<Symbol> {
         let found: Option<Vec<Symbol>> = self.about("getPropertiesOfType", kind.id, json!({ "type": kind.id }));
         found.unwrap_or_default()
-    }
-
-    pub fn named_property(&mut self, kind: &Type, name: &str) -> Option<Rc<Symbol>> {
-        self.property(kind, &escaped(name))
     }
 
     /// Whether the file of a declaration is a default library file.

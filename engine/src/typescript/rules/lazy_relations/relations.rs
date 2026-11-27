@@ -24,7 +24,7 @@ fn compiler_node(types: &mut Types, kind: u32, node: Node) -> Option<At> {
 /// `lazyBinding`: the relation named `name` of the type of `source`, an identifier.
 pub fn lazy_binding(types: &mut Types, schemas: &mut Schemas, source: Node, name: &str) -> Option<Relation> {
     let expression = compiler_node(types, k::IDENTIFIER, source)?;
-    let handles = types.property_declarations_named(&expression.handle(), name);
+    let handles = types.property_declarations(&expression.handle(), name);
     let declarations = nodes(types, &handles);
     decorated_relation(types, schemas, &Access { expression: &expression, name, declarations })
 }

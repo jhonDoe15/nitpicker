@@ -37,7 +37,7 @@ impl Types {
         let parts = if kind.flags & type_flags::UNION != 0 { self.parts(&kind).to_vec() } else { vec![kind] };
         for part in parts {
             let Some(apparent) = self.apparent(&part) else { continue };
-            let Some(then) = self.named_property(&apparent, "then") else { continue };
+            let Some(then) = self.property(&apparent, "then") else { continue };
             let found = self.session.server.type_of_symbol_at(&self.session.project, then.id, handle);
             let Some(callable) = self.answered(found) else { continue };
             if self.signature_count(&callable, false) > 0 {

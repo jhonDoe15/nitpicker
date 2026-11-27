@@ -36,11 +36,6 @@ pub fn unescaped(mut name: String) -> String {
     name
 }
 
-/// A name as the compiler stores it, for questions that take a name.
-pub fn escaped(name: &str) -> String {
-    if name.starts_with("__") { format!("_{name}") } else { name.to_string() }
-}
-
 #[derive(Deserialize, Clone, Debug)]
 pub struct Type {
     pub id: u64,

@@ -76,7 +76,7 @@ fn is_anonymous_project_shape(types: &mut Types, kind: &Type, symbol: &Symbol, p
     }
     let known: Vec<Symbol> = match property {
         None => types.properties(kind),
-        Some(name) => types.named_property(kind, name).map(|found| (*found).clone()).into_iter().collect(),
+        Some(name) => types.property(kind, name).map(|found| (*found).clone()).into_iter().collect(),
     };
     let project_properties = !known.is_empty() && known.iter().all(|member| declared_in_project(types, Some(member)));
     project_properties || types.has_mutable_index(kind)
