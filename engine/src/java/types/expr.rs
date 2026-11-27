@@ -215,8 +215,29 @@ fn lambda_results(lambda: Node) -> (bool, bool) {
         }
     }
     let last = crate::engine::source::named_children(body).into_iter().filter(|kid| !kid.kind().ends_with("comment")).last();
-    let ends = last.is_some_and(|last| matches!(last.kind(), "throw_statement" | "while_statement" | "for_statement" | "do_statement"));
+    let ends = last.is_some_and(|last| last.kind() == "throw_statement" || endless(last));
     (!valued, !bare && (valued || ends))
+}
+
+/// Whether a loop cannot complete normally: its condition is missing or `true` and no `break` leaves it.
+fn endless(statement: Node) -> bool {
+    if !matches!(statement.kind(), "while_statement" | "for_statement" | "do_statement") {
+        return false;
+    }
+    let forever = statement.field("condition").is_none_or(|condition| unwrap(condition).kind() == "true");
+    forever && !leaves(statement, false, false)
+}
+
+/// Whether a `break` inside `node` jumps out of the loop around it: one without a label outside any inner loop or
+/// switch, or one with a label outside any labeled statement inside the loop.
+fn leaves(node: Node, nested: bool, labeled: bool) -> bool {
+    children(node).into_iter().any(|kid| match kid.kind() {
+        "lambda_expression" | "class_body" => false,
+        "break_statement" => if kid.named_child(0).is_some() { !labeled } else { !nested },
+        "while_statement" | "for_statement" | "do_statement" | "enhanced_for_statement" | "switch_statement" | "switch_expression" => leaves(kid, true, labeled),
+        "labeled_statement" => leaves(kid, nested, true),
+        _ => leaves(kid, nested, labeled),
+    })
 }
 
 fn mentions(kind: &Type, variable: &str) -> bool {

@@ -12,7 +12,7 @@ fn local_name(class: &str) -> bool {
 }
 
 /// A member class that needs an instance of the class around it.
-fn inner_class(resolver: &Resolver, class: &str) -> bool {
+pub(crate) fn inner_class(resolver: &Resolver, class: &str) -> bool {
     let Some(info) = resolver.index.get(class) else { return false };
     let Some((outer, _)) = class.rsplit_once('.') else { return false };
     let nested = outer.len() > info.package.len();

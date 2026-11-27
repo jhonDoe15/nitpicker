@@ -702,8 +702,7 @@ name when it is not the method's. Locks on the same line that name the same plac
 (`tests/expected/spotbugs-arguments.json`). `tests/expected/spotbugs-places.json` holds the places
 SpotBugs' SARIF gives for the fixtures, and the SARIF results of real runs match SpotBugs' on all seven code bases.
 
-Not done: `REC_CATCH_EXCEPTION` needs the checked exceptions each `try` block can throw and the rule for its
-priority (most findings are low priority and hidden at `-medium`); it is left for a later batch (#2262).
+`REC_CATCH_EXCEPTION` is described under "Ignored results, reboxing and caught exceptions".
 
 ### Injection patterns (FindSecBugs)
 
@@ -1187,6 +1186,78 @@ IC_SUPERCLASS_USES_SUBCLASS_DURING_INITIALIZATION (`sequence/initialization.rs`)
 reads or writes a static field, or calls a static method, through the name of a strict subtype. A read is priority 1
 when the subtype's class file is public, else 2; a write or call is one more. One finding per subtype, with the best
 priority, on its first line.
+
+### Ignored results, reboxing and caught exceptions
+
+Four patterns of #2262, labs in `tests/fixtures/spotbugs/return_values*`, `no_side_effect*`, `reboxed*` and
+`catch_exception*`, all level `note`.
+
+RV_RETURN_VALUE_IGNORED_BAD_PRACTICE and RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT (`src/java/spotbugs/returns/`): a
+call or `new` whose result is dropped (a call statement, the body of a lambda that returns nothing, a `for`
+initializer or update, the value written before a static field or method, but not an arm of a `switch`
+expression). One finding per method, called method and priority, on the first call's line. A constructor is named
+as javac writes it: an inner class takes its outer instance first, a local class the captured variables last, an
+anonymous class `new A$1(A, …)`. The bad-practice pattern takes the JDK
+methods SpotBugs checks (`File.delete()`, `Queue.offer(…)`, `ExecutorService.submit(…)`, …), from a table measured
+on every public method of the server-side JDK modules (`jdk-returns.tsv`), on a receiver that is not an interface
+of the run. The no-side-effect pattern takes the JDK methods of that table and the methods of the run without side
+effects. Priority 1 when the result has the type of the method around, else 2; one more when a `try` with a
+`catch` or a `finally`, a `catch` of a `try` with a `finally`, a `synchronized` block or a Lombok `@Synchronized`
+method covers code all on the call's line, and a finding at priority 3 is not reported. Rules measured on SpotBugs:
+- A method of the run has no side effect when its body stores only into its locals (a constructor also into the
+  fields of its own class, a static initializer into its own static fields), throws nothing, has no `assert` and
+  no `synchronized` block, allocates nothing with an effect, and calls only methods without one. A call on an
+  object needs every override with code below the called method to have none, overrides through a bridge method
+  (`String get(String)` over `T get(T)`) included. A record's canonical constructor and an anonymous class's
+  constructor are judged too; one created on an outer instance (`outer.new In() {}`) has an effect.
+- A stub has an effect: a public or protected method of a public class (or a method of an interface), neither
+  static nor final, that overrides no superclass method, returns only `-1`, `0` or `1`, `null`, `false`, `this`
+  or a parameter, and is the only code of the run for each interface method it implements. A call that can run
+  only a stub has an effect.
+- A call of an abstract method with a `throws` clause, and of a method that implements a JDK interface method,
+  has an effect.
+- A reported call of a static method or a constructor also needs the static initializers of its class and of its
+  superclasses to have no effect (static fields, interface constants, enum constants and their constructors; a
+  class with an `assert` has one); this is not asked of the calls inside the bodies judged.
+- `void` methods, `equals(Object)`, methods marked `@CanIgnoreReturnValue` (or in a class so marked) are not
+  reported, nor overrides of a JDK method the bad-practice pattern takes (SpotBugs reports those at priority 3).
+- A JDK method a class inherits from a JDK superclass is known only when the code of the run names that
+  superclass (a call, field, `new`, cast, `instanceof`, class literal, `catch`, `throws` or supertype).
+- The SARIF place of a JDK method drops a `java.lang.` prefix before the method name (`reflect.Field.getName()`);
+  the message keeps the full name.
+
+BX_UNBOXING_IMMEDIATELY_REBOXED (`src/java/spotbugs/returns/boxes.rs`): a boxed value unboxed and boxed again into
+the same box type, at a store, an argument, a return or a conditional. A conditional is a box only when both
+branches are that box, else the (wider) primitive; a cast to the box type counts as boxing.
+
+REC_CATCH_EXCEPTION (`src/java/spotbugs/catches/`): a `catch (Exception e)` of a `try` whose code throws no
+checked exception that `Exception` stands for. The exceptions are those declared by the calls and constructors of
+the `try` (a call on an interface-typed receiver adds none), the `close()` of each resource that is not of an
+interface type, and `Throwable` for a try-with-resources. A `try` that also catches `RuntimeException` is skipped,
+and so is one that can throw `Exception` itself or that throws nothing and makes no call. Each range of the
+exception table that covers the `try` is judged alone: a range ends at a `return` or at a `break` or `continue`
+that leaves the `try`, and its size in bytes is worked out from the source as javac 21 writes it
+(`catches/size.rs`, `code.rs`, `resources.rs`, `slots.rs`). Priority is 4, plus 1 when the handler reads the
+exception and 1 when the `try` has another `catch`, minus 1 when the range throws two or more exception types,
+minus 1 at 30 bytes and minus 1 more at 300 bytes; one finding per method and priority, on the `catch` line, at
+priority 1 or 2.
+
+On the six comparison code bases, SARIF results, same / missed / extra: MyBatis 4 / 0 / 0, Nacos 23 / 0 / 0,
+Guava 5 / 0 / 0, jackson-databind 6 / 0 / 0, commons-lang and javaparser-core 0 / 0 / 0. Known differences, all on
+labs (`no_side_effect` and the lab notes):
+- Effects on objects created in the method itself (`new StringBuilder().append(…)`, a local array or list) are
+  taken as effects; SpotBugs takes some as none.
+- JDK methods missing from the table count as effects. The rows of `Object`, `String`, `StringBuilder`,
+  `StringBuffer` and `Boolean` were measured again with the same method.
+- A local class declared in a constructor of another local class, and some anonymous classes in it, can be named
+  without the instance around them.
+- Methods of the classpath are not judged; a call of one has an effect.
+- The table is for JDK 21; another JDK can differ.
+- Byte sizes leave out `ldc_w` for big constant pools, the outer-instance hop of an inner class reading a field
+  of its outer class, the captured values of a lambda, the copies javac makes of a nested `finally`, and the
+  slots of earlier `case` groups; `switch` and `assert` count as large. A size next to 30 or 300 bytes can be
+  judged wrong.
+The SpotBugs detectors behind these patterns still run in SpotBugs for their other patterns.
 
 ## Names the compiler makes up
 

@@ -269,4 +269,23 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     text: 'Unread public/protected field',
     levels: { 2: NOTE },
   },
+  RV_RETURN_VALUE_IGNORED_BAD_PRACTICE: {
+    text: 'Method ignores exceptional return value',
+    levels: { 2: NOTE },
+    placement: 'shown',
+  },
+  RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT: {
+    text: 'Return value of method without side effect is ignored',
+    levels: { 1: NOTE, 2: NOTE },
+    placement: 'shown',
+  },
+  BX_UNBOXING_IMMEDIATELY_REBOXED: {
+    text: 'Boxed value is unboxed and then immediately reboxed',
+    levels: { 2: NOTE },
+    placement: 'shown',
+  },
+  REC_CATCH_EXCEPTION: {
+    text: 'Exception is caught when Exception is not thrown',
+    levels: { 1: NOTE, 2: NOTE },
+  },
 };

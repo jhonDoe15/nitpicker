@@ -4,7 +4,7 @@
 mod booleans;
 mod equals;
 mod hiding;
-mod notify;
+pub(crate) mod notify;
 
 use super::Context;
 use crate::engine::source::children;
