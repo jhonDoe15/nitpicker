@@ -155,6 +155,8 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-mutating-method-in-domain', TYPED],
   ['no-node-process-per-test', {}],
   ['no-non-latin1-header-value', {}],
+  ['no-operand-depth-recursion', {}],
+  ['no-operand-slip', {}],
   ['no-orm-query-logging', {}],
   ['no-orm-schema-sync', {}],
   ['no-parameter-mutation', TYPED],
