@@ -1,0 +1,1 @@
+export const message = (name) => `Select the item from ${name}`;

@@ -1,0 +1,1 @@
+export const label = (name) => "Update " + name + " settings";

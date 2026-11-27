@@ -1,0 +1,1 @@
+export const many = (ids) => { const marks = ids.map((_, i) => `$${i + 1}`).join(", "); return pool.query(`SELECT * FROM users WHERE id IN (${marks})`, ids); };

@@ -1,0 +1,1 @@
+export const log = (id) => logger.info(`query for user ${id} finished`);
