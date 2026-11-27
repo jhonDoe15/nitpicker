@@ -1,6 +1,5 @@
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mts';
-import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import loggingConfig from '../../eslint-config/policies/logging.config.mts';
@@ -40,7 +39,7 @@ function strictCase([
   return { name, config: strictSyntaxConfig, filename, banned, allowed };
 }
 
-export const TYPED_CASE_ROOT = mkdtempSync(path.join(tmpdir(), 'nitpicker-typed-cases-'));
+export const TYPED_CASE_ROOT = path.join(tmpdir(), 'nitpicker-typed-cases');
 
 const typedFixture = path.join(TYPED_CASE_ROOT, 'src/fixture.ts');
 

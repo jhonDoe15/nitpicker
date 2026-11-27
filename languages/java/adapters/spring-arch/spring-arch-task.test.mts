@@ -188,6 +188,7 @@ describe('empty-project onlyIf skips across Gradle analysis tasks', () => {
       "def skipped = new File(report.parentFile, 'errorprone-skipped.txt')",
       "report.text = '[]\\n'",
       "report.text = '[]\\n'",
+      "report.text = '[]\\n'",
     ]);
 
     const detektLayers = taskBody(
