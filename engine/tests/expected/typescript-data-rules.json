@@ -369,6 +369,897 @@
   102
  ],
  [
+  "no-orm-query-logging/024.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  105
+ ],
+ [
+  "no-orm-query-logging/025.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  106
+ ],
+ [
+  "no-orm-query-logging/026.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  119
+ ],
+ [
+  "no-orm-query-logging/027.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  68,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  114
+ ],
+ [
+  "no-orm-query-logging/028.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  99
+ ],
+ [
+  "no-orm-query-logging/029.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  115
+ ],
+ [
+  "no-orm-query-logging/030.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  95,
+  "`logQueryParameters` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  119
+ ],
+ [
+  "no-orm-query-logging/031.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  58,
+  "`new Sequelize(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  97
+ ],
+ [
+  "no-orm-query-logging/032.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  58,
+  "`new Sequelize(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  96
+ ],
+ [
+  "no-orm-query-logging/033.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  58,
+  "`new Sequelize(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  119
+ ],
+ [
+  "no-orm-query-logging/034.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  71,
+  "`SequelizeModule.forRoot(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  135
+ ],
+ [
+  "no-orm-query-logging/035.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  100,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  111
+ ],
+ [
+  "no-orm-query-logging/036.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  100,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  132
+ ],
+ [
+  "no-orm-query-logging/037.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  72,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  83
+ ],
+ [
+  "no-orm-query-logging/038.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  89,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  112
+ ],
+ [
+  "no-orm-query-logging/039.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  89,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  130
+ ],
+ [
+  "no-orm-query-logging/040.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  111,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  138
+ ],
+ [
+  "no-orm-query-logging/041.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  88,
+  "`logger` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  100
+ ],
+ [
+  "no-orm-query-logging/042.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  104,
+  "`logger` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  131
+ ],
+ [
+  "no-orm-query-logging/043.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  113
+ ],
+ [
+  "no-orm-query-logging/044.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  70,
+  "`new Sequelize(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  97
+ ],
+ [
+  "no-orm-query-logging/045.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  121,
+  "`SequelizeModule.forRootAsync(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  167
+ ],
+ [
+  "no-orm-query-logging/046.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  89,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  114
+ ],
+ [
+  "no-orm-query-logging/047.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  38,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  73
+ ],
+ [
+  "no-orm-query-logging/048.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  129
+ ],
+ [
+  "no-orm-query-logging/049.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  110
+ ],
+ [
+  "no-orm-query-logging/050.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  117
+ ],
+ [
+  "no-orm-query-logging/051.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  131
+ ],
+ [
+  "no-orm-query-logging/052.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  108,
+  "`logQueryParameters` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  132
+ ],
+ [
+  "no-orm-query-logging/053.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  99,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  112
+ ],
+ [
+  "no-orm-query-logging/054.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  109,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  122
+ ],
+ [
+  "no-orm-query-logging/055.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  118
+ ],
+ [
+  "no-orm-query-logging/056.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  58,
+  "`new Sequelize(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  92
+ ],
+ [
+  "no-orm-query-logging/057.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  58,
+  "`new Sequelize(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  96
+ ],
+ [
+  "no-orm-query-logging/058.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  135,
+  "`SequelizeModule.forRootAsync(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  158
+ ],
+ [
+  "no-orm-query-logging/059.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  110,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  121
+ ],
+ [
+  "no-orm-query-logging/060.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  110,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  142
+ ],
+ [
+  "no-orm-query-logging/061.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  110,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  139
+ ],
+ [
+  "no-orm-query-logging/062.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  115,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  146
+ ],
+ [
+  "no-orm-query-logging/063.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  89,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  138
+ ],
+ [
+  "no-orm-query-logging/064.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  89,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  146
+ ],
+ [
+  "no-orm-query-logging/065.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  111,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  133
+ ],
+ [
+  "no-orm-query-logging/066.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  103,
+  "`logger` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  130
+ ],
+ [
+  "no-orm-query-logging/067.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  127
+ ],
+ [
+  "no-orm-query-logging/068.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  126
+ ],
+ [
+  "no-orm-query-logging/069.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  120
+ ],
+ [
+  "no-orm-query-logging/070.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  120
+ ],
+ [
+  "no-orm-query-logging/071.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  112
+ ],
+ [
+  "no-orm-query-logging/072.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  101,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  114
+ ],
+ [
+  "no-orm-query-logging/073.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logQueryParameters` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  141
+ ],
+ [
+  "no-orm-query-logging/074.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  74,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  87
+ ],
+ [
+  "no-orm-query-logging/075.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  50,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  63
+ ],
+ [
+  "no-orm-query-logging/076.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  114
+ ],
+ [
+  "no-orm-query-logging/077.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  101
+ ],
+ [
+  "no-orm-query-logging/078.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  115
+ ],
+ [
+  "no-orm-query-logging/079.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  121
+ ],
+ [
+  "no-orm-query-logging/080.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  144
+ ],
+ [
+  "no-orm-query-logging/081.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  136
+ ],
+ [
+  "no-orm-query-logging/082.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  165,
+  "`SequelizeModule.forRootAsync(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  181
+ ],
+ [
+  "no-orm-query-logging/083.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  110,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  142
+ ],
+ [
+  "no-orm-query-logging/084.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  89,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  116
+ ],
+ [
+  "no-orm-query-logging/085.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  89,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  110
+ ],
+ [
+  "no-orm-query-logging/086.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  89,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  124
+ ],
+ [
+  "no-orm-query-logging/087.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  98,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  112
+ ],
+ [
+  "no-orm-query-logging/088.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  95,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  109
+ ],
+ [
+  "no-orm-query-logging/089.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  103,
+  "`logger` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  140
+ ],
+ [
+  "no-orm-query-logging/090.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  88,
+  "`logger` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  123
+ ],
+ [
+  "no-orm-schema-sync/09.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  71,
+  "`SequelizeModule.forRoot(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  161
+ ],
+ [
+  "no-orm-schema-sync/10.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  71,
+  "`SequelizeModule.forRoot(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  135
+ ],
+ [
+  "no-orm-schema-sync/23.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  92,
+  "`synchronize: true` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  109
+ ],
+ [
+  "no-orm-schema-sync/24.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  74,
+  "`synchronize: true` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  91
+ ],
+ [
+  "no-orm-schema-sync/25.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  133,
+  "`synchronize: process.env.NODE_ENV !== \"production\"` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  183
+ ],
+ [
+  "no-orm-schema-sync/26.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  101,
+  "`synchronize: SYNC` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  118
+ ],
+ [
+  "no-orm-schema-sync/26.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  120,
+  "`dropSchema: !isProduction` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  145
+ ],
+ [
+  "no-orm-schema-sync/27.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  80,
+  "`synchronize: process.env.DB_SYNC` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  112
+ ],
+ [
+  "no-orm-schema-sync/28.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  87,
+  "`dataSource.synchronize()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  111
+ ],
+ [
+  "no-orm-schema-sync/29.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  87,
+  "`dataSource.dropDatabase()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  112
+ ],
+ [
+  "no-orm-schema-sync/30.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  87,
+  "`sequelize.sync()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  118
+ ],
+ [
+  "no-orm-schema-sync/31.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  87,
+  "`sequelize.sync()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  118
+ ],
+ [
+  "no-orm-schema-sync/32.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  113,
+  "`db.sync()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  122
+ ],
+ [
+  "no-orm-schema-sync/33.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  103,
+  "`db.sync()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  127
+ ],
+ [
+  "no-orm-schema-sync/34.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  95,
+  "`User.sync()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  106
+ ],
+ [
+  "no-orm-schema-sync/35.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  147,
+  "`synchronize: Boolean(config.get(\"DB_SYNC\"))` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  190
+ ],
+ [
+  "no-orm-schema-sync/36.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  155,
+  "`synchronize: true` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  172
+ ],
+ [
+  "no-orm-schema-sync/37.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  110,
+  "`dataSource.synchronize()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  134
+ ],
+ [
+  "no-orm-schema-sync/38.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  42,
+  "`app.sequelize.sync()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  62
+ ],
+ [
+  "no-orm-schema-sync/39.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  119,
+  "`User.sync()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  130
+ ],
+ [
+  "no-orm-schema-sync/40.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  71,
+  "`SequelizeModule.forRoot(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  141
+ ],
+ [
+  "no-orm-schema-sync/40.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  118,
+  "`autoLoadModels: true` without `synchronize: false` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  138
+ ],
+ [
+  "no-orm-schema-sync/41.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  71,
+  "`SequelizeModule.forRoot(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  160
+ ],
+ [
+  "no-orm-schema-sync/41.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  140,
+  "`synchronize: true` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  157
+ ],
+ [
+  "no-orm-schema-sync/42.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  92,
+  "`orm.schema.updateSchema()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  117
+ ],
+ [
+  "no-orm-schema-sync/43.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  92,
+  "`orm.getSchemaGenerator().createSchema()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  131
+ ],
+ [
+  "no-orm-schema-sync/44.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  92,
+  "`orm.schema.refreshDatabase()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  120
+ ],
+ [
+  "no-orm-schema-sync/45.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  92,
+  "`orm.schema.ensureDatabase()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  135
+ ],
+ [
+  "no-orm-schema-sync/46.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  115,
+  "`dataSource.synchronize()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  143
+ ],
+ [
+  "no-orm-schema-sync/47.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  78,
+  "`Sequelize.sync()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  109
+ ],
+ [
+  "no-orm-schema-sync/r-var-in-catch.ts",
+  "nitpicker/no-orm-query-logging",
+  2,
+  69,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  2,
+  79
+ ],
+ [
+  "no-orm-schema-sync/r-var-in-catch.ts",
+  "nitpicker/no-orm-schema-sync",
+  4,
+  90,
+  "`dropSchema: q` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  4,
+  103
+ ],
+ [
   "no-unpaged-listing/13.ts",
   "nitpicker/no-unpaged-listing",
   1,
