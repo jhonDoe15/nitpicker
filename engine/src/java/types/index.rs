@@ -46,6 +46,8 @@ pub struct TypeIndex {
     pub android_compatible: bool,
     /// The sources are test code only: see `Options::test_only`.
     pub test_only: bool,
+    /// The packages of the modules on the module path whose `module-info` carries an annotation named `NullMarked`.
+    null_marked_packages: HashSet<String>,
     /// The Java source level of the compile: `--release`, else the JDK's own.
     pub source_level: u32,
 }
@@ -85,6 +87,42 @@ fn release_classes(path: &Path, release: u32) -> Vec<(String, Origin)> {
         .collect();
     let shared = Arc::new(Mutex::new(archive));
     named.into_iter().map(|(name, position)| (name, Origin::Archive(shared.clone(), position))).collect()
+}
+
+/// The packages that hold the class files of a folder or an archive, versioned entries left out.
+fn entry_packages(path: &Path) -> HashSet<String> {
+    let names: Vec<String> = if path.is_dir() {
+        walkdir::WalkDir::new(path).into_iter().filter_map(Result::ok).filter_map(|entry| entry.path().strip_prefix(path).ok().map(|inner| inner.to_string_lossy().replace(std::path::MAIN_SEPARATOR, "/"))).collect()
+    } else {
+        let Some(archive) = std::fs::File::open(path).ok().and_then(|file| zip::ZipArchive::new(std::io::BufReader::new(file)).ok()) else { return HashSet::new() };
+        (0..archive.len()).filter_map(|position| archive.name_for_index(position)?.ok().map(|name| name.to_string())).collect()
+    };
+    names
+        .iter()
+        .filter_map(|name| {
+            let inner = name.strip_prefix("classes/").unwrap_or(name);
+            let inner = inner.strip_prefix("META-INF/versions/").and_then(|rest| rest.split_once('/')).map_or(inner, |(_, rest)| rest);
+            (inner.ends_with(".class") && !inner.starts_with("META-INF/")).then_some(inner)
+        })
+        .filter_map(|name| name.rsplit_once('/').map(|(package, _)| package.replace('/', ".")))
+        .collect()
+}
+
+/// The module declaration of a jar or a jmod as javac reads it for a release: in a multi-release jar the newest
+/// version not above the release, else the one at the root.
+fn module_declaration(path: &Path, release: u32) -> Option<Vec<u8>> {
+    let file = std::fs::File::open(path).ok()?;
+    let mut archive = zip::ZipArchive::new(std::io::BufReader::new(file)).ok()?;
+    let versioned = (0..archive.len())
+        .filter_map(|position| archive.name_for_index(position)?.ok()?.strip_prefix("META-INF/versions/")?.strip_suffix("/module-info.class")?.parse::<u32>().ok())
+        .filter(|version| *version <= release)
+        .max()
+        .map(|version| format!("META-INF/versions/{version}/module-info.class"));
+    let name = versioned.into_iter().chain(["module-info.class".to_string(), "classes/module-info.class".to_string()]).find(|name| archive.index_for_name(name).is_some())?;
+    let mut entry = archive.by_name(&name).ok()?;
+    let mut bytes = Vec::new();
+    entry.read_to_end(&mut bytes).ok()?;
+    Some(bytes)
 }
 
 fn folder_classes(path: &Path) -> Vec<(String, Origin)> {
@@ -153,6 +191,18 @@ impl TypeIndex {
         }
     }
 
+    /// Notes the packages of each module on the module path whose declaration carries an annotation named
+    /// `NullMarked`: NullAway takes the code of such a module as checked, unless its package is `@NullUnmarked`.
+    pub fn load_modules(&mut self, entries: &[PathBuf]) {
+        use super::model::flag;
+        for entry in entries {
+            let declaration = if entry.is_dir() { std::fs::read(entry.join("module-info.class")).ok() } else { module_declaration(entry, self.source_level) };
+            if declaration.and_then(|bytes| classfile::parse(&bytes)).is_some_and(|module| module.flags & flag::NULL_MARKED != 0) {
+                self.null_marked_packages.extend(entry_packages(entry));
+            }
+        }
+    }
+
     /// Loads the JDK library as one older release had it. False when the file does not hold that release.
     pub fn load_release(&mut self, signatures: &Path, release: u32) -> bool {
         let loaded = release_classes(signatures, release);
@@ -214,7 +264,8 @@ impl TypeIndex {
         let mut end = name[start..].find('.').map_or(name.len(), |dot| start + dot);
         let on_package = flags_of(&format!("{package}.package-info"));
         let on_top = flags_of(&name[..end]);
-        let by_package = (listed || on_package & flag::NULL_MARKED != 0) && on_package & flag::NULL_UNMARKED == 0;
+        let marked = on_package & flag::NULL_MARKED != 0 || self.null_marked_packages.contains(package);
+        let by_package = (listed || marked) && on_package & flag::NULL_UNMARKED == 0;
         let mut checked = on_top & flag::NULL_UNMARKED == 0 && (by_package || on_top & flag::NULL_MARKED != 0);
         while end < name.len() {
             end = name[end + 1..].find('.').map_or(name.len(), |dot| end + 1 + dot);

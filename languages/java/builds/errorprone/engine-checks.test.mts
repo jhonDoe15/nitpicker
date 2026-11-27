@@ -7,6 +7,7 @@ import {
   argumentSetOf,
   generatedRoots,
   lookupEntries,
+  modulePathEntries,
   ownPackages,
   releaseOf,
   withProjectFlags,
@@ -49,7 +50,7 @@ describe('engineChecksFor', () => {
     );
   });
 
-  it('leaves NullAway to Error Prone on test sources, without own classes and with a module path', () => {
+  it('runs NullAway on the engine with a module path, not on test sources or without own classes', () => {
     const own = classesIn('demo');
 
     expect(engineChecksFor(headWith(own, '--test-only'))).toStrictEqual({
@@ -59,9 +60,10 @@ describe('engineChecksFor', () => {
     expect(engineChecksFor(headWith(path.join(own, 'missing'))).checks).toStrictEqual(
       WITHOUT_NULL_AWAY,
     );
-    expect(engineChecksFor(headWith(own, '--module-path', '/lib.jar')).checks).toStrictEqual(
-      WITHOUT_NULL_AWAY,
-    );
+    expect(engineChecksFor(headWith(own, '--module-path', '/lib.jar'))).toStrictEqual({
+      checks: ENGINE_CHECKS,
+      packages: ['demo'],
+    });
   });
 
   it('leaves only the checks the project configures to Error Prone', () => {
@@ -151,11 +153,12 @@ describe('the arguments file', () => {
     ...['--sources', '/src/A.java', '/src/B.java', ''],
   ].join('\n');
 
-  it('gives the sources, the class lookup, the release and the generated roots', () => {
+  it('gives the sources, the class and module lookup, the release and the generated roots', () => {
     const { head, sources } = argumentSetOf(text);
 
     expect(sources).toStrictEqual(['/src/A.java', '/src/B.java']);
-    expect(lookupEntries(head)).toStrictEqual(['/m.jar', '/a.jar', '/b', '/own']);
+    expect(lookupEntries(head)).toStrictEqual(['/a.jar', '/b', '/own']);
+    expect(modulePathEntries(head)).toStrictEqual(['/m.jar']);
     expect(releaseOf(head)).toBe('17');
     expect(generatedRoots(head)).toStrictEqual(['/gen']);
     expect(generatedRoots(head.filter((line) => line !== '--skip-generated'))).toStrictEqual([]);

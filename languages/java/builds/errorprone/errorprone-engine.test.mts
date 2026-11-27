@@ -172,6 +172,22 @@ describe('errorProneOnEngine', () => {
     ]);
   });
 
+  it('gives the module path to the engine apart from the class path', () => {
+    const { plan, environment } = setup('--module-path', '/mods/a.jar');
+    const started: Started[] = [];
+
+    errorProneOnEngine(plan, environment, { run: engineWriting({ findings: [] }, started) });
+
+    const [{ argumentList, environment: passed } = { argumentList: [], environment: {} }] = started;
+    const listed = `${plan.argumentFiles[0] ?? ''}.engine-modulepath.txt`;
+    expect(argumentList.slice(4, 8)).toStrictEqual([
+      ...['--classpath', `${plan.argumentFiles[0] ?? ''}.engine-classpath.txt`],
+      ...['--module-path', listed],
+    ]);
+    expect(readFileSync(listed, 'utf8')).toBe('/mods/a.jar');
+    expect(passed).toMatchObject({ NP_NULLAWAY_PACKAGES: 'demo' });
+  });
+
   it('runs test sources in the test-only mode of the engine, without NullAway', () => {
     const { plan, environment } = setup('--test-only');
     const started: Started[] = [];

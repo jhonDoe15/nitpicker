@@ -11,7 +11,6 @@ export type EngineChecks = {
 
 const NONE: EngineChecks = { checks: [], packages: [] };
 const TEST_ONLY = '--test-only';
-const MODULE_PATH = '--module-path';
 const CHECK_LEVEL = /^-Xep:(\w+)(?::\w+)?$/u;
 
 export function testOnly(head: readonly string[]): boolean {
@@ -36,8 +35,7 @@ export function engineChecksFor(head: readonly string[]): EngineChecks {
   if (configured === undefined || wholeReason(head) !== undefined) {
     return NONE;
   }
-  const elsewhere = testOnly(head) || head.includes(MODULE_PATH);
-  const packages = elsewhere ? [] : ownPackages(ownClasses(head));
+  const packages = testOnly(head) ? [] : ownPackages(ownClasses(head));
   const checks = ENGINE_CHECKS.filter(
     (check) => !configured.has(check) && (check !== NULL_AWAY || packages.length > 0),
   );

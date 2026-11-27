@@ -361,9 +361,8 @@ compile runs an annotation processor, or for which the project passes Error Pron
 levels, stays with Error Prone as a whole, and so does every source set with `NITPICKER_ENGINE=off`. Test
 sources run on the engine as Error Prone runs them there (`-XepCompilingTestOnlyCode`), and sources in another
 encoding than UTF-8 are read in it, unless the engine cannot decode that encoding as the JDK does. NullAway is
-off for test sources, and it stays with Error Prone for a source set compiled with a module path and for a
-source set that uses a null-marked library whose `@Nullable` is written on types, as Spring Framework 7 does
-with JSpecify.
+off for test sources, and it stays with Error Prone for a source set that uses a null-marked library whose
+`@Nullable` is written on types, as Spring Framework 7 does with JSpecify.
 
 ## Checks that are off
 

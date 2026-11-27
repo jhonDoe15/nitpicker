@@ -51,11 +51,11 @@ export function ownClasses(head: readonly string[]): string[] {
 }
 
 export function lookupEntries(head: readonly string[]): string[] {
-  return [
-    ...entriesOf(optionOf(head, '--module-path')),
-    ...entriesOf(optionOf(head, '-classpath')),
-    ...ownClasses(head),
-  ];
+  return [...entriesOf(optionOf(head, '-classpath')), ...ownClasses(head)];
+}
+
+export function modulePathEntries(head: readonly string[]): string[] {
+  return entriesOf(optionOf(head, '--module-path'));
 }
 
 export function generatedRoots(head: readonly string[]): string[] {

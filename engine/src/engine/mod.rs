@@ -28,6 +28,8 @@ pub type Project = dyn std::any::Any + Send + Sync;
 #[derive(Default)]
 pub struct Options {
     pub classpath: Vec<std::path::PathBuf>,
+    /// The module path of the compile (`--module-path`): looked up before the class path, and each module's declaration is read.
+    pub module_path: Vec<std::path::PathBuf>,
     /// The Java release the sources are compiled for (`--release`), when it is older than the JDK: the library of that release is used.
     pub release: Option<u32>,
     /// javac ran Lombok over the sources: source classes have the members Lombok writes, and `val` infers a local's type.

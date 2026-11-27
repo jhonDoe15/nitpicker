@@ -54,6 +54,23 @@ fn stub(name: String) -> ClassInfo {
     ClassInfo { name, ..ClassInfo::default() }
 }
 
+/// The modules of a module path: a folder without `module-info.class` holds modules, as javac reads it, each a jar
+/// or a folder of its own.
+fn module_entries(path: &[PathBuf]) -> Vec<PathBuf> {
+    path.iter()
+        .flat_map(|entry| {
+            if !entry.is_dir() || entry.join("module-info.class").exists() {
+                return vec![entry.clone()];
+            }
+            let mut held: Vec<PathBuf> = std::fs::read_dir(entry)
+                .map(|listed| listed.flatten().map(|child| child.path()).filter(|child| child.is_dir() || child.extension().is_some_and(|extension| extension == "jar")).collect())
+                .unwrap_or_default();
+            held.sort();
+            held
+        })
+        .collect()
+}
+
 pub fn build(files: &[SourceFile], options: &crate::engine::Options) -> JavaProject {
     let (classpath, release) = (&options.classpath, options.release);
     let started = std::time::Instant::now();
@@ -62,8 +79,10 @@ pub fn build(files: &[SourceFile], options: &crate::engine::Options) -> JavaProj
     index.android_compatible = options.android_compatible;
     index.test_only = options.test_only;
     index.source_level = release.unwrap_or_else(jdk_major);
-    let mut entries = classpath.to_vec();
+    let modules = module_entries(&options.module_path);
+    let mut entries = [modules.as_slice(), classpath].concat();
     index.load_binaries(&entries);
+    index.load_modules(&modules);
     // An older release sees the library as it was then: the JDK keeps those signatures in `lib/ct.sym`.
     if !release.is_some_and(|release| index.load_release(&jdk_home().join("lib").join("ct.sym"), release)) {
         let modules = jdk_modules();

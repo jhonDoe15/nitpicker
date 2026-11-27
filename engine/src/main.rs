@@ -82,11 +82,12 @@ fn main() {
             }
             "--files" => { index += 1; file_list = Some(value(index)); }
             "--dump" => dump = true,
-            "--classpath" => {
+            "--classpath" | "--module-path" => {
                 index += 1;
                 value(index);
                 let listed = std::fs::read_to_string(&args[index]).unwrap_or_else(|_| args[index].clone());
-                options.classpath.extend(listed.split(['\n', ':']).filter(|entry| !entry.trim().is_empty()).map(|entry| PathBuf::from(entry.trim())));
+                let entries = listed.split(['\n', ':']).filter(|entry| !entry.trim().is_empty()).map(|entry| PathBuf::from(entry.trim()));
+                if args[index - 1] == "--classpath" { options.classpath.extend(entries) } else { options.module_path.extend(entries) }
             }
             "--lombok" => options.lombok = true,
             "--android-compatible" => options.android_compatible = true,
