@@ -3,9 +3,12 @@ use crate::java::fields::Fields;
 use super::index::TypeIndex;
 use super::model::{ClassInfo, Field, Method, OBJECT, Type};
 use std::cell::{Cell, RefCell};
-use crate::engine::source::{SourceFile, children};
+use crate::engine::source::{SourceFile, children, named_children};
 use std::collections::HashMap;
 use tree_sitter::Node;
+
+const INCOMPATIBLE: &str = "com.google.errorprone.annotations.IncompatibleModifiers";
+const REQUIRED: &str = "com.google.errorprone.annotations.RequiredModifiers";
 
 pub const TYPE_DECLARATIONS: &[&str] = &[
     "class_declaration",
@@ -776,6 +779,7 @@ impl<'a> Resolver<'a> {
             name,
             superclass: parent.as_ref().map(Type::name),
             interfaces: above.iter().map(Type::name).collect(),
+            bounded_supers: self.bounded_supers(declaration),
             generic_supers: parent.into_iter().chain(above).collect(),
             package: self.scope.package.clone(),
             type_parameters,
@@ -795,7 +799,12 @@ impl<'a> Resolver<'a> {
             immutable_parameters,
             setter_like: false,
             null_nicknames: Vec::new(),
-            incompatible: if kind == "annotation_type_declaration" { self.incompatible_modifiers(declaration) } else { Vec::new() },
+            incompatible: if kind == "annotation_type_declaration" { self.listed_modifiers(declaration, INCOMPATIBLE, &["value", "modifier"]) } else { Vec::new() },
+            required: if kind == "annotation_type_declaration" {
+                [self.listed_modifiers(declaration, REQUIRED, &["value"]), self.listed_modifiers(declaration, REQUIRED, &["modifier"])].concat()
+            } else {
+                Vec::new()
+            },
             class_annotations,
             do_not_mock,
             outer_instance: None,
@@ -803,13 +812,38 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// The constant names `@IncompatibleModifiers` lists on an annotation type, in the order written.
-    fn incompatible_modifiers(&self, declaration: Node) -> Vec<String> {
+    /// The supertypes of a class, interface or record with bounded wildcards kept, when one of them is written with a
+    /// wildcard; nothing otherwise, the supertypes then being `generic_supers`.
+    fn bounded_supers(&self, declaration: Node) -> Vec<Type> {
+        if !matches!(declaration.kind(), "class_declaration" | "interface_declaration" | "record_declaration") {
+            return Vec::new();
+        }
+        let holders: Vec<Node> = ["superclass", "interfaces", "extends_interfaces"]
+            .into_iter()
+            .filter_map(|field| declaration.field(field).or_else(|| children(declaration).into_iter().find(|child| child.kind() == field)))
+            .collect();
+        if !holders.iter().any(|holder| self.file.text_of(*holder).contains('?')) {
+            return Vec::new();
+        }
+        let wild = self.wildcards();
+        let mut found = Vec::new();
+        if declaration.kind() == "record_declaration" {
+            found.push(Type::class("java.lang.Record"));
+        }
+        for holder in holders {
+            let list = children(holder).into_iter().find(|child| child.kind() == "type_list").unwrap_or(holder);
+            found.extend(named_children(list).into_iter().filter_map(|written| wild.written(written, true)).filter(|kind| matches!(kind, Type::Class(..))));
+        }
+        found
+    }
+
+    /// The constant names that the elements `keys` of the annotation `marker` list on an annotation type, in the order written.
+    fn listed_modifiers(&self, declaration: Node, marker: &str, keys: &[&str]) -> Vec<String> {
         let mut found = Vec::new();
         let annotations = super::super::helpers::modifiers(declaration).map(children).unwrap_or_default();
         for annotation in annotations.into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation")) {
             let written = annotation.child_by_field_name("name").map(|name| self.file.text_of(name)).unwrap_or_default();
-            if self.class_name(declaration, written).as_deref() != Some("com.google.errorprone.annotations.IncompatibleModifiers") {
+            if self.class_name(declaration, written).as_deref() != Some(marker) {
                 continue;
             }
             let Some(list) = annotation.child_by_field_name("arguments") else { continue };
@@ -818,7 +852,7 @@ impl<'a> Resolver<'a> {
                     "element_value_pair" => (argument.child_by_field_name("key").map(|key| self.file.text_of(key)), argument.child_by_field_name("value")),
                     _ => (Some("value"), Some(argument)),
                 };
-                let Some(value) = value.filter(|_| matches!(key, Some("value" | "modifier"))) else { continue };
+                let Some(value) = value.filter(|_| key.is_some_and(|key| keys.contains(&key))) else { continue };
                 crate::engine::source::walk(value, |part| {
                     let name = match part.kind() {
                         "identifier" if part.parent().is_none_or(|up| up.kind() != "field_access") => Some(part),

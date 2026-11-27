@@ -531,5 +531,7 @@
  "FloggerRequiredModifiers",
  "ImmutableAnnotationChecker",
  "CacheLoaderNull",
- "DoNotMockAutoValue"
+ "DoNotMockAutoValue",
+ "RequiredModifiers",
+ "CollectionIncompatibleType"
 ]

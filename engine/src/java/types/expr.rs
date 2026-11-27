@@ -1480,7 +1480,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// The type a method reference looks its method up in, and whether that is a value's type.
-    fn reference_owner(&self, reference: Node) -> Option<(Type, bool)> {
+    pub fn reference_owner(&self, reference: Node) -> Option<(Type, bool)> {
         Some(match self.receiver(*children(reference).first()?) {
             Some(Receiver::Value(kind)) => (kind, true),
             Some(Receiver::Static(owner)) => (Type::class(&owner), false),
