@@ -17,12 +17,13 @@ fn engine(folder: &Path, rules: &str) -> Command {
     command
 }
 
-/// The PMD-shaped tree of number literals, as PMD's own tree has them.
+/// The PMD-shaped tree of number and string literals, as PMD's own tree has them.
 #[test]
 fn literal_attributes_match_pmd() {
     let sources = [(
         "Literals",
-        "double a = 012d; float b = 012f; double c = 012e3; double d = 0_12D; double e = 09e1f; double f = 1.012d;",
+        "double a = 012d; float b = 012f; double c = 012e3; double d = 0_12D; double e = 09e1f; double f = 1.012d;\n\
+         String s = \"\\uD842\\uDFB7\"; String t = \"\\uD842\"; String u = \"\\uDFB7\\uD842\";",
     )];
     let folder = folder("literal-tree", &sources);
     let out = folder.join("tree");
@@ -49,6 +50,9 @@ fn literal_attributes_match_pmd() {
         "DoubleLiteral=true FloatLiteral=false Image=0_12D ValueAsDouble=12.0",
         "DoubleLiteral=false FloatLiteral=true Image=09e1f ValueAsDouble=90.0",
         "DoubleLiteral=true FloatLiteral=false Image=1.012d ValueAsDouble=1.012",
+        "ConstValue=\u{20BB7} Empty=false Image=\"\u{20BB7}\" Length=2",
+        "ConstValue=\u{FFFD} Empty=false Image=\"\u{FFFD}\" Length=1",
+        "ConstValue=\u{FFFD}\u{FFFD} Empty=false Image=\"\u{FFFD}\u{FFFD}\" Length=2",
     ];
     assert_eq!(literals, wanted);
 }
