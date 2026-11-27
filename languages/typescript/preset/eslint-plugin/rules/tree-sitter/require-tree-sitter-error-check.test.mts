@@ -54,8 +54,12 @@ tester.run('require-tree-sitter-error-check', rule, {
       'function parameters(node: Node) { return node.namedChildren[0]; }\nif (root.hasError) { throw new Error(); }\nconst first = parameters(root);',
     ),
     valid('const first = (node: Node) => node.namedChildren.length;'),
+    valid('const first = root.namedChildren[0];\nif (root.hasError) { throw new Error(); }'),
   ],
   invalid: [
+    invalid(
+      'function a(node: Node) { return node.namedChildren[0] ?? b(node); }\nfunction b(node: Node) { return a(node); }',
+    ),
     invalid('export function parameters(node: Node) { return node.namedChildren[0]; }'),
     invalid('export const parameters = (node: Node) => node.namedChildren[0];'),
     invalid('export default function (node: Node) { return node.namedChildren[0]; }'),

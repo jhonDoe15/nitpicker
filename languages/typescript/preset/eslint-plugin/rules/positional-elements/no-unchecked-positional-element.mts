@@ -12,7 +12,11 @@ import { enclosingFunction, type FunctionNode } from '../typed/syntax-views.mts'
 
 const PLAIN_SCRIPTS = new Set(['.js', '.mjs', '.cjs']);
 const TUPLE_COMMENT = /(?:\{|:)\s*\[/u;
-const TREE_LISTS = new Set(['children', 'namedChildren', 'childNodes']);
+const TREE_LISTS: ReadonlySet<string | undefined> = new Set([
+  'children',
+  'namedChildren',
+  'childNodes',
+]);
 
 function memberRootName(node: TSESTree.Node): string | undefined {
   const chain = [node];
@@ -90,13 +94,11 @@ function arrayPatternsOf(fn: FunctionNode): TSESTree.ArrayPattern[] {
   return found;
 }
 
-function fromParameter(fn: FunctionNode & { parent: TSESTree.CallExpression }): boolean {
-  const { callee } = fn.parent;
-  if (callee.type !== AST_NODE_TYPES.MemberExpression) {
-    return false;
-  }
+function fromParameter(
+  fn: FunctionNode & { parent: { callee: TSESTree.MemberExpression } },
+): boolean {
   const owner = enclosingFunction(fn);
-  const root = memberRootName(callee.object);
+  const root = memberRootName(fn.parent.callee.object);
   return owner !== undefined && root !== undefined && parameterNames(owner).has(root);
 }
 
@@ -128,8 +130,10 @@ function siteOf(
 }
 
 function useOfElement(site: Site, element: TSESTree.Identifier): UseNode | undefined {
-  const references =
-    site.variables.get(element.name)?.references.filter((r) => r.identifier !== element) ?? [];
+  const references = [...site.variables.values()]
+    .filter((variable) => variable.name === element.name)
+    .flatMap((variable) => variable.references)
+    .filter((reference) => reference.identifier !== element);
   if (references.some((reference) => isGuard(reference.identifier))) {
     return undefined;
   }
@@ -164,6 +168,21 @@ function checkFunction(context: UncheckedContext, fn: FunctionNode): void {
   }
 }
 
+function listsParameter(
+  id: TSESTree.ArrayPattern,
+  init: TSESTree.MemberExpression,
+  owner: FunctionNode,
+): boolean {
+  const property = init.computed ? undefined : nameOf(init.property);
+  const root = plainMemberRoot(init);
+  return (
+    root !== undefined &&
+    property !== undefined &&
+    parameterNames(owner).has(root) &&
+    !(isFixedShape(id) && !TREE_LISTS.has(property))
+  );
+}
+
 function parameterListPattern(
   node: TSESTree.VariableDeclarator,
   sourceCode: Readonly<TSESLint.SourceCode>,
@@ -178,15 +197,7 @@ function parameterListPattern(
   ) {
     return undefined;
   }
-  const property = init.computed ? undefined : nameOf(init.property);
-  const root = plainMemberRoot(init);
-  const fixedOutsideTree = isFixedShape(id) && !TREE_LISTS.has(property ?? '');
-  return root === undefined ||
-    property === undefined ||
-    !parameterNames(owner).has(root) ||
-    fixedOutsideTree
-    ? undefined
-    : id;
+  return listsParameter(id, init, owner) ? id : undefined;
 }
 
 function isPlainScriptWithoutTypes(context: UncheckedContext): boolean {

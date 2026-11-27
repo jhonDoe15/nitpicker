@@ -117,7 +117,7 @@ function checks(context: Context, test: TSESTree.Node, variable: TSESLint.Scope.
 }
 
 function exits(statement: TSESTree.Node): boolean {
-  return EXITS.has(blockTail(statement)?.type ?? '');
+  return EXITS.has(String(blockTail(statement)?.type));
 }
 
 function isStopGuard(

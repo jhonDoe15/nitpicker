@@ -1,4 +1,5 @@
-import { rule } from './contract-infrastructure-type.mts';
+import { expect, it } from 'vitest';
+import { featureOf, rule } from './contract-infrastructure-type.mts';
 import { typedProject, writeCustomPrismaClient } from './test-support/typed-project.mts';
 
 const { write, tester, folder } = typedProject('nitpicker-contract-types-');
@@ -36,6 +37,11 @@ function feature(
   }));
   return { filename, code: index, ...(errors === undefined ? {} : { errors }) };
 }
+
+it('names the feature of a feature index file', () => {
+  expect(featureOf('src/main/features/orders/index.ts')).toBe('orders');
+  expect(featureOf('src/main/features/orders/service.ts')).toBe('');
+});
 
 tester.run('contract-infrastructure-type', rule, {
   valid: [
@@ -130,6 +136,17 @@ tester.run('contract-infrastructure-type', rule, {
     feature(
       `import type { PrismaClient } from '${CUSTOM_PRISMA}';\nexport function findUsers(db: PrismaClient): Promise<string[]> { return Promise.resolve([String(db)]); }`,
       { leaks: [['persistence', 'findUsers', 'PrismaClient', '@prisma/client']] },
+    ),
+    feature(
+      `${PRISMA}${KNEX}export function f(db: PrismaClient | Prisma.TransactionClient | Knex.Transaction | Knex.QueryBuilder<string> | Knex.QueryBuilder<number>): void { void db; }`,
+      {
+        leaks: [
+          ['persistence', 'f', 'PrismaClient', '@prisma/client'],
+          ['persistence', 'f', 'TransactionClient', '@prisma/client'],
+          ['persistence', 'f', 'QueryBuilder', 'knex'],
+          ['persistence', 'f', 'Transaction', 'knex'],
+        ],
+      },
     ),
   ],
 });

@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { textOf } from '../../../../../../shared/values/readers.mts';
 import { nameOf } from '../typed/node-views.mts';
 import { literalText, narrowedTypes } from './field-narrowing.mts';
 import { grammarFieldsOf, projectGrammarPackages, type GrammarFields } from './grammar-fields.mts';
@@ -17,7 +18,7 @@ const EQUALITY = new Set(['===', '==', '!==', '!=']);
 type Lookup = {
   readonly node: TSESTree.Node;
   readonly field: string;
-  readonly receiver?: TSESTree.Node;
+  readonly receiver: TSESTree.Node;
 };
 
 function fieldLookup(node: TSESTree.CallExpression): Lookup | undefined {
@@ -25,7 +26,7 @@ function fieldLookup(node: TSESTree.CallExpression): Lookup | undefined {
   if (
     callee.type !== AST_NODE_TYPES.MemberExpression ||
     callee.computed ||
-    !FIELD_CALLS.has(nameOf(callee.property) ?? '')
+    !FIELD_CALLS.has(textOf(nameOf(callee.property)))
   ) {
     return undefined;
   }
@@ -63,11 +64,14 @@ function candidatePackages(
 }
 
 function narrowedFields(grammar: GrammarFields, types: readonly string[]): Set<string> | undefined {
-  const sets = types.map((type) => grammar.byType.get(type));
-  if (sets.length === 0 || sets.some((fields) => fields === undefined)) {
+  const sets = types.flatMap((type) => {
+    const fields = grammar.byType.get(type);
+    return fields === undefined ? [] : [fields];
+  });
+  if (sets.length === 0 || sets.length !== types.length) {
     return undefined;
   }
-  return new Set(sets.flatMap((fields) => [...(fields ?? [])]));
+  return new Set(sets.flatMap((fields) => [...fields]));
 }
 
 function isUnknown(
@@ -102,7 +106,7 @@ function recordModule(facts: Facts, node: TSESTree.Node): void {
   }
 }
 
-function recordText(facts: Facts, node: TSESTree.Node): void {
+function recordText(facts: Facts, node: TSESTree.Literal | TSESTree.TemplateElement): void {
   const text = stringText(node);
   if (text !== undefined) {
     facts.literals.push(text);
@@ -161,7 +165,7 @@ export const rule: TSESLint.RuleModule<'unknownField'> = {
     function visitModule(node: TSESTree.Node): void {
       recordModule(facts, node);
     }
-    function visitText(node: TSESTree.Node): void {
+    function visitText(node: TSESTree.Literal | TSESTree.TemplateElement): void {
       recordText(facts, node);
     }
     return {

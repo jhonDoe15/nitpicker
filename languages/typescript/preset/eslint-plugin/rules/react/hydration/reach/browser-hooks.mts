@@ -58,23 +58,33 @@ function typeofGlobal(node: TypeScript.Expression): boolean {
   );
 }
 
+function combinedOperands(node: TypeScript.Expression): TypeScript.Expression[] {
+  if (ts.isPrefixUnaryExpression(node) && node.operator === ts.SyntaxKind.ExclamationToken) {
+    return [node.operand];
+  }
+  if (ts.isBinaryExpression(node) && LOGICAL.has(node.operatorToken.kind)) {
+    return [node.left, node.right];
+  }
+  return [];
+}
+
+function isTypeofComparison(node: TypeScript.Expression): boolean {
+  return (
+    ts.isBinaryExpression(node) &&
+    EQUALITY.has(node.operatorToken.kind) &&
+    (typeofGlobal(node.left) || typeofGlobal(node.right))
+  );
+}
+
 function isTypeofCombination(expression: TypeScript.Expression): boolean {
   const pending = [expression];
   for (const current of pending) {
     const node = withoutParentheses(current);
-    const operator = ts.isBinaryExpression(node) ? node.operatorToken.kind : undefined;
-    if (ts.isPrefixUnaryExpression(node) && node.operator === ts.SyntaxKind.ExclamationToken) {
-      pending.push(node.operand);
-    } else if (ts.isBinaryExpression(node) && operator !== undefined && LOGICAL.has(operator)) {
-      pending.push(node.left, node.right);
-    } else if (!(
-      ts.isBinaryExpression(node) &&
-      operator !== undefined &&
-      EQUALITY.has(operator) &&
-      (typeofGlobal(node.left) || typeofGlobal(node.right))
-    )) {
+    const operands = combinedOperands(node);
+    if (operands.length === 0 && !isTypeofComparison(node)) {
       return false;
     }
+    pending.push(...operands);
   }
   return true;
 }
@@ -107,18 +117,25 @@ function returnsTypeofTest(body: HookBody): boolean {
   );
 }
 
+function declaredValue(
+  statement: TypeScript.Statement,
+  name: string,
+): TypeScript.Expression | undefined {
+  const declarations = ts.isVariableStatement(statement)
+    ? statement.declarationList.declarations
+    : [];
+  const found = declarations.find(
+    (each) => ts.isIdentifier(each.name) && each.name.text === name,
+  )?.initializer;
+  return found === undefined ? undefined : withoutParentheses(found);
+}
+
 function declaredFunction(source: TypeScript.SourceFile, name: string): HookBody | undefined {
   for (const statement of source.statements) {
     if (ts.isFunctionDeclaration(statement) && statement.name?.text === name) {
       return statement;
     }
-    const declarations = ts.isVariableStatement(statement)
-      ? statement.declarationList.declarations
-      : [];
-    const found = declarations.find(
-      (each) => ts.isIdentifier(each.name) && each.name.text === name,
-    )?.initializer;
-    const value = found === undefined ? undefined : withoutParentheses(found);
+    const value = declaredValue(statement, name);
     if (value !== undefined && (ts.isArrowFunction(value) || ts.isFunctionExpression(value))) {
       return value;
     }

@@ -44,6 +44,34 @@ function nestedProject(): string {
   return path.join(root, 'src', 'walk.mts');
 }
 
+function customProject(nodeTypes: string | undefined, manifest: string): string {
+  const root = mkdtempSync(path.join(tmpdir(), 'tree-sitter-fields-'));
+  mkdirSync(path.join(root, 'src'));
+  const directory = path.join(root, 'node_modules', 'tree-sitter-java', 'src');
+  mkdirSync(directory, { recursive: true });
+  if (nodeTypes === undefined) {
+    mkdirSync(path.join(directory, 'node-types.json'));
+  } else {
+    writeFileSync(path.join(directory, 'node-types.json'), nodeTypes);
+  }
+  writeFileSync(path.join(root, 'package.json'), manifest);
+  return path.join(root, 'src', 'walk.mts');
+}
+
+const javaManifest = JSON.stringify({ dependencies: { 'tree-sitter-java': '1.0.0' } });
+const directoryTypes = customProject(undefined, javaManifest);
+const brokenTypes = customProject('{bad', javaManifest);
+const objectTypes = customProject('{}', javaManifest);
+const looseTypes = customProject(
+  JSON.stringify([
+    { fields: { stray: {} } },
+    { type: 'twin', fields: { left: {} } },
+    { type: 'twin', fields: { right: {} } },
+  ]),
+  javaManifest,
+);
+const brokenManifest = customProject('[]', '{bad');
+
 const withGrammar = project(true, 'tree-sitter-java');
 const withoutGrammar = project(false, 'tree-sitter-java');
 const nested = nestedProject();
@@ -110,8 +138,49 @@ tester.run('no-unknown-tree-sitter-field', rule, {
     valid(
       "function f(node) { if (node.type !== 'type_pattern') return null; node = node.parent; return node.childForFieldName('name'); }",
     ),
+    valid("function f(node) { return node.other('zzz') ?? node[name]('zzz') ?? parse('zzz'); }"),
+    valid('const a = import(name), b = require(), c = require(name), d = require(`x`);'),
+    valid('function f(node) { return node.childForFieldName(); }'),
+    valid('function f(node) { return node.childForFieldName(1); }'),
+    valid('function f(node) { return node.childForFieldName(`a${b}`); }'),
+    valid("function f(node) { return node.childForFieldName('nme'); }", directoryTypes),
+    valid("function f(node) { return node.childForFieldName('nme'); }", brokenTypes),
+    valid("function f(node) { return node.childForFieldName('nme'); }", objectTypes),
+    valid("function f(node) { return node.childForFieldName('nme'); }", brokenManifest),
+    valid("function f(node) { return node.childForFieldName('stray'); }", looseTypes),
+    valid("function f(node) { return node.childForFieldName('right'); }", looseTypes),
+    valid(
+      "function f(node) { switch (node.type) { case node.childForFieldName('name'): return 1; } }",
+    ),
+    valid(
+      "function f(node) { switch (kind) { case 'a': return node.childForFieldName('name'); } }",
+    ),
   ],
   invalid: [
+    {
+      filename: noHint,
+      code: "import { Parser } from 'web-tree-sitter';\nconst j = require('tree-sitter-java');\nconst x = (n) => n.childForFieldName('nme');",
+      errors: [{ messageId: 'unknownField' as const }],
+    },
+    invalid("function f(node) { return node.childForFieldName('nme'); }", looseTypes),
+    invalid(
+      "function f(node) { return 'type_pattern' === node.type && node.childForFieldName('name'); }",
+    ),
+    invalid(
+      "function f() { return this.type === 'type_pattern' && this.childForFieldName('name'); }",
+    ),
+    invalid(
+      "function f() { return node.type === 'type_pattern' && node.childForFieldName('name'); }",
+    ),
+    invalid(
+      "function f(node) { node = g(); if (node.type === 'type_pattern') { return node.childForFieldName('name'); } }",
+    ),
+    invalid(
+      "function f(node) { if (node.type === 'type_pattern') { const x = node.childForFieldName('name'); node = g(); return x; } }",
+    ),
+    invalid(
+      "function f(node) { switch (node.type) { case 'method_declaration': return 1; case 'type_pattern': return node.childForFieldName('name'); } }",
+    ),
     invalid("function f(node) { return node.childForFieldName('nme'); }", nested),
     invalid(
       "function f(node) { switch (node.type) { case 'type_pattern': return node.childForFieldName('name'); } }",

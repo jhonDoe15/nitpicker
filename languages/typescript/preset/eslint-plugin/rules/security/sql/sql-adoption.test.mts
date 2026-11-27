@@ -58,6 +58,10 @@ tester.run('no-sql-string-building on prose and builders', rule, {
   ],
   invalid: [
     {
+      code: 'const ALLOWED = new Set(["name"]); export function f(pool: any, column: string) { if (!ALLOWED.has(column)) {} return pool.query(`SELECT * FROM users ORDER BY ${column}`); }',
+      errors: template,
+    },
+    {
       code: 'const ALLOWED = new Set(["name"]); export function f(pool: any, column: string) { if (!ALLOWED.has(column)) { console.log(column); } return pool.query(`SELECT * FROM users ORDER BY ${column}`); }',
       errors: template,
     },

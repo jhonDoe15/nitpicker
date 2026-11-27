@@ -113,7 +113,7 @@ const TEST_FILE = /(?:^|[/\\])__tests__[/\\]|\.(?:test|spec|stories)\.[^/\\]+$/u
 
 export function packageSourceMatches(filename: string, pattern: RegExp): boolean {
   const root = nearestPackage(filename);
-  const key = `package\0${root ?? ''}\0${pattern.flags}\0${pattern.source}`;
+  const key = `package\0${String(root)}\0${pattern.flags}\0${pattern.source}`;
   return cachedValue(
     verdicts,
     key,

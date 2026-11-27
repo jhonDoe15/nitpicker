@@ -18,6 +18,23 @@ const invalid = [
 ];
 
 const valid = [
+  'function run(task, now) { const start = Date.now(); task(); if (now - start > 5) { slow(); } }',
+  'function run(task) { const start = Date.now(); let now; if (now - start > 5) { slow(); } }',
+  'function run(task) { const start = Date.now(); task(); if (later - start > 5) { slow(); } }',
+  'function f() { const a = -x; return a; }',
+  'function f() { const a = +x; return a; }',
+  'function f() { const a = +new Date(1); return a; }',
+  'function f() { const a = +new Foo(); return a; }',
+  'function f() { const a = +new ns.Date(); return a; }',
+  'function f() { const a = foo(); return a; }',
+  'function f() { const a = 5; return a; }',
+  'function f() { const a = Date["now"](); return a; }',
+  'function f() { const a = Date.other(); return a; }',
+  'function f() { const a = Other.now(); return a; }',
+  'function f() { const a = ns.Date.now(); return a; }',
+  'function f() { const a = new Date().foo(); return a; }',
+  'function f() { const a = new Date().valueOf(); return a; }',
+  'function f() { const a = new Date().getTime(); return a; }',
   'function run(task) { const start = performance.now(); task(); if (performance.now() - start > 1000) { warn(); } }',
   'function run(task) { const start = Date.now(); task(); log(Date.now() - start); }',
   'function run(task) { const start = Date.now(); task(); save({ start }); if (Date.now() - start > 5) { slow(); } }',

@@ -53,8 +53,7 @@ function hasFileNameInScope(scope: Scope): boolean {
   const outer = chain.findIndex(
     (current) => current.type === ScopeType.global || current.type === ScopeType.module,
   );
-  const inner = outer === -1 ? chain : chain.slice(0, outer);
-  return inner.some((current) => current.variables.some(holdsFileName));
+  return chain.slice(0, outer).some((current) => current.variables.some(holdsFileName));
 }
 
 function propertyKey(property: TSESTree.Property): string | undefined {

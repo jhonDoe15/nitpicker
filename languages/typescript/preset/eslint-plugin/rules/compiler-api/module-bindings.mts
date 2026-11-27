@@ -58,14 +58,27 @@ type Binding = { readonly namespace: true } | { readonly namespace: false; reado
 
 const NAMESPACE_BINDING: Binding = { namespace: true };
 
-function importBinding(node: TSESTree.Node): Binding | undefined {
+function specifierBinding(node: TSESTree.ImportSpecifier): Binding | undefined {
+  const imported = nameOf(node.imported);
+  return imported !== undefined &&
+    node.parent.type === AST_NODE_TYPES.ImportDeclaration &&
+    MODULES.has(node.parent.source.value)
+    ? { namespace: false, name: imported }
+    : undefined;
+}
+
+type ImportNode = TSESLint.Scope.Definitions.ImportBindingDefinition['node'];
+
+function importEqualsBinding(node: TSESTree.TSImportEqualsDeclaration): Binding | undefined {
+  return node.moduleReference.type === AST_NODE_TYPES.TSExternalModuleReference &&
+    MODULES.has(node.moduleReference.expression.value)
+    ? NAMESPACE_BINDING
+    : undefined;
+}
+
+function importBinding(node: ImportNode): Binding | undefined {
   if (node.type === AST_NODE_TYPES.ImportSpecifier) {
-    const imported = nameOf(node.imported);
-    return imported !== undefined &&
-      node.parent.type === AST_NODE_TYPES.ImportDeclaration &&
-      MODULES.has(node.parent.source.value)
-      ? { namespace: false, name: imported }
-      : undefined;
+    return specifierBinding(node);
   }
   if (
     node.type === AST_NODE_TYPES.ImportDefaultSpecifier ||
@@ -73,11 +86,7 @@ function importBinding(node: TSESTree.Node): Binding | undefined {
   ) {
     return MODULES.has(node.parent.source.value) ? NAMESPACE_BINDING : undefined;
   }
-  return node.type === AST_NODE_TYPES.TSImportEqualsDeclaration &&
-    node.moduleReference.type === AST_NODE_TYPES.TSExternalModuleReference &&
-    MODULES.has(node.moduleReference.expression.value)
-    ? NAMESPACE_BINDING
-    : undefined;
+  return importEqualsBinding(node);
 }
 
 type Alias = {
@@ -174,19 +183,19 @@ function bindingOf(name: string, scope: Scope): Binding | undefined {
   );
 }
 
+function memberApiName(callee: TSESTree.MemberExpression, scope: Scope): string | undefined {
+  return !callee.computed &&
+    callee.object.type === AST_NODE_TYPES.Identifier &&
+    callee.property.type === AST_NODE_TYPES.Identifier &&
+    bindingOf(callee.object.name, scope)?.namespace === true
+    ? callee.property.name
+    : undefined;
+}
+
 export function apiName(callee: TSESTree.Node, scope: Scope): string | undefined {
   if (callee.type === AST_NODE_TYPES.Identifier) {
     const binding = bindingOf(callee.name, scope);
     return binding?.namespace === false ? binding.name : undefined;
   }
-  if (
-    callee.type === AST_NODE_TYPES.MemberExpression &&
-    !callee.computed &&
-    callee.object.type === AST_NODE_TYPES.Identifier &&
-    callee.property.type === AST_NODE_TYPES.Identifier &&
-    bindingOf(callee.object.name, scope)?.namespace === true
-  ) {
-    return callee.property.name;
-  }
-  return undefined;
+  return callee.type === AST_NODE_TYPES.MemberExpression ? memberApiName(callee, scope) : undefined;
 }
