@@ -533,5 +533,17 @@
  "CacheLoaderNull",
  "DoNotMockAutoValue",
  "RequiredModifiers",
- "CollectionIncompatibleType"
+ "CollectionIncompatibleType",
+ "FallThrough",
+ "MissingDefault",
+ "SwitchDefault",
+ "ReachabilityFenceUsage",
+ "WrongOneof",
+ "PatternMatchingInstanceof",
+ "MultipleNullnessAnnotations",
+ "NullablePrimitive",
+ "NullablePrimitiveArray",
+ "NullableTypeParameter",
+ "NullableWildcard",
+ "NullableVoid"
 ]

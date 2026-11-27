@@ -13,6 +13,7 @@ const PROJECT_ARG = '--project-arg=';
 const OWN_CLASSES = '--own-classes=';
 const GENERATED_ROOT = '--generated-root=';
 const RELEASE = '--release=';
+const SOURCE = '--source=';
 const PROCESSOR_SERVICE = 'META-INF/services/javax.annotation.processing.Processor';
 const JDK_MODULE = /^--(?:add-exports|patch-module)=(?:java|jdk)\./u;
 const PAIRED = ['--add-exports', '--patch-module'];
@@ -71,6 +72,13 @@ export function releaseOf(head: readonly string[]): string | undefined {
     ),
   );
   return patchesJdk ? undefined : release;
+}
+
+/** The language level javac reads the sources at when no `--release` reaches the engine: `--release`, else `--source`. */
+export function sourceLevelOf(head: readonly string[]): string | undefined {
+  const [release] = valuesAfter(head, RELEASE);
+  const [source] = valuesAfter(head, SOURCE);
+  return release ?? source;
 }
 
 export function entryHolds(entry: string, name: string): boolean {

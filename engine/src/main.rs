@@ -97,6 +97,7 @@ fn main() {
                 options.encoding = engine::encoding::named(&value(index)).unwrap_or_else(|problem| fail(&problem));
             }
             "--release" => { index += 1; options.release = Some(args[index].parse().expect("release number")); }
+            "--source" => { index += 1; options.source = Some(value(index).trim_start_matches("1.").parse().expect("source level")); }
             other => roots.push(PathBuf::from(other)),
         }
         index += 1;
