@@ -1609,6 +1609,43 @@ runs first gave it one (a field initializer or initializer block before the use,
   `cond ? a : b` (#2695, #2696).
 - DM_CONVERT_CASE is priority 3 only, which `-medium` hides.
 
+### Division casts, waits, thread starts and mutable enums
+
+Four small detectors of the long tail (#2535, `src/java/spotbugs/tail/`), labs in `tests/fixtures/spotbugs/tail_*`.
+SpotBugs no longer runs IDivResultCastToDouble, WaitInLoop, StartInConstructor and MutableEnum.
+- ICAST_IDIV_CAST_TO_DOUBLE: an `int` or `long` division (not one javac folds) whose result javac converts to
+  `float` or `double` right away: a cast, an assignment, an argument, a return, the other operand of arithmetic or
+  a comparison, a branch of a `double` conditional or switch. SpotBugs looks at the instruction just before the
+  conversion, so for `(double) (c ? x / y : 1)` only the last branch counts. Priority 2.
+- ICAST_INT_CAST_TO_DOUBLE_PASSED_TO_CEIL and ICAST_INT_CAST_TO_FLOAT_PASSED_TO_ROUND: `Math` or `StrictMath`
+  `ceil(double)` or `round(float)` given an `int` or `long` value (an unboxed one too), converted on the way or by a
+  cast; not when the last instruction of the value pushes a constant (`c ? x : 1`). Priority 1 and 2. A division
+  handed to them is reported only as these. Each of the three once per method, at its first place.
+- WA_NOT_IN_LOOP and WA_AWAIT_NOT_IN_LOOP: only the first `wait(…)` or `await()`/`awaitUninterruptibly()` call of a
+  method counts (`await` written against `Condition` itself; the timed `await` forms are not counted). Reported
+  when no loop around it jumps back over it: a loop body, condition or `for` update holds it, the `for` setup
+  and the iterable of a `for`-each do not, nor a loop the code after the call always leaves (`return`, `throw`,
+  a `break` or `continue` out of it) or a `do` loop whose condition javac folds to `false`. `wait()` and `await` are priority 2, timed `wait` 3 (hidden).
+- NO_NOTIFY_NOT_NOTIFYALL was priority 3 in every lab, so it is never shown; the engine does not report it.
+- SC_START_IN_CTOR: `start()` on a `Thread` or a class below it in a public or protected constructor of a public
+  (or protected member), non-final class; priority 1 when a class of the run extends it, else 3 (hidden) when the
+  next instruction returns (also through `break`, the end of `do … while (false)` or of the last case of a switch
+  without `default`), 2 otherwise (more code follows, a jump out of a `then` branch, a loop, `try` or `synchronized`). Same-priority calls make one finding per constructor.
+  The SARIF place is the called method as javac names it, shown without the package and without the class when
+  it is the constructor's own.
+- ME_MUTABLE_ENUM_FIELD: each public, non-final instance field of a public enum, priority 2, no line.
+- ME_ENUM_FIELD_SETTER: a public instance method of a public enum storing a parameter's value (through casts and
+  locals copied from it) into an instance field of the enum before any jump: conditions, loops, switches,
+  conditional values, `&&`, `||`, `!`, comparisons, `assert`, and leaving a `try`, `catch` or `synchronized`
+  block; `if` and `do` conditions javac folds and empty `try` blocks write none. Static methods count, chained
+  `f = g = p` sets both fields, a nested enum's public fields are left out. Once per method and field, priority 2.
+  A `do` loop and `try`-with-resources are taken as jumps. Known gap: SpotBugs still reports a store after or in a
+  `switch`; the engine takes the switch as a jump. With Lombok this pattern stays in SpotBugs (generated setters).
+
+On the comparison code bases, SARIF results: guava 2 / 0 / 0 (WA_AWAIT_NOT_IN_LOOP), Nacos 1 / 0 / 0
+(ME_ENUM_FIELD_SETTER), commons-lang, jackson-databind, javaparser-core and mybatis-3 0 / 0 / 0. The saved
+Elasticsearch report has one each of the CEIL cast, WA_NOT_IN_LOOP and SC_START_IN_CTOR, not checked here.
+
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in

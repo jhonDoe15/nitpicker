@@ -18,7 +18,13 @@ const LOMBOK_WITHOUT_CLASSES: readonly string[] = [
   'DLS_',
   'IP_PARAMETER_IS_DEAD_BUT_OVERWRITTEN',
 ];
-const LOMBOK_WRITES: readonly string[] = ['AT_', 'UG_', 'URF_', 'NM_METHOD_NAMING_CONVENTION'];
+const LOMBOK_WRITES: readonly string[] = [
+  'AT_',
+  'UG_',
+  'URF_',
+  'NM_METHOD_NAMING_CONVENTION',
+  'ME_ENUM_FIELD_SETTER',
+];
 const FILE_WRITERS: readonly string[] = [
   'com.google.auto.service.processor.',
   'com.google.auto.value.',
