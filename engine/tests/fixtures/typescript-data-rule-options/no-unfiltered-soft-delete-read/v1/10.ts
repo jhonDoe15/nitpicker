@@ -1,0 +1,1 @@
+async function f(db) { return db.select().from(assets).where(and(eq(assets.ownerId, 1), isNull(assets.deletedAt))); }

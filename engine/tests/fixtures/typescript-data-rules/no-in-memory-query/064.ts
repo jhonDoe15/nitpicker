@@ -1,0 +1,1 @@
+import { EntityManager } from "@mikro-orm/core"; export async function run(repo, prisma, db, em, Order, id, ids) { const rows = await em.find(Order, { id }); return rows.length; }

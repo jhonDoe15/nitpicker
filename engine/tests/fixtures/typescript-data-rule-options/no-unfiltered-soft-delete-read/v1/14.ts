@@ -1,0 +1,1 @@
+class S { find() { this.logger.log('deleted'); return this.assetRepository.find({ where: { owner: 1 } }); } }

@@ -1,0 +1,1 @@
+import { Repository } from "typeorm"; import { isEmpty } from "lodash-es"; export async function run(repo, prisma, db, em, Order, id, ids) { return isEmpty(await repo.find()); }

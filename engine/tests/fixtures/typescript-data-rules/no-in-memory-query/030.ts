@@ -1,0 +1,1 @@
+import { eq } from "drizzle-orm"; export async function run(repo, prisma, db, em, Order, id, ids) { return (await db.select().from(orders).limit(5)).length; }
