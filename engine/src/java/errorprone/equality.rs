@@ -5,6 +5,7 @@ use super::operators::operator;
 use super::parts::arguments;
 use super::qualify::qualify;
 use super::Context;
+use super::symbol_key::same_symbol as same_variable;
 use crate::engine::source::parent;
 use crate::java::types::expr::unwrap;
 use crate::java::types::model::Type;
@@ -51,31 +52,7 @@ pub fn known_non_null(context: &Context, expression: Node) -> bool {
     }
 }
 
-fn same_variable(context: &Context, a: Node, b: Node) -> bool {
-    let (a, b) = (unwrap(a), unwrap(b));
-    let name = |node: Node| match node.kind() {
-        "identifier" => Some(context.text(node).to_string()),
-        "field_access" => node.child_by_field_name("field").map(|field| context.text(field).to_string()),
-        _ => None,
-    };
-    let (Some(first), Some(second)) = (name(a), name(b)) else { return false };
-    if first != second {
-        return false;
-    }
-    match (a.kind(), b.kind()) {
-        ("identifier", "identifier") => true,
-        ("field_access", "field_access") => match (a.child_by_field_name("object"), b.child_by_field_name("object")) {
-            (Some(x), Some(y)) => same_variable(context, x, y) || (context.text(x) == context.text(y)),
-            _ => false,
-        },
-        (_, other) => {
-            let selected = if other == "field_access" { b } else { a };
-            selected.child_by_field_name("object").is_some_and(|object| context.text(object) == "this")
-        }
-    }
-}
-
-fn pair_matches(context: &Context, first: Node, second: Node, lhs: Node, rhs: Node) -> bool {
+fn pair_matches<'t>(context: &Context<'t>, first: Node<'t>, second: Node<'t>, lhs: Node<'t>, rhs: Node<'t>) -> bool {
     (same_variable(context, first, lhs) && same_variable(context, second, rhs)) || (same_variable(context, first, rhs) && same_variable(context, second, lhs))
 }
 

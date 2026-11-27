@@ -2,7 +2,7 @@
 use super::Context;
 use super::fix_helpers::qualify_type;
 use super::fixes::Fix;
-use super::lookup::same_variable;
+use super::symbol_key::same_symbol as same_variable;
 use super::positions::{arguments, preferred};
 use crate::engine::source::{children, named_children, parent};
 use tree_sitter::Node;

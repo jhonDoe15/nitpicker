@@ -1,6 +1,6 @@
 //! ModifyCollectionInEnhancedForLoop: a collection changed inside the loop that iterates over it.
 use super::Context;
-use super::lookup::same_variable;
+use super::symbol_key::same_symbol as same_variable;
 use crate::engine::source::{named_children, parent};
 use tree_sitter::Node;
 

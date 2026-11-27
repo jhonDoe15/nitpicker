@@ -46,7 +46,7 @@ fn key<'t>(context: &Context<'t>, scopes: &OnceCell<Scopes<'t>>, node: Node<'t>)
             match declaration(context.resolver, scopes, node, name) {
                 Some(Found::Local(declared)) => return Some(Key::Local(declared.start_byte())),
                 Some(Found::Field) => {}
-                None => return class_key(context, node),
+                None => return field_of(context, node).map(|(declaring, field)| Key::Field(declaring.name.clone(), field.name.clone())).or_else(|| class_key(context, node)),
             }
             let (declaring, field) = field_of(context, node)?;
             Some(Key::Field(declaring.name.clone(), field.name.clone()))

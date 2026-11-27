@@ -1,17 +1,13 @@
 //! The fixes ReferenceEquality suggests: ask `equals` instead of comparing references.
 use super::Context;
+use super::symbol_key::same_symbol as same_variable;
 use super::fixes::Fix;
 use super::fix_helpers::qualify_type;
 use crate::engine::source::parent;
 use crate::java::types::expr::unwrap;
 use tree_sitter::Node;
 
-fn same_variable(context: &Context, left: Node, right: Node) -> bool {
-    let (left, right) = (unwrap(left), unwrap(right));
-    matches!(left.kind(), "identifier" | "field_access") && left.kind() == right.kind() && context.text(left) == context.text(right)
-}
-
-fn pair_matches(context: &Context, first: Node, second: Node, left: Node, right: Node) -> bool {
+fn pair_matches<'t>(context: &Context<'t>, first: Node<'t>, second: Node<'t>, left: Node<'t>, right: Node<'t>) -> bool {
     (same_variable(context, first, left) && same_variable(context, second, right)) || (same_variable(context, first, right) && same_variable(context, second, left))
 }
 
