@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { textOf } from '../../values/readers.mts';
 import { attributesOf, propertyValues, xmlFilesMatching } from './xml-files.mts';
 import type { XmlFile } from './xml-files.mts';
 
@@ -18,7 +19,7 @@ const NARROWING = ['lines', 'columns', 'message', 'files-not', 'query'];
 const SIMPLE_NAME = /^\w+$/u;
 
 function simpleName(name: string): string {
-  return (name.split('.').at(-1) ?? name).replace(/Check$/u, '');
+  return name.slice(name.lastIndexOf('.') + 1).replace(/Check$/u, '');
 }
 
 function moduleBody(text: string, match: RegExpExecArray): string {
@@ -38,7 +39,7 @@ function enabledModules({ file, text }: XmlFile): Map<string, string> {
     if (properties.get('severity') === 'ignore') {
       continue;
     }
-    enabled.set(simpleName(match[1] ?? ''), file);
+    enabled.set(simpleName(textOf(match[1])), file);
     const id = properties.get('id');
     if (id !== undefined) {
       enabled.set(`id:${id}`, file);
@@ -52,7 +53,7 @@ function referencedSuppressionFiles({ text }: XmlFile): Set<string> {
   for (const match of text.matchAll(
     /<module\s+name="SuppressionFilter"\s*>([\s\S]*?)<\/module>/gu,
   )) {
-    const value = propertyValues(match[1] ?? '').get('file');
+    const value = propertyValues(textOf(match[1])).get('file');
     if (value !== undefined) {
       names.add(path.posix.basename(value));
     }
@@ -61,13 +62,15 @@ function referencedSuppressionFiles({ text }: XmlFile): Set<string> {
 }
 
 function suppressedModules(attributes: ReadonlyMap<string, string>): string[] {
-  const everywhere = EVERY_FILE.has(attributes.get('files') ?? '') && attributes.has('files');
+  const files = attributes.get('files');
+  const everywhere = files !== undefined && EVERY_FILE.has(files);
   const narrowed = NARROWING.some((name) => attributes.has(name));
   if (!everywhere || narrowed) {
     return [];
   }
   const checks = (attributes.get('checks') ?? '').split('|').map((item) => item.trim());
-  const ids = attributes.has('id') ? [`id:${attributes.get('id') ?? ''}`] : [];
+  const id = attributes.get('id');
+  const ids = id === undefined ? [] : [`id:${id}`];
   return [...checks.filter((item) => SIMPLE_NAME.test(item)).map(simpleName), ...ids];
 }
 
@@ -82,7 +85,7 @@ function singleFilterEntries(config: XmlFile): Entry[] {
     ...config.text.matchAll(/<module\s+name="SuppressionSingleFilter"\s*>([\s\S]*?)<\/module>/gu),
   ].map((match) => ({
     file: config.file,
-    modules: suppressedModules(propertyValues(match[1] ?? '')),
+    modules: suppressedModules(propertyValues(textOf(match[1]))),
     configs: [config.file],
   }));
 }
@@ -108,7 +111,7 @@ export function everywhereSuppressions(
       ? []
       : [...text.matchAll(SUPPRESSION)].map((match) => ({
           file,
-          modules: suppressedModules(attributesOf(match[1] ?? '')),
+          modules: suppressedModules(attributesOf(textOf(match[1]))),
           configs: owners,
         }));
   });

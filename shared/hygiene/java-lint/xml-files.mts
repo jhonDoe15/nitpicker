@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { matchPairs } from '../../lists/match-pairs.mts';
 import { readBoundedText } from '../../filesystem.mts';
+import { textOf } from '../../values/readers.mts';
 
 export type XmlFile = { readonly file: string; readonly text: string };
 
@@ -40,7 +41,7 @@ export function attributesOf(tagText: string): Map<string, string> {
 export function propertyValues(text: string): Map<string, string> {
   const values = new Map<string, string>();
   for (const match of text.matchAll(/<property\b([^>]*?)\/?>/gu)) {
-    const attributes = attributesOf(match[1] ?? '');
+    const attributes = attributesOf(textOf(match[1]));
     const name = attributes.get('name');
     if (name !== undefined && !values.has(name)) {
       values.set(name, attributes.get('value') ?? '');

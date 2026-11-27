@@ -1,4 +1,5 @@
 import { xmlFilesMatching } from '../java-lint/xml-files.mts';
+import { textOf } from '../../values/readers.mts';
 
 export type XPathRule = { readonly file: string; readonly rule: string; readonly xpath: string };
 
@@ -24,7 +25,7 @@ function decoded(value: string): string {
         (text, [entity, character]) => text.replaceAll(entity, () => character),
         value,
       )
-    : (cdata[1] ?? '');
+    : textOf(cdata[1]);
 }
 
 function plainXPath(xpath: string): string {
@@ -34,8 +35,8 @@ function plainXPath(xpath: string): string {
 export function projectXPathRules(projectRoot: string, files: readonly string[]): XPathRule[] {
   return xmlFilesMatching(projectRoot, files, RULESET).flatMap(({ file, text }) =>
     [...text.matchAll(RULE)].flatMap((match) => {
-      const value = XPATH_PROPERTY.exec(match[2] ?? '')?.[1];
-      const name = RULE_NAME.exec(match[1] ?? '')?.[1];
+      const value = XPATH_PROPERTY.exec(textOf(match[2]))?.[1];
+      const name = RULE_NAME.exec(textOf(match[1]))?.[1];
       return value === undefined || name === undefined
         ? []
         : [{ file, rule: name, xpath: plainXPath(decoded(value)) }];

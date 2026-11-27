@@ -16,9 +16,11 @@ export type MemoryBroker = {
 
 type Lease = { cancelled: boolean; release: Release | undefined; granting?: Promise<void> };
 
-type Ledger = { readonly semaphore: Semaphore; readonly capacity: number };
+export type Ledger = { readonly semaphore: Semaphore; readonly capacity: number };
 
-type Request = { readonly socket: Socket; readonly id: number; readonly lease: Lease };
+export type LeaseSocket = { readonly destroyed: boolean; write(text: string): unknown };
+
+type Request = { readonly socket: LeaseSocket; readonly id: number; readonly lease: Lease };
 
 type Address = { readonly address: string; readonly folder?: string } | { readonly failed: string };
 
@@ -47,7 +49,9 @@ async function admit(
   socket.write(`${JSON.stringify({ id })}\n`);
 }
 
-function serve(socket: Socket, ledger: Ledger): void {
+export type LeaseRequests = { readonly handle: (line: string) => void; readonly close: () => void };
+
+export function leaseRequests(socket: LeaseSocket, ledger: Ledger): LeaseRequests {
   const leases = new Map<number, Lease>();
   function handle(message: unknown): void {
     const id = fieldOf(message, 'id');
@@ -64,20 +68,25 @@ function serve(socket: Socket, ledger: Ledger): void {
     endLease(leases.get(id));
     leases.delete(id);
   }
-  socket.setEncoding('utf8');
-  socket.on(
-    'data',
-    messageLines((line) => {
+  return {
+    handle: (line) => {
       handle(parseJson(line));
-    }),
-  );
+    },
+    close: () => {
+      for (const lease of leases.values()) {
+        endLease(lease);
+      }
+      leases.clear();
+    },
+  };
+}
+
+function serve(socket: Socket, ledger: Ledger): void {
+  const requests = leaseRequests(socket, ledger);
+  socket.setEncoding('utf8');
+  socket.on('data', messageLines(requests.handle));
   socket.on('error', () => undefined);
-  socket.on('close', () => {
-    for (const lease of leases.values()) {
-      endLease(lease);
-    }
-    leases.clear();
-  });
+  socket.on('close', requests.close);
 }
 
 async function brokerAddress(): Promise<Address> {

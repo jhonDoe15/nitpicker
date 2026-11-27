@@ -70,6 +70,40 @@ describe('reading what the engine wrote', () => {
     expect(() => engineFindings({})).toThrow(TypeError);
   });
 
+  it.each([
+    [[1, 'nitpicker/x', 3, 5, 'why']],
+    [['a.ts', 2, 3, 5, 'why']],
+    [['a.ts', 'nitpicker/x', 3, '5', 'why']],
+    [['a.ts', 'nitpicker/x', 3, 5, 6]],
+    ['a.ts'],
+  ])('rejects the row %j, which is not a finding', (row) => {
+    expect(() => engineFindings([row])).toThrow(
+      `nitpicker-engine wrote a row that is not a finding: ${JSON.stringify(row)}`,
+    );
+  });
+
+  it('reads the end and the conditions of a row', () => {
+    expect(
+      engineFindings([
+        ['a.ts', 'nitpicker/x', 3, 5, 'why', 4, 1, [['kind', 'value'], ['bare'], []]],
+      ]),
+    ).toEqual([
+      {
+        file: 'a.ts',
+        rule: 'nitpicker/x',
+        line: 3,
+        column: 5,
+        message: 'why',
+        end: { line: 4, column: 1 },
+        conditions: [
+          ['kind', 'value'],
+          ['bare', ''],
+          ['', ''],
+        ],
+      },
+    ]);
+  });
+
   it('keeps only the files the engine could parse', () => {
     const findings = engineFindings([
       ['a.ts', '!parse', 1, 1, ''],
