@@ -858,6 +858,34 @@ initializers too. Measured (`tests/fixtures/spotbugs/values_reads*`, `values_uni
   Anonymous classes and enum constant bodies are not checked yet, though SpotBugs checks their implicit
   constructors.
 
+### Hard-coded passwords and keys
+
+`src/java/spotbugs/values/secrets/` rebuilds `HARD_CODE_PASSWORD` and `HARD_CODE_KEY`, which four FindSecBugs
+detectors report. Both run on the engine in real runs; SpotBugs filters them out. Measured
+(`tests/fixtures/spotbugs/secrets_*`):
+
+- Each class is followed method by method: the static initializer, then the constructors and methods in source
+  order (field initializers inside each constructor that does not start with `this(...)`), then the lambdas. A
+  hard-coded value is a string constant, or a `char[]`, `byte[]` or `BigInteger` made from constants: a
+  `toCharArray()`, `getBytes()` or `getBytes(String)` of a constant (or `null`), a non-empty array of constant
+  elements, a `BigInteger` whose `String` and `byte[]` arguments are all hard-coded. `trim()`, `toString()`,
+  `intern()` and `new StringBuilder(constant).toString()` keep a constant. A local holds one only when every path
+  gives one; a string ternary needs the same constant on both arms. A string field holds the constant the file
+  stores in it when it stores only one; a field with a store of a hard-coded array or number holds it for the
+  methods visited after the store.
+- Priority 1 for a hard-coded argument at a checked position of a JDK call (`secrets/sinks.tsv`), matched on the
+  class javac names in the call: subclasses are not checked. The place is a field an argument was read from, else
+  the call that made the hard-coded value, else the sink.
+- Priority 2, once per class on its first line, when the class stores a hard-coded array or number in a field whose
+  name holds `pass`, `pwd`, `psw`, `secret`, `key`, `cipher`, `crypt`, `des`, `aes`, `mac`, `cert` or `sign`, in
+  any case: `HARD_CODE_PASSWORD` when one of them is a `char[]`, else `HARD_CODE_KEY`.
+- `HARD_CODE_PASSWORD` at priority 2 on the calling method for a constant handed to a method named `password` or
+  `pwd` with one `String` parameter, or one whose name starts with `set` and holds one of them; to `put`, `putIfAbsent` or
+  `setProperty` returning `Object` with a constant key holding `password` or `pwd`; and as the passphrase of
+  `JSch.addIdentity(String, String)`. A constant here also follows the taint table's one-source JDK methods and
+  methods of the file that return a constant or their argument.
+- Not measured: fields of other files, sinks of libraries beyond the stubs in `secrets_libraries`.
+
 ### Casts and `instanceof`
 
 `src/java/spotbugs/casts/` rebuilds FindBadCast2: the `BC_*` cast patterns and `NP_NULL_INSTANCEOF`. SpotBugs no
