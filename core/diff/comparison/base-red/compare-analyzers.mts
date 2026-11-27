@@ -12,12 +12,8 @@ import {
   TOOL_SKIPPED_RULE,
 } from '../../../../shared/rules/finding-parts.mts';
 import { withoutAnsi } from '../../../../shared/messages/terminal/terminal-text.mts';
-import {
-  baseFailuresOf,
-  baseNoteOf,
-  redBaseAnalyzers,
-  removedTestTargetsFor,
-} from './unknown-base.mts';
+import { baseFailuresOf, baseNoteOf, redBaseAnalyzers } from './unknown-base.mts';
+import { removalNotes } from './removal-notes.mts';
 import {
   unknownOnBaseOf,
   withoutHeadUnmeasured,
@@ -109,35 +105,6 @@ export function compareAnalyzers(context: ComparisonRequest): {
         ? [...failureNotes, ...removalNotes(failureNotes, context.touchedCode)]
         : failureNotes,
   };
-}
-
-const TESTS_REMOVED_MESSAGE = [
-  'The change removes tests, so the base cannot show what they covered:',
-  'every coverage, CRAP, mutation, slow-test and test-console result of the head counts as new.',
-].join(' ');
-
-const TARGETS_REMOVED_MESSAGE = [
-  'The change removes tests, so the base cannot show what they covered:',
-  'every coverage, CRAP, mutation, slow-test and test-console result in the files they import',
-  'counts as new.',
-].join(' ');
-
-function removalNotes(
-  failureNotes: readonly ReportEntry[],
-  touchedCode: ComparisonRequest['touchedCode'],
-): ReportEntry[] {
-  const narrowed = removedTestTargetsFor(failureNotes, touchedCode) !== undefined;
-  return failureNotes.length === 0
-    ? []
-    : [
-        {
-          tool: 'nitpicker',
-          snapshot: 'head',
-          rule: 'tests-removed',
-          path: '.',
-          message: narrowed ? TARGETS_REMOVED_MESSAGE : TESTS_REMOVED_MESSAGE,
-        },
-      ];
 }
 
 function withoutConsequenceNotes(notes: ReportEntry[]): ReportEntry[] {

@@ -560,12 +560,14 @@ NITPICKER_TEST_RESULTS=test-results npx nitpicker --analyzer coverage --analyzer
   red base is: a coverage, CRAP or slow-test finding is new when its file is added by the change or
   it sits on a line the change adds or edits (see "A base whose tests fail"), and the run carries a
   `tests-not-run-on-base` note instead of a tool error.
-- A change that removes tests widens the check only to the code they imported: a coverage, CRAP,
+- A change that removes tests widens the check only to the code they import: a coverage, CRAP,
   mutation, slow-test or test-console finding is also new when its file is one that a removed or
-  shrunk test file imports with a relative path (`./`, `../`), read at the base. When one of those
-  test files has no relative import, or cannot be read, every test-dependent result of the head
-  counts as new, as for a base whose tests ran and failed. The `tests-removed` note says which of
-  the two applied.
+  shrunk test file imports directly with a relative path (`./`, `../`), read at the base. Code the
+  test reached through those files is not included. When one of those test files has no relative
+  import, imports through an alias (`#`, `~`, `@/`), a barrel (`index`), a directory, a computed
+  path or a file outside the project, or cannot be read at the base, every test-dependent result
+  of the head counts as new, as for a base whose tests ran and failed. The `tests-removed` note
+  says which of the two applied.
 - Record them with the coverage settings nitpicker uses: list every source file in
   `coverage.include`, or a source file that no test loads is missing from the report instead of
   showing as uncovered.

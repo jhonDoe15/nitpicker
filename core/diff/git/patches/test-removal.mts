@@ -68,8 +68,10 @@ export type TestRemoval = {
   readonly removedTestTargets: ReadonlySet<string> | undefined;
 };
 
-const RELATIVE_IMPORT =
-  /(?:\bfrom|\bimport|\brequire|\bmock|\bimportActual|\bdoMock)\s*\(?\s*['"`](\.\.?\/[^'"`\n]+)['"`]/gu;
+const IMPORT_SPECIFIER =
+  /(?:\bfrom|\bimport|\brequire|\bmock|\bimportActual|\bdoMock)\s*\(?\s*(['"`])([^'"`\n]+)\1/gu;
+const RELATIVE_SPECIFIER = /^\.\.?\//u;
+const UNRESOLVABLE_SPECIFIER = /^(?:[#~/]|@\/)|\$\{|(?:^|\/)(?:\.\.?|index(?:\.[^/]*)?)\/?$/u;
 const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'];
 const TYPESCRIPT_TWINS: Readonly<Record<string, readonly string[]>> = {
   '.js': ['.ts', '.tsx'],
@@ -91,13 +93,17 @@ function candidatesOf(target: string): string[] {
   ];
 }
 
-export function importedTargets(testFile: string, text: string): string[] {
+export function importedTargets(testFile: string, text: string): string[] | undefined {
   const directory = path.posix.dirname(testFile);
-  return [...text.matchAll(RELATIVE_IMPORT)].flatMap(([, specifier]) =>
-    candidatesOf(
-      normalizeGitPath(path.posix.join(directory, (specifier ?? '').split('?')[0] ?? '')),
-    ),
+  const specifiers = [...text.matchAll(IMPORT_SPECIFIER)].map(
+    ([, , specifier]) => (specifier ?? '').split('?')[0] ?? '',
   );
+  if (specifiers.some((specifier) => UNRESOLVABLE_SPECIFIER.test(specifier))) {
+    return undefined;
+  }
+  return specifiers
+    .filter((specifier) => RELATIVE_SPECIFIER.test(specifier))
+    .flatMap((specifier) => candidatesOf(normalizeGitPath(path.posix.join(directory, specifier))));
 }
 
 function insideProject(file: string, project: string): string | undefined {
@@ -115,14 +121,13 @@ export function removedTestTargetsOf(
   const targets = new Set<string>();
   for (const file of testFiles) {
     const text = texts.get(file);
-    const found = (text === undefined ? [] : importedTargets(file, text)).flatMap(
-      (target) => insideProject(target, baseProject) ?? [],
-    );
-    if (found.length === 0) {
+    const imported = text === undefined ? undefined : importedTargets(file, text);
+    const found = (imported ?? []).map((target) => insideProject(target, baseProject));
+    if (found.length === 0 || found.includes(undefined)) {
       return undefined;
     }
     for (const target of found) {
-      targets.add(target);
+      targets.add(target ?? '');
     }
   }
   return targets;

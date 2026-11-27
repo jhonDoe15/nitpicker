@@ -80,10 +80,8 @@ describe('the code a removed test imported', () => {
     ]);
   });
 
-  it('keeps the targets inside the project, relative to it', () => {
-    const texts = new Map([
-      ['app/a.test.ts', "import { a } from './a.ts';\nimport '../lib/b.ts';"],
-    ]);
+  it('makes the targets relative to the project', () => {
+    const texts = new Map([['app/a.test.ts', "import { a } from './a.ts';\nimport 'vitest';"]]);
 
     expect(removedTestTargetsOf(['app/a.test.ts'], texts, 'app')).toEqual(new Set(['a.ts']));
   });
@@ -91,6 +89,11 @@ describe('the code a removed test imported', () => {
   it.each([
     ['imports nothing relative', new Map([['a.test.ts', "import { a } from '@app/a';"]])],
     ['cannot be read at the base', new Map<string, string>()],
+    ['imports code outside the project', new Map([['a.test.ts', "import '../lib/b.ts';"]])],
+    ['imports through an alias', new Map([['a.test.ts', "import './a.ts';\nimport '#/b';"]])],
+    ['imports a barrel', new Map([['a.test.ts', "import './a.ts';\nimport '../index.ts';"]])],
+    ['imports a directory', new Map([['a.test.ts', "import './a.ts';\nimport '..';"]])],
+    ['imports a computed path', new Map([['a.test.ts', 'await import(`./cases/${name}.ts`);']])],
   ])('knows no targets when a removed test %s', (_name, texts) => {
     expect(removedTestTargetsOf(['a.test.ts'], texts, '')).toBeUndefined();
   });
