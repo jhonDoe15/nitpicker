@@ -7,6 +7,10 @@ public final class Truth {
     return null;
   }
 
+  public static ThrowableSubject assertThat(Throwable actual) {
+    return null;
+  }
+
   public static MapSubject assertThat(Map<?, ?> actual) {
     return null;
   }
