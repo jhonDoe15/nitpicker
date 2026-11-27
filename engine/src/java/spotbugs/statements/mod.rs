@@ -2,7 +2,7 @@
 //! JLM_JSR166_UTILCONCURRENT_MONITORENTER, JLM_JSR166_LOCK_MONITORENTER and PREDICTABLE_RANDOM.
 mod layout;
 mod maps;
-mod random;
+pub(super) mod random;
 mod switches;
 mod volatile;
 

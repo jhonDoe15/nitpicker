@@ -8,6 +8,7 @@ import {
   THREAD_PATTERNS,
   URL_PATTERNS,
 } from './spotbugs-dumb-placed.mts';
+import { CRYPTO_PATTERNS } from './crypto/spotbugs-crypto-placed.mts';
 import { INJECTIONS } from './spotbugs-placed.mts';
 import {
   DIVISION_PATTERNS,
@@ -124,6 +125,7 @@ export const ON_ENGINE: readonly string[] = [
   ...FLOAT_PATTERNS,
   ...CIRCUIT_PATTERNS,
   ...CALENDAR_PATTERNS,
+  ...CRYPTO_PATTERNS,
 ];
 
 export const LOMBOK_WITHOUT_CLASSES: readonly string[] = [

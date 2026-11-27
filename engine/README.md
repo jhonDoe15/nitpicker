@@ -1019,6 +1019,58 @@ the build makes, and finds most sinks by name). Known differences (#2632 for the
   only, a `for` over some JDK collections made in the method (`HashSet`, `ArrayDeque`, `LinkedList`, a `keySet()`)
   is safe for FindSecBugs and unknown for the engine.
 
+### Crypto patterns (FindSecBugs)
+
+Ten FindSecBugs detectors that look at one call, constructor or class (#2534, `src/java/spotbugs/crypto/`), labs in
+`tests/fixtures/spotbugs/crypto_*`. FindSecBugs 1.14.0 is LGPL: what follows was measured on labs, its code and
+configuration were not read. The detectors still run in SpotBugs (on Gradle `-omitVisitors` cannot name plugin
+detectors yet, #2633); their patterns are excluded there and come from the engine.
+
+- WEAK_MESSAGE_DIGEST_MD5 (priority 1) and WEAK_MESSAGE_DIGEST_SHA1 (priority 2): `MessageDigest.getInstance` and
+  Commons Codec `DigestUtils.getDigest(String)` of a name that is `MD2`, `MD4`, `MD5` or `SHA`, `SHA1`, `SHA-1` in
+  any case (the message shows it in capitals); `Signature.getInstance` judges the part before the first `with`
+  (case kept: `SHA1WithRSA` is not reported); `DigestUtils.md2*`, `md5*`, `sha`, `sha1*`, `shaHex` and the
+  `get…Digest()` methods by their fixed name. Not `Mac` (`HmacMD5`), `getDigest(name, fallback)` or `new
+  DigestUtils(…)`.
+- `Cipher.getInstance`, every overload: CIPHER_INTEGRITY unless the name starts with `RSA`, is `ECIES`, or holds
+  `/GCM/`, `/CCM/`, `/EAX/`, `/OCB/`, `/CWC/` or `/GCM-SIV/`; ECB_MODE for `AES`, `DES` or `DESede` alone or
+  followed by `/ECB/`; PADDING_ORACLE when the name holds `/CBC/PKCS5Padding` (all priority 1, case kept).
+- DES_USAGE (`DES` or `DES/…` in any case) and RSA_NO_PADDING (`RSA/…/NoPadding`) for `Cipher.getInstance` and
+  `KeyGenerator.getInstance`, priority 2. TDES_USAGE is priority 3 and never shown.
+- The name is what SpotBugs' operand stack knows: constants, `+` of known parts, `toString()` and `intern()` of
+  one, a `?:` with the same string on both sides, a local whose reaching stores all give one string, and a field
+  whose stores in the whole run all give one string (an instance field also needs every constructor not starting
+  with `this(...)` to set it, in its own code, an initializer or an initializer block; a field Lombok may set holds
+  nothing known). Findings that read a field wait until every file is read. Parameters, calls such as
+  `String.valueOf` or `toUpperCase`, and values captured by lambdas are unknown.
+  DES_USAGE is never reported for a value read from a field (#2766); more folds SpotBugs makes are #2767.
+- CUSTOM_MESSAGE_DIGEST: a class whose direct superclass is `java.security.MessageDigest` (abstract, local and
+  anonymous ones too, not `MessageDigestSpi` or a subclass of such a class), on the first line of the class.
+- NULL_CIPHER and HAZELCAST_SYMMETRIC_ENCRYPTION: each call of the constructor of `NullCipher` or Hazelcast's
+  `SymmetricEncryptionConfig`, also in an anonymous class and in the constructors of a class extending one.
+- ESAPI_ENCRYPTOR: `encrypt` and `decrypt` called on a value written as ESAPI's `Encryptor` itself (not a
+  subinterface or `JavaEncryptor`).
+- BAD_HEXA_CONVERSION: `Integer.toHexString` after a call of `digest` written against `MessageDigest` in a method's
+  instructions (javac's order: a `for` update after the body, a `finally` block after the `try` block and after
+  each `catch` block); what is converted does not matter. Once per method, on the line of its first instruction.
+- RSA_KEY_SIZE, BLOWFISH_KEY_SIZE and STATIC_IV (priority 2). A size is an `int` or `char` constant from -32768 up,
+  outside -1 to 5 (values javac pushes with `iconst` or `ldc` are not seen); of a `?:` with two constant sides it is
+  the second. A local that is not a constant variable is not one.
+  - RSA_KEY_SIZE: each `initialize(size)` or `initialize(size, random)` written against `KeyPairGenerator` itself,
+    size under 1024, when a call of `KeyPairGenerator.getInstance(name)` or `getInstance(name, provider name)` with a
+    name starting with `RSA` in any case always runs before it in the method (paths of exceptions left out), on any
+    generator. SpotBugs' path rule is looser than "always" in places (#2778).
+  - BLOWFISH_KEY_SIZE: once per method, on the last `init(size)` or `init(size, random)` written against
+    `KeyGenerator` itself, size under 128, when the method calls `KeyGenerator.getInstance` with the constant
+    `Blowfish` as its last argument, anywhere.
+  - STATIC_IV: each `new IvParameterSpec(..)` and constructor of a direct subclass, unless the method calls
+    `Cipher.getIV()` anywhere, or calls `nextBytes` on a value written as `SecureRandom` that always runs before it.
+- Calls are on the line of their `(`. Findings with the same pattern and message on one line of a method are one.
+
+Labs: 435 findings same, none missed or extra. On the comparison code bases, SARIF results: Nacos 2 / 0 / 0
+(WEAK_MESSAGE_DIGEST_MD5, BAD_HEXA_CONVERSION), commons-lang, guava, jackson-databind, javaparser-core and
+mybatis-3 0 / 0 / 0. Elasticsearch could not be built for this run.
+
 ### Lombok
 
 SpotBugs reports nothing inside the members Lombok writes when Lombok marks them with `@lombok.Generated`, which

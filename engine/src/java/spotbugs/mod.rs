@@ -8,6 +8,7 @@ mod circuit;
 mod catches;
 mod classes;
 mod concurrent;
+mod crypto;
 mod compare;
 mod constructors;
 mod dead;
@@ -258,6 +259,7 @@ pub struct SpotBugs {
     taint: taint::Derived,
     effects: returns::Effects,
     floats: floats::Floats,
+    crypto: crypto::summary::Fields,
 }
 
 impl FileRule for SpotBugs {
@@ -290,6 +292,7 @@ impl FileRule for SpotBugs {
         nulls::null_dereference(&context, &declared);
         taint::injections(&context, &declared, &self.taint);
         floats::floats(&context, &declared, &self.floats);
+        crypto::crypto(&context, &declared, &self.crypto);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
         if context.wants(attributes::PATTERNS) {
             let names = self.attributes.names(&project.index, &project.sources);
@@ -308,6 +311,7 @@ impl FileRule for SpotBugs {
             self.taint.settle(project, &self.elsewhere, out);
             self.effects.settle(project, out);
             self.floats.settle(out);
+            self.crypto.settle(out);
         }
     }
 }
