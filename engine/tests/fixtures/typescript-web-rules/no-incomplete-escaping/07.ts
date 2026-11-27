@@ -1,0 +1,1 @@
+export const q = JSON.stringify(value);

@@ -124,9 +124,11 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ],
   ['no-falsy-default', TYPED],
   ['no-git-repository-per-test', { facts: runnerWords('sharedSetupHook') }],
+  ['no-hardcoded-secret', {}],
   ['no-forwarding-method-alias', TYPED],
   ['no-forwarding-wrapper', TYPED],
   ['no-in-presence-check', TYPED],
+  ['no-incomplete-escaping', {}],
   [
     'no-interval-polling-in-tests',
     {
@@ -153,6 +155,8 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-dual-write', EFFECTS],
   ['no-stale-retry-after-conflict', EFFECTS],
   ['no-unencoded-url-part', {}],
+  ['no-unescaped-filter-value', {}],
+  ['no-unescaped-pattern-translation', {}],
   ['no-unisolated-job-loop', EFFECTS],
   [
     'no-production-console',
@@ -165,6 +169,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
       }),
     },
   ],
+  ['no-secret-in-log', {}],
   ['no-server-or-worker-per-test', { facts: runnerWords('sharedSetupHook') }],
   ['no-shadowed-spread-key', TYPED],
   ['no-shared-test-state', {}],

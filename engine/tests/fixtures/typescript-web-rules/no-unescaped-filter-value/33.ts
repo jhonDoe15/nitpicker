@@ -1,0 +1,1 @@
+export const a = (n: string) => prisma.user.findMany({ where: { name: { equals: n, mode: "insensitive" } } });

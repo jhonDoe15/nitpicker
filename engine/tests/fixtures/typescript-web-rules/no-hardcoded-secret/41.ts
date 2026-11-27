@@ -1,0 +1,1 @@
+const password = Buffer.from("abc123def456");

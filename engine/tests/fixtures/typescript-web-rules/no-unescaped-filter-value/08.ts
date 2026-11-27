@@ -1,0 +1,1 @@
+export const a = (n: string) => prisma.dataset.findMany({ where: { name: { in: [n], mode: "insensitive" } } });

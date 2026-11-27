@@ -21,6 +21,7 @@ oxc_parser = "0.159.0"
 oxc_ast = { version = "0.159.0", features = ["serialize"] }
 oxc_span = "0.159.0"
 oxc_semantic = "0.159.0"
+oxc_regular_expression = "0.159.0"
 oxc_ast_visit = "0.159.0"
 oxc_syntax = "0.159.0"
 oxc_str = "0.159.0"

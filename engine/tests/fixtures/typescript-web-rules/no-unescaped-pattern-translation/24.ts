@@ -1,0 +1,1 @@
+export function like(re: RegExp) { return re.source.replace(/\.\*/g, '%').replace(/\./g, '_'); }

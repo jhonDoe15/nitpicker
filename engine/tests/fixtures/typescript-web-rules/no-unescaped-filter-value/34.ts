@@ -1,0 +1,1 @@
+export const a = (i: { q: string }) => prisma.user.deleteMany({ where: { email: { contains: i.q } } });

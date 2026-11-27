@@ -1,0 +1,1 @@
+const text = "see the docs at https://example.com";

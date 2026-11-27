@@ -1,0 +1,1 @@
+export const a = (n: string) => Prisma.sql`select * from t where name ILIKE ${n}`;

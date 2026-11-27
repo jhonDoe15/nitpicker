@@ -1,0 +1,1 @@
+export const a = (n: string) => { const escapedName = escape(n); return prisma.user.findMany({ where: { name: { contains: escapedName } } }); };

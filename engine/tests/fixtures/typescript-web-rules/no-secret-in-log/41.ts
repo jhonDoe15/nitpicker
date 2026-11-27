@@ -1,0 +1,1 @@
+req.log.info(sessionToken ?? "none");

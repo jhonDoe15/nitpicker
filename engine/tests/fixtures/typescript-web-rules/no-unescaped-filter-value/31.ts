@@ -1,0 +1,1 @@
+export const a = (n: string) => prisma.dataset.findFirst({ where: { name: { contains: n } } });

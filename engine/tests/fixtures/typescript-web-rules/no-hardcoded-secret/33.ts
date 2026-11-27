@@ -1,0 +1,1 @@
+const config = { token: "abc123def456" };

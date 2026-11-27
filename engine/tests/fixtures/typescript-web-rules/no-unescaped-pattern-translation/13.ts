@@ -1,0 +1,1 @@
+export function like() { return 'a*b?'.replace(/\*/g, '%').replace(/\?/g, '_'); }

@@ -1,0 +1,1 @@
+logger.info({ token: token.slice(-4) });

@@ -1,0 +1,1 @@
+const jwtSecret = "abc123" + suffix;

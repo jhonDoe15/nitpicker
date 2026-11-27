@@ -1,0 +1,1 @@
+const apiKey = flag ? "abc123def456" : loaded;

@@ -1,0 +1,1 @@
+export function like(glob: string) { return `${glob.replace(/\*/g, '%').replace(/\?/g, '_')}`; }

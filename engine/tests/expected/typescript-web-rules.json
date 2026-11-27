@@ -531,6 +531,528 @@
   48
  ],
  [
+  "no-hardcoded-secret/28.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  18,
+  "Read `password` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  37
+ ],
+ [
+  "no-hardcoded-secret/29.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  13,
+  "Read it from the environment or a secrets manager: this string looks like a credential (access key, token, private key, or a password in a URL).",
+  1,
+  52
+ ],
+ [
+  "no-hardcoded-secret/30.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  18,
+  "Read `password` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  32
+ ],
+ [
+  "no-hardcoded-secret/31.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  16,
+  "Read `apiKey` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  30
+ ],
+ [
+  "no-hardcoded-secret/32.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  26,
+  "Read `dbPassword` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  37
+ ],
+ [
+  "no-hardcoded-secret/33.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  25,
+  "Read `token` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  39
+ ],
+ [
+  "no-hardcoded-secret/34.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  29,
+  "Read `api_key` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  43
+ ],
+ [
+  "no-hardcoded-secret/35.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  33,
+  "Read `secret` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  47
+ ],
+ [
+  "no-hardcoded-secret/36.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  19,
+  "Read `password` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  30
+ ],
+ [
+  "no-hardcoded-secret/37.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  21,
+  "Read `api_key` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  35
+ ],
+ [
+  "no-hardcoded-secret/38.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  20,
+  "Read `token` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  34
+ ],
+ [
+  "no-hardcoded-secret/39.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  19,
+  "Read `jwtSecret` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  27
+ ],
+ [
+  "no-hardcoded-secret/40.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  17,
+  "Read `secret` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  31
+ ],
+ [
+  "no-hardcoded-secret/41.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  30,
+  "Read `password` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  44
+ ],
+ [
+  "no-hardcoded-secret/42.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  18,
+  "Read `password` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  32
+ ],
+ [
+  "no-hardcoded-secret/43.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  26,
+  "Read `apiKey` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  40
+ ],
+ [
+  "no-hardcoded-secret/44.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  23,
+  "Read `apiKey` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  37
+ ],
+ [
+  "no-hardcoded-secret/45.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  38,
+  "Read `API_TOKEN` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  52
+ ],
+ [
+  "no-hardcoded-secret/46.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  47,
+  "Read `VITE_API_TOKEN` from the environment or a secrets manager and inject it: this value is a hardcoded secret.",
+  1,
+  61
+ ],
+ [
+  "no-hardcoded-secret/47.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  13,
+  "Read it from the environment or a secrets manager: this string looks like a credential (access key, token, private key, or a password in a URL).",
+  1,
+  35
+ ],
+ [
+  "no-hardcoded-secret/48.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  13,
+  "Read it from the environment or a secrets manager: this string looks like a credential (access key, token, private key, or a password in a URL).",
+  1,
+  45
+ ],
+ [
+  "no-hardcoded-secret/49.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  14,
+  "Read it from the environment or a secrets manager: this string looks like a credential (access key, token, private key, or a password in a URL).",
+  1,
+  56
+ ],
+ [
+  "no-hardcoded-secret/50.ts",
+  "nitpicker/no-hardcoded-secret",
+  1,
+  6,
+  "Read it from the environment or a secrets manager: this string looks like a credential (access key, token, private key, or a password in a URL).",
+  1,
+  35
+ ],
+ [
+  "no-incomplete-escaping/16.ts",
+  "nitpicker/no-incomplete-escaping",
+  1,
+  27,
+  "This `replace` adds a backslash before a character but nothing escapes the backslash itself, so a value holding `\\` round-trips wrong. Match both in one pattern: `value.replace(/[\\\\\"]/g, (c) => `\\\\${c}`)`.",
+  1,
+  53
+ ],
+ [
+  "no-incomplete-escaping/17.ts",
+  "nitpicker/no-incomplete-escaping",
+  1,
+  18,
+  "This `replace` adds a backslash before a character but nothing escapes the backslash itself, so a value holding `\\` round-trips wrong. Match both in one pattern: `value.replace(/[\\\\\"]/g, (c) => `\\\\${c}`)`.",
+  1,
+  46
+ ],
+ [
+  "no-incomplete-escaping/18.ts",
+  "nitpicker/no-incomplete-escaping",
+  1,
+  18,
+  "This `replace` adds a backslash before a character but nothing escapes the backslash itself, so a value holding `\\` round-trips wrong. Match both in one pattern: `value.replace(/[\\\\\"]/g, (c) => `\\\\${c}`)`.",
+  1,
+  48
+ ],
+ [
+  "no-incomplete-escaping/19.ts",
+  "nitpicker/no-incomplete-escaping",
+  1,
+  18,
+  "This `replace` adds a backslash before a character but nothing escapes the backslash itself, so a value holding `\\` round-trips wrong. Match both in one pattern: `value.replace(/[\\\\\"]/g, (c) => `\\\\${c}`)`.",
+  1,
+  44
+ ],
+ [
+  "no-incomplete-escaping/20.ts",
+  "nitpicker/no-incomplete-escaping",
+  1,
+  18,
+  "This `replace` adds a backslash before a character but nothing escapes the backslash itself, so a value holding `\\` round-trips wrong. Match both in one pattern: `value.replace(/[\\\\\"]/g, (c) => `\\\\${c}`)`.",
+  1,
+  64
+ ],
+ [
+  "no-incomplete-escaping/21.ts",
+  "nitpicker/no-incomplete-escaping",
+  1,
+  18,
+  "This chain unescapes one sequence at a time and handles `\\\\` in a separate step, so the order decides the result. Decode in one pass: `text.replace(/\\\\([\"'nt\\\\])/g, (_, c) => table[c])`.",
+  1,
+  66
+ ],
+ [
+  "no-incomplete-escaping/22.ts",
+  "nitpicker/no-incomplete-escaping",
+  1,
+  18,
+  "This chain unescapes one sequence at a time and handles `\\\\` in a separate step, so the order decides the result. Decode in one pass: `text.replace(/\\\\([\"'nt\\\\])/g, (_, c) => table[c])`.",
+  1,
+  67
+ ],
+ [
+  "no-incomplete-escaping/r1b.ts",
+  "nitpicker/no-incomplete-escaping",
+  1,
+  33,
+  "This chain unescapes one sequence at a time and handles `\\\\` in a separate step, so the order decides the result. Decode in one pass: `text.replace(/\\\\([\"'nt\\\\])/g, (_, c) => table[c])`.",
+  1,
+  83
+ ],
+ [
+  "no-incomplete-escaping/r2a.ts",
+  "nitpicker/no-incomplete-escaping",
+  1,
+  33,
+  "This chain unescapes one sequence at a time and handles `\\\\` in a separate step, so the order decides the result. Decode in one pass: `text.replace(/\\\\([\"'nt\\\\])/g, (_, c) => table[c])`.",
+  1,
+  85
+ ],
+ [
+  "no-incomplete-escaping/r2b.ts",
+  "nitpicker/no-incomplete-escaping",
+  1,
+  33,
+  "This `replace` adds a backslash before a character but nothing escapes the backslash itself, so a value holding `\\` round-trips wrong. Match both in one pattern: `value.replace(/[\\\\\"]/g, (c) => `\\\\${c}`)`.",
+  1,
+  64
+ ],
+ [
+  "no-incomplete-escaping/r3b.ts",
+  "nitpicker/no-incomplete-escaping",
+  1,
+  33,
+  "This `replace` adds a backslash before a character but nothing escapes the backslash itself, so a value holding `\\` round-trips wrong. Match both in one pattern: `value.replace(/[\\\\\"]/g, (c) => `\\\\${c}`)`.",
+  1,
+  66
+ ],
+ [
+  "no-incomplete-escaping/r4a.ts",
+  "nitpicker/no-incomplete-escaping",
+  1,
+  33,
+  "This `replace` adds a backslash before a character but nothing escapes the backslash itself, so a value holding `\\` round-trips wrong. Match both in one pattern: `value.replace(/[\\\\\"]/g, (c) => `\\\\${c}`)`.",
+  1,
+  67
+ ],
+ [
+  "no-incomplete-escaping/r4b.ts",
+  "nitpicker/no-incomplete-escaping",
+  1,
+  33,
+  "This `replace` adds a backslash before a character but nothing escapes the backslash itself, so a value holding `\\` round-trips wrong. Match both in one pattern: `value.replace(/[\\\\\"]/g, (c) => `\\\\${c}`)`.",
+  1,
+  70
+ ],
+ [
+  "no-incomplete-escaping/r5a.ts",
+  "nitpicker/no-incomplete-escaping",
+  1,
+  33,
+  "This `replace` adds a backslash before a character but nothing escapes the backslash itself, so a value holding `\\` round-trips wrong. Match both in one pattern: `value.replace(/[\\\\\"]/g, (c) => `\\\\${c}`)`.",
+  1,
+  62
+ ],
+ [
+  "no-incomplete-escaping/r5b.ts",
+  "nitpicker/no-incomplete-escaping",
+  1,
+  33,
+  "This `replace` adds a backslash before a character but nothing escapes the backslash itself, so a value holding `\\` round-trips wrong. Match both in one pattern: `value.replace(/[\\\\\"]/g, (c) => `\\\\${c}`)`.",
+  1,
+  68
+ ],
+ [
+  "no-incomplete-escaping/r5c.ts",
+  "nitpicker/no-incomplete-escaping",
+  1,
+  33,
+  "This `replace` adds a backslash before a character but nothing escapes the backslash itself, so a value holding `\\` round-trips wrong. Match both in one pattern: `value.replace(/[\\\\\"]/g, (c) => `\\\\${c}`)`.",
+  1,
+  68
+ ],
+ [
+  "no-secret-in-log/24.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  13,
+  "Log that `csrfToken` is set, or a masked tail, instead of the secret itself.",
+  1,
+  22
+ ],
+ [
+  "no-secret-in-log/25.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  13,
+  "Log that `refreshToken` is set, or a masked tail, instead of the secret itself.",
+  1,
+  25
+ ],
+ [
+  "no-secret-in-log/26.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  16,
+  "Log that `token` is set, or a masked tail, instead of the secret itself.",
+  1,
+  21
+ ],
+ [
+  "no-secret-in-log/27.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  19,
+  "Log that `token` is set, or a masked tail, instead of the secret itself.",
+  1,
+  24
+ ],
+ [
+  "no-secret-in-log/28.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  19,
+  "Log that `token` is set, or a masked tail, instead of the secret itself.",
+  1,
+  24
+ ],
+ [
+  "no-secret-in-log/29.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  13,
+  "Log that `token` is set, or a masked tail, instead of the secret itself.",
+  1,
+  18
+ ],
+ [
+  "no-secret-in-log/30.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  22,
+  "Log that `password` is set, or a masked tail, instead of the secret itself.",
+  1,
+  30
+ ],
+ [
+  "no-secret-in-log/31.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  26,
+  "Log that `config.apiKey` is set, or a masked tail, instead of the secret itself.",
+  1,
+  39
+ ],
+ [
+  "no-secret-in-log/32.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  20,
+  "Log that `accessToken` is set, or a masked tail, instead of the secret itself.",
+  1,
+  31
+ ],
+ [
+  "no-secret-in-log/33.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  15,
+  "Log that `token` is set, or a masked tail, instead of the secret itself.",
+  1,
+  20
+ ],
+ [
+  "no-secret-in-log/34.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  21,
+  "Log that `password` is set, or a masked tail, instead of the secret itself.",
+  1,
+  33
+ ],
+ [
+  "no-secret-in-log/35.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  21,
+  "Log that `secret` is set, or a masked tail, instead of the secret itself.",
+  1,
+  27
+ ],
+ [
+  "no-secret-in-log/36.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  29,
+  "Log that `credentials` is set, or a masked tail, instead of the secret itself.",
+  1,
+  40
+ ],
+ [
+  "no-secret-in-log/37.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  14,
+  "Log that `token` is set, or a masked tail, instead of the secret itself.",
+  1,
+  19
+ ],
+ [
+  "no-secret-in-log/38.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  15,
+  "Log that `process.env.API_TOKEN` is set, or a masked tail, instead of the secret itself.",
+  1,
+  36
+ ],
+ [
+  "no-secret-in-log/39.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  24,
+  "Log that `password` is set, or a masked tail, instead of the secret itself.",
+  1,
+  32
+ ],
+ [
+  "no-secret-in-log/40.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  22,
+  "Log that `token` is set, or a masked tail, instead of the secret itself.",
+  1,
+  27
+ ],
+ [
+  "no-secret-in-log/41.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  14,
+  "Log that `sessionToken` is set, or a masked tail, instead of the secret itself.",
+  1,
+  26
+ ],
+ [
+  "no-secret-in-log/r-regex-key-d.ts",
+  "nitpicker/no-secret-in-log",
+  1,
+  15,
+  "Log that `/password/` is set, or a masked tail, instead of the secret itself.",
+  1,
+  30
+ ],
+ [
   "no-unencoded-url-part/42.ts",
   "nitpicker/no-unencoded-url-part",
   1,
@@ -763,6 +1285,249 @@
   "This appends `?` to a URL that may already carry a query. Build it with `const url = new URL(base); url.searchParams.set(name, value)`.",
   6,
   41
+ ],
+ [
+  "no-unescaped-filter-value/30.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  113,
+  "Escape `n` before it goes into the `startsWith` filter (`escapeSqlLikePattern(n)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  114
+ ],
+ [
+  "no-unescaped-filter-value/31.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  87,
+  "Escape `n` before it goes into the `contains` filter (`escapeSqlLikePattern(n)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  88
+ ],
+ [
+  "no-unescaped-filter-value/32.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  88,
+  "Escape `n` before it goes into the `endsWith` filter (`escapeSqlLikePattern(n)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  89
+ ],
+ [
+  "no-unescaped-filter-value/33.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  81,
+  "Escape `n` before it goes into the `equals` filter (`escapeSqlLikePattern(n)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  82
+ ],
+ [
+  "no-unescaped-filter-value/34.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  93,
+  "Escape `i.q` before it goes into the `contains` filter (`escapeSqlLikePattern(i.q)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  96
+ ],
+ [
+  "no-unescaped-filter-value/35.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  51,
+  "Escape `n` before it goes into the `startsWith` filter (`escapeSqlLikePattern(n)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  52
+ ],
+ [
+  "no-unescaped-filter-value/36.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  75,
+  "Escape `n` before it goes into the `LIKE` filter (`escapeSqlLikePattern(n)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  76
+ ],
+ [
+  "no-unescaped-filter-value/37.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  79,
+  "Escape `n` before it goes into the `LIKE` filter (`escapeSqlLikePattern(n)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  80
+ ],
+ [
+  "no-unescaped-filter-value/38.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  81,
+  "Escape `n` before it goes into the `LIKE` filter (`escapeSqlLikePattern(n)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  82
+ ],
+ [
+  "no-unescaped-filter-value/39.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  59,
+  "Escape `n` before it goes into the `whereILike` filter (`escapeSqlLikePattern(n)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  60
+ ],
+ [
+  "no-unescaped-filter-value/40.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  62,
+  "Escape `n` before it goes into the `LIKE` filter (`escapeSqlLikePattern(n)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  63
+ ],
+ [
+  "no-unescaped-filter-value/41.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  54,
+  "Escape `n` before it goes into the `like` filter (`escapeSqlLikePattern(n)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  55
+ ],
+ [
+  "no-unescaped-filter-value/42.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  51,
+  "Escape `n` before it goes into the `ilike` filter (`escapeSqlLikePattern(n)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  52
+ ],
+ [
+  "no-unescaped-filter-value/43.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  42,
+  "Escape `n` before it goes into the `Like` filter (`escapeSqlLikePattern(n)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  43
+ ],
+ [
+  "no-unescaped-filter-value/44.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  48,
+  "Escape `n` before it goes into the `ILike` filter (`escapeSqlLikePattern(n)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  49
+ ],
+ [
+  "no-unescaped-filter-value/45.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  52,
+  "Escape `search` before it goes into the `$like` filter (`escapeSqlLikePattern(search)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  58
+ ],
+ [
+  "no-unescaped-filter-value/46.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  52,
+  "Escape `n` before it goes into the `Op.iLike` filter (`escapeSqlLikePattern(n)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  53
+ ],
+ [
+  "no-unescaped-filter-value/47.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  44,
+  "Escape `n` before it goes into the `$regex` filter (`escapeSqlLikePattern(n)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  45
+ ],
+ [
+  "no-unescaped-pattern-translation/19.ts",
+  "nitpicker/no-unescaped-pattern-translation",
+  1,
+  69,
+  "This chain of `replace` calls turns a glob or pattern into a regex without escaping the regex metacharacters first, so a `.`, `+`, `(` or `$` in the value changes what matches. Escape first (`escapeRegExp(value)`) and restore the wildcards from their escaped form (`\\*\\*` to `.*`), or tokenise the pattern and map each token, or use a glob library.",
+  1,
+  121
+ ],
+ [
+  "no-unescaped-pattern-translation/20.ts",
+  "nitpicker/no-unescaped-pattern-translation",
+  1,
+  64,
+  "This chain of `replace` calls turns a glob or pattern into a regex without escaping the regex metacharacters first, so a `.`, `+`, `(` or `$` in the value changes what matches. Escape first (`escapeRegExp(value)`) and restore the wildcards from their escaped form (`\\*\\*` to `.*`), or tokenise the pattern and map each token, or use a glob library.",
+  1,
+  117
+ ],
+ [
+  "no-unescaped-pattern-translation/21.ts",
+  "nitpicker/no-unescaped-pattern-translation",
+  1,
+  62,
+  "This chain of `replace` calls turns a glob or pattern into a regex without escaping the regex metacharacters first, so a `.`, `+`, `(` or `$` in the value changes what matches. Escape first (`escapeRegExp(value)`) and restore the wildcards from their escaped form (`\\*\\*` to `.*`), or tokenise the pattern and map each token, or use a glob library.",
+  1,
+  114
+ ],
+ [
+  "no-unescaped-pattern-translation/22.ts",
+  "nitpicker/no-unescaped-pattern-translation",
+  1,
+  54,
+  "This chain of `replace` calls turns a glob or pattern into a regex without escaping the regex metacharacters first, so a `.`, `+`, `(` or `$` in the value changes what matches. Escape first (`escapeRegExp(value)`) and restore the wildcards from their escaped form (`\\*\\*` to `.*`), or tokenise the pattern and map each token, or use a glob library.",
+  1,
+  107
+ ],
+ [
+  "no-unescaped-pattern-translation/23.ts",
+  "nitpicker/no-unescaped-pattern-translation",
+  1,
+  58,
+  "This chain of `replace` calls turns a glob or pattern into a regex without escaping the regex metacharacters first, so a `.`, `+`, `(` or `$` in the value changes what matches. Escape first (`escapeRegExp(value)`) and restore the wildcards from their escaped form (`\\*\\*` to `.*`), or tokenise the pattern and map each token, or use a glob library.",
+  1,
+  106
+ ],
+ [
+  "no-unescaped-pattern-translation/24.ts",
+  "nitpicker/no-unescaped-pattern-translation",
+  1,
+  43,
+  "This chain of `replace` calls builds a SQL `LIKE` pattern without escaping `%`, `_` and the escape character first, so those characters in the value act as wildcards. Escape them (`replace(/[\\\\%_]/g, '\\\\$&')`) before mapping the wildcards, add `ESCAPE '\\\\'`, or tokenise the pattern and map each token.",
+  1,
+  94
+ ],
+ [
+  "no-unescaped-pattern-translation/25.ts",
+  "nitpicker/no-unescaped-pattern-translation",
+  1,
+  48,
+  "This chain of `replace` calls builds a SQL `LIKE` pattern without escaping `%`, `_` and the escape character first, so those characters in the value act as wildcards. Escape them (`replace(/[\\\\%_]/g, '\\\\$&')`) before mapping the wildcards, add `ESCAPE '\\\\'`, or tokenise the pattern and map each token.",
+  1,
+  92
+ ],
+ [
+  "no-unescaped-pattern-translation/26.ts",
+  "nitpicker/no-unescaped-pattern-translation",
+  1,
+  45,
+  "This chain of `replace` calls builds a SQL `LIKE` pattern without escaping `%`, `_` and the escape character first, so those characters in the value act as wildcards. Escape them (`replace(/[\\\\%_]/g, '\\\\$&')`) before mapping the wildcards, add `ESCAPE '\\\\'`, or tokenise the pattern and map each token.",
+  1,
+  113
+ ],
+ [
+  "no-unescaped-pattern-translation/27.ts",
+  "nitpicker/no-unescaped-pattern-translation",
+  1,
+  44,
+  "This chain of `replace` calls builds a SQL `LIKE` pattern without escaping `%`, `_` and the escape character first, so those characters in the value act as wildcards. Escape them (`replace(/[\\\\%_]/g, '\\\\$&')`) before mapping the wildcards, add `ESCAPE '\\\\'`, or tokenise the pattern and map each token.",
+  1,
+  156
  ],
  [
   "no-unresolved-relative-url/22.ts",
