@@ -31,6 +31,18 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     text: "An increment to a volatile field isn't atomic",
     levels: { 2: WARNING },
   },
+  AT_STALE_THREAD_WRITE_OF_PRIMITIVE: {
+    text: 'This write of this shared primitive variable may not be visible to other threads',
+    levels: { 2: WARNING },
+  },
+  AT_NONATOMIC_64BIT_PRIMITIVE: {
+    text: 'This write of this 64-bit primitive variable may not be atomic',
+    levels: { 2: WARNING },
+  },
+  AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE: {
+    text: 'Operation on shared variable is not atomic',
+    levels: { 2: WARNING },
+  },
   WMI_WRONG_MAP_ITERATOR: {
     text: 'Inefficient use of keySet iterator instead of entrySet iterator',
     levels: { 2: NOTE },

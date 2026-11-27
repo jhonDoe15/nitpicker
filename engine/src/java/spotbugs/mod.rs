@@ -25,6 +25,7 @@ pub mod place;
 mod observed;
 mod statements;
 mod stores;
+mod threads;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver, TYPE_DECLARATIONS};
@@ -219,6 +220,7 @@ const DETECTORS: &[Detector] = &[
     methods::method_patterns as Detector,
     attributes::should_be_static as Detector,
     dead::dead_stores as Detector,
+    threads::threads as Detector,
 ];
 
 #[derive(Default)]

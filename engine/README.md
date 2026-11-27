@@ -993,6 +993,28 @@ On the six comparison code bases, SARIF results, same / missed / extra: commons-
 15 / 0 / 0, the other four 0 / 0 / 0. Differences left on hand-written edge cases (final fields where values meet,
 the line of a merged finding, `var` loop variables, pattern switch guards) are in #2599. `FindRefComparison` still runs in SpotBugs for its other patterns.
 
+### Thread patterns
+
+Thread patterns (#2522, `src/java/spotbugs/threads/`, labs in
+`tests/fixtures/spotbugs/atomicity`).
+
+- SharedVariableAtomicityDetector (AT_STALE_THREAD_WRITE_OF_PRIMITIVE, AT_NONATOMIC_64BIT_PRIMITIVE,
+  AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE), priority 2, level `warning`, place: the field. It looks at one class
+  at a time, and only at a class that uses threads: a `synchronized` method or block, a `Runnable` subtype, a
+  `volatile` field, a field of a `java.util.concurrent.atomic` type or of a `Lock` subtype, a local or parameter of
+  an atomic type, a call to a method of a `Lock`, or a call to `Collections.synchronized*`. Only methods count
+  (constructors, initializers, lambdas and nested classes never do). Code is locked inside a `synchronized` method
+  or block, where a `lock()` or `lockInterruptibly()` on the same object is held on every path, and in a private
+  method that every call in the class's methods makes from locked code (calls from constructors and lambdas count as
+  locked; a private method nothing calls is locked). A write of a non-final primitive field of the class itself,
+  outside locked code, on `this` (or a local set once to `this`) or on the first parameter of a static method, or of
+  a static field, is reported when another method reads the field outside locked code. The write is
+  AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE when the value written was computed from the field by arithmetic in
+  javac's instruction order (`order.rs`), else, unless the field is `volatile`, AT_NONATOMIC_64BIT_PRIMITIVE for a
+  `long` or `double` and AT_STALE_THREAD_WRITE_OF_PRIMITIVE for the rest. One finding per method, field and pattern,
+  on the line of the first such write (the line of the last call or `?:` condition in the value, else of the
+  statement).
+
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in

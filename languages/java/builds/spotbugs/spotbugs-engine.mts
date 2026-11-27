@@ -39,6 +39,11 @@ const DEAD_STORES: readonly string[] = [
   'DLS_DEAD_LOCAL_INCREMENT_IN_RETURN',
   'IP_PARAMETER_IS_DEAD_BUT_OVERWRITTEN',
 ];
+const SHARED_WRITES: readonly string[] = [
+  'AT_STALE_THREAD_WRITE_OF_PRIMITIVE',
+  'AT_NONATOMIC_64BIT_PRIMITIVE',
+  'AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE',
+];
 export const ON_ENGINE: readonly string[] = [
   'CT_CONSTRUCTOR_THROW',
   'EI_EXPOSE_REP',
@@ -77,6 +82,7 @@ export const ON_ENGINE: readonly string[] = [
   'NN_NAKED_NOTIFY',
   ...DEAD_STORES,
   'RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN',
+  ...SHARED_WRITES,
 ];
 const LOMBOK_WRITES: readonly string[] = [
   'SING_',
@@ -86,6 +92,7 @@ const LOMBOK_WRITES: readonly string[] = [
   'MS_PKGPROTECT',
   'SS_',
   ...DEAD_STORES,
+  'AT_',
 ];
 const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   MultipleInstantiationsOfSingletons: [
@@ -100,6 +107,7 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   ConstructorThrow: ['CT_CONSTRUCTOR_THROW'],
   FindHiddenMethod: ['HSM_HIDING_METHOD'],
   FindNakedNotify: ['NN_NAKED_NOTIFY'],
+  SharedVariableAtomicityDetector: SHARED_WRITES,
   DontCatchNullPointerException: ['DCN_NULLPOINTER_EXCEPTION'],
   WrongMapIterator: [WRONG_MAP_ITERATOR],
   BooleanReturnNull: ['NP_BOOLEAN_RETURN_NULL'],
