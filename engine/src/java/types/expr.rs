@@ -1,6 +1,7 @@
 //! Static types of expressions, as far as declarations, the index and erased signatures give them.
 use crate::java::fields::Fields;
 use std::rc::Rc;
+use super::constant::{Constant, cast, char_value, infix, literal, unary};
 use super::model::{ClassInfo, Field, Method, OBJECT, Type};
 use std::collections::HashMap;
 use super::scope::{Resolver, class_at, enclosing_type, enclosing_types};
@@ -535,26 +536,81 @@ impl<'a> Resolver<'a> {
             }
             "binary_expression" => {
                 let operator = self.file.text_of(expression.field("operator")?);
-                let left = self.constant_boolean(expression.field("left")?)?;
-                let right = self.constant_boolean(expression.field("right")?)?;
-                match operator {
-                    "&&" | "&" => Some(left && right),
-                    "||" | "|" => Some(left || right),
-                    "^" | "!=" => Some(left != right),
-                    "==" => Some(left == right),
+                let (left, right) = (expression.field("left")?, expression.field("right")?);
+                if let (Some(left), Some(right)) = (self.constant_boolean(left), self.constant_boolean(right)) {
+                    return match operator {
+                        "&&" | "&" => Some(left && right),
+                        "||" | "|" => Some(left || right),
+                        "^" | "!=" => Some(left != right),
+                        "==" => Some(left == right),
+                        _ => None,
+                    };
+                }
+                if !matches!(operator, "<" | "<=" | ">" | ">=" | "==" | "!=") {
+                    return None;
+                }
+                match infix(operator, self.constant_number(left)?, self.constant_number(right)?) {
+                    Ok(Some(Constant::Bool(value))) => Some(value),
                     _ => None,
                 }
             }
+            "identifier" | "field_access" => read(self.constant_field_of(expression)?),
+            _ => None,
+        }
+    }
+
+    /// The field a name or field access reads, when it is a field.
+    fn constant_field_of(&self, expression: Node) -> Option<&Field> {
+        match expression.kind() {
             "identifier" => match self.binding(expression, self.file.text_of(expression))? {
-                Binding::Field(_, _, field) => read(field),
+                Binding::Field(_, _, field) => Some(field),
                 Binding::Local(_) => None,
             },
             "field_access" => {
                 let name = self.file.text_of(expression.field("field")?);
                 match self.receiver(expression.field("object")?)? {
-                    Receiver::Static(owner) | Receiver::Value(Type::Class(owner, _)) => read(self.index.field(&owner, name)?.1),
+                    Receiver::Static(owner) | Receiver::Value(Type::Class(owner, _)) => Some(self.index.field(&owner, name)?.1),
                     _ => None,
                 }
+            }
+            _ => None,
+        }
+    }
+
+    /// The value of a constant numeric or `char` expression made of literals, constant fields, casts to primitive
+    /// types and the numeric operators.
+    fn constant_number(&self, expression: Node) -> Option<Constant> {
+        let expression = unwrap(expression);
+        let operand = |name| expression.field(name).and_then(|operand| self.constant_number(operand));
+        match expression.kind() {
+            "decimal_integer_literal" | "hex_integer_literal" | "octal_integer_literal" | "binary_integer_literal" => {
+                Some(literal(self.file.text_of(expression), true).constant())
+            }
+            "decimal_floating_point_literal" | "hex_floating_point_literal" => Some(literal(self.file.text_of(expression), false).constant()),
+            "character_literal" => {
+                let image = self.file.text_of(expression);
+                (!image.contains("\\u")).then(|| char_value(image)).flatten().map(|code| Constant::Char(code as u16))
+            }
+            "unary_expression" => unary(self.file.text_of(expression.field("operator")?), operand("operand")?).filter(|value| !matches!(value, Constant::Bool(_))),
+            "binary_expression" => match infix(self.file.text_of(expression.field("operator")?), operand("left")?, operand("right")?) {
+                Ok(Some(Constant::Bool(_))) | Ok(None) | Err(_) => None,
+                Ok(Some(value)) => Some(value),
+            },
+            "cast_expression" => {
+                let kind = expression.field("type").filter(|kind| kind.kind() == "integral_type" || kind.kind() == "floating_point_type")?;
+                cast(self.file.text_of(kind), operand("value")?)
+            }
+            "identifier" | "field_access" => {
+                let field = self.constant_field_of(expression)?;
+                let number = field.number?;
+                Some(match &field.kind {
+                    Type::Primitive("int" | "short" | "byte") => Constant::Int(number as i32),
+                    Type::Primitive("char") => Constant::Char(number as u16),
+                    Type::Primitive("long") => Constant::Long(number),
+                    Type::Primitive("float") => Constant::Float(f32::from_bits(number as u32)),
+                    Type::Primitive("double") => Constant::Double(f64::from_bits(number as u64)),
+                    _ => return None,
+                })
             }
             _ => None,
         }

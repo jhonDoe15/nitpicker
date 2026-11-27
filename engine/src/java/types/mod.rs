@@ -1,4 +1,5 @@
 pub mod classfile;
+pub mod constant;
 pub mod expr;
 pub mod guards;
 pub mod index;
