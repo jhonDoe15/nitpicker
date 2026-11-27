@@ -7,7 +7,7 @@
 //! with the same notes are one finding, on the first one's line.
 mod eval;
 mod flow;
-mod lines;
+pub(super) mod lines;
 pub(super) mod reach;
 mod values;
 

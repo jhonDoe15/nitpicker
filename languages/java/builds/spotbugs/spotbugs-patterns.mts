@@ -21,6 +21,7 @@ import {
   CIRCUIT_PATTERNS,
   FLOAT_PATTERNS,
 } from './tail/spotbugs-tail-logic-placed.mts';
+import { VALUE_DETECTORS } from './values/spotbugs-values-placed.mts';
 
 export const WRONG_MAP_ITERATOR = 'WMI_WRONG_MAP_ITERATOR';
 export const LOCK_MONITORENTER = 'JLM_JSR166_LOCK_MONITORENTER';
@@ -47,7 +48,12 @@ export const UNSYNC_GET = 'UG_SYNC_SET_UNSYNC_GET';
 export const UNCHECKED_READS: readonly string[] = ['RR_NOT_CHECKED', 'SR_NOT_CHECKED'];
 export const UNINITIALIZED_READ = 'UR_UNINIT_READ';
 export const HARD_CODED: readonly string[] = ['HARD_CODE_PASSWORD', 'HARD_CODE_KEY'];
-const VALUE_PATTERNS: readonly string[] = [...UNCHECKED_READS, UNINITIALIZED_READ, ...HARD_CODED];
+const VALUE_PATTERNS: readonly string[] = [
+  ...UNCHECKED_READS,
+  UNINITIALIZED_READ,
+  ...HARD_CODED,
+  ...Object.values(VALUE_DETECTORS).flat(),
+];
 export const ON_ENGINE: readonly string[] = [
   'CT_CONSTRUCTOR_THROW',
   'EI_EXPOSE_REP',

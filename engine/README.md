@@ -886,6 +886,31 @@ detectors report. Both run on the engine in real runs; SpotBugs filters them out
   methods of the file that return a constant or their argument.
 - Not measured: fields of other files, sinks of libraries beyond the stubs in `secrets_libraries`.
 
+### Optional nulls and end-of-stream casts
+
+Two detectors SpotBugs never fired on the benchmark projects: OptionalReturnNull (`NP_OPTIONAL_RETURN_NULL`, in
+`src/java/spotbugs/methods/booleans.rs`) and FindBadEndOfStreamCheck (`EOS_BAD_END_OF_STREAM_CHECK`,
+`src/java/spotbugs/values/streams/`). `NP_OPTIONAL_RETURN_NULL` runs on the engine in real runs and SpotBugs no
+longer runs its detector; `EOS_BAD_END_OF_STREAM_CHECK` is rebuilt but stays on SpotBugs until the gaps below are
+closed. Measured one class per SpotBugs run (`tests/fixtures/spotbugs/optional_returns`, `end_of_stream*`):
+
+- `NP_OPTIONAL_RETURN_NULL` follows `NP_BOOLEAN_RETURN_NULL` (a `null` handed straight to `return`, also as the
+  last arm of `?:`, the arm javac keeps of a `?:` with a constant condition, or the last case of a `switch`
+  expression, and in lambda bodies; one per method) for a method that returns `java.util.Optional` or Guava's
+  `Optional` (not `OptionalInt` and the like), always priority 1. For both, a `finally` with no statements is no
+  cleanup: javac writes no handler for it.
+- `EOS_BAD_END_OF_STREAM_CHECK`: an `int` returned by a `read` the compiled code makes on `FileInputStream` or
+  `FileReader` (or a subclass of `FileInputStream` that does not declare it), cast to `byte` or `char` (through
+  `(int)` casts and unary `+`) and compared with -1 (`==`, `!=`) or with a literal 0 (`< 0`, `>= 0`, `0 > x`,
+  `0 <= x`). The cast value counts on the stack, or in variables once the `read` result was kept in one, until
+  that first variable is written again. Priority 2, one per method. SpotBugs keeps the detector's state from one
+  method and class to the next, so a cast in one class can be reported at a comparison in the next one it
+  analyses; that order-dependent leak is not copied.
+- Not copied yet: for `EOS_BAD_END_OF_STREAM_CHECK`, code in initializer blocks, and how SpotBugs merges the
+  state where paths meet (a write of the first variable in a branch that returns, or after the comparison inside
+  a loop); for both patterns, a result marked nullable in other ways SpotBugs honours (an inherited JSR-305 or
+  SpotBugs `@Nullable`, `@Nonnull(when = MAYBE)` and the like, `@UnknownNullness`).
+
 ### Casts and `instanceof`
 
 `src/java/spotbugs/casts/` rebuilds FindBadCast2: the `BC_*` cast patterns and `NP_NULL_INSTANCEOF`. SpotBugs no

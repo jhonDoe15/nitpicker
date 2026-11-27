@@ -4,6 +4,10 @@ const ERROR = 'error';
 const WARNING = 'warning';
 const NOTE = 'note';
 
+export const VALUE_DETECTORS: Readonly<Record<string, readonly string[]>> = {
+  OptionalReturnNull: ['NP_OPTIONAL_RETURN_NULL'],
+};
+
 export const VALUES_PLACED: Readonly<Record<string, Placed>> = {
   SR_NOT_CHECKED: {
     text: 'Method ignores results of InputStream.skip()',
@@ -28,5 +32,9 @@ export const VALUES_PLACED: Readonly<Record<string, Placed>> = {
     text: 'Hard coded key',
     levels: { 1: WARNING, 2: WARNING },
     placement: 'shown',
+  },
+  NP_OPTIONAL_RETURN_NULL: {
+    text: 'Method with Optional return type returns explicit null',
+    levels: { 1: ERROR },
   },
 };
