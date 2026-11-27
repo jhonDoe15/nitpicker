@@ -60,7 +60,12 @@ describe('facts the engine rules get from the project', () => {
       expect.stringMatching(/^no-unknown-in-domain\.phrase=./u),
       'no-unsafe-deserialization.yaml-major=',
       'no-untrimmed-request-text.global-trimmer=false',
+      'no-route-without-auth.entries=[]',
+      'no-sql-string-building.sql-library=',
       'preserve-error-cause.options={}',
+      'require-http-timeout.fetch=',
+      'require-http-timeout.node-fetch-timeout=',
+      'require-http-timeout.project-defaults=',
       'report-module-load-effects.common-js-exports=false',
       expect.stringMatching(/^structured-catch-logging\.logger-shapes=/u),
       expect.stringMatching(/^test-must-use-production-runtime\.exempt=(?:true|false)$/u),
@@ -77,6 +82,12 @@ describe('facts the engine rules get from the project', () => {
       'nitpicker/no-unhandled-void-promise': ['error', { runners: ['vitest'] }],
       'nitpicker/report-module-load-effects': ['error', { commonJsExports: true }],
       'nitpicker/no-unsafe-deserialization': ['error', { yamlMajor: 3 }],
+      'nitpicker/no-route-without-auth': ['error', { entries: ['route__requireAuth'] }],
+      'nitpicker/no-sql-string-building': ['error', { sqlLibrary: 'kysely' }],
+      'nitpicker/require-http-timeout': [
+        'error',
+        { fetch: false, nodeFetchTimeout: false, projectDefaults: ['axios', 'got'] },
+      ],
     };
 
     expect(settingsOf(rules)).toEqual([
@@ -89,6 +100,11 @@ describe('facts the engine rules get from the project', () => {
       'no-unhandled-void-promise.runners=["vitest"]',
       'report-module-load-effects.common-js-exports=true',
       'no-unsafe-deserialization.yaml-major=3',
+      'no-route-without-auth.entries=["route__requireAuth"]',
+      'no-sql-string-building.sql-library=kysely',
+      'require-http-timeout.fetch=false',
+      'require-http-timeout.node-fetch-timeout=false',
+      'require-http-timeout.project-defaults=axios,got',
     ]);
   });
 

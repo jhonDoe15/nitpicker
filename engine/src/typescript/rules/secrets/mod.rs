@@ -3,4 +3,4 @@ pub mod hardcoded;
 pub mod in_log;
 mod nodes;
 mod operands;
-mod words;
+pub mod words;
