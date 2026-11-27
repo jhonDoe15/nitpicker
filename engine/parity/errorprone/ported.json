@@ -566,5 +566,6 @@
  "MutableGuiceModule",
  "MissingFail",
  "TryFailRefactoring",
- "AssertThrowsMinimizer"
+ "AssertThrowsMinimizer",
+ "InlineMeValidator"
 ]

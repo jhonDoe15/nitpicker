@@ -92,7 +92,6 @@ pub const PRECONDITIONS: &[(&str, Gate)] = &[
     ("EqualsBrokenForNull", Gate::Text(&["equals"])),
     ("RedundantNullCheck", NULL),
     ("ReturnsNullCollection", NULL),
-    ("InlineMeValidator", Gate::Text(&["InlineMe"])),
     ("ReferenceEquality", COMPARED),
     ("OptionalEquality", COMPARED),
     ("MemorySegmentReferenceEquality", COMPARED),

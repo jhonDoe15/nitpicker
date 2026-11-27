@@ -52,8 +52,15 @@ fn numeric_rank(kind: &Type) -> Option<u8> {
 /// The value of a string literal with its escapes decoded. Text blocks are left out.
 pub fn literal_text(file: &crate::engine::source::SourceFile, literal: Node) -> Option<String> {
     let literal = unwrap(literal);
-    let text = file.text_of(literal);
-    if literal.kind() != "string_literal" || text.len() < 2 {
+    if literal.kind() != "string_literal" {
+        return None;
+    }
+    string_value(file.text_of(literal))
+}
+
+/// The value of a string literal or text block as written in source, quotes included.
+pub fn string_value(text: &str) -> Option<String> {
+    if text.len() < 2 {
         return None;
     }
     let block = text.starts_with("\"\"\"");

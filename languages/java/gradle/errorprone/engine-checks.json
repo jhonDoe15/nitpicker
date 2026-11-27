@@ -216,6 +216,7 @@
   "InjectOnMemberAndConstructor",
   "InjectScopeAnnotationOnInterfaceOrAbstractClass",
   "InjectedConstructorAnnotations",
+  "InlineMeValidator",
   "InlineTrivialConstant",
   "InputStreamSlowMultibyteRead",
   "InsecureCryptoUsage",

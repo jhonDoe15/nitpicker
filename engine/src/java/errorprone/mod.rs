@@ -22,6 +22,7 @@ mod missing_fail;
 mod missing_fail_parts;
 mod truth_expected;
 mod fix_compiles_writes;
+mod inline_me;
 mod format_validation;
 mod format_string;
 mod format_annotation;
@@ -911,6 +912,7 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["ModifySourceCollectionInStream"], modify_source::modify_source_collection_in_stream),
     (&["TypeNameShadowing"], type_shadowing::type_name_shadowing),
     (&["UseBinds"], use_binds::use_binds),
+    (&["InlineMeValidator"], inline_me::inline_me_validator),
     (&["CharacterGetNumericValue"], misc_defect_calls::character_get_numeric_value),
     (&["GetClassOnEnum"], misc_defect_calls::get_class_on_enum),
     (&["BigDecimalEquals"], misc_defect_calls::big_decimal_equals),
