@@ -34,7 +34,12 @@ fn jdk_home() -> PathBuf {
 }
 
 /// The major version of the JDK, from its `release` file; zero when it is unknown.
-fn jdk_major() -> u32 {
+pub fn jdk_major() -> u32 {
+    static MAJOR: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
+    *MAJOR.get_or_init(read_jdk_major)
+}
+
+fn read_jdk_major() -> u32 {
     let text = std::fs::read_to_string(jdk_home().join("release")).unwrap_or_default();
     let version = text.lines().find_map(|line| line.strip_prefix("JAVA_VERSION=")).unwrap_or_default().trim_matches('"');
     let first = version.split(['.', '-', '+']).next().unwrap_or_default();

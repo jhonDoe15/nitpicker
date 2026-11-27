@@ -1,0 +1,1 @@
+const a = (o) => b(o); const b = (o) => a(o) || expect(o).toBe(1); it('x', () => { for (const o of orders) { a(o); } });

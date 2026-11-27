@@ -1,0 +1,1 @@
+function body() { setTimeout(() => expect(a).toBe(1)); } it('x', body);

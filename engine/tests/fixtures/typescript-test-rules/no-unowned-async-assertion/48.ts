@@ -1,0 +1,1 @@
+it('x', () => { expect.assertions(2); expect(b).resolves.toBe(2); setTimeout(() => expect(a).toBe(1)); });

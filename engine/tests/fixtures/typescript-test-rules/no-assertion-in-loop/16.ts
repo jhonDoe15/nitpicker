@@ -1,0 +1,1 @@
+it('x', async () => { await Promise.all(items.map(async (x) => expect(await load(x)).toBe(1))); });

@@ -1,0 +1,1 @@
+it('x', () => { for (const k in map) { expect(map[k]).toBe(1); } });

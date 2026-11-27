@@ -1,0 +1,1 @@
+it('x', () => { setTimeout(() => expect(a).toBe(1), 10); const wait = () => { vi.advanceTimersByTime(10); }; });

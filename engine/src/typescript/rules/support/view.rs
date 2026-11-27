@@ -180,6 +180,32 @@ impl View {
         }
     }
 
+    /// A string as UTF-16 code units, which keeps the lone surrogates `text` cannot hold.
+    pub fn utf16(&self, value: Value) -> Option<Vec<u16>> {
+        let Value::Text(start, end, _) = value else { return None };
+        let raw = self.slice(start, end);
+        let mut units = Vec::with_capacity(raw.len());
+        let mut characters = raw.chars();
+        while let Some(character) = characters.next() {
+            if character != '\\' {
+                let mut buffer = [0; 2];
+                units.extend_from_slice(character.encode_utf16(&mut buffer));
+                continue;
+            }
+            let unit = match characters.next()? {
+                'n' => 0x0a,
+                't' => 0x09,
+                'r' => 0x0d,
+                'b' => 0x08,
+                'f' => 0x0c,
+                'u' => u16::from_str_radix(&characters.by_ref().take(4).collect::<String>(), 16).ok()?,
+                other => other as u16,
+            };
+            units.push(unit);
+        }
+        Some(units)
+    }
+
     pub fn items(&self, value: Value) -> &[Value] {
         match value {
             Value::List(start, end) => &self.items[start as usize..end as usize],

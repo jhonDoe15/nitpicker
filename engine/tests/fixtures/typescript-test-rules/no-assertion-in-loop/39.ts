@@ -1,0 +1,1 @@
+it('x', () => { orders.map((o) => expect(o.paid).toBe(true)); });

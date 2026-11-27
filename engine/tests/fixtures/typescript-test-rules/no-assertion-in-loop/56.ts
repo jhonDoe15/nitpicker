@@ -1,0 +1,1 @@
+it('x', () => { const log = (o) => console.assert(o); orders.forEach(log); });

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { isTestFile, parseNumstat, removesTests } from './test-removal.mts';
+import {
+  importedTargets,
+  isTestFile,
+  parseNumstat,
+  removedTestTargetsOf,
+  removesTests,
+} from './test-removal.mts';
 
 describe('which files are tests', () => {
   it.each([
@@ -24,7 +30,7 @@ describe('reading the numstat output', () => {
 
     expect(parseNumstat(output)).toEqual([
       { added: 1, removed: 2, file: 'a.py' },
-      { added: 3, removed: 4, file: 'new.py' },
+      { added: 3, removed: 4, file: 'new.py', baseFile: 'old.py' },
       { added: Number.NaN, removed: Number.NaN, file: 'image.png' },
     ]);
   });
@@ -43,5 +49,73 @@ describe('removesTests', () => {
     ],
   ])('%s: %s', (_name, entries, expected) => {
     expect(removesTests(entries)).toBe(expected);
+  });
+});
+
+describe('the code a removed test imported', () => {
+  it('resolves relative imports, mocks and requires next to the test file', () => {
+    const text = [
+      "import { a } from './a.mts';",
+      "import type { B } from '../src/b.js';",
+      "vi.mock('../src/c', () => ({}));",
+      "const d = require('./d.cjs');",
+      "import { e } from 'vitest';",
+      "const label = 'just ./text';",
+    ].join('\n');
+
+    expect(importedTargets('app/tests/x.test.ts', text)).toEqual([
+      'app/tests/a.mts',
+      'app/src/b.js',
+      'app/src/b.ts',
+      'app/src/b.tsx',
+      'app/src/c',
+      ...['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'].map(
+        (each) => `app/src/c${each}`,
+      ),
+      ...['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'].map(
+        (each) => `app/src/c/index${each}`,
+      ),
+      'app/tests/d.cjs',
+      'app/tests/d.cts',
+    ]);
+  });
+
+  it('makes the targets relative to the project', () => {
+    const texts = new Map([['app/a.test.ts', "import { a } from './a.ts';\nimport 'vitest';"]]);
+
+    expect(removedTestTargetsOf(['app/a.test.ts'], texts, 'app')).toEqual(new Set(['a.ts']));
+  });
+
+  it('leaves out test data, which no test runner loads as a test', () => {
+    const texts = new Map([
+      ['tests/a.test.ts', "import { a } from '../a.ts';"],
+      ['tests/expected/a.json', '{}'],
+    ]);
+
+    expect(removedTestTargetsOf(['tests/a.test.ts', 'tests/expected/a.json'], texts, '')).toEqual(
+      new Set(['a.ts']),
+    );
+    expect(removedTestTargetsOf(['tests/expected/a.json'], texts, '')).toEqual(new Set());
+  });
+
+  it('knows no targets when a removed test is in another language', () => {
+    const texts = new Map([['src/test/java/a/ATest.java', 'import a.A;']]);
+
+    expect(removedTestTargetsOf(['src/test/java/a/ATest.java'], texts, '')).toBeUndefined();
+  });
+
+  it.each([
+    ['imports nothing relative', new Map([['a.test.ts', "import { a } from '@app/a';"]])],
+    ['cannot be read at the base', new Map<string, string>()],
+    ['imports code outside the project', new Map([['a.test.ts', "import '../lib/b.ts';"]])],
+    ['imports through an alias', new Map([['a.test.ts', "import './a.ts';\nimport '#/b';"]])],
+    ['imports a barrel', new Map([['a.test.ts', "import './a.ts';\nimport '../index.ts';"]])],
+    ['imports a directory', new Map([['a.test.ts', "import './a.ts';\nimport '..';"]])],
+    [
+      'imports a computed path',
+      new Map([['a.test.ts', ['await import(`./cases/$', '{name}.ts`);'].join('')]]),
+    ],
+  ])('knows no targets when a removed test %s', (_name, texts) => {
+    expect(removedTestTargetsOf(['a.test.ts'], texts, '')).toBeUndefined();
   });
 });

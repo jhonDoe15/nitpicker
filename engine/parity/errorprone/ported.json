@@ -545,5 +545,10 @@
  "NullablePrimitiveArray",
  "NullableTypeParameter",
  "NullableWildcard",
- "NullableVoid"
+ "NullableVoid",
+ "FormatString",
+ "FormatStringAnnotation",
+ "FloggerFormatString",
+ "OrphanedFormatString",
+ "FloatingPointAssertionWithinEpsilon"
 ]

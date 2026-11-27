@@ -1,0 +1,1 @@
+it('x', () => { const check = (o) => run(o); orders.forEach(check); expect(done()).toBe(true); });

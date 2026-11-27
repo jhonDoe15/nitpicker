@@ -20,6 +20,8 @@ const projectWith = useTempProjects('nitpicker-errorprone-engine-');
 const LEFT = ENABLED_CHECKS.filter(
   (check) => !ENGINE_CHECKS.includes(check) && check !== IMMUTABLE,
 );
+const IMMUTABLE_NAMED = ['ImmutableAnnotationChecker', 'ImmutableEnumChecker'];
+const ON_ENGINE = ENGINE_CHECKS.filter((check) => !IMMUTABLE_NAMED.includes(check));
 
 type Setup = {
   readonly plan: ErrorProneEnginePlan;
@@ -109,15 +111,14 @@ describe('errorProneOnEngine', () => {
     );
     expect(passed).toStrictEqual({
       ...environment,
-      NP_EP_ONLY: ENGINE_CHECKS.join(','),
+      NP_EP_ONLY: ON_ENGINE.join(','),
       NP_EP_MAY_REPORT: LEFT.join(','),
       NP_NULLAWAY_PACKAGES: 'demo',
       NITPICKER_JDK: plan.javaHome,
     });
     const lines = readFileSync(argumentFile, 'utf8').split('\n');
     expect(lines.slice(lines.indexOf('--sources'))).toStrictEqual(['--sources', '']);
-    expect(lines.includes(`--errorprone-flag=-Xep:${LEFT[0] ?? ''}:OFF`)).toBe(true);
-    expect(lines).not.toContain('--errorprone-flag=-Xep:UnicodeDirectionalityCharacters:OFF');
+    expect(lines.filter((line) => line.startsWith('--errorprone-flag='))).toStrictEqual([]);
     expect(argumentFilesToCompile(plan.argumentFiles)).toStrictEqual([]);
   });
 
@@ -201,7 +202,7 @@ describe('errorProneOnEngine', () => {
     const [{ argumentList, environment: passed } = { argumentList: [], environment: {} }] = started;
     expect(argumentList.includes('--test-only')).toBe(true);
     expect(fieldOf(passed, 'NP_EP_ONLY')).toBe(
-      ENGINE_CHECKS.filter((check) => check !== NULL_AWAY).join(','),
+      ON_ENGINE.filter((check) => check !== NULL_AWAY).join(','),
     );
     expect(passed).not.toHaveProperty('NP_NULLAWAY_PACKAGES');
   });
@@ -230,7 +231,9 @@ describe('errorProneOnEngine', () => {
   });
 
   it('does nothing without the engine, without the JDK modules or when the project passes options', () => {
-    const { plan, environment, argumentFile } = setup('--errorprone-flag=-XepDisableAllChecks');
+    const { plan, environment, argumentFile } = setup(
+      '--errorprone-flag=-XepPatchChecks:MissingOverride',
+    );
     const before = readFileSync(argumentFile, 'utf8');
     const started: Started[] = [];
     writeFileSync(path.join(plan.reportDir, ENGINE_REPORT), '[{}]');

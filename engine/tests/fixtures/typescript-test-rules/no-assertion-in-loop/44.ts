@@ -1,0 +1,1 @@
+it('x', () => { orders.reduce((sum, o) => { expect(o).toBe(1); return sum; }, 0); });

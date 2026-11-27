@@ -7,14 +7,12 @@ import {
   isFile,
   readTextIfExists,
 } from '../../../../../shared/filesystem.mts';
-import { entryHolds, projectFlags } from '../engine-arguments.mts';
+import { entryHolds } from '../engine-arguments.mts';
 
 const OFF = new Set([...CHECKS.defaultOff, ...CHECKS.disable]);
 export const ENABLED_CHECKS: readonly string[] = CHECKS.reviewedChecks.filter(
   (check) => !OFF.has(check),
 );
-export const LOMBOK_UNSUPPRESSED_OFF: readonly string[] = CHECKS.lombokUnsuppressedOff;
-export const CANNOT_BE_OFF: readonly string[] = ['UnicodeDirectionalityCharacters'];
 export const IMMUTABLE = 'Immutable';
 
 const ADD_SUPPRESS_WARNINGS = /^\s*lombok\.addSuppressWarnings\s*=\s*(\w+)/mu;
@@ -27,7 +25,6 @@ const NULL_AWAY_CHECKERS: ReadonlySet<string> = new Set([
   'com.uber.nullaway.JSpecifyUnrecognizedAnnotationLocation',
   'com.uber.nullaway.RequireExplicitNullMarking',
 ]);
-const CHECK_LEVEL = /^-Xep:(\w+)(?::(\w+))?$/u;
 
 function unsuppressedIn(directory: string): boolean {
   for (const current of ancestorDirectories(directory)) {
@@ -86,23 +83,4 @@ export function hasCheckPlugins(head: readonly string[]): boolean {
   return optionEntries(head, '-processorpath').some((entry) =>
     checkersIn(entry).some((checker) => !NULL_AWAY_CHECKERS.has(checker)),
   );
-}
-
-/** The checks the project's `-Xep:<Check>[:<level>]` flags turn on and those they turn off. */
-export function projectLevels(head: readonly string[]): {
-  readonly on: ReadonlySet<string>;
-  readonly off: ReadonlySet<string>;
-} {
-  const levels = new Map<string, boolean>();
-  for (const flag of projectFlags(head)) {
-    const [, check, level] = CHECK_LEVEL.exec(flag) ?? [];
-    if (check !== undefined) {
-      levels.set(check, level !== 'OFF');
-    }
-  }
-  const named = [...levels];
-  return {
-    on: new Set(named.filter(([, on]) => on).map(([check]) => check)),
-    off: new Set(named.filter(([, on]) => !on).map(([check]) => check)),
-  };
 }
