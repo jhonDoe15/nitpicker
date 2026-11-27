@@ -112,7 +112,7 @@ pub fn run(files: &[PathBuf], language: &dyn Language, only: Option<&[String]>, 
                 facts.tokens = Vec::new();
             }
             let lines = file.text.lines().count();
-            let broken = file.tree.root_node().has_error();
+            let broken = language.broken(&file);
             Some((findings, facts, lines, broken, file.path))
         })
         .collect();

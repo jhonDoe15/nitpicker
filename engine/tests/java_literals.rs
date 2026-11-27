@@ -17,6 +17,41 @@ fn engine(folder: &Path, rules: &str) -> Command {
     command
 }
 
+/// PMD reports a parse error for each of these files and javac rejects them; the grammar accepts them.
+#[test]
+fn literals_java_rejects_break_the_file() {
+    let sources = [
+        ("Two", "char c = 'ab';"),
+        ("QuoteThen", "char c = '\\'\\x';"),
+        ("Unknown", "String s = \"\\q\";"),
+        ("LineBreak", "String s = \"a\\\nb\";"),
+        ("Supplementary", "char c = '\u{20BB7}';"),
+        ("BlockEscape", "String s = \"\"\"\n  a\\q\n  \"\"\";"),
+        ("Octal", "char c = '\\400';"),
+        ("Empty", "char c = '';"),
+        ("CarriageReturn", "String s = \"a\\u000d\";"),
+        ("Quote", "char c = '\\u0027';"),
+        ("Valid", "char c = '\\u0041'; String s = \"\\s\\377\\0\\u005c\\u005c\"; char g = '\\uuuu0041'; String t = \"\"\"\n  a\\\n  b\n  \"\"\";"),
+        ("MultiCatch", "void f() { try { } catch (IllegalStateException | @A(v = {1}) IllegalArgumentException | @B Error e) { } }"),
+    ];
+    let folder = folder("literals", &sources);
+    let rules = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("rules").join("edges.json");
+    let output = engine(&folder, "_XPath").env("NP_XPATH_RULES", rules).env("NP_XPATH_ONLY", "Field").output().expect("engine runs");
+    let _ = std::fs::remove_dir_all(&folder);
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).expect("json");
+    let mut broken: Vec<String> = report["syntaxErrorFiles"]
+        .as_array()
+        .expect("files")
+        .iter()
+        .map(|file| Path::new(file.as_str().expect("file")).file_stem().expect("name").to_string_lossy().into_owned())
+        .collect();
+    broken.sort();
+    let mut wanted: Vec<&str> = sources.iter().map(|(name, _)| *name).filter(|name| !["Valid", "MultiCatch"].contains(name)).collect();
+    wanted.sort_unstable();
+    assert_eq!(broken, wanted);
+}
+
 /// The PMD-shaped tree of number and string literals, as PMD's own tree has them.
 #[test]
 fn literal_attributes_match_pmd() {

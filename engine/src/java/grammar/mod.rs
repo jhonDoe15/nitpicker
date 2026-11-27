@@ -3,6 +3,7 @@
 
 pub mod catches;
 mod code;
+pub mod literals;
 mod numbers;
 
 use super::annotations_run::before_spread;
