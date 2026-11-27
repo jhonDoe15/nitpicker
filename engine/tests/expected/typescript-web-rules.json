@@ -2664,6 +2664,771 @@
   64
  ],
  [
+  "no-uncoerced-request-input/15.ts",
+  "nitpicker/no-uncoerced-request-input",
+  2,
+  37,
+  "page arrives from the query string as text, but the type number claims otherwise and nothing at the declaration converts it. Convert it there with ParseIntPipe or ParseFloatPipe.",
+  2,
+  60
+ ],
+ [
+  "no-uncoerced-request-input/16.ts",
+  "nitpicker/no-uncoerced-request-input",
+  4,
+  13,
+  "ids arrives from the query string as text, but the type number[] claims otherwise and nothing at the declaration converts it. Convert it there with new ParseArrayPipe({ items: Number }).",
+  4,
+  40
+ ],
+ [
+  "no-uncoerced-request-input/17.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  17,
+  "page arrives from the query string as text, so @IsInt() rejects every request that sets it. Convert the text where the field is declared: @Type(() => Number).",
+  3,
+  40
+ ],
+ [
+  "no-uncoerced-request-input/18.ts",
+  "nitpicker/no-uncoerced-request-input",
+  4,
+  13,
+  "limit arrives from the query string as text, but the type number claims otherwise and nothing at the declaration converts it. Convert it there with ParseIntPipe or ParseFloatPipe.",
+  4,
+  42
+ ],
+ [
+  "no-uncoerced-request-input/19.ts",
+  "nitpicker/no-uncoerced-request-input",
+  4,
+  13,
+  "limit arrives from the query string as text, but the type number claims otherwise and nothing at the declaration converts it. Convert it there with new ParseIntPipe({ optional: true }) or new ParseFloatPipe({ optional: true }).",
+  4,
+  69
+ ],
+ [
+  "no-uncoerced-request-input/20.ts",
+  "nitpicker/no-uncoerced-request-input",
+  4,
+  17,
+  "id arrives from the path as text, but the type number claims otherwise and nothing at the declaration converts it. Convert it there with ParseIntPipe or ParseFloatPipe.",
+  4,
+  40
+ ],
+ [
+  "no-uncoerced-request-input/21.ts",
+  "nitpicker/no-uncoerced-request-input",
+  4,
+  13,
+  "x-all arrives from the headers as text, but the type boolean | undefined claims otherwise and nothing at the declaration converts it. Convert it there with new ParseBoolPipe({ optional: true }).",
+  4,
+  55
+ ],
+ [
+  "no-uncoerced-request-input/22.ts",
+  "nitpicker/no-uncoerced-request-input",
+  4,
+  31,
+  "limit arrives from the query string as text, but the type number claims otherwise and nothing at the declaration converts it. Convert it there with a DTO or schema that converts it.",
+  4,
+  45
+ ],
+ [
+  "no-uncoerced-request-input/23.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  102,
+  "since arrives from the query string as text, so @IsDate() rejects every request that sets it. Convert the text where the field is declared: @Type(() => Date).",
+  3,
+  125
+ ],
+ [
+  "no-uncoerced-request-input/23.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  17,
+  "limit arrives from the query string as text, so @IsInt() rejects every request that sets it. Convert the text where the field is declared: @Type(() => Number).",
+  3,
+  63
+ ],
+ [
+  "no-uncoerced-request-input/23.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  64,
+  "all arrives from the query string as text, so @IsBoolean() rejects every request that sets it. Convert the text where the field is declared: @Transform(({ value }) => value === 'true').",
+  3,
+  101
+ ],
+ [
+  "no-uncoerced-request-input/24.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  17,
+  "all arrives from the query string as text, and @Type(() => Boolean) turns \"false\" into true. Compare the text instead: @Transform(({ value }) => value === 'true').",
+  3,
+  65
+ ],
+ [
+  "no-uncoerced-request-input/25.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  17,
+  "page arrives from the query string as text, so @IsInt() rejects every request that sets it. Convert the text where the field is declared: @Type(() => Number).",
+  3,
+  40
+ ],
+ [
+  "no-uncoerced-request-input/26.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  17,
+  "page arrives from the query string as text, so @IsInt() rejects every request that sets it. Convert the text where the field is declared: @Type(() => Number).",
+  3,
+  40
+ ],
+ [
+  "no-uncoerced-request-input/27.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  19,
+  "duration arrives from the multipart form as text, so @IsInt() rejects every request that sets it. Convert the text where the field is declared: @Type(() => Number).",
+  3,
+  46
+ ],
+ [
+  "no-uncoerced-request-input/28.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  38,
+  "limit arrives from the query string as text, so z.int() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().int().",
+  3,
+  56
+ ],
+ [
+  "no-uncoerced-request-input/28.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  63,
+  "all arrives from the query string as text, and z.coerce.boolean() turns \"false\" into true. Compare the text instead: z.stringbool() (zod 4) or z.enum(['true', 'false']).transform((value) => value === 'true').",
+  3,
+  81
+ ],
+ [
+  "no-uncoerced-request-input/28.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  88,
+  "ids arrives from the query string as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  3,
+  107
+ ],
+ [
+  "no-uncoerced-request-input/29.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  31,
+  "page arrives from the query string as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  3,
+  41
+ ],
+ [
+  "no-uncoerced-request-input/30.ts",
+  "nitpicker/no-uncoerced-request-input",
+  6,
+  29,
+  "limit arrives from the query string as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  6,
+  68
+ ],
+ [
+  "no-uncoerced-request-input/31.ts",
+  "nitpicker/no-uncoerced-request-input",
+  6,
+  60,
+  "since arrives from the query string as text, so z.date() rejects every request that sets it. Convert the text where the field is declared: z.coerce.date().",
+  6,
+  68
+ ],
+ [
+  "no-uncoerced-request-input/47.ts",
+  "nitpicker/no-uncoerced-request-input",
+  2,
+  33,
+  "limit arrives from the query string as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  2,
+  68
+ ],
+ [
+  "no-uncoerced-request-input/48.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  33,
+  "limit arrives from the query string as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  3,
+  38
+ ],
+ [
+  "no-uncoerced-request-input/48.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  45,
+  "all arrives from the query string as text, so z.boolean() rejects every request that sets it. Convert the text where the field is declared: z.stringbool() (zod 4) or z.enum(['true', 'false']).transform((value) => value === 'true').",
+  3,
+  67
+ ],
+ [
+  "no-uncoerced-request-input/49.ts",
+  "nitpicker/no-uncoerced-request-input",
+  2,
+  50,
+  "id arrives from the path as text, so z.bigint() rejects every request that sets it. Convert the text where the field is declared: z.coerce.bigint().",
+  2,
+  60
+ ],
+ [
+  "no-uncoerced-request-input/50.ts",
+  "nitpicker/no-uncoerced-request-input",
+  2,
+  53,
+  "retry.count arrives from the headers as text, so z.int32() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().int().",
+  2,
+  62
+ ],
+ [
+  "no-uncoerced-request-input/51.ts",
+  "nitpicker/no-uncoerced-request-input",
+  2,
+  33,
+  "limit arrives from the query string as text, so v.number() rejects every request that sets it. Convert the text where the field is declared: v.pipe(v.string(), v.toNumber(), v.number()).",
+  2,
+  76
+ ],
+ [
+  "no-uncoerced-request-input/51.ts",
+  "nitpicker/no-uncoerced-request-input",
+  2,
+  83,
+  "all arrives from the query string as text, so v.boolean() rejects every request that sets it. Convert the text where the field is declared: v.pipe(v.picklist(['true', 'false']), v.transform((value) => value === 'true')).",
+  2,
+  94
+ ],
+ [
+  "no-uncoerced-request-input/52.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  59,
+  "page arrives from the query string as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  3,
+  69
+ ],
+ [
+  "no-uncoerced-request-input/52.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  76,
+  "all arrives from the query string as text, and z.coerce.boolean() turns \"false\" into true. Compare the text instead: z.stringbool() (zod 4) or z.enum(['true', 'false']).transform((value) => value === 'true').",
+  3,
+  94
+ ],
+ [
+  "no-uncoerced-request-input/53.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  58,
+  "size arrives from the multipart form as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  3,
+  68
+ ],
+ [
+  "no-uncoerced-request-input/54.ts",
+  "nitpicker/no-uncoerced-request-input",
+  2,
+  31,
+  "page arrives from the query string as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  2,
+  41
+ ],
+ [
+  "no-uncoerced-request-input/54.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  56,
+  "all arrives from the query string as text, so z.boolean() rejects every request that sets it. Convert the text where the field is declared: z.stringbool() (zod 4) or z.enum(['true', 'false']).transform((value) => value === 'true').",
+  3,
+  67
+ ],
+ [
+  "no-uncoerced-request-input/55.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  57,
+  "size arrives from the query string as text, so z.int() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().int().",
+  3,
+  64
+ ],
+ [
+  "no-uncoerced-request-input/56.ts",
+  "nitpicker/no-uncoerced-request-input",
+  2,
+  51,
+  "page arrives from the query string as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  2,
+  61
+ ],
+ [
+  "no-uncoerced-request-input/57.ts",
+  "nitpicker/no-uncoerced-request-input",
+  2,
+  32,
+  "page arrives from the query string as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  2,
+  42
+ ],
+ [
+  "no-uncoerced-request-input/57.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  77,
+  "id arrives from the path as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  3,
+  87
+ ],
+ [
+  "no-uncoerced-request-input/58.js",
+  "nitpicker/no-uncoerced-request-input",
+  2,
+  32,
+  "page arrives from the query string as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  2,
+  42
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  12,
+  47,
+  "extra arrives from the query string as text, so @IsInt() rejects every request that sets it. Convert the text where the field is declared: @Type(() => Number).",
+  12,
+  71
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  15,
+  106,
+  "lit arrives from the query string as text, so z.literal() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  15,
+  118
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  15,
+  125,
+  "big arrives from the query string as text, so z.literal() rejects every request that sets it. Convert the text where the field is declared: z.coerce.bigint().",
+  15,
+  138
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  15,
+  29,
+  "limit arrives from the query string as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  15,
+  39
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  15,
+  66,
+  "nested.deep arrives from the query string as text, so z.int() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().int().",
+  15,
+  73
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  15,
+  81,
+  "b arrives from the query string as text, and z.coerce.boolean() turns \"false\" into true. Compare the text instead: z.stringbool() (zod 4) or z.enum(['true', 'false']).transform((value) => value === 'true').",
+  15,
+  99
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  22,
+  42,
+  "x arrives from the query string as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  22,
+  75
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  23,
+  12,
+  "b arrives from the query string as text, but the type number | undefined claims otherwise and nothing at the declaration converts it. Convert it there with new ParseIntPipe({ optional: true }) or new ParseFloatPipe({ optional: true }).",
+  23,
+  45
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  23,
+  127,
+  "f arrives from the query string as text, but the type 1 | 2 claims otherwise and nothing at the declaration converts it. Convert it there with ParseIntPipe or ParseFloatPipe.",
+  23,
+  147
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  23,
+  149,
+  "g arrives from the query string as text, but the type -1 claims otherwise and nothing at the declaration converts it. Convert it there with ParseIntPipe or ParseFloatPipe.",
+  23,
+  166
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  23,
+  168,
+  "h arrives from the query string as text, but the type true | false claims otherwise and nothing at the declaration converts it. Convert it there with ParseBoolPipe.",
+  23,
+  195
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  23,
+  197,
+  "i arrives from the query string as text, but the type Date claims otherwise and nothing at the declaration converts it. Convert it there with ParseDatePipe.",
+  23,
+  216
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  23,
+  218,
+  "j arrives from the query string as text, but the type bigint claims otherwise and nothing at the declaration converts it. Convert it there with a pipe that calls BigInt.",
+  23,
+  239
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  23,
+  241,
+  "k arrives from the query string as text, but the type number claims otherwise and nothing at the declaration converts it. Convert it there with ParseIntPipe or ParseFloatPipe.",
+  23,
+  280
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  23,
+  319,
+  "a arrives from the query string as text, but the type number claims otherwise and nothing at the declaration converts it. Convert it there with new ParseIntPipe({ optional: true }) or new ParseFloatPipe({ optional: true }).",
+  23,
+  341
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  23,
+  47,
+  "c arrives from the query string as text, but the type number[] claims otherwise and nothing at the declaration converts it. Convert it there with new ParseArrayPipe({ items: Number }).",
+  23,
+  70
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  23,
+  72,
+  "d arrives from the query string as text, but the type (number) claims otherwise and nothing at the declaration converts it. Convert it there with ParseIntPipe or ParseFloatPipe.",
+  23,
+  95
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  23,
+  97,
+  "e arrives from the query string as text, but the type number | null claims otherwise and nothing at the declaration converts it. Convert it there with ParseIntPipe or ParseFloatPipe.",
+  23,
+  125
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  24,
+  123,
+  "count arrives from the multipart form as text, but the type number claims otherwise and nothing at the declaration converts it. Convert it there with ParseIntPipe or ParseFloatPipe.",
+  24,
+  151
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  24,
+  68,
+  "n arrives from the multipart form as text, but the type number claims otherwise and nothing at the declaration converts it. Convert it there with a DTO or schema that converts it.",
+  24,
+  78
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  24,
+  90,
+  "b arrives from the multipart form as text, but the type boolean claims otherwise and nothing at the declaration converts it. Convert it there with a DTO or schema that converts it.",
+  24,
+  102
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  25,
+  42,
+  "tpl arrives from the query string as text, but the type number claims otherwise and nothing at the declaration converts it. Convert it there with ParseIntPipe or ParseFloatPipe.",
+  25,
+  65
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  26,
+  40,
+  "z arrives from the query string as text, but the type number claims otherwise and nothing at the declaration converts it. Convert it there with ParseIntPipe or ParseFloatPipe.",
+  26,
+  66
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  28,
+  12,
+  "over arrives from the query string as text, but the type number claims otherwise and nothing at the declaration converts it. Convert it there with ParseIntPipe or ParseFloatPipe.",
+  28,
+  36
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  8,
+  117,
+  "flag arrives from the query string as text, and @Type(() => Boolean) turns \"false\" into true. Compare the text instead: @Transform(({ value }) => value === 'true').",
+  8,
+  166
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  8,
+  17,
+  "page arrives from the query string as text, so @IsInt() rejects every request that sets it. Convert the text where the field is declared: @Type(() => Number).",
+  8,
+  40
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  8,
+  180,
+  "quoted-key arrives from the query string as text, so @IsInt() rejects every request that sets it. Convert the text where the field is declared: @Type(() => Number).",
+  8,
+  211
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  8,
+  212,
+  "10 arrives from the query string as text, so @IsInt() rejects every request that sets it. Convert the text where the field is declared: @Type(() => Number).",
+  8,
+  233
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  8,
+  41,
+  "all arrives from the query string as text, so @IsBoolean() rejects every request that sets it. Convert the text where the field is declared: @Transform(({ value }) => value === 'true').",
+  8,
+  68
+ ],
+ [
+  "no-uncoerced-request-input/66.ts",
+  "nitpicker/no-uncoerced-request-input",
+  8,
+  69,
+  "at arrives from the query string as text, so @IsDate() rejects every request that sets it. Convert the text where the field is declared: @Type(() => Date).",
+  8,
+  89
+ ],
+ [
+  "no-uncoerced-request-input/67.ts",
+  "nitpicker/no-uncoerced-request-input",
+  10,
+  124,
+  "r arrives from the path as text, so v.date() rejects every request that sets it. Convert the text where the field is declared: v.pipe(v.string(), v.toDate()).",
+  10,
+  132
+ ],
+ [
+  "no-uncoerced-request-input/67.ts",
+  "nitpicker/no-uncoerced-request-input",
+  10,
+  25,
+  "n arrives from the path as text, so v.number() rejects every request that sets it. Convert the text where the field is declared: v.pipe(v.string(), v.toNumber(), v.number()).",
+  10,
+  35
+ ],
+ [
+  "no-uncoerced-request-input/67.ts",
+  "nitpicker/no-uncoerced-request-input",
+  10,
+  96,
+  "q arrives from the path as text, so v.boolean() rejects every request that sets it. Convert the text where the field is declared: v.pipe(v.picklist(['true', 'false']), v.transform((value) => value === 'true')).",
+  10,
+  119
+ ],
+ [
+  "no-uncoerced-request-input/67.ts",
+  "nitpicker/no-uncoerced-request-input",
+  26,
+  17,
+  "x arrives from the query string as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  26,
+  27
+ ],
+ [
+  "no-uncoerced-request-input/67.ts",
+  "nitpicker/no-uncoerced-request-input",
+  27,
+  17,
+  "y arrives from the query string as text, so z.toString() rejects every request that sets it. Convert the text where the field is declared: undefined.",
+  27,
+  29
+ ],
+ [
+  "no-uncoerced-request-input/67.ts",
+  "nitpicker/no-uncoerced-request-input",
+  27,
+  34,
+  "w arrives from the query string as text, so z.constructor() rejects every request that sets it. Convert the text where the field is declared: undefined.",
+  27,
+  49
+ ],
+ [
+  "no-uncoerced-request-input/67.ts",
+  "nitpicker/no-uncoerced-request-input",
+  30,
+  48,
+  "k arrives from the multipart form as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  30,
+  58
+ ],
+ [
+  "no-uncoerced-request-input/67.ts",
+  "nitpicker/no-uncoerced-request-input",
+  34,
+  90,
+  "hh arrives from the headers as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  34,
+  100
+ ],
+ [
+  "no-uncoerced-request-input/67.ts",
+  "nitpicker/no-uncoerced-request-input",
+  5,
+  28,
+  "a arrives from the query string as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  5,
+  38
+ ],
+ [
+  "no-uncoerced-request-input/67.ts",
+  "nitpicker/no-uncoerced-request-input",
+  5,
+  58,
+  "c arrives from the query string as text, so z.boolean() rejects every request that sets it. Convert the text where the field is declared: z.stringbool() (zod 4) or z.enum(['true', 'false']).transform((value) => value === 'true').",
+  5,
+  80
+ ],
+ [
+  "no-uncoerced-request-input/67.ts",
+  "nitpicker/no-uncoerced-request-input",
+  5,
+  85,
+  "d arrives from the query string as text, so z.date() rejects every request that sets it. Convert the text where the field is declared: z.coerce.date().",
+  5,
+  124
+ ],
+ [
+  "no-uncoerced-request-input/67.ts",
+  "nitpicker/no-uncoerced-request-input",
+  7,
+  52,
+  "e arrives from the query string as text, so z.bigint() rejects every request that sets it. Convert the text where the field is declared: z.coerce.bigint().",
+  7,
+  62
+ ],
+ [
+  "no-uncoerced-request-input/67.ts",
+  "nitpicker/no-uncoerced-request-input",
+  9,
+  96,
+  "i arrives from the query string as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  9,
+  115
+ ],
+ [
+  "no-uncoerced-request-input/68.ts",
+  "nitpicker/no-uncoerced-request-input",
+  2,
+  16,
+  "d arrives from the query string as text, but the type (number) claims otherwise and nothing at the declaration converts it. Convert it there with ParseIntPipe or ParseFloatPipe.",
+  2,
+  39
+ ],
+ [
+  "no-uncoerced-request-input/68.ts",
+  "nitpicker/no-uncoerced-request-input",
+  2,
+  50,
+  "e arrives from the query string as text, but the type number claims otherwise and nothing at the declaration converts it. Convert it there with ParseIntPipe or ParseFloatPipe.",
+  2,
+  71
+ ],
+ [
+  "no-uncoerced-request-input/69.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  25,
+  "a arrives from the path as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  3,
+  35
+ ],
+ [
+  "no-uncoerced-request-input/70.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  25,
+  "a arrives from the query string as text, so z.number() rejects every request that sets it. Convert the text where the field is declared: z.coerce.number().",
+  3,
+  35
+ ],
+ [
   "no-unencoded-url-part/42.ts",
   "nitpicker/no-unencoded-url-part",
   1,
@@ -3868,6 +4633,456 @@
   "Text from a socket message or network response can hold ANSI or control sequences that rewrite earlier terminal lines or hide output. Strip them first with `util.stripVTControlCharacters(text)` or print `JSON.stringify(text)`.",
   2,
   66
+ ],
+ [
+  "no-untrimmed-request-text/07.ts",
+  "nitpicker/no-uncoerced-request-input",
+  3,
+  34,
+  "page arrives from the query string as text, but the type number claims otherwise and nothing at the declaration converts it. Convert it there with ParseIntPipe or ParseFloatPipe.",
+  3,
+  61
+ ],
+ [
+  "no-untrimmed-request-text/12.ts",
+  "nitpicker/no-untrimmed-request-text",
+  1,
+  41,
+  "q comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  1,
+  56
+ ],
+ [
+  "no-untrimmed-request-text/13.ts",
+  "nitpicker/no-untrimmed-request-text",
+  1,
+  59,
+  "req.query.email comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  1,
+  74
+ ],
+ [
+  "no-untrimmed-request-text/14.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  93,
+  "Escape `q` before it goes into the `Like` filter (`escapeSqlLikePattern(q)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  94
+ ],
+ [
+  "no-untrimmed-request-text/14.ts",
+  "nitpicker/no-untrimmed-request-text",
+  1,
+  41,
+  "q comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  1,
+  42
+ ],
+ [
+  "no-untrimmed-request-text/15.ts",
+  "nitpicker/no-untrimmed-request-text",
+  1,
+  37,
+  "q comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  1,
+  57
+ ],
+ [
+  "no-untrimmed-request-text/16.ts",
+  "nitpicker/no-untrimmed-request-text",
+  1,
+  39,
+  "q comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  1,
+  54
+ ],
+ [
+  "no-untrimmed-request-text/17.ts",
+  "nitpicker/no-unescaped-filter-value",
+  1,
+  47,
+  "Escape `req.query.q` before it goes into the `contains` filter (`escapeSqlLikePattern(req.query.q)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  1,
+  58
+ ],
+ [
+  "no-untrimmed-request-text/17.ts",
+  "nitpicker/no-untrimmed-request-text",
+  1,
+  43,
+  "q comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  1,
+  68
+ ],
+ [
+  "no-untrimmed-request-text/18.ts",
+  "nitpicker/no-unescaped-filter-value",
+  3,
+  104,
+  "Escape `q` before it goes into the `Like` filter (`escapeSqlLikePattern(q)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  3,
+  105
+ ],
+ [
+  "no-untrimmed-request-text/18.ts",
+  "nitpicker/no-untrimmed-request-text",
+  3,
+  34,
+  "q comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  3,
+  55
+ ],
+ [
+  "no-untrimmed-request-text/20.ts",
+  "nitpicker/no-untrimmed-request-text",
+  3,
+  34,
+  "q comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  3,
+  55
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-unescaped-filter-value",
+  21,
+  54,
+  "Escape `req.body.email` before it goes into the `contains` filter (`escapeSqlLikePattern(req.body.email)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
+  21,
+  68
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  10,
+  9,
+  "term comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  10,
+  44
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  14,
+  24,
+  "req.query.title comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  14,
+  39
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  15,
+  14,
+  "req.query.direct comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  15,
+  30
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  16,
+  17,
+  "req.query.tpl comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  16,
+  30
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  17,
+  31,
+  "req.query.a comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  17,
+  42
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  17,
+  45,
+  "req.query.b comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  17,
+  56
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  18,
+  15,
+  "req.query.paren comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  18,
+  30
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  19,
+  14,
+  "req.query.x comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  19,
+  25
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  21,
+  54,
+  "req.body.email comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  21,
+  68
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  23,
+  11,
+  "c.req.query('k') comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  23,
+  27
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  24,
+  11,
+  "req.query['bracket'] comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  24,
+  31
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  25,
+  11,
+  "request.req.query.deep comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  25,
+  33
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  26,
+  9,
+  "trimmed comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  26,
+  31
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  27,
+  14,
+  "String(req.query.s) comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  27,
+  33
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  29,
+  14,
+  "req.query.n comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  29,
+  25
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  3,
+  9,
+  "q comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  3,
+  24
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  30,
+  20,
+  "req.query.m comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  30,
+  31
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  31,
+  14,
+  "req.query.p comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  31,
+  25
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  36,
+  36,
+  "req.query.sq comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  36,
+  48
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  37,
+  23,
+  "req.query.sq2 comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  37,
+  36
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  39,
+  43,
+  "req.query.fd comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  39,
+  55
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  40,
+  22,
+  "req.query.cn comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  40,
+  34
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  41,
+  25,
+  "req.query.tern comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  41,
+  39
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  42,
+  14,
+  "req?.query?.opt comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  42,
+  29
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  43,
+  15,
+  "req.query.optcall comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  43,
+  32
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  44,
+  14,
+  "this.req.query.member comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  44,
+  35
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  45,
+  21,
+  "req.query.assign comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  45,
+  37
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  48,
+  12,
+  "q comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  48,
+  33
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  49,
+  12,
+  "q2 comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  49,
+  46
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  5,
+  9,
+  "name comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  5,
+  40
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  52,
+  12,
+  "b comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  52,
+  32
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  56,
+  15,
+  "ctor comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  56,
+  47
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  57,
+  12,
+  "def comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  57,
+  40
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  7,
+  11,
+  "city comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  7,
+  15
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  7,
+  17,
+  "zip comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  7,
+  28
+ ],
+ [
+  "no-untrimmed-request-text/21.ts",
+  "nitpicker/no-untrimmed-request-text",
+  7,
+  30,
+  "rest comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  7,
+  37
+ ],
+ [
+  "no-untrimmed-request-text/22.ts",
+  "nitpicker/no-untrimmed-request-text",
+  2,
+  7,
+  "q comes from the request untrimmed and reaches a lookup, so a padded value finds nothing. Call .trim() on it, or trim in one place: a global pipe, interceptor or middleware, a zod schema that trims (z.string().trim()), or a @Transform that trims the DTO field.",
+  2,
+  22
  ],
  [
   "no-weak-hash/22.ts",

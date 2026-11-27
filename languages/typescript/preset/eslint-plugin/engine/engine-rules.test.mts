@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ENGINE_PLUGIN_RULES, PLUGIN_RULE_PREFIX } from './engine-rules.mts';
 import { engineSettings } from './engine-requests.mts';
@@ -56,6 +59,7 @@ describe('facts the engine rules get from the project', () => {
       'no-unknown-in-domain.jsdoc=false',
       expect.stringMatching(/^no-unknown-in-domain\.phrase=./u),
       'no-unsafe-deserialization.yaml-major=',
+      'no-untrimmed-request-text.global-trimmer=false',
       'preserve-error-cause.options={}',
       'report-module-load-effects.common-js-exports=false',
       expect.stringMatching(/^structured-catch-logging\.logger-shapes=/u),
@@ -86,6 +90,22 @@ describe('facts the engine rules get from the project', () => {
       'report-module-load-effects.common-js-exports=true',
       'no-unsafe-deserialization.yaml-major=3',
     ]);
+  });
+
+  it('tells the request-text rule that the project trims request text in one place', () => {
+    const directory = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-engine-trimmer-')));
+    mkdirSync(path.join(directory, 'src'));
+    writeFileSync(path.join(directory, 'package.json'), '{}');
+    const registration = ['app.useGlobalPipes', '(new TrimPipe());'].join('');
+    writeFileSync(path.join(directory, 'src/main.ts'), registration);
+    const rules = { 'nitpicker/no-untrimmed-request-text': 'error' };
+    try {
+      expect(settingsOf(rules, path.join(directory, 'src/a.ts'))).toEqual([
+        'no-untrimmed-request-text.global-trimmer=true',
+      ]);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });
 

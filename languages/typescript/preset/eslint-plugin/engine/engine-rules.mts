@@ -15,6 +15,7 @@ import type { RunnerVocabulary } from '../../test-runner/vocabulary/typed-vocabu
 import path from 'node:path';
 import { featureOf } from '../rules/contracts/contract-infrastructure-type.mts';
 import { testSourcesFact } from './test-sources-fact.mts';
+import { hasGlobalTrimmer } from '../rules/request-text/global-trimmer.mts';
 
 const stylesheetSpecifier: RegExp = untypedStylesheetSpecifier;
 
@@ -231,6 +232,11 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
     },
   ],
   ['no-unstripped-remote-text', {}],
+  ['no-uncoerced-request-input', {}],
+  [
+    'no-untrimmed-request-text',
+    { facts: (filename) => ({ 'global-trimmer': String(hasGlobalTrimmer(filename)) }) },
+  ],
   ['no-slash-only-redirect-guard', {}],
   ['no-weak-hash', {}],
   ['no-unversioned-orm-entity', TYPED],

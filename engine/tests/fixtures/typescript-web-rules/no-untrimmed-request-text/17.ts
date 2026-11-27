@@ -1,0 +1,1 @@
+export function find(req, prisma) { const q = req.query.q as string; return prisma.user.findMany({ where: { name: { contains: q } } }); }
