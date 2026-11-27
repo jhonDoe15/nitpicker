@@ -11,6 +11,18 @@ public final class Truth {
     return null;
   }
 
+  public static FloatSubject assertThat(Float actual) {
+    return null;
+  }
+
+  public static DoubleSubject assertThat(Double actual) {
+    return null;
+  }
+
+  public static StandardSubjectBuilder assertWithMessage(String messageToPrepend) {
+    return null;
+  }
+
   public static StandardSubjectBuilder assertWithMessage(String messageToPrepend, Object... args) {
     return null;
   }

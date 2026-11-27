@@ -2,6 +2,11 @@
 mod collection_types;
 mod doc;
 mod javac_print;
+mod formatter;
+mod format_validation;
+mod format_string;
+mod format_annotation;
+mod float_epsilon;
 mod docparse;
 mod docref;
 pub mod fixes;
@@ -948,6 +953,11 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["DateFormatConstant"], date_format_constant::date_format_constant),
     (&["ExpensiveLenientFormatString"], format_checks::expensive_lenient_format_string),
     (&["FormatStringShouldUsePlaceholders"], format_checks::format_string_should_use_placeholders),
+    (&["FormatString"], format_string::format_string),
+    (&["FloggerFormatString"], format_string::flogger_format_string),
+    (&["OrphanedFormatString"], format_string::orphaned_format_string),
+    (&["FormatStringAnnotation"], format_annotation::format_string_annotation),
+    (&["FloatingPointAssertionWithinEpsilon"], float_epsilon::floating_point_assertion_within_epsilon),
     (&["TruthGetOrDefault"], truth_checks::truth_get_or_default),
     (&["BugPatternNaming"], bug_pattern_naming::bug_pattern_naming),
     (&["ExpectedExceptionChecker"], expected_exception::expected_exception_checker),

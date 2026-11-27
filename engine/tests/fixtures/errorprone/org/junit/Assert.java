@@ -14,6 +14,10 @@ public class Assert {
     public static void assertTrue(String message, boolean condition) {}
 
     public static void assertEquals(long expected, long actual) {}
+    public static void assertEquals(double expected, double actual, double delta) {}
+    public static void assertEquals(float expected, float actual, float delta) {}
+    public static void assertEquals(String message, double expected, double actual, double delta) {}
+    public static void assertEquals(String message, float expected, float actual, float delta) {}
 
     public static void assertEquals(Object expected, Object actual) {}
 

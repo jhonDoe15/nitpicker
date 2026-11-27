@@ -144,13 +144,13 @@ fn same_as_error_prone((found, expected): (Rows, Rows), checks: usize) {
 
 #[test]
 fn error_prone_checks_report_what_error_prone_reports() {
-    same_as_error_prone(rows_of("errorprone", "_ErrorProne", "all"), 541);
+    same_as_error_prone(rows_of("errorprone", "_ErrorProne", "all"), 546);
 }
 
 /// `--test-only` is Error Prone's `-XepCompilingTestOnlyCode`; the rows come from Error Prone run with that flag.
 #[test]
 fn error_prone_checks_report_what_error_prone_reports_on_test_only_code() {
-    same_as_error_prone(rows_with("errorprone", "_ErrorProne", "all", None, &["--test-only"], "errorprone-test-only"), 528);
+    same_as_error_prone(rows_with("errorprone", "_ErrorProne", "all", None, &["--test-only"], "errorprone-test-only"), 533);
 }
 
 /// A Java run selects some checks (`NP_EP_ONLY`); the others are skipped, and each selected check reports what it
@@ -378,7 +378,7 @@ fn null_away_reports_what_null_away_reports_on_the_error_prone_fixtures() {
     let top: Vec<&str> = found.iter().filter(|name| !found.iter().any(|other| name.starts_with(&format!("{other}.")))).map(String::as_str).collect();
     let (missed, extra, count) = null_away_differences(&source, &source, &top.join(","), None, "nullaway-errorprone.json");
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(count, 739);
+    assert_eq!(count, 747);
 }
 
 /// A module (`module-info.java` with `requires` and a package it does not export) against a `@NullMarked` library
