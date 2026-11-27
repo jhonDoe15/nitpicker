@@ -1,0 +1,1 @@
+const cache = path.join(dir, "cache"); if (fs.existsSync(cache)) { fs.readFileSync(cache); }
