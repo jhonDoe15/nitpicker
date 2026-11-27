@@ -1,0 +1,1 @@
+const { readdirSync: list } = require("fs"); it("x", () => { expect(list(d)).toEqual(["a", "b"]); });

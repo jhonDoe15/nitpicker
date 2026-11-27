@@ -1,0 +1,1 @@
+expect(user).toEqual({ id: 1 });

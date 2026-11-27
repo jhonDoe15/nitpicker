@@ -1,0 +1,1 @@
+import { readdirSync } from "node:fs"; import fs from "node:fs"; import { readdir } from "node:fs/promises"; it("lists", async () => { expect(fs.readdirSync(dir)?.map((f) => f)).toEqual(["a", "b"]); });
