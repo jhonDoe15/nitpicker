@@ -475,6 +475,11 @@ and 3.2 GB after a 31 s compile. The null pass runs once per file, a body nothin
 after a glance at its text, and what a method of another file does is worked out only when a call hands it a
 value that matters, then kept for the run.
 
+An `NP_ALWAYS_NULL` finding carries the place and arguments SpotBugs' SARIF gives (#2509): the local variable, or
+for a field the field under the class of the method that reads it, and the name and method; dereferences on one line
+that name the same place are one finding. A
+`CT_CONSTRUCTOR_THROW` finding names its constructor the same way, also for what a field initializer throws.
+
 What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 240 findings of these patterns, all the same):
 
 - Only `@CheckForNull`, or an annotation whose own declaration carries `@CheckForNull` (a nickname, as measured
@@ -682,7 +687,12 @@ Each of these findings carries what SpotBugs' SARIF names (#2418, `src/java/spot
 the field (a map field for the map-iterator pattern) or the local, and the priority that sets the SARIF level
 (`JLM_JSR166_LOCK_MONITORENTER` is priority 1, the others 2). A finding in a field initializer or an initializer
 block is named once for each constructor that does not start with `this(...)`, or for the static initializer;
-a finding inside a lambda names the lambda's method. `tests/expected/spotbugs-places.json` holds the places
+a finding inside a lambda names the lambda's method. A lock finding lists the lock's type and the method, as
+SpotBugs does (#2474): a lock on `this` names the local `this`, one on `Outer.this` the `this$<depth of Outer>`
+field javac reads last (in a constructor of the class just inside `Outer`, the constructor's parameter of that
+name), and SARIF names a lock field under the class of the method that reads it, keeping the field's package in the
+name when it is not the method's. Locks on the same line that name the same place are one finding
+(`tests/expected/spotbugs-arguments.json`). `tests/expected/spotbugs-places.json` holds the places
 SpotBugs' SARIF gives for the fixtures, and the SARIF results of real runs match SpotBugs' on all seven code bases.
 
 Not done: `REC_CATCH_EXCEPTION` needs the checked exceptions each `try` block can throw and the rule for its
@@ -898,9 +908,13 @@ parameter, `assert`. A notify call made without a read first (`"x".notify()`, `g
 `R.class.notify()`) is not counted, and the watch goes on. After the call, one `return` or jump may follow, and the
 end of the code reports it; in a block, a local load and `monitorexit` report it right away. Any other instruction
 after the call ends the watch, as does a second call. `super.notify()` (`invokespecial`) and calls on a value of an
-interface type (`invokeinterface`) do not count. There is one finding per method, at the first call reported, with
+interface type (`invokeinterface`) do not count; on a type variable with several bounds javac calls `Object`'s
+method with `invokevirtual`, whatever the erasure. There is one finding per method, at the first call reported, with
 priority 2, level `warning`, the line of the call's `(`, and the method as the argument. Inner class creation reads
-`this`, as does an anonymous class in an instance method; capturing lambdas and classes read what they capture. javac
+`this`, as does an anonymous class in an instance method; capturing lambdas and classes read what they capture,
+also a local class that takes values only through the local class it extends (an anonymous subclass of it too),
+and `Local::new` or `Inner::new` (the lambda javac writes takes them); only values declared outside the lambda or
+class count. Local records, enums and interfaces are static and never take `this`. javac
 writes the value of a constant (also a `final` instance field or a `final` local set from a constant), folds
 `true ?`, `false &&` and `true ||`, turns `x += constant` on an `int` local into `iinc`, reads a static field named
 through a value after dropping the value, and leaves out casts to a supertype, jumps to the next instruction and
@@ -909,11 +923,14 @@ each constructor that does not call `this(...)`). `int.class` reads `Integer.TYP
 its selector and one instruction. Lombok's `@Synchronized` is a `synchronized` block on a
 field. The engine writes the instructions from the source (`code.rs`, `values.rs`); code it does not follow
 (`switch` on strings, enums and boxes, `try` with resources, `assert`, `yield`, unknown expressions) counts as a
-read. Known differences (#2508): type variables with an intersection bound, and local classes that take captured
-values only through a superclass or a constructor reference. Every pattern of
+read. Every pattern of
 `FindNakedNotify` is on the engine, so SpotBugs no longer runs that detector.
 
-Labs: 572 same / 4 missed / 2 extra (all #2508). On the six comparison code bases: Nacos 5 / 0 / 0, the others 0.
+Labs: 460 same / 0 missed / 0 extra (#2508 fixed the six differences; `tests/fixtures/spotbugs/notify_review_e`).
+Code nested hundreds of levels deep takes time in step with its size. Known differences: a value whose type
+javac infers as an intersection (`var c = m()` with `<X extends Object & I> X m()`), casts to an intersection type,
+a class nested in an interface created with `new`, and a generic field or call whose substituted type makes javac
+write a `checkcast`. On the six comparison code bases: Nacos 5 / 0 / 0, the others 0.
 
 ### Code idioms
 

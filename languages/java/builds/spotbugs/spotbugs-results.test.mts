@@ -210,6 +210,46 @@ describe('spotbugsResultOf', () => {
     expect(engineSpotbugsFindingOf(finding).arguments).toStrictEqual(['java.util.Random']);
   });
 
+  it('names a lock field under the class of the method that takes the lock', () => {
+    const finding = {
+      file: '/src/p/K.java',
+      rule: 'JLM_JSR166_LOCK_MONITORENTER',
+      line: 5,
+      message: '',
+      symbol: 'member:p.Holder.lk',
+      priority: 1,
+      arguments: ['java.util.concurrent.locks.ReentrantLock', 'p.K.a(Holder)'],
+    };
+
+    const result = spotbugsResultOf(finding);
+
+    expect(result.message.arguments).toStrictEqual(finding.arguments);
+    expect(result.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'Holder.lk',
+      kind: 'member',
+      fullyQualifiedName: 'p.K.lk',
+    });
+  });
+
+  it('names a field of another package with its package, in the file of the method', () => {
+    const result = spotbugsResultOf({
+      file: '/src/p/A.java',
+      rule: 'NP_ALWAYS_NULL',
+      line: 6,
+      message: '',
+      symbol: 'member:q.Base.prot',
+      priority: 1,
+      arguments: ['q.Base.prot', 'p.A.b()'],
+    });
+
+    expect(result.locations[0].physicalLocation.artifactLocation.uri).toBe('p/A.java');
+    expect(result.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'q.Base.prot',
+      kind: 'member',
+      fullyQualifiedName: 'p.A.prot',
+    });
+  });
+
   it('names the class in the place where SpotBugs does', () => {
     const finding = {
       file: '/src/p/K.java',

@@ -1,7 +1,7 @@
 //! Checks on calls that do nothing useful or lose information: JUnit, Mockito, `Math.round`, `Collections.nCopies`, `getAnnotation`.
 use super::call_match::{instance_on_exact_class, static_on_class};
 use super::fixes::Fix;
-use super::lookup::same_variable;
+use super::symbol_key::same_symbol as same_variable;
 use super::parts::arguments;
 use super::shape::preferred;
 use super::Context;

@@ -169,6 +169,25 @@ function placedNameOf(
     : placeName(kind, qualified, owner);
 }
 
+function readerOf(
+  finding: EngineSpotbugsFinding,
+  placed: Placed,
+  kind: string,
+): string | undefined {
+  const method = finding.arguments?.[1];
+  return placed.fieldsUnderMethod === true && kind === 'member' && method !== undefined
+    ? classOf(method)
+    : undefined;
+}
+
+function fieldName(qualified: string, owner: string, reader: string): string {
+  const local = packageOf(reader);
+  if (local === '' && owner === reader) {
+    return qualified.slice(qualified.lastIndexOf('.') + 1);
+  }
+  return packageOf(owner) === local ? withoutPackage(qualified, owner) : qualified;
+}
+
 function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): SpotbugsResult {
   const place = finding.symbol ?? '';
   const colon = place.indexOf(':');
@@ -182,7 +201,8 @@ function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): Spotbug
   const at = named ? body.lastIndexOf('@') : -1;
   const [qualified = '', written] = (at === -1 ? body : body.slice(0, at)).split('|');
   const owner = ownerOf(kind, qualified);
-  const subject = placesByArguments(placed) ? (finding.arguments?.[0] ?? owner) : owner;
+  const reader = readerOf(finding, placed, kind);
+  const subject = reader ?? (placesByArguments(placed) ? (finding.arguments?.[0] ?? owner) : owner);
   const directory = (written ?? packageOf(subject)).replaceAll('.', '/');
   const file = path.basename(finding.file);
   return {
@@ -197,9 +217,15 @@ function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): Spotbug
         },
         logicalLocations: [
           {
-            name: placedNameOf(finding, placed, [kind, qualified, owner]),
+            name:
+              reader === undefined
+                ? placedNameOf(finding, placed, [kind, qualified, owner])
+                : fieldName(qualified, owner, reader),
             kind,
-            fullyQualifiedName: qualified,
+            fullyQualifiedName:
+              reader === undefined
+                ? qualified
+                : `${reader}.${qualified.slice(qualified.lastIndexOf('.') + 1)}`,
           },
         ],
       },

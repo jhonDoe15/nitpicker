@@ -27,7 +27,7 @@ pub fn private_security_contract_proto_access(context: &Context, node: Node) {
     if node.kind() != "method_invocation" || !is_private_field_call(context, node) {
         return;
     }
-    if context.resolver.scope.package.starts_with(PACKAGE) {
+    if super::call_consts::package_starts_with(context, PACKAGE) {
         return;
     }
     let message = format!("Forbidden access to a private proto field. See {SAFE_HTML_LINK}.");

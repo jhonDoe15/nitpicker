@@ -2,7 +2,7 @@
 use super::Context;
 use super::compare_zero::int_constant;
 use super::fixes::Fix;
-use super::lookup::same_variable;
+use super::symbol_key::same_symbol as same_variable;
 use super::positions::{arguments, preferred};
 use crate::engine::source::{children, named_children, walk};
 use crate::java::types::model::Type;

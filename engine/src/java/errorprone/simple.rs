@@ -35,7 +35,7 @@ pub fn empty_catch(context: &Context, node: Node) {
         return;
     }
     let Some(block) = node.child_by_field_name("body") else { return };
-    if named_children(block).is_empty() {
+    if named_children(block).is_empty() && !children(block).iter().any(|part| part.kind() == ";") {
         context.report("EmptyCatch", node, node.start_byte(), "Caught exceptions should not be ignored");
     }
 }

@@ -1,6 +1,6 @@
 //! ModifyingCollectionWithItself: `addAll`, `removeAll`, `containsAll` or `retainAll` of a collection with itself.
 use super::fixes::Fix;
-use super::lookup::same_variable;
+use super::symbol_key::same_symbol as same_variable;
 use super::parts::{arguments, enclosing_method};
 use super::shape::preferred;
 use super::Context;

@@ -5,6 +5,7 @@ use super::fixes::Fix;
 use super::parts::{enclosing_class, preferred};
 use super::qualify::qualify;
 use super::Context;
+use super::symbol_key::same_symbol as same_variable;
 use crate::engine::source::{ancestor, children, named_children, parent, walk};
 use crate::java::helpers::has_modifier;
 use crate::java::types::expr::Binding;
@@ -86,7 +87,7 @@ pub fn try_with_resources_variable(context: &Context, node: Node) {
     let resources = node.child_by_field_name("resources").map(named_children).unwrap_or_default();
     for resource in resources {
         let (Some(name), Some(value)) = (resource.child_by_field_name("name"), resource.child_by_field_name("value")) else { continue };
-        if resource.child_by_field_name("type").is_none() || value.kind() != "identifier" || !considered_final(context, value) {
+        if resource.child_by_field_name("type").is_none() || !(value.kind() == "this" || (value.kind() == "identifier" && considered_final(context, value))) {
             continue;
         }
         let used = context.text(value);
@@ -132,27 +133,6 @@ fn in_synchronized(node: Node) -> bool {
         return true;
     }
     ancestor(node, &["method_declaration", "constructor_declaration"]).is_some_and(|method| has_modifier(method, "synchronized"))
-}
-
-fn same_variable(context: &Context, a: Node, b: Node) -> bool {
-    let (a, b) = (crate::java::types::expr::unwrap(a), crate::java::types::expr::unwrap(b));
-    let key = |node: Node| match node.kind() {
-        "identifier" => Some(context.text(node).to_string()),
-        "field_access" => node.child_by_field_name("field").map(|field| context.text(field).to_string()),
-        _ => None,
-    };
-    match (key(a), key(b)) {
-        (Some(x), Some(y)) if x == y => {}
-        _ => return false,
-    }
-    match (a.kind(), b.kind()) {
-        ("identifier", "identifier") => true,
-        ("field_access", "field_access") => context.text(a) == context.text(b),
-        _ => {
-            let select = if a.kind() == "field_access" { a } else { b };
-            select.child_by_field_name("object").is_some_and(|object| context.text(object) == "this")
-        }
-    }
 }
 
 pub fn non_atomic_volatile_update(context: &Context, node: Node) {
