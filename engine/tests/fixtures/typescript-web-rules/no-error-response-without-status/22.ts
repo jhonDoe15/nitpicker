@@ -1,0 +1,1 @@
+function f() { try { run(); } catch { return Response.json({ error: "x" }, { status: 502 }); } }

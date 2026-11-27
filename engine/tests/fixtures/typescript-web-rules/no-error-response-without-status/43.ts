@@ -1,0 +1,1 @@
+import { Hono } from 'hono'; app.get('/', async (c) => { try { await save(); } catch (e) { c.status(500); return c.json({ error: e.message }); } });

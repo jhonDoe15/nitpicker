@@ -1,0 +1,1 @@
+function f(x, callback) { if (done) { callback(1); } return unsubscribe; }

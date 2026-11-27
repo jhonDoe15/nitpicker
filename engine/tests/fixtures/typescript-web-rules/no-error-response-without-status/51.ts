@@ -1,0 +1,1 @@
+export async function GET() { try { return Response.json(await load()); } catch (error) { return Response.json({ error: String(error) }); } }

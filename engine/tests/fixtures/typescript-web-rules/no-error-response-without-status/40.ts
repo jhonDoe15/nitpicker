@@ -1,0 +1,1 @@
+async function f(req, reply) { try { await save(); } catch (e) { reply.code(500); reply.send({ error: e.message }); } }
