@@ -70,8 +70,8 @@ fn is_printf_method(context: &Context, call: Node) -> bool {
 }
 
 /// The format string and what it formats, as `FormatStringUtils.formatMethodArguments` finds them.
-fn annotated_arguments<'t>(context: &Context, call: Node<'t>, list: &[Node<'t>]) -> Vec<Node<'t>> {
-    let Some(resolved) = context.resolver.resolve_call(call) else { return Vec::new() };
+pub(super) fn annotated_arguments<'t>(_context: &Context, method: &crate::java::types::model::Method, list: &[Node<'t>]) -> Vec<Node<'t>> {
+    let resolved = Resolved { method };
     if !resolved.method.detail.annotations.iter().any(|name| name == "com.google.errorprone.annotations.FormatMethod") {
         return Vec::new();
     }
@@ -87,7 +87,11 @@ fn annotated_arguments<'t>(context: &Context, call: Node<'t>, list: &[Node<'t>])
     first_string.and_then(|at| list.get(at..)).map(<[Node]>::to_vec).unwrap_or_default()
 }
 
-fn format_method_arguments<'t>(context: &Context, call: Node<'t>) -> Vec<Node<'t>> {
+struct Resolved<'m> {
+    method: &'m crate::java::types::model::Method,
+}
+
+pub(super) fn format_method_arguments<'t>(context: &Context, call: Node<'t>) -> Vec<Node<'t>> {
     let list = arguments(call);
     if call_name(context, call) == "formatted" && instance_on_exact_class(context, call, "java.lang.String", &["formatted"]) {
         return match call.child_by_field_name("object") {
@@ -99,7 +103,10 @@ fn format_method_arguments<'t>(context: &Context, call: Node<'t>) -> Vec<Node<'t
         let locale = list.first().is_some_and(|first| context.resolver.type_of(*first) == Some(Type::class("java.util.Locale")));
         return if locale { list[1..].to_vec() } else { list };
     }
-    annotated_arguments(context, call, &list)
+    match context.resolver.resolve_call(call) {
+        Some(resolved) => annotated_arguments(context, &resolved.method, &list),
+        None => Vec::new(),
+    }
 }
 
 /// The operands of a chain of `+`, the way the visitor flattens it.
