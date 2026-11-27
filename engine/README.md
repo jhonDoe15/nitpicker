@@ -628,7 +628,10 @@ Each of these findings carries what SpotBugs' SARIF names (#2418, `src/java/spot
 the field (a map field for the map-iterator pattern) or the local, and the priority that sets the SARIF level
 (`JLM_JSR166_LOCK_MONITORENTER` is priority 1, the others 2). A finding in a field initializer or an initializer
 block is named once for each constructor that does not start with `this(...)`, or for the static initializer;
-a finding inside a lambda names the lambda's method. `tests/expected/spotbugs-places.json` holds the places
+a finding inside a lambda names the lambda's method. A lock finding lists the lock's type and the method, as
+SpotBugs does (#2474): a lock on `this` names the local `this`, one on `Outer.this` the `this$<depth of Outer>`
+field javac reads last, and SARIF names a lock field under the class of the method that reads it
+(`tests/expected/spotbugs-arguments.json`). `tests/expected/spotbugs-places.json` holds the places
 SpotBugs' SARIF gives for the fixtures, and the SARIF results of real runs match SpotBugs' on all seven code bases.
 
 Not done: `REC_CATCH_EXCEPTION` needs the checked exceptions each `try` block can throw and the rule for its

@@ -165,6 +165,18 @@ function placedNameOf(
     : placeName(kind, qualified, owner);
 }
 
+function qualifiedOf(
+  finding: EngineSpotbugsFinding,
+  placed: Placed,
+  [kind, qualified]: readonly [string, string],
+): string {
+  const method = finding.arguments?.[1];
+  if (placed.fieldsUnderMethod !== true || kind !== 'member' || method === undefined) {
+    return qualified;
+  }
+  return `${classOf(method)}.${qualified.slice(qualified.lastIndexOf('.') + 1)}`;
+}
+
 function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): SpotbugsResult {
   const place = finding.symbol ?? '';
   const colon = place.indexOf(':');
@@ -194,7 +206,7 @@ function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): Spotbug
           {
             name: placedNameOf(finding, placed, [kind, qualified, owner]),
             kind,
-            fullyQualifiedName: qualified,
+            fullyQualifiedName: qualifiedOf(finding, placed, [kind, qualified]),
           },
         ],
       },

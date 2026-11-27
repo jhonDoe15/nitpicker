@@ -1664,5 +1664,16 @@
 ["hiding4/q/A.java", "HSM_HIDING_METHOD", 16, "function:q.B.f()"],
 ["hiding4/q/A.java", "HSM_HIDING_METHOD", 18, "function:q.E$F.f()"],
 ["hiding4/q/A.java", "HSM_HIDING_METHOD", 19, "function:q.G.f()"],
-["hiding4/q/A.java", "HSM_HIDING_METHOD", 19, "function:q.G.f()"]
+["hiding4/q/A.java", "HSM_HIDING_METHOD", 19, "function:q.G.f()"],
+["lock_places/p/K.java", "JLM_JSR166_LOCK_MONITORENTER", 5, "variable:p.K.a()#this"],
+["lock_places/p/K.java", "JLM_JSR166_LOCK_MONITORENTER", 6, "variable:p.K.lambda$b$0()#this"],
+["lock_places/p/K.java", "JLM_JSR166_LOCK_MONITORENTER", 8, "member:p.K$1.this$0"],
+["lock_places/p/K.java", "JLM_JSR166_LOCK_MONITORENTER", 7, "member:p.K$In.this$0"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 12, "member:p.K2$1Loc.this$0"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 9, "member:p.K2$In.this$0"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 10, "variable:p.K2$In.w()#this"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 6, "member:p.K2$In$In2.this$0"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 7, "member:p.K2$In$In2.this$1"],
+["lock_places/p/K3.java", "JLM_JSR166_LOCK_MONITORENTER", 5, "member:p.K3.lk"],
+["lock_places/p/K3.java", "JLM_JSR166_LOCK_MONITORENTER", 6, "member:p.K3.SLK"]
 ]

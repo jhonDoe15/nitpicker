@@ -3,6 +3,7 @@ export type Placed = {
   readonly levels: Readonly<Record<number, string>>;
   readonly classNamed?: readonly number[];
   readonly placement?: 'arguments' | 'relative';
+  readonly fieldsUnderMethod?: true;
 };
 
 export function placesByArguments(placed: Placed): boolean {
@@ -18,10 +19,12 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   JLM_JSR166_LOCK_MONITORENTER: {
     text: 'Synchronization performed on Lock',
     levels: { 1: ERROR },
+    fieldsUnderMethod: true,
   },
   JLM_JSR166_UTILCONCURRENT_MONITORENTER: {
     text: 'Synchronization performed on util.concurrent instance',
     levels: { 2: ERROR },
+    fieldsUnderMethod: true,
   },
   PREDICTABLE_RANDOM: {
     text: 'Predictable pseudorandom number generator',
