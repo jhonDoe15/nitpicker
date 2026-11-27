@@ -153,8 +153,10 @@ function engineUnparsed(
 function writeEngineReport(
   plan: CheckstyleEnginePlan,
   config: string,
-  handled: readonly string[],
-  rows: readonly CheckstyleRow[],
+  {
+    handled,
+    rows,
+  }: { readonly handled: readonly string[]; readonly rows: readonly CheckstyleRow[] },
 ): void {
   const modules = configModules(config);
   const handledFiles = new Set(handled);
@@ -178,12 +180,7 @@ function engineFindings(plan: CheckstyleEnginePlan, config: string, call: Engine
   if (Number(fieldOf(report, 'files')) !== sent.length) {
     throw new Error('the engine did not read every file');
   }
-  writeEngineReport(
-    plan,
-    config,
-    files.filter((file) => !unparsed.has(file)),
-    rows,
-  );
+  writeEngineReport(plan, config, { handled: files.filter((file) => !unparsed.has(file)), rows });
   return files.filter((file) => unparsed.has(file));
 }
 

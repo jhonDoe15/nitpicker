@@ -122,7 +122,7 @@ describe('checkstyleOnEngine', () => {
         tool: 'checkstyle',
         rule: METHOD_NAME,
         path: 'A.java',
-        identity: expect.any(String),
+        identity: 'checkstyle:26b6daf294dd53b1',
         message: 'm',
         classification: 'enforceable',
         location: { line: 4, column: 3 },

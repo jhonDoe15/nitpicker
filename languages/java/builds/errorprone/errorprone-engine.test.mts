@@ -189,7 +189,7 @@ describe('errorProneOnEngine', () => {
       ...['--module-path', listed],
     ]);
     expect(readFileSync(listed, 'utf8')).toBe('/mods/a.jar');
-    expect(passed).toMatchObject({ NP_NULLAWAY_PACKAGES: 'demo' });
+    expect(fieldOf(passed, 'NP_NULLAWAY_PACKAGES')).toBe('demo');
   });
 
   it('runs test sources in the test-only mode of the engine, without NullAway', () => {
@@ -199,10 +199,10 @@ describe('errorProneOnEngine', () => {
     errorProneOnEngine(plan, environment, { run: engineWriting({ findings: [] }, started) });
 
     const [{ argumentList, environment: passed } = { argumentList: [], environment: {} }] = started;
-    expect(argumentList).toContain('--test-only');
-    expect(passed).toMatchObject({
-      NP_EP_ONLY: ENGINE_CHECKS.filter((check) => check !== NULL_AWAY).join(','),
-    });
+    expect(argumentList.includes('--test-only')).toBe(true);
+    expect(fieldOf(passed, 'NP_EP_ONLY')).toBe(
+      ENGINE_CHECKS.filter((check) => check !== NULL_AWAY).join(','),
+    );
     expect(passed).not.toHaveProperty('NP_NULLAWAY_PACKAGES');
   });
 
