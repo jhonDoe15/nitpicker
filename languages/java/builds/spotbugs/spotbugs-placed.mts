@@ -48,6 +48,10 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     levels: { 2: WARNING },
     placement: 'relative',
   },
+  UG_SYNC_SET_UNSYNC_GET: {
+    text: 'Unsynchronized get method, synchronized set method',
+    levels: { 2: WARNING },
+  },
   WMI_WRONG_MAP_ITERATOR: {
     text: 'Inefficient use of keySet iterator instead of entrySet iterator',
     levels: { 2: NOTE },

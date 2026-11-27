@@ -1,5 +1,6 @@
 //! Detectors about calls and methods that threads share: AtomicityProblem
-//! (AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION).
+//! (AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION) and FindUnsyncGet (UG_SYNC_SET_UNSYNC_GET).
+mod getters;
 mod sequences;
 
 use super::Context;
@@ -12,6 +13,9 @@ pub fn concurrent<'a>(context: &Context<'a>, class: Node<'a>) {
     let Some(own) = context.resolver.scope.names.get(&class.id()).cloned() else { return };
     let Some(body) = class.child_by_field_name("body").or_else(|| children(class).into_iter().find(|part| part.kind() == "class_body")) else { return };
     let members = super::place::members(body);
+    if context.wants(&[getters::PATTERN]) {
+        getters::check(context, &own, class, &members);
+    }
     if !context.wants(&[sequences::PATTERN]) || !context.text(body).contains("put") {
         return;
     }

@@ -45,6 +45,7 @@ const SHARED_WRITES: readonly string[] = [
   'AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE',
 ];
 const SEQUENCE_ON_CONCURRENT = 'AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION';
+const UNSYNC_GET = 'UG_SYNC_SET_UNSYNC_GET';
 export const ON_ENGINE: readonly string[] = [
   'CT_CONSTRUCTOR_THROW',
   'EI_EXPOSE_REP',
@@ -85,6 +86,7 @@ export const ON_ENGINE: readonly string[] = [
   'RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN',
   ...SHARED_WRITES,
   SEQUENCE_ON_CONCURRENT,
+  UNSYNC_GET,
 ];
 const LOMBOK_WRITES: readonly string[] = [
   'SING_',
@@ -95,6 +97,7 @@ const LOMBOK_WRITES: readonly string[] = [
   'SS_',
   ...DEAD_STORES,
   'AT_',
+  'UG_',
 ];
 const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   MultipleInstantiationsOfSingletons: [
@@ -111,6 +114,7 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   FindNakedNotify: ['NN_NAKED_NOTIFY'],
   SharedVariableAtomicityDetector: SHARED_WRITES,
   AtomicityProblem: [SEQUENCE_ON_CONCURRENT],
+  FindUnsyncGet: [UNSYNC_GET],
   DontCatchNullPointerException: ['DCN_NULLPOINTER_EXCEPTION'],
   WrongMapIterator: [WRONG_MAP_ITERATOR],
   BooleanReturnNull: ['NP_BOOLEAN_RETURN_NULL'],
