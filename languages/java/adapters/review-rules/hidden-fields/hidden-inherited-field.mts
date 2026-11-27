@@ -3,6 +3,7 @@ import { mainSourceTypes } from '../type-declarations/declarations.mts';
 import { indexOf } from '../type-declarations/type-index.mts';
 import { hidingsIn } from './hidings.mts';
 import { inheritedFields } from './inherited-fields.mts';
+import { lineAt } from './own-regions.mts';
 import type { HidingKind } from './hidings.mts';
 import type { ParsedTypes } from '../type-declarations/declarations.mts';
 import type { ReviewFinding } from '../../kotlin/review-rules/typed/review-finding-types.mts';
@@ -34,7 +35,7 @@ export function hiddenInheritedFieldsIn(parsed: readonly ParsedTypes[]): ReviewF
               finding({
                 rule: HIDDEN_INHERITED_FIELD_RULE,
                 file: type.file,
-                line: source.tokens[hiding.index]?.line ?? type.line,
+                line: lineAt(source, hiding.index, type.line),
                 symbol: hiding.name,
                 key: `${type.file}:${type.name}:${hiding.scope}:${hiding.name}`,
                 message: hideMessage(hiding.kind, hiding.name, hiding.inherited.owner.name),

@@ -2,7 +2,12 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
-import { declaredProcessorKind, lombokMarksGenerated, processorKind } from './spotbugs-lombok.mts';
+import {
+  declaredProcessorKind,
+  lombokMarksGenerated,
+  processorKind,
+  withoutLombokWrites,
+} from './spotbugs-lombok.mts';
 import { zipOf } from '../../../../shared/test-support/archives/zip-writer.mts';
 
 const projectWith = useTempProjects('nitpicker-spotbugs-lombok-');
@@ -67,6 +72,14 @@ describe('processorKind', () => {
     expect(declaredProcessorKind(['org.example:processor:1', 'org.projectlombok:lombok:1'])).toBe(
       'other',
     );
+  });
+
+  it('finds no processors in a folder or jar without a service file', () => {
+    const root = projectWith({ 'classes/a/B.class': 'x' });
+    const jar = path.join(root, 'plain.jar');
+    writeFileSync(jar, zipOf({ 'a/B.class': 'x' }));
+
+    expect(processorKind([path.join(root, 'classes'), jar])).toBe('none');
   });
 
   it('counts an archive it cannot read as an unknown processor', () => {
@@ -164,5 +177,31 @@ describe('lombokMarksGenerated', () => {
     expect(lombokMarksGenerated([path.join(root, 'b/src/B.java')])).toBe(false);
     expect(lombokMarksGenerated([path.join(root, 'c/src/C.java')])).toBe(false);
     expect(lombokMarksGenerated([path.join(root, 'd/src/D.java')])).toBe(true);
+  });
+
+  it('reads the lombok.config of an imported folder and is false for a config that imports itself', () => {
+    const root = projectWith({
+      'a/src/A.java': 'class A {}',
+      'a/lombok.config': 'import ../shared\n',
+      'shared/lombok.config': 'lombok.addLombokGeneratedAnnotation = false\n',
+      'b/src/B.java': 'class B {}',
+      'b/lombok.config': 'import lombok.config\n',
+      'c/src/C.java': 'class C {}',
+      'c/lombok.config':
+        'lombok.addLombokGeneratedAnnotation = false\nclear lombok.log.fieldName\n',
+    });
+
+    expect(lombokMarksGenerated([path.join(root, 'a/src/A.java')])).toBe(false);
+    expect(lombokMarksGenerated([path.join(root, 'b/src/B.java')])).toBe(false);
+    expect(lombokMarksGenerated([path.join(root, 'c/src/C.java')])).toBe(false);
+  });
+});
+
+describe('withoutLombokWrites', () => {
+  it('keeps class-based patterns only when the compiled classes are read', () => {
+    const patterns = ['SING_X', 'AT_X', 'NP_X'];
+
+    expect(withoutLombokWrites(patterns, true)).toStrictEqual(['SING_X', 'NP_X']);
+    expect(withoutLombokWrites(patterns, false)).toStrictEqual(['NP_X']);
   });
 });

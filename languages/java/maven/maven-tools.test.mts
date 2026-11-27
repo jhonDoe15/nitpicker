@@ -21,6 +21,7 @@ import {
   resolveTools,
   toolDependencies,
 } from './maven-tools.mts';
+import { toolPath, writeToolsProject } from './programs/tools-project.mts';
 
 const roots: string[] = [];
 const pinned = readPinnedTools();
@@ -234,5 +235,37 @@ describe('publishing a staged cache folder', () => {
     expect(() => {
       publishDirectory(path.join(root, 'missing'), path.join(root, 'target'));
     }).toThrow(/ENOENT/u);
+  });
+});
+
+describe('writeToolsProject', () => {
+  it('lists the repositories a tool declares before its dependencies, and refuses a tool outside', () => {
+    const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-tools-project-'));
+    roots.push(directory);
+    const repository = '<repository><id>own</id><url>https://repo.example.org</url></repository>';
+    const dependency = '<dependency><groupId>g</groupId><artifactId>a</artifactId></dependency>';
+
+    writeToolsProject(directory, { errorprone: [repository, dependency], pmd: [dependency] });
+
+    const pom = (name: string, body: string) =>
+      [
+        '<project xmlns="http://maven.apache.org/POM/4.0.0">',
+        '<modelVersion>4.0.0</modelVersion>',
+        `<groupId>nitpicker.tools</groupId><artifactId>${name}</artifactId><version>1</version>`,
+        '<packaging>pom</packaging>',
+        body,
+        '</project>',
+        '',
+      ].join('\n');
+    expect(readFileSync(path.join(directory, 'errorprone/pom.xml'), 'utf8')).toBe(
+      pom(
+        'errorprone',
+        `<repositories>${repository}</repositories><dependencies>${dependency}</dependencies>`,
+      ),
+    );
+    expect(readFileSync(path.join(directory, 'pmd/pom.xml'), 'utf8')).toBe(
+      pom('pmd', `<dependencies>${dependency}</dependencies>`),
+    );
+    expect(() => toolPath(directory, '..', 'elsewhere')).toThrow(/is outside/u);
   });
 });

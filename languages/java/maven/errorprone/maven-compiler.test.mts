@@ -232,6 +232,23 @@ describe('processorRepositories', () => {
     expect(tool.name).not.toBe(plain.name);
     expect(plain.repositories).toBeUndefined();
   });
+
+  it('names an extra compile without an id and a repository without an id by its url', () => {
+    const settings = compilerSettings(
+      project(`<repositories>
+          <repository><url>https://repo.example.org/m2</url><layout>default</layout></repository>
+        </repositories>
+        <build><plugins><plugin><artifactId>maven-compiler-plugin</artifactId><executions>
+          <execution><goals><goal>compile</goal></goals></execution>
+        </executions></plugin></plugins></build>`),
+    );
+
+    expect(settings.processorRepositories).toEqual([
+      '<repository><id>https://repo.example.org/m2</id><url>https://repo.example.org/m2</url>' +
+        '<layout>default</layout></repository>',
+    ]);
+    expect(settings.executions?.map(({ id }) => id)).toEqual(['default']);
+  });
 });
 
 describe('processorTool', () => {

@@ -97,6 +97,15 @@ function writeInputs(file: string, head: readonly string[], sources: readonly st
   return { listed, lookup, modules, modulePath };
 }
 
+function levelArguments(head: readonly string[]): string[] {
+  const release = releaseOf(head);
+  if (release !== undefined) {
+    return ['--release', release];
+  }
+  const source = sourceLevelOf(head);
+  return source === undefined ? [] : ['--source', source];
+}
+
 function engineReport(
   { file, head, sources, checks, packages, remaining }: Selected,
   { binary, javaHome, environment, run }: Setting,
@@ -104,17 +113,14 @@ function engineReport(
   const { listed, lookup, modules, modulePath } = writeInputs(file, head, sources);
   const report = `${file}.engine-report.json`;
   rmSync(report, { force: true });
-  const release = releaseOf(head);
   const encoding = encodingOf(head);
-  const source = release === undefined ? sourceLevelOf(head) : undefined;
   const { status, stderr } = run(
     [
       ...['--files', listed, '--rules', ERROR_PRONE_RULES, '--classpath', lookup],
       ...(modulePath.length === 0 ? [] : ['--module-path', modules]),
-      ...(release === undefined ? [] : ['--release', release]),
+      ...levelArguments(head),
       ...(testOnly(head) ? ['--test-only'] : []),
       ...(encoding === undefined ? [] : ['--encoding', encoding]),
-      ...(source === undefined ? [] : ['--source', source]),
       ...['--out', report],
     ],
     {
