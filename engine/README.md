@@ -685,7 +685,8 @@ What SpotBugs does, as measured (`tests/fixtures/spotbugs/dead_stores*`, all pri
   read; a class literal is `DLS_DEAD_STORE_OF_CLASS_LITERAL`, medium; `return i++` on an `int` is
   `DLS_DEAD_LOCAL_INCREMENT_IN_RETURN`, medium, high for a parameter.
 - Priority of the rest: medium, high for a parameter and for a variable named as an instance field of the class
-  of an instance method (`DLS_DEAD_LOCAL_STORE_SHADOWS_FIELD`; inherited and static fields do not count), always
+  of an instance method, or as a static field of the class of a static method or initializer
+  (`DLS_DEAD_LOCAL_STORE_SHADOWS_FIELD`; inherited fields do not count), always
   high for a parameter whose value is never read. A new object or array (not one filled in braces) raises it one
   step; it drops one step each for a read of an instance field (not one the store converts), a copy of a variable whose value is a number other
   than `long` or `double`, a `boolean` or a string (a conversion is no copy), a store after which another store
@@ -702,6 +703,13 @@ What SpotBugs does, as measured (`tests/fixtures/spotbugs/dead_stores*`, all pri
   before the store. A variable javac's table of names does not cover right after the store is named `$L` and its
   slot (place `?`): a declaration that is the last code of a nested block, a `for` variable whose body is empty, a
   first assignment that is the last code of a branch javac leaves without a jump.
+
+- An assignment whose value is used (`foo(a = x)`, `(r = new R()).run()`, `a = b = x` for `b`) stores after a
+  `dup`: a reference stored so is never reported, any other value counts as neither a constant nor a copy. A read
+  of a field through a cast javac writes no instruction for (to a supertype) is a field read like any other.
+- A dead self assignment `x = x` of a parameter or of a variable named as a field drops one step for being a copy
+  (not both at once) and not for a store that can follow; of any other variable it drops only for a store that
+  can follow.
 
 Known difference, in labs only: when sibling `if` and `else` branches store with the same priority, SpotBugs
 sometimes reports the `else` line (`long` constants).
