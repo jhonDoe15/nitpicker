@@ -96,7 +96,10 @@ pub fn gather(context: &Context, names: &HashSet<String>) -> Notes {
     let known = std::cell::RefCell::new(writes::Constructors::new());
     let seen = std::cell::RefCell::new(std::collections::HashMap::new());
     let access = |notes: &mut Notes, key: (String, String), node: Node, value: Option<Node>, store: bool| {
-        let (Some(by), Some(order)) = (writes::writer(context, node), writes::order(node, &mut known.borrow_mut())) else { return };
+        let (Some(by), Some(mut order)) = (writes::writer(context, node), writes::order(node, &mut known.borrow_mut())) else { return };
+        if node.kind() == "variable_declarator" && order.0 == Phase::Construct && made_static(context, &key) {
+            order = (Phase::StaticInit, 0, 0, order.3);
+        }
         let empty = value.is_some_and(|value| writes::empty_array(context, value));
         let setup = writes::setup(context, node);
         let line = writes::line(context, node, store);
@@ -144,6 +147,12 @@ pub fn gather(context: &Context, names: &HashSet<String>) -> Notes {
     });
     written_accesses(context, names, &mut notes);
     notes
+}
+
+/// A field the source declares without `static` that the class file has static: `@UtilityClass` makes it so.
+fn made_static(context: &Context, key: &(String, String)) -> bool {
+    let written = super::lombok::compiled(context, &key.0).and_then(|class| class.field(&key.1));
+    written.is_some_and(|field| field.access & crate::java::types::compiled::ACC_STATIC != 0)
 }
 
 /// The loads and stores of the methods Lombok wrote, from the class files: SpotBugs meets them after the

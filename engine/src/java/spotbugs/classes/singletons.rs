@@ -161,7 +161,7 @@ fn report_rest(context: &Context, shape: &Shape, getters: &[Getter], created: &[
 }
 
 fn synchronized(context: &Context, method: Node) -> bool {
-    if has_modifier(method, "synchronized") || super::super::lombok::annotated(context, method, "Synchronized") {
+    if has_modifier(method, "synchronized") || (context.resolver.index.lombok && super::super::lombok::annotated(context, method, "Synchronized")) {
         return true;
     }
     let mut code = Vec::new();

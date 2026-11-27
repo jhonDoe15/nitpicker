@@ -35,10 +35,14 @@ describe('Lombok versions', () => {
 
   it('knows that Lombok marks what it writes as generated from 1.18.34 on', () => {
     expect(
-      ['1.18.34', '1.18.46', '1.19.0', '2.0.0', '1.18.34-edge'].map(marksGeneratedByDefault),
-    ).toStrictEqual([true, true, true, true, true]);
+      ['1.18.34', '1.18.46', '1.19.0', '2.0.0', '1.18.34-edge', '1.18.36-SNAPSHOT', '1.20.0'].map(
+        marksGeneratedByDefault,
+      ),
+    ).toStrictEqual([true, true, true, true, true, true, true]);
     expect(
-      ['1.18.32', '1.18.30', '1.16.22', 'edge', '', undefined].map(marksGeneratedByDefault),
-    ).toStrictEqual([false, false, false, false, false, false]);
+      ['1.18.32', '1.18.30', '1.18.4', '1.16.22', 'edge', '', undefined].map(
+        marksGeneratedByDefault,
+      ),
+    ).toStrictEqual([false, false, false, false, false, false, false]);
   });
 });

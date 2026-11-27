@@ -53,12 +53,13 @@ pub fn check(context: &Context, class: Node) {
     }
     let Some(own) = context.resolver.scope.names.get(&class.id()) else { return };
     let Some(body) = class.child_by_field_name("body").or_else(|| children(class).into_iter().find(|part| part.kind() == "class_body")) else { return };
+    let written = super::super::lombok::compiled(context, own);
+    let utility = written.is_some() && super::super::lombok::annotated(context, class, "UtilityClass");
     let statics: Vec<Node> = place::members(body)
         .into_iter()
-        .filter(|member| member.kind() == "method_declaration" && has_modifier(*member, "static") && !has_modifier(*member, "private"))
+        .filter(|member| member.kind() == "method_declaration" && (utility || has_modifier(*member, "static")) && !has_modifier(*member, "private"))
         .collect();
     let index = context.resolver.index;
-    let written = super::super::lombok::compiled(context, own);
     let made: Vec<&CompiledMethod> = super::super::lombok::written(context, own).filter(|method| visible_static(method)).collect();
     let count = written.map_or_else(|| compiled_methods(body), |class| class.methods.len());
     let Some(info) = (!statics.is_empty() || !made.is_empty()).then(|| index.get(own)).flatten().filter(|_| count <= MOST_METHODS) else { return };
@@ -80,7 +81,7 @@ pub fn check(context: &Context, class: Node) {
         }
     }
     let mut mine: HashMap<&str, Vec<&Method>> = HashMap::new();
-    for known in info.methods.iter().filter(|known| known.is_static && visible.contains_key(known.name.as_str())) {
+    for known in info.methods.iter().filter(|known| (known.is_static || utility) && visible.contains_key(known.name.as_str())) {
         mine.entry(known.name.as_str()).or_default().push(known);
     }
     let binary = names::binary(context, own);

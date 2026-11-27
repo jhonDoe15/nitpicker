@@ -210,16 +210,14 @@ function usable(plan: SpotbugsEnginePlan, binary: string | undefined): binary is
   );
 }
 
+function marked(plan: SpotbugsEnginePlan): boolean {
+  const version = plan.lombokVersion ?? lombokVersionOf(plan.processorPath);
+  return lombokMarksGenerated(plan.sources, marksGeneratedByDefault(version));
+}
+
 function processorsOn(plan: SpotbugsEnginePlan): ProcessorKind {
   const processors = plan.processors ?? processorKind(plan.processorPath);
-  const version = plan.lombokVersion ?? lombokVersionOf(plan.processorPath);
-  if (
-    processors === 'lombok' &&
-    !lombokMarksGenerated(plan.sources, marksGeneratedByDefault(version))
-  ) {
-    return 'other';
-  }
-  return processors;
+  return processors === 'lombok' && !marked(plan) ? 'other' : processors;
 }
 
 export function withoutSpotbugsEngineReport(reportDir: string): void {
