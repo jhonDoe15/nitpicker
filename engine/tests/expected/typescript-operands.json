@@ -1,0 +1,254 @@
+[
+ [
+  "recursion.ts",
+  "nitpicker/no-operand-depth-recursion",
+  11,
+  77,
+  "'size' calls itself on both operands of its input expression, so the call stack grows with the length of an operand chain. Generated code (a string of thousands of `+` operands, a long `else if` ladder, a builder chain) nests far deeper than hand-written tests, and the walk ends in a stack overflow that no caller catches. Walk the left-leaning chain in a loop and recurse only into the right operand, use an explicit stack, or pass a depth and stop with an ordinary error past a limit.",
+  11,
+  93
+ ],
+ [
+  "recursion.ts",
+  "nitpicker/no-operand-depth-recursion",
+  15,
+  24,
+  "'print' calls itself on both operands of its input expression, so the call stack grows with the length of an operand chain. Generated code (a string of thousands of `+` operands, a long `else if` ladder, a builder chain) nests far deeper than hand-written tests, and the walk ends in a stack overflow that no caller catches. Walk the left-leaning chain in a loop and recurse only into the right operand, use an explicit stack, or pass a depth and stop with an ordinary error past a limit.",
+  15,
+  45
+ ],
+ [
+  "recursion.ts",
+  "nitpicker/no-operand-depth-recursion",
+  39,
+  26,
+  "'twice' calls itself on both operands of its input expression, so the call stack grows with the length of an operand chain. Generated code (a string of thousands of `+` operands, a long `else if` ladder, a builder chain) nests far deeper than hand-written tests, and the walk ends in a stack overflow that no caller catches. Walk the left-leaning chain in a loop and recurse only into the right operand, use an explicit stack, or pass a depth and stop with an ordinary error past a limit.",
+  39,
+  43
+ ],
+ [
+  "recursion.ts",
+  "nitpicker/no-operand-depth-recursion",
+  48,
+  5,
+  "'binaryTry' calls itself on both operands of its input expression, so the call stack grows with the length of an operand chain. Generated code (a string of thousands of `+` operands, a long `else if` ladder, a builder chain) nests far deeper than hand-written tests, and the walk ends in a stack overflow that no caller catches. Walk the left-leaning chain in a loop and recurse only into the right operand, use an explicit stack, or pass a depth and stop with an ordinary error past a limit.",
+  48,
+  26
+ ],
+ [
+  "recursion.ts",
+  "nitpicker/no-operand-depth-recursion",
+  6,
+  33,
+  "'evaluate' calls itself on both operands of its input expression, so the call stack grows with the length of an operand chain. Generated code (a string of thousands of `+` operands, a long `else if` ladder, a builder chain) nests far deeper than hand-written tests, and the walk ends in a stack overflow that no caller catches. Walk the left-leaning chain in a loop and recurse only into the right operand, use an explicit stack, or pass a depth and stop with an ordinary error past a limit.",
+  6,
+  53
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  11,
+  16,
+  "`y === a.b` appears twice in this `&&` chain. One side was probably copied: fix the operand that was meant to differ.",
+  11,
+  38
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  12,
+  7,
+  "`!x` appears twice in this `||` chain. One side was probably copied: fix the operand that was meant to differ.",
+  12,
+  22
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  15,
+  7,
+  "`x` is compared with itself. To test for NaN, write `Number.isNaN(x)`. One side was probably copied: fix the operand that was meant to differ.",
+  15,
+  14
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  18,
+  16,
+  "`row.total` is on both sides of `-`. One side was probably copied: fix the operand that was meant to differ.",
+  18,
+  37
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  19,
+  15,
+  "`size` is on both sides of `/`. One side was probably copied: fix the operand that was meant to differ.",
+  19,
+  38
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  20,
+  7,
+  "These comparisons of one value cannot both hold, so this `&&` is always false. Fix the constant or operator that was copied.",
+  20,
+  21
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  23,
+  7,
+  "These comparisons of one value cannot both hold, so this `&&` is always false. Fix the constant or operator that was copied.",
+  23,
+  35
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  26,
+  7,
+  "`x > 3` already follows from `x > 5`, so it checks nothing. Remove it, or fix its constant or operator.",
+  26,
+  21
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  29,
+  7,
+  "`x === 1` adds nothing: `x >= 1` holds whenever it does. Remove it, or fix its constant or operator.",
+  29,
+  24
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  32,
+  7,
+  "Together these comparisons of one value always hold, so this `||` is always true. Fix the constant or operator that was copied.",
+  32,
+  25
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  35,
+  19,
+  "`* 0` erases `count`: the result is 0 whatever it holds (or -0 or NaN with `*`). Write the value meant, or fix the operand.",
+  35,
+  28
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  36,
+  18,
+  "`& 0` erases `flags`: the result is 0 whatever it holds (or -0 or NaN with `*`). Write the value meant, or fix the operand.",
+  36,
+  27
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  37,
+  3,
+  "`total +=` already applies `total`, and the right side uses it again. Drop `total` from the right side, or write `total = ...` with the whole expression.",
+  37,
+  25
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  38,
+  3,
+  "`total *=` already applies `total`, and the right side uses it again. Drop `total` from the right side, or write `total = ...` with the whole expression.",
+  38,
+  25
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  39,
+  3,
+  "`ready ||=` already applies `ready`, and the right side uses it again. Drop `ready` from the right side, or write `ready = ...` with the whole expression.",
+  39,
+  29
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  40,
+  15,
+  "`* 0` erases `size`: the result is 0 whatever it holds (or -0 or NaN with `*`). Write the value meant, or fix the operand.",
+  40,
+  24
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  41,
+  15,
+  "`* 0` erases `(x + y)`: the result is 0 whatever it holds (or -0 or NaN with `*`). Write the value meant, or fix the operand.",
+  41,
+  26
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  42,
+  17,
+  "`typeof x` is on both sides of `===`. One side was probably copied: fix the operand that was meant to differ.",
+  42,
+  38
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  43,
+  19,
+  "`x === 1.0` appears twice in this `||` chain. One side was probably copied: fix the operand that was meant to differ.",
+  43,
+  39
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  44,
+  19,
+  "`!(x > 2)` appears twice in this `||` chain. One side was probably copied: fix the operand that was meant to differ.",
+  44,
+  54
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  45,
+  19,
+  "These comparisons of one value cannot both hold, so this `&&` is always false. Fix the constant or operator that was copied.",
+  45,
+  47
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  46,
+  18,
+  "`y > 1 as boolean` appears twice in this `&&` chain. One side was probably copied: fix the operand that was meant to differ.",
+  46,
+  56
+ ],
+ [
+  "slips.ts",
+  "nitpicker/no-operand-slip",
+  8,
+  7,
+  "`element.endArrowhead` appears twice in this `||` chain. One side was probably copied: fix the operand that was meant to differ.",
+  8,
+  51
+ ]
+]
