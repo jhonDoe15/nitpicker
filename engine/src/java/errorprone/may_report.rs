@@ -105,7 +105,6 @@ pub const PRECONDITIONS: &[(&str, Gate)] = &[
     ("EqualsBrokenForNull", Gate::Text(&["equals"])),
     ("RedundantNullCheck", NULL),
     ("ReturnsNullCollection", NULL),
-    ("InlineMeValidator", Gate::Text(&["InlineMe"])),
     ("MissingFail", TRY),
     ("TryFailRefactoring", TRY),
     ("AssertThrowsMinimizer", Gate::Text(&["assertThrows"])),

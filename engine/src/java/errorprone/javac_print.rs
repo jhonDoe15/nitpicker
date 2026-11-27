@@ -6,23 +6,33 @@
 use crate::engine::source::{SourceFile, children, named_children, parent};
 use crate::java::types::constant::{char_value, literal};
 use crate::java::types::expr::literal_text;
+use std::collections::HashMap;
 use tree_sitter::Node;
 
 pub fn printed(file: &SourceFile, node: Node) -> String {
     let mut out = String::new();
-    Printer { file }.expression(node, &mut out);
+    Printer { file, google: None }.expression(node, &mut out);
+    out
+}
+
+/// The expression as Error Prone's InlineMe `GooglePrinter` prints a copy of it: a space after a cast, lambdas as
+/// `a -> b` and `(A a, B b) -> c`, and each identifier in `qualified` (by node id) after its qualifier and a dot.
+pub fn printed_google(file: &SourceFile, node: Node, qualified: &HashMap<usize, String>) -> String {
+    let mut out = String::new();
+    Printer { file, google: Some(qualified) }.expression(node, &mut out);
     out
 }
 
 /// An annotation as javac prints it: `@` and the name as written, then `(` and its arguments when it has any.
 pub fn annotation_printed(file: &SourceFile, node: Node) -> String {
     let mut out = String::new();
-    Printer { file }.annotation(node, &mut out);
+    Printer { file, google: None }.annotation(node, &mut out);
     out
 }
 
 struct Printer<'a> {
     file: &'a SourceFile,
+    google: Option<&'a HashMap<usize, String>>,
 }
 
 fn parts(node: Node) -> Vec<Node> {
@@ -234,6 +244,41 @@ impl Printer<'_> {
         }
     }
 
+    /// `GooglePrinter.visitLambda`: explicit parameters printed in parentheses, implicit ones by name, in
+    /// parentheses unless there is exactly one, then ` -> ` and the body.
+    fn google_lambda(&self, node: Node, out: &mut String) {
+        let parameters = node.child_by_field_name("parameters");
+        let explicit = parameters.is_some_and(|list| list.kind() == "formal_parameters" && !named(list).is_empty());
+        let listed: Vec<Node> = match parameters {
+            Some(list) if list.kind() == "identifier" => vec![list],
+            Some(list) => named(list),
+            None => Vec::new(),
+        };
+        let parentheses = listed.len() != 1 || explicit;
+        if parentheses {
+            out.push('(');
+        }
+        for (at, parameter) in listed.iter().enumerate() {
+            if at > 0 {
+                out.push_str(", ");
+            }
+            if explicit {
+                self.parameter(*parameter, out);
+            } else {
+                out.push_str(self.text(*parameter));
+            }
+        }
+        if parentheses {
+            out.push(')');
+        }
+        out.push_str(" -> ");
+        match node.child_by_field_name("body") {
+            Some(body) if body.kind() == "block" => self.block(body, out),
+            Some(body) => self.expression(body, out),
+            None => {}
+        }
+    }
+
     fn parameter(&self, parameter: Node, out: &mut String) {
         let kind = parameter.child_by_field_name("type");
         let name = parameter.child_by_field_name("name");
@@ -325,6 +370,11 @@ impl Printer<'_> {
 
     fn expression(&self, node: Node, out: &mut String) {
         match node.kind() {
+            "identifier" | "type_identifier" if self.google.is_some_and(|qualified| qualified.contains_key(&node.id())) => {
+                out.push_str(self.google.and_then(|qualified| qualified.get(&node.id())).map_or("", String::as_str));
+                out.push('.');
+                out.push_str(self.text(node));
+            }
             "identifier" | "type_identifier" | "this" | "super" | "integral_type" | "floating_point_type" | "boolean_type"
             | "void_type" | "true" | "false" | "null_literal" | "new" => out.push_str(self.text(node)),
             "decimal_integer_literal" | "hex_integer_literal" | "octal_integer_literal" | "binary_integer_literal" => out.push_str(&integer(self.text(node))),
@@ -424,6 +474,9 @@ impl Printer<'_> {
                 out.push('(');
                 self.joined(&kinds, " & ", out);
                 out.push(')');
+                if self.google.is_some() {
+                    out.push(' ');
+                }
                 if let Some(value) = value {
                     self.expression(value, out);
                 }
@@ -475,6 +528,18 @@ impl Printer<'_> {
                 }
             }
             "record_pattern" => self.record_pattern(node, out),
+            "lambda_expression" if self.google.is_some() => self.google_lambda(node, out),
+            "explicit_constructor_invocation" => {
+                if let Some(object) = node.child_by_field_name("object") {
+                    self.expression(object, out);
+                    out.push('.');
+                }
+                for field in ["type_arguments", "constructor", "arguments"] {
+                    if let Some(part) = node.child_by_field_name(field) {
+                        self.expression(part, out);
+                    }
+                }
+            }
             "lambda_expression" => {
                 if let Some(parameters) = node.child_by_field_name("parameters") {
                     self.lambda_parameters(parameters, out);

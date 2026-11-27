@@ -1240,7 +1240,10 @@ impl<'a> Resolver<'a> {
             let (parameters, generic_parameters, varargs) = self.parameters(declaration.field("parameters"));
             if !info.methods.iter().any(|method| method.name == "<init>" && method.parameters == parameters) {
                 let compact = declaration.field("body").map(children).unwrap_or_default().into_iter().find(|member| member.kind() == "compact_constructor_declaration");
-                let detail = super::model::Detail { annotations: compact.map(|member| self.annotation_names(member)).unwrap_or_default(), ..Default::default() };
+                let has = super::super::helpers::has_modifier;
+                let written = compact.unwrap_or(declaration);
+                let access = if has(written, "public") { 1 } else if has(written, "protected") { 4 } else if has(written, "private") { 2 } else { 0 };
+                let detail = super::model::Detail { access, annotations: compact.map(|member| self.annotation_names(member)).unwrap_or_default(), ..Default::default() };
                 info.methods.push(Method { generic_parameters, varargs, nullable_parameters: self.nullable_parameters(declaration), names: self.parameter_names(declaration), detail, ..plain("<init>", parameters, Type::Primitive("void")) });
             }
             for component in declaration.field("parameters").map(children).unwrap_or_default() {
