@@ -18,6 +18,7 @@ mod idioms;
 mod flow;
 mod folds;
 mod known;
+mod locals;
 mod lombok;
 mod methods;
 mod mutable;
@@ -72,8 +73,7 @@ pub struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
-    /// The context of a file, with its class, enum, record and interface declarations and the bodies of its
-    /// anonymous classes.
+    /// The context of a file, with its type declarations and the bodies of its anonymous classes.
     pub fn of(resolver: &'a Resolver<'a>, project: &'a JavaProject, elsewhere: &'a nulls::Elsewhere, selected: Option<Vec<String>>) -> (Self, Vec<Node<'a>>) {
         let file = resolver.file;
         let mut line_starts = vec![0];
@@ -232,6 +232,7 @@ const DETECTORS: &[Detector] = &[
     methods::method_patterns as Detector,
     attributes::should_be_static as Detector,
     dead::dead_stores as Detector,
+    locals::locals as Detector,
     threads::threads as Detector,
     concurrent::concurrent as Detector,
     idioms::idioms as Detector,

@@ -22,6 +22,7 @@ import {
   DEAD_STORES,
   LOCK_MONITORENTER,
   ON_ENGINE,
+  SELF_ASSIGNMENTS,
   SEQUENCE_ON_CONCURRENT,
   SHARED_WRITES,
   UNSYNC_GET,
@@ -74,6 +75,7 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   WrongMapIterator: [WRONG_MAP_ITERATOR],
   BooleanReturnNull: ['NP_BOOLEAN_RETURN_NULL'],
   FindDeadLocalStores: DEAD_STORES,
+  FindLocalSelfAssignment2: SELF_ASSIGNMENTS,
   FindJSR166LockMonitorenter: [
     LOCK_MONITORENTER,
     UTIL_MONITORENTER,

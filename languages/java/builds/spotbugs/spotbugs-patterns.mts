@@ -17,6 +17,10 @@ export const SHARED_WRITES: readonly string[] = [
   'AT_NONATOMIC_64BIT_PRIMITIVE',
   'AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE',
 ];
+export const SELF_ASSIGNMENTS: readonly string[] = [
+  'SA_LOCAL_SELF_ASSIGNMENT',
+  'SA_LOCAL_SELF_ASSIGNMENT_INSTEAD_OF_FIELD',
+];
 export const SEQUENCE_ON_CONCURRENT = 'AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION';
 export const UNSYNC_GET = 'UG_SYNC_SET_UNSYNC_GET';
 export const ON_ENGINE: readonly string[] = [
@@ -82,4 +86,5 @@ export const ON_ENGINE: readonly string[] = [
   ...URL_PATTERNS,
   ...BOXING_PATTERNS,
   ...THREAD_PATTERNS,
+  ...SELF_ASSIGNMENTS,
 ];
