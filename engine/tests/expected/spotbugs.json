@@ -4086,5 +4086,17 @@
 ["ref_boolean9/p/A.java", "RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN", 14, "Suspicious comparison of Boolean references in p.A$1.y8(Boolean)"],
 ["ref_boolean9/p/A.java", "RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN", 15, "Suspicious comparison of Boolean references in p.A$1.y9(Boolean)"],
 ["ref_boolean9/p/A.java", "RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN", 18, "Suspicious comparison of Boolean references in p.A.p1(Boolean)"],
-["ref_boolean9/p/A.java", "RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN", 19, "Suspicious comparison of Boolean references in p.A.p2(Boolean)"]
+["ref_boolean9/p/A.java", "RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN", 19, "Suspicious comparison of Boolean references in p.A.p2(Boolean)"],
+["lock_places/p/K.java", "JLM_JSR166_LOCK_MONITORENTER", 5, "Synchronization performed on p.K in p.K.a()"],
+["lock_places/p/K.java", "JLM_JSR166_LOCK_MONITORENTER", 6, "Synchronization performed on p.K in p.K.lambda$b$0()"],
+["lock_places/p/K.java", "JLM_JSR166_LOCK_MONITORENTER", 7, "Synchronization performed on p.K in p.K$In.c()"],
+["lock_places/p/K.java", "JLM_JSR166_LOCK_MONITORENTER", 8, "Synchronization performed on p.K in p.K$1.e()"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 6, "Synchronization performed on p.K2 in p.K2$In$In2.x()"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 7, "Synchronization performed on p.K2$In in p.K2$In$In2.y()"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 9, "Synchronization performed on p.K2 in p.K2$In.lambda$z$0()"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 10, "Synchronization performed on p.K2$In in p.K2$In.w()"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 12, "Synchronization performed on p.K2 in p.K2$1Loc.u()"],
+["lock_places/p/K3.java", "JLM_JSR166_LOCK_MONITORENTER", 5, "Synchronization performed on java.util.concurrent.locks.ReentrantLock in p.K3.a(Holder)"],
+["lock_places/p/K3.java", "JLM_JSR166_LOCK_MONITORENTER", 6, "Synchronization performed on java.util.concurrent.locks.ReentrantLock in p.K3.b()"],
+["lock_places/p/K.java", "DLS_DEAD_LOCAL_STORE", 8, "Dead store to o in p.K.d()"]
 ]
