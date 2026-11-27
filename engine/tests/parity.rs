@@ -36,7 +36,7 @@ fn rows_with(case: &str, rule: &str, rules: &str, only: Option<&str>, options: &
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
     let source = root.join("fixtures").join(case);
     let run = RUNS.fetch_add(1, Ordering::Relaxed);
-    let out = std::env::temp_dir().join(format!("nitpicker-engine-{case}-{}-{}-{run}.json", only.unwrap_or("all"), std::process::id()));
+    let out = std::env::temp_dir().join(format!("nitpicker-engine-{}-{}-{}-{run}.json", case.replace('/', "-"), only.unwrap_or("all"), std::process::id()));
     let mut command = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"));
     if let Some(names) = only {
         command.env("NP_EP_ONLY", names);
@@ -166,6 +166,41 @@ fn a_selected_error_prone_check_reports_the_same_alone() {
         assert!(!wanted.is_empty(), "{name}: nothing reported");
         assert_eq!(alone, wanted, "{name}");
     }
+}
+
+/// javac's `-encoding`: the rows come from Error Prone compiling each fixture in its character set.
+#[test]
+fn error_prone_checks_read_sources_in_the_encoding_of_the_compile() {
+    for (case, encoding) in [("latin1", "ISO-8859-1"), ("cp1252", "windows-1252"), ("ms932", "windows-31j")] {
+        let (found, expected) = rows_with(&format!("encodings/{case}"), "_ErrorProne", "all", None, &["--encoding", encoding], &format!("errorprone-{case}"));
+        assert_eq!(found, expected, "{encoding}");
+    }
+    let report = std::env::temp_dir().join(format!("nitpicker-engine-latin1-{}.json", std::process::id()));
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/encodings/latin1");
+    let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
+        .arg(&source)
+        .args(["--rules", "_ErrorProne", "--encoding", "latin1", "--out"])
+        .arg(&report)
+        .env("NP_EP_ONLY", "ReferenceEquality")
+        .status()
+        .expect("engine runs");
+    assert!(status.success());
+    let text = std::fs::read_to_string(&report).expect("report");
+    let _ = std::fs::remove_file(&report);
+    let report: serde_json::Value = serde_json::from_str(&text).expect("json");
+    let message = report["findings"][0]["message"].as_str().expect("message");
+    assert!(message.contains("return \"caf\u{e9} \u{f1}and\u{fa}\".equals(x);"), "{message}");
+}
+
+#[test]
+fn an_encoding_the_engine_cannot_decode_as_the_jdk_does_stops_the_run() {
+    let output = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
+        .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/encodings/latin1"))
+        .args(["--rules", "_ErrorProne", "--encoding", "GB18030"])
+        .output()
+        .expect("engine runs");
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("the engine cannot read sources in the encoding GB18030"));
 }
 
 #[test]

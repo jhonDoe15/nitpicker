@@ -91,6 +91,10 @@ fn main() {
             "--lombok" => options.lombok = true,
             "--android-compatible" => options.android_compatible = true,
             "--test-only" => options.test_only = true,
+            "--encoding" => {
+                index += 1;
+                options.encoding = engine::encoding::named(&value(index)).unwrap_or_else(|problem| fail(&problem));
+            }
             "--release" => { index += 1; options.release = Some(args[index].parse().expect("release number")); }
             other => roots.push(PathBuf::from(other)),
         }

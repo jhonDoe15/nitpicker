@@ -10,6 +10,7 @@ import {
 import { fieldOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import {
   argumentSetOf,
+  encodingOf,
   generatedRoots,
   lookupEntries,
   releaseOf,
@@ -76,11 +77,13 @@ function engineReport(
   writeFileSync(lookup, lookupEntries(head).join('\n'));
   rmSync(report, { force: true });
   const release = releaseOf(head);
+  const encoding = encodingOf(head);
   const { status, stderr } = run(
     [
       ...['--files', listed, '--rules', ERROR_PRONE_RULES, '--classpath', lookup],
       ...(release === undefined ? [] : ['--release', release]),
       ...(testOnly(head) ? ['--test-only'] : []),
+      ...(encoding === undefined ? [] : ['--encoding', encoding]),
       ...['--out', report],
     ],
     {

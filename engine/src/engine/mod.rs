@@ -1,4 +1,5 @@
 //! Language-neutral core: a language plugs in a grammar, file rules and project passes.
+pub mod encoding;
 pub mod finding;
 pub mod runner;
 pub mod source;
@@ -35,6 +36,8 @@ pub struct Options {
     pub android_compatible: bool,
     /// The sources are test code only: Error Prone's `-XepCompilingTestOnlyCode`.
     pub test_only: bool,
+    /// The character set of the sources (`--encoding`, javac's `-encoding`), when it is not UTF-8.
+    pub encoding: Option<encoding::Charset>,
 }
 
 /// Facts a language extracts from one file for whole-project passes (duplicates, metrics).

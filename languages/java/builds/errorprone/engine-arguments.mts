@@ -38,6 +38,10 @@ function optionOf(head: readonly string[], flag: string): string | undefined {
   return at === -1 ? undefined : head[at + 1];
 }
 
+export function encodingOf(head: readonly string[]): string | undefined {
+  return optionOf(head, '-encoding');
+}
+
 export function projectFlags(head: readonly string[]): string[] {
   return valuesAfter(head, PROJECT_FLAG);
 }

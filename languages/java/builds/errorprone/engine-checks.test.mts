@@ -41,11 +41,10 @@ describe('engineChecksFor', () => {
     });
   });
 
-  it('leaves a source set in another encoding than UTF-8 to Error Prone', () => {
+  it('runs the engine checks whatever the encoding of the sources', () => {
     const own = classesIn('demo');
 
-    expect(engineChecksFor(headWith(own, '-encoding', 'ISO-8859-1')).checks).toStrictEqual([]);
-    expect(engineChecksFor(headWith(own, '-encoding', 'utf-8')).checks).toStrictEqual(
+    expect(engineChecksFor(headWith(own, '-encoding', 'ISO-8859-1')).checks).toStrictEqual(
       ENGINE_CHECKS,
     );
   });

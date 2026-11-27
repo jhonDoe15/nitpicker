@@ -83,6 +83,9 @@ shows the type annotations the way javac prints them.
 - Test sources run with `--test-only`, Error Prone's `-XepCompilingTestOnlyCode`: the checks that return early
   on test-only code report nothing there, `NarrowCalculation` leaves out products, `UseCorrectAssertInTests`
   looks at every method and an ignored `boolean` result is fixed with `assertThat(...).isTrue()`.
+- A source set compiled with `-encoding` other than UTF-8 is read in that character set (`--encoding`). The
+  engine knows the sets whose decoding it shares with the JDK (`src/engine/encoding.rs`); another one stops the
+  engine, and Error Prone keeps the checks of that source set.
 - A check the project switched off is not run. Findings in generated source folders are dropped, as the Error
   Prone run excludes those paths.
 - Error Prone runs every check, as before, when `NITPICKER_ENGINE=off`, when there is no engine binary for

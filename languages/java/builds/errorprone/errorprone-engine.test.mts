@@ -159,6 +159,19 @@ describe('errorProneOnEngine', () => {
     expect(argumentFilesToCompile(plan.argumentFiles)).toStrictEqual([argumentFile]);
   });
 
+  it('reads the sources in the encoding of the compile', () => {
+    const { plan, environment } = setup('-encoding', 'ISO-8859-1');
+    const started: Started[] = [];
+
+    errorProneOnEngine(plan, environment, { run: engineWriting({ findings: [] }, started) });
+
+    const [{ argumentList } = { argumentList: [] }] = started;
+    expect(argumentList.slice(-4)).toStrictEqual([
+      ...['--encoding', 'ISO-8859-1'],
+      ...['--out', `${plan.argumentFiles[0] ?? ''}.engine-report.json`],
+    ]);
+  });
+
   it('runs test sources in the test-only mode of the engine, without NullAway', () => {
     const { plan, environment } = setup('--test-only');
     const started: Started[] = [];

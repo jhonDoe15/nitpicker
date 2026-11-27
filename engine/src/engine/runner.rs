@@ -60,7 +60,11 @@ fn parse_text(text: &str, language: &dyn Language) -> Option<tree_sitter::Tree> 
 }
 
 pub fn parse(path: &PathBuf, language: &dyn Language) -> Option<SourceFile> {
-    let text = super::source::read_text(path)?;
+    parse_in(path, language, None)
+}
+
+fn parse_in(path: &PathBuf, language: &dyn Language, encoding: Option<super::encoding::Charset>) -> Option<SourceFile> {
+    let text = super::source::read_text_in(path, encoding)?;
     let tree = parse_text(&text, language)?;
     Some(SourceFile { path: path.to_string_lossy().into_owned(), text, tree })
 }
@@ -78,7 +82,7 @@ pub fn run(files: &[PathBuf], language: &dyn Language, only: Option<&[String]>, 
         files
             .par_iter()
             .filter_map(|path| {
-                let file = parse(path, language)?;
+                let file = parse_in(path, language, options.encoding)?;
                 match language.outline(&file) {
                     Some(text) => {
                         let tree = parse_text(&text, language)?;
@@ -98,7 +102,7 @@ pub fn run(files: &[PathBuf], language: &dyn Language, only: Option<&[String]>, 
     let per_file: Vec<(Vec<Finding>, FileFacts, usize, bool, String)> = files
         .par_iter()
         .filter_map(|path| {
-            let file = parse(path, language)?;
+            let file = parse_in(path, language, options.encoding)?;
             let mut findings = Vec::new();
             for rule in &rules {
                 rule.check_in(&file, project.as_ref(), &mut findings);
