@@ -231,10 +231,12 @@ jobs:
           pattern: test-blob-*
           path: reports/test-blobs
           merge-multiple: true
+      # The blobs hold coverage the test shards already converted, so the built-in V8 provider
+      # merges them; Vitest cannot load the custom provider of vitest.config.mts in a merge.
       - name: Merge the results and coverage of the test shards
         run: >-
           npx vitest --merge-reports=reports/test-blobs
-          --coverage --coverage.reporter=json --coverage.reportsDirectory=reports/test-results
+          --coverage --coverage.provider=v8 --coverage.reporter=json --coverage.reportsDirectory=reports/test-results
           --reporter=json --outputFile=reports/test-results/test-report.json
       - name: nitpicker coverage and CRAP on the recorded test results
         env:
