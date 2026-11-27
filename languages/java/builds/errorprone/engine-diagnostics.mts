@@ -47,8 +47,10 @@ export function positionIn(text: string, line: number, column: number): number {
   return start + offset;
 }
 
+export type EngineRow = EngineFinding & { readonly classAnnotations?: readonly string[] };
+
 function diagnosticIn(
-  { file, line, column, message }: EngineFinding,
+  { file, line, column, message, classAnnotations = [] }: EngineRow,
   texts: Map<string, string>,
 ): EngineDiagnostic {
   const text = texts.get(file) ?? readFileSync(file, 'utf8');
@@ -61,11 +63,11 @@ function diagnosticIn(
     position: positionIn(text, line, column),
     kind: 'WARNING',
     message,
-    classAnnotations: [],
+    classAnnotations,
   };
 }
 
-export function diagnosticsOf(findings: readonly EngineFinding[]): EngineDiagnostic[] {
+export function diagnosticsOf(findings: readonly EngineRow[]): EngineDiagnostic[] {
   const texts = new Map<string, string>();
   return findings.map((finding) => diagnosticIn(finding, texts));
 }

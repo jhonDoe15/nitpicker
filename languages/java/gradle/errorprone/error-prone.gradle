@@ -220,8 +220,17 @@ tasks.register('nitpickerErrorProne') {
                 javaHome: new File(java).parentFile.parentFile.absolutePath,
             ])
             project.ext.nitpickerWriteRules('errorprone-engine', enginePlan)
+            // A source set the engine answered in full keeps no sources; with none left, no JVM starts.
+            def withSources = argumentFiles.findAll { file ->
+                def lines = file.readLines('UTF-8')
+                lines.indexOf('--sources') < lines.size() - 1
+            }
+            if (withSources.isEmpty()) {
+                report.text = '[]\n'
+                return null
+            }
             def command = [java] + jvmFlags + runnerFlags +
-                [runner.absolutePath, report.absolutePath, checks.absolutePath] + argumentFiles*.absolutePath
+                [runner.absolutePath, report.absolutePath, checks.absolutePath] + withSources*.absolutePath
             def process = new ProcessBuilder(command)
                 .directory(projectDir).redirectErrorStream(true).start()
             // The JVM's own "Picked up JAVA_TOOL_OPTIONS" notices are not part of the cause.

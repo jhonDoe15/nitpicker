@@ -1,36 +1,47 @@
 import { existsSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { findEngine } from '../../../../shared/engine/engine-binary.mts';
-import { engineFindingOf } from '../../../../shared/engine/engine-rows.mts';
 import {
   runEngineSync,
   type EngineCall,
   type EngineEnvironment as Environment,
   type EngineHooks,
 } from '../../../../shared/engine/engine-run.mts';
-import { fieldOf, listOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import {
   argumentSetOf,
   generatedRoots,
   lookupEntries,
   releaseOf,
-  withProjectFlags,
   type ArgumentSet,
 } from './engine-arguments.mts';
-import { engineChecksFor, NULL_AWAY, type EngineChecks } from './engine-checks.mts';
+import { engineChecksFor, NULL_AWAY, wholeReason, type EngineChecks } from './engine-checks.mts';
 import {
   diagnosticsOf as engineDiagnostics,
   ENGINE_REPORT,
   type EngineDiagnostic,
 } from './engine-diagnostics.mts';
+import { hasCheckPlugins } from './skip/runner-checks.mts';
+import { keptRows, mayReportOf, rowsOf } from './skip/plan-rows.mts';
+import {
+  checksOff,
+  plannedArguments,
+  planLine,
+  remainingChecks,
+  sourceSetPlan,
+} from './skip/source-set-plan.mts';
 
 export type ErrorProneEnginePlan = {
   readonly reportDir: string;
   readonly argumentFiles: readonly string[];
   readonly javaHome: string;
 };
-type Setting = EngineCall & { readonly javaHome: string };
-type Selected = EngineChecks & ArgumentSet & { readonly file: string };
+type Setting = EngineCall & {
+  readonly javaHome: string;
+  readonly log?: { write(text: string): unknown } | undefined;
+};
+type Selected = EngineChecks &
+  ArgumentSet & { readonly file: string; readonly remaining: readonly string[] };
 
 const ERROR_PRONE_RULES = '_ErrorProne';
 
@@ -49,7 +60,7 @@ export function javaHomeOf(java: string): string {
 }
 
 function engineReport(
-  { file, head, sources, checks, packages }: Selected,
+  { file, head, sources, checks, packages, remaining }: Selected,
   { binary, javaHome, environment, run }: Setting,
 ): unknown {
   const listed = `${file}.engine-sources.txt`;
@@ -70,6 +81,7 @@ function engineReport(
       environment: {
         ...environment,
         NP_EP_ONLY: checks.join(','),
+        NP_EP_MAY_REPORT: remaining.join(','),
         ...(checks.includes(NULL_AWAY) ? { NP_NULLAWAY_PACKAGES: packages.join(',') } : {}),
         NITPICKER_JDK: javaHome,
       },
@@ -81,39 +93,42 @@ function engineReport(
   return parseJson(readFileSync(report, 'utf8'));
 }
 
-function reportedRows(report: unknown, checks: readonly string[], head: readonly string[]) {
-  const wanted = new Set(checks);
-  const skipped = generatedRoots(head).map((root) => `${root.split(path.sep).join('/')}/`);
-  return listOf(fieldOf(report, 'findings'))
-    .map(engineFindingOf)
-    .filter(({ rule }) => wanted.has(rule))
-    .filter(({ file: source }) => {
-      const slashed = source.split(path.sep).join('/');
-      return !skipped.some((root) => slashed.includes(root));
-    });
-}
-
 function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
   const text = new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(file));
   const set = argumentSetOf(text);
-  const selected = engineChecksFor(set.head);
-  if (selected.checks.length === 0 || set.sources.length === 0) {
+  const name = path.basename(file, '.args');
+  const whole =
+    wholeReason(set.head) ??
+    (hasCheckPlugins(set.head) ? 'its processor path brings checks' : undefined);
+  if (whole !== undefined || set.sources.length === 0) {
+    if (whole !== undefined) {
+      setting.log?.write(`nitpicker: Error Prone compiles ${name} whole: ${whole}\n`);
+    }
     return [];
   }
-  const report = engineReport({ file, ...set, ...selected }, setting);
+  const selected = engineChecksFor(set.head);
+  const remaining = remainingChecks(set, selected.checks);
+  const report = engineReport({ file, ...set, ...selected, remaining }, setting);
   const unparsed = textsOf(fieldOf(report, 'syntaxErrorFiles'));
   if (unparsed.length > 0) {
     throw new Error(`it could not read ${unparsed[0] ?? ''}`);
   }
-  const { checks } = selected;
-  const diagnostics = engineDiagnostics(reportedRows(report, checks, set.head));
+  const plan = sourceSetPlan(set, remaining, mayReportOf(report));
+  const rows = keptRows(
+    rowsOf(report, selected.checks, generatedRoots(set.head)),
+    set,
+    plan.kind === 'narrowed' ? plan.files : [],
+  );
+  const diagnostics = engineDiagnostics(rows);
   writeFileSync(
     file,
-    withProjectFlags(
-      text,
-      checks.map((check) => `-Xep:${check}:OFF`),
+    plannedArguments(
+      set,
+      plan,
+      checksOff(plan, remaining, selected.checks).map((check) => `-Xep:${check}:OFF`),
     ),
   );
+  setting.log?.write(planLine(name, set, plan));
   return diagnostics;
 }
 
@@ -128,7 +143,7 @@ export function errorProneOnEngine(
   if (binary === undefined || !existsSync(path.join(plan.javaHome, 'jmods'))) {
     return;
   }
-  const setting = { binary, javaHome: plan.javaHome, environment, run };
+  const setting = { binary, javaHome: plan.javaHome, environment, run, log };
   const diagnostics = plan.argumentFiles.flatMap((file) => {
     try {
       return diagnosticsOf(file, setting);
@@ -141,4 +156,11 @@ export function errorProneOnEngine(
     }
   });
   writeFileSync(reportFile, JSON.stringify(diagnostics));
+}
+
+/** The arguments files that still list sources for Error Prone after the engine step. */
+export function argumentFilesToCompile(argumentFiles: readonly string[]): string[] {
+  return argumentFiles.filter(
+    (file) => argumentSetOf(readFileSync(file, 'utf8')).sources.length > 0,
+  );
 }
