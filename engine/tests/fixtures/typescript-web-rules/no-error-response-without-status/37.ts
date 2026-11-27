@@ -1,0 +1,1 @@
+async function f(req, res) { res.status(207); try { await save(); } catch (e) { res.json({ error: e.message }); } }

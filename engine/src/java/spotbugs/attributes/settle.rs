@@ -41,7 +41,7 @@ fn nested(info: &ClassInfo) -> bool {
 
 /// Whether the class file of a class is public: a member class declared protected is public there too, and a
 /// member of an interface is public.
-fn compiled_public(index: &TypeIndex, info: &ClassInfo) -> bool {
+pub fn compiled_public(index: &TypeIndex, info: &ClassInfo) -> bool {
     if !nested(info) {
         return info.flags & flag::PUBLIC != 0;
     }
@@ -75,7 +75,7 @@ impl Attributes {
                 let plain = plain_class(info);
                 let counts = |field: &&Field| {
                     let is = |bit: u32| field.flags & bit != 0;
-                    (is(flag::STATIC) && is(flag::PUBLIC | flag::PROTECTED)) || (plain && is(flag::PUBLIC) && !is(flag::FINAL))
+                    (is(flag::STATIC) && is(flag::PUBLIC | flag::PROTECTED)) || (plain && is(flag::PUBLIC) && !is(flag::FINAL)) || !is(flag::STATIC | flag::FINAL)
                 };
                 found.extend(info.fields.iter().filter(counts).map(|field| field.name.clone()));
             }
@@ -93,7 +93,7 @@ impl Attributes {
         self.quiet.lock().expect("quiet").extend(notes.quiet);
     }
 
-    pub fn settle(&self, index: &TypeIndex, visits: impl FnOnce() -> Visits, out: &mut Vec<Finding>) {
+    pub fn settle(&self, index: &TypeIndex, literals: &HashSet<String>, visits: impl FnOnce() -> Visits, out: &mut Vec<Finding>) {
         let quiet = self.quiet.lock().expect("quiet");
         if quiet.is_empty() {
             return;
@@ -129,7 +129,13 @@ impl Attributes {
                     "MS_SHOULD_BE_FINAL" => format!("{name} isn't final but should be"),
                     _ => format!("{name} should be package protected"),
                 };
-                out.push(finding(rule, message, first, place, priority, name, &info.package));
+                out.push(finding(rule, message, first, place.clone(), priority, name.clone(), &info.package));
+            }
+            if let Some(rule) = super::unread::unread(index, literals, info, declared, stores).filter(|rule| !off.contains(rule)) {
+                let first = super::unread::first_store(stores, ranked.get_or_insert_with(|| (visits.take().expect("visits once"))()));
+                let first = first.as_ref().ok_or(declared_in);
+                let message = super::unread::message(rule, &name);
+                out.push(finding(rule, message, first, place.clone(), 2, name.clone(), &info.package));
             }
         }
     }

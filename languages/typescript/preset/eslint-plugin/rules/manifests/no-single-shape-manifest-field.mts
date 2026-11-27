@@ -55,14 +55,13 @@ function isManifestVariable(context: Context, node: TSESTree.Identifier): boolea
 }
 
 function isManifest(context: Context, node: TSESTree.Node): boolean {
-  const plain = leavesOf(node)[0];
-  if (plain === undefined) {
-    return false;
-  }
-  return (
-    isManifestName(plain) ||
-    (plain.type === AST_NODE_TYPES.Identifier && isManifestVariable(context, plain))
-  );
+  return leavesOf(node)
+    .slice(0, 1)
+    .some(
+      (plain) =>
+        isManifestName(plain) ||
+        (plain.type === AST_NODE_TYPES.Identifier && isManifestVariable(context, plain)),
+    );
 }
 
 function declaresList(context: Context, leaf: TSESTree.MemberExpression): boolean {
@@ -103,25 +102,29 @@ function manifestField(context: Context, node: TSESTree.Node): string | undefine
     : undefined;
 }
 
-function destructuredField(context: Context, node: TSESTree.Identifier): string | undefined {
+function patternTarget(value: TSESTree.Node): TSESTree.Node {
+  return value.type === AST_NODE_TYPES.AssignmentPattern ? value.left : value;
+}
+
+function manifestPattern(
+  context: Context,
+  node: TSESTree.Identifier,
+): TSESTree.ObjectPattern | undefined {
   const definition = findVariable(context, node, node.name)?.defs[0]?.node;
-  if (
-    definition?.type !== AST_NODE_TYPES.VariableDeclarator ||
-    definition.id.type !== AST_NODE_TYPES.ObjectPattern ||
-    definition.init === null ||
-    !isManifest(context, definition.init)
-  ) {
-    return undefined;
-  }
-  const property = definition.id.properties.find(
+  return definition?.type === AST_NODE_TYPES.VariableDeclarator &&
+    definition.id.type === AST_NODE_TYPES.ObjectPattern &&
+    definition.init !== null &&
+    isManifest(context, definition.init)
+    ? definition.id
+    : undefined;
+}
+
+function destructuredField(context: Context, node: TSESTree.Identifier): string | undefined {
+  const property = manifestPattern(context, node)?.properties.find(
     (entry) =>
       entry.type === AST_NODE_TYPES.Property &&
       !entry.computed &&
-      (entry.value.type === AST_NODE_TYPES.AssignmentPattern ? entry.value.left : entry.value)
-        .type === AST_NODE_TYPES.Identifier &&
-      nameOf(
-        entry.value.type === AST_NODE_TYPES.AssignmentPattern ? entry.value.left : entry.value,
-      ) === node.name,
+      nameOf(patternTarget(entry.value)) === node.name,
   );
   const key = property?.type === AST_NODE_TYPES.Property ? nameOf(property.key) : undefined;
   return key !== undefined && SINGLE_SHAPE_MEMBERS.has(key) ? key : undefined;

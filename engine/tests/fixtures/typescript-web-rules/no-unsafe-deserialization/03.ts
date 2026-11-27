@@ -1,0 +1,1 @@
+import { load, JSON_SCHEMA } from "js-yaml"; export const data = load(text, { schema: JSON_SCHEMA });

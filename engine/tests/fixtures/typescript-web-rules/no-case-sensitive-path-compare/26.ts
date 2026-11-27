@@ -1,0 +1,1 @@
+export const a = (o: { rankDir: string }, rankDir: string) => o.rankDir !== rankDir;

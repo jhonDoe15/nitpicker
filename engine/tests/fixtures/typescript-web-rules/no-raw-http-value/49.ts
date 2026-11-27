@@ -1,0 +1,1 @@
+const param = request.headers['content-type'].split(';')[1];

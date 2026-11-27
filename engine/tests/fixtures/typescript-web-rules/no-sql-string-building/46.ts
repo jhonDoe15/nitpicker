@@ -1,0 +1,1 @@
+export const order = (column) => `SELECT * FROM users ORDER BY ${column}`;

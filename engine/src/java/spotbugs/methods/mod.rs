@@ -1,10 +1,10 @@
-//! Patterns that judge one method as a whole: NP_BOOLEAN_RETURN_NULL and NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT from
-//! what it returns or dereferences, HSM_HIDING_METHOD from its declaration and the class's supertypes, and
-//! NN_NAKED_NOTIFY from the instructions javac writes for it.
+//! Patterns that judge one method as a whole: NP_BOOLEAN_RETURN_NULL, NP_OPTIONAL_RETURN_NULL and
+//! NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT from what it returns or dereferences, HSM_HIDING_METHOD from its
+//! declaration and the class's supertypes, and NN_NAKED_NOTIFY from the instructions javac writes for it.
 mod booleans;
 mod equals;
 mod hiding;
-mod notify;
+pub(crate) mod notify;
 
 use super::Context;
 use crate::engine::source::children;
@@ -35,7 +35,7 @@ pub fn methods<'a>(context: &Context<'a>, class: Node<'a>) {
 }
 
 pub fn method_patterns<'a>(context: &Context<'a>, class: Node<'a>) {
-    if !context.wants(&[booleans::PATTERN, equals::PATTERN]) {
+    if !context.wants(&[booleans::PATTERN, booleans::OPTIONAL, equals::PATTERN]) {
         return;
     }
     let Some(body) = body_of(class) else { return };

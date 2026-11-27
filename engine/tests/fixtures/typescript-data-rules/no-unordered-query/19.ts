@@ -1,0 +1,1 @@
+import knex from "knex"; export async function f(db) { const query = db("users").limit(20); query.orderBy("id"); return query; }

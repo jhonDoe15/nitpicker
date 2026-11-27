@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import ts from 'typescript';
@@ -214,5 +214,73 @@ describe('import extraction on the engine', () => {
   it('refuses a dependency kind it does not know', () => {
     const text = JSON.stringify({ file: 'a.ts', dependencies: [['./b', 'other']], kept: [] });
     expect(() => readExtraction(text)).toThrow('Unknown engine dependency');
+  });
+
+  it('refuses a dependency with no kind', () => {
+    const text = JSON.stringify({ file: 'a.ts', dependencies: [['./b']], kept: [] });
+    expect(() => readExtraction(text)).toThrow('Unknown engine dependency');
+  });
+});
+
+function stubEngine(name: string, body: readonly string[]): string {
+  const stub = path.join(folder, name);
+  writeFileSync(
+    stub,
+    [
+      '#!/bin/sh',
+      'while [ $# -gt 0 ]; do',
+      '  if [ "$1" = "--out" ]; then out="$2"; fi',
+      '  if [ "$1" = "--files" ]; then list="$2"; fi',
+      '  shift',
+      'done',
+      ...body,
+    ].join('\n'),
+  );
+  chmodSync(stub, 0o755);
+  return stub;
+}
+
+const FOUND = JSON.stringify({ file: 'a.ts', dependencies: [['./b', 'import']], kept: [] });
+
+describe.skipIf(process.platform === 'win32')('engine runs for the import graph', () => {
+  const working = stubEngine('working-engine.sh', [
+    `echo '${FOUND}' > "$out"`,
+    `cp "$list" ${JSON.stringify(path.join(folder, 'listed.tsv'))}`,
+  ]);
+  const failing = stubEngine('failing-engine.sh', ['echo "broken engine" >&2', 'exit 3']);
+
+  it('reads what the engine extracted and leaves out file names that break the list', () => {
+    const extraction = engineExtraction(
+      { baseDirectory: folder, files: ['a.ts', 'bad\nname.ts'] },
+      { ...process.env, NITPICKER_ENGINE: working },
+    );
+
+    expect([...extraction.keys()]).toEqual(['a.ts']);
+    expect(readFileSync(path.join(folder, 'listed.tsv'), 'utf8')).toBe(
+      `${path.join(folder, 'a.ts')}\ta.ts\n`,
+    );
+  });
+
+  it('skips the engine when it is switched off or has no file to read', () => {
+    const files = { baseDirectory: folder, files: ['a.ts'] };
+    const environment = { ...process.env, NITPICKER_ENGINE: failing, [ENGINE_SWITCH]: 'required' };
+
+    expect(engineExtraction(files, { ...environment, [ENGINE_SWITCH]: 'off' }).size).toBe(0);
+    expect(engineExtraction({ baseDirectory: folder, files: [] }, environment).size).toBe(0);
+  });
+
+  it('leaves every file to dependency-cruiser when the engine fails, unless it is required', () => {
+    const files = { baseDirectory: folder, files: ['a.ts'] };
+    const environment = { ...process.env, NITPICKER_ENGINE: failing };
+
+    expect(engineExtraction(files, environment).size).toBe(0);
+    expect(() => engineExtraction(files, { ...environment, [ENGINE_SWITCH]: 'required' })).toThrow(
+      'ended with status 3: broken engine',
+    );
+  });
+
+  it('leaves every file to dependency-cruiser when there is no engine and it is not required', () => {
+    const environment = { ...process.env, NITPICKER_ENGINE: path.join(folder, 'missing-engine') };
+    expect(engineExtraction({ baseDirectory: folder, files: ['a.ts'] }, environment).size).toBe(0);
   });
 });

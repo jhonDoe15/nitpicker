@@ -1,4 +1,4 @@
-import { type Socket, connect } from 'node:net';
+import { connect } from 'node:net';
 import type { Release, Semaphore } from '../capacity.mts';
 import { fieldOf, parseJson } from '../../../../shared/values/readers.mts';
 import { MEMORY_BROKER_VARIABLE } from './memory-broker.mts';
@@ -6,8 +6,19 @@ import { messageLines } from './message-lines.mts';
 
 type Environment = Readonly<Record<string, string | undefined>>;
 
+export type BrokerSocket = {
+  setEncoding(encoding: BufferEncoding): unknown;
+  on(event: string, listener: (chunk: string) => void): unknown;
+  ref(): unknown;
+  unref(): unknown;
+  write(text: string): unknown;
+  destroy(): unknown;
+};
+
+type Connect = (address: string) => BrokerSocket;
+
 type Connection = {
-  socket: Socket | undefined;
+  socket: BrokerSocket | undefined;
   lost: boolean;
   nextId: number;
   readonly waiting: Map<number, () => void>;
@@ -17,15 +28,11 @@ function unlimited(): void {
   return undefined;
 }
 
-function settleWaiting(connection: Connection): void {
-  const { socket, waiting } = connection;
-  if (socket === undefined) {
-    return;
-  }
+function settleWaiting({ socket, waiting }: Connection): void {
   if (waiting.size > 0) {
-    socket.ref();
+    socket?.ref();
   } else {
-    socket.unref();
+    socket?.unref();
   }
 }
 
@@ -50,8 +57,7 @@ function onGranted(connection: Connection, line: string): void {
   resolve();
 }
 
-function opened(connection: Connection, address: string): Socket {
-  const socket = connect(address);
+function opened(connection: Connection, socket: BrokerSocket): BrokerSocket {
   socket.setEncoding('utf8');
   socket.on(
     'data',
@@ -79,14 +85,14 @@ function releaseOnce(connection: Connection, id: number): Release {
   };
 }
 
-export function brokerSemaphore(address: string): Semaphore {
+export function brokerSemaphore(address: string, open: Connect = connect): Semaphore {
   const connection: Connection = { socket: undefined, lost: false, nextId: 1, waiting: new Map() };
   return {
     acquire(weight: number): Promise<Release> {
       if (weight === 0 || connection.lost) {
         return Promise.resolve(unlimited);
       }
-      connection.socket ??= opened(connection, address);
+      connection.socket ??= opened(connection, open(address));
       const id = connection.nextId;
       connection.nextId += 1;
       return new Promise((resolve) => {

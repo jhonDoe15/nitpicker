@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { findVariable, type SourceContext } from '../analysis/constant-resolution.mts';
+import { referencesOf, type SourceContext } from '../analysis/constant-resolution.mts';
 import type { ModuleBindings } from '../analysis/subprocess-calls.mts';
 import { trackedBindings } from '../processes/process-callees.mts';
 import { ancestorsOf, contains } from '../typed/node-views.mts';
@@ -45,7 +45,7 @@ function references(
   context: SourceContext,
   id: TSESTree.Identifier,
 ): readonly TSESTree.Identifier[] {
-  return (findVariable(context, id, id.name)?.references ?? [])
+  return referencesOf(context, id, id.name)
     .map((reference) => reference.identifier)
     .filter(
       (identifier): identifier is TSESTree.Identifier =>

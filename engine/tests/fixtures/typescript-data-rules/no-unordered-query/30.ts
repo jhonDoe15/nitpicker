@@ -1,0 +1,1 @@
+import { Model } from "sequelize"; export const f = (User) => User.findAll({ limit: 10, offset: 20, order: [["id", "ASC"]] });

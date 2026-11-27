@@ -1,0 +1,1 @@
+test('x', () => { process.nextTick(() => assert.equal(a, 1)); });

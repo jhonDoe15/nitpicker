@@ -1,0 +1,1 @@
+export const q = "select id from account where balance > :limit";

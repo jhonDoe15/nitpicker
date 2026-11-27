@@ -1,0 +1,1 @@
+async function f() { const r = await s3.listObjectsV2({ Bucket }).promise(); return r.Contents; }

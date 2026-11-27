@@ -1,0 +1,1 @@
+import { deserialize, serialize } from "node:v8"; export const clone = (value: unknown) => { const bytes = serialize(value); return deserialize(bytes); };

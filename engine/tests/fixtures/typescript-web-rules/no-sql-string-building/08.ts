@@ -1,0 +1,1 @@
+const COLUMNS = "id, name"; export const all = () => pool.query("SELECT " + COLUMNS + " FROM users");

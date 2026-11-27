@@ -1,0 +1,1 @@
+export function slug(value: string) { return new RegExp(value.replace(/\s+/g, '-').replace(/_/g, '-')); }

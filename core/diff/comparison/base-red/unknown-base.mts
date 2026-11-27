@@ -1,6 +1,7 @@
 import { RULE_IDS } from '../../../../shared/policy.mts';
 import {
   MUTATION_FAILED_PART_RULE,
+  TESTS_BASE_NOT_RUN_RULE,
   TESTS_FAILED_RULES,
   TESTS_FAILED_SCOPE_SEPARATOR,
   TESTS_UNMEASURED_RULES,
@@ -45,18 +46,32 @@ function isUnder(directory: string, file: string): boolean {
   return directory === '.' || file === directory || file.startsWith(`${directory}/`);
 }
 
+type Removal = Pick<TouchedCode, 'testsRemoved' | 'removedTestTargets'>;
+
+export function removedTestTargetsFor(
+  failures: readonly { readonly rule?: unknown }[],
+  touchedCode: Removal | undefined,
+): ReadonlySet<string> | undefined {
+  const notRun =
+    failures.length > 0 && failures.every(({ rule }) => rule === TESTS_BASE_NOT_RUN_RULE);
+  return touchedCode?.testsRemoved === true && notRun ? touchedCode.removedTestTargets : undefined;
+}
+
 export function unknownOnBaseFor(
   failures: readonly Finding[],
-  touchedCode: Pick<TouchedCode, 'testsRemoved'> | undefined,
+  touchedCode: Removal | undefined,
 ): FindingTest | undefined {
-  if (touchedCode?.testsRemoved === true || failures.length === 0) {
+  const targets = removedTestTargetsFor(failures, touchedCode);
+  if ((touchedCode?.testsRemoved === true && targets === undefined) || failures.length === 0) {
     return undefined;
   }
   const modules = failures.flatMap(({ symbol }) =>
     (symbol ?? '.').split(TESTS_FAILED_SCOPE_SEPARATOR),
   );
   return (finding: Finding) =>
-    isTestResultFinding(finding) && modules.some((module) => isUnder(module, finding.path));
+    isTestResultFinding(finding) &&
+    targets?.has(finding.path) !== true &&
+    modules.some((module) => isUnder(module, finding.path));
 }
 
 export function mutationFailuresOf(report: Report): Finding[] {
@@ -67,7 +82,7 @@ export function mutationFailuresOf(report: Report): Finding[] {
 
 export function unknownMutantsFor(
   failures: readonly Finding[],
-  touchedCode?: Pick<TouchedCode, 'testsRemoved'>,
+  touchedCode?: Removal,
 ): FindingTest | undefined {
   const unknown = unknownOnBaseFor(failures, touchedCode);
   return unknown && ((finding: Finding) => finding.rule.startsWith('mutant-') && unknown(finding));

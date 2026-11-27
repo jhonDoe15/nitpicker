@@ -21,6 +21,22 @@ export function textAt(source: SourceFile, index: number): string {
   return source.tokens[index]?.text ?? '';
 }
 
+export function kindAt(source: SourceFile, index: number): string {
+  return source.tokens[index]?.kind ?? '';
+}
+
+export function lineAt(source: SourceFile, index: number, fallback: number): number {
+  return source.tokens[index]?.line ?? fallback;
+}
+
+export function partnerAt(source: SourceFile, index: number): number {
+  return source.partner[index] ?? -1;
+}
+
+export function openerAt(source: SourceFile, index: number): number {
+  return source.opener[index] ?? -1;
+}
+
 export function inside(spans: readonly Span[], index: number): boolean {
   return spans.some(({ from, to }) => index >= from && index < to);
 }
@@ -29,7 +45,7 @@ function blockAfter(source: SourceFile, from: number): Span | undefined {
   for (const { index } of forward(source, from)) {
     const text = textAt(source, index);
     if (text === '{') {
-      return { from: index + 1, to: source.partner[index] ?? index };
+      return { from: index + 1, to: partnerAt(source, index) };
     }
     if (text === ';' || text === '}') {
       return undefined;
@@ -39,31 +55,32 @@ function blockAfter(source: SourceFile, from: number): Span | undefined {
 }
 
 function typeBodyAt(source: SourceFile, index: number): Span | undefined {
-  const next = source.tokens[index + 1];
   const typed =
     TYPE_WORDS.has(textAt(source, index)) &&
     textAt(source, index - 1) !== '.' &&
-    next?.kind === 'identifier' &&
+    kindAt(source, index + 1) === 'identifier' &&
     (textAt(source, index) !== 'record' || ['(', '<'].includes(textAt(source, index + 2)));
   return typed ? blockAfter(source, index + 2) : undefined;
 }
 
-function anonymousBodyAt(source: SourceFile, index: number): Span | undefined {
-  if (textAt(source, index) !== 'new') {
-    return undefined;
-  }
+function creationOpen(source: SourceFile, index: number): number | undefined {
   for (const { index: at, end } of forward(source, index + 1)) {
     const text = textAt(source, at);
     if (text === '(') {
-      return textAt(source, end) === '{'
-        ? { from: end + 1, to: source.partner[end] ?? end }
-        : undefined;
+      return end;
     }
-    if (source.tokens[at]?.kind !== 'identifier' && !IN_CREATION.has(text)) {
+    if (kindAt(source, at) !== 'identifier' && !IN_CREATION.has(text)) {
       return undefined;
     }
   }
   return undefined;
+}
+
+function anonymousBodyAt(source: SourceFile, index: number): Span | undefined {
+  const end = textAt(source, index) === 'new' ? creationOpen(source, index) : undefined;
+  return end !== undefined && textAt(source, end) === '{'
+    ? { from: end + 1, to: partnerAt(source, end) }
+    : undefined;
 }
 
 function nestedBodies(source: SourceFile, body: Span): Span[] {

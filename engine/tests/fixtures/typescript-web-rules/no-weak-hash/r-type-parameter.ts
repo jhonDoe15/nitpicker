@@ -1,0 +1,1 @@
+import crypto from 'crypto'; function f<ch>() { const { createHash: ch } = crypto; ch('md5'); }

@@ -1,0 +1,1 @@
+import { exec } from "node:child_process"; exec("NODE_TLS_REJECT_UNAUTHORIZED=0 node app.js");

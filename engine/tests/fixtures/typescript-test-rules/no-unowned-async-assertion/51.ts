@@ -1,0 +1,1 @@
+it('x', async () => { await Promise.all(xs.map((x) => new Promise((r) => setTimeout(() => { expect(x).toBe(1); r(); })))); });

@@ -1,0 +1,1 @@
+function f(returnTo) { if (!sanitizeRedirect(returnTo).startsWith("/")) { return; } redirect(returnTo); }

@@ -1,0 +1,1 @@
+const utf8 = (x: string) => unescape(encodeURIComponent(x)); export function f(t: string) { const c = utf8(t); return btoa(`${c.length}${c}`); }

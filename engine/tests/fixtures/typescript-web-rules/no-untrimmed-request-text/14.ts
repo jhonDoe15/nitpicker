@@ -1,0 +1,1 @@
+export function find(req, db) { const { q } = req.query; return db.where({ name: Like('%' + q + '%') }); }

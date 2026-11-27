@@ -1,0 +1,1 @@
+import { format } from "node:util"; export const find = (id) => pool.query(format("SELECT * FROM users WHERE id = %s", id));

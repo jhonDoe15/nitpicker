@@ -1,0 +1,1 @@
+const a = <img src={model.imageUrl} />;

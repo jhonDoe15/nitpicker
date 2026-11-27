@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export async function f(db, order) { return db.selectFrom("asset").selectAll().$call(order).limit(10).execute(); }

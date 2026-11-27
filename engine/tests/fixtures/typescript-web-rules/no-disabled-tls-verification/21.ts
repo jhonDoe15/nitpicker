@@ -1,0 +1,1 @@
+export const safeArgs = (args) => args.filter((a) => a !== "--ignore-certificate-errors");

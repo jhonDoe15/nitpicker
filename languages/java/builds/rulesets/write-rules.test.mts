@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { GRADLE_DIRECTORY } from '../java-build.mts';
-import { withGuardChecks } from './checkstyle-config.mts';
+import { withGuardChecks } from '../checkstyle/checkstyle-config.mts';
 import { scopedRuleset } from './pmd-rulesets.mts';
 import { main, PMD_RULESETS_LIST, writeRules } from './write-rules.mts';
 

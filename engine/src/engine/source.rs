@@ -20,6 +20,12 @@ pub fn read_text(path: &std::path::Path) -> Option<String> {
     Some(normalized(&String::from_utf8_lossy(bytes)))
 }
 
+/// A source file's text in a character set other than UTF-8, as javac reads it: a byte order mark stays.
+pub fn read_text_in(path: &std::path::Path, set: Option<super::encoding::Charset>) -> Option<String> {
+    let Some(set) = set else { return read_text(path) };
+    Some(normalized(&super::encoding::decode(&std::fs::read(path).ok()?, set)))
+}
+
 pub fn normalized(text: &str) -> String {
     if text.contains('\r') { text.replace("\r\n", "\n").replace('\r', "\n") } else { text.to_string() }
 }

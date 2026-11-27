@@ -52,6 +52,7 @@ tester.run('react-no-dropped-effect-handle', rule, {
     ok('store.subscribe(() => {}); return () => store.getState();'),
     ok('const local = { subscribe: store.subscribe }; local.subscribe(() => {});'),
     ok('if (!store) { return; } store.getState();'),
+    ok('let pending;'),
     ok('const run = () => { store.subscribe(() => {}); }; return run;'),
     {
       filename: write(`${PRELUDE}function run() { store.subscribe(() => {}); }`, 'ts'),
@@ -64,6 +65,7 @@ tester.run('react-no-dropped-effect-handle', rule, {
     bad('stream.subscribe(() => {});', 'dropped', 'stream.subscribe'),
     bad('if (store) { history.listen(() => {}); }', 'dropped', 'history.listen'),
     bad('if (!store) { return; } store.subscribe(() => {});', 'dropped', 'store.subscribe'),
+    bad('store?.subscribe(() => {});', 'dropped', 'store?.subscribe'),
     bad('const off = store.subscribe(() => {});', 'unused', 'store.subscribe', 'off'),
   ],
 });

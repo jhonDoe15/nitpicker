@@ -1,0 +1,1 @@
+export const many = (ids) => pool.query(`SELECT * FROM users WHERE id IN (${ids.map(() => "?").join(",")})`, ids);

@@ -21,6 +21,7 @@ tester.run('no-wrapper-only-timeout', rule, {
     `${CP} spawnSync('gradlew.bat', ['check'], { timeout: 0 });`,
     `${CP} export function run() { const child = spawn('npm', ['run', 'build'], { detached: true, timeout: 60_000 }); setTimeout(() => process.kill(-child.pid, 'SIGKILL'), 60_000); return child; }`,
     `${CP} spawnSync('node', ['script.js'], { shell: true, timeout: 1000 });`,
+    `${CP} export const run = (cmd) => spawnSync(cmd, [], { shell: true, timeout: 1000 });`,
     `${CP} execFileSync('./gradlew', ['check'], { timeout: 60_000 });`,
     `${CP} execFileSync('./mvnw', ['verify'], { timeout: 60_000 });`,
     `${CP} execSync('curl "https://x/?a=1&b=2"', { timeout: 5000 });`,

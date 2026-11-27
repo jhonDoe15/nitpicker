@@ -9,10 +9,12 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, beforeAll, expect, it } from 'vitest';
+import type TypeScript from 'typescript';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { findEngine } from '../../../../../shared/engine/engine-binary.mts';
 import { nativeCompilerPath } from '../../../adapters/typed-engine/compiler-binary.mts';
 import { analyzeTypedStructure } from '../../design/typed-structure.mts';
+import { engineProjectConfig } from './project-inputs.mts';
 
 const engine = findEngine(process.env);
 const hasEngine =
@@ -94,3 +96,31 @@ it.runIf(hasEngine)(
     ).toEqual([['unused-option', 'render.verbose']]);
   },
 );
+
+describe('the project config the engine reads', () => {
+  const projectRoot = path.resolve('/project');
+  const configOf = (options: TypeScript.CompilerOptions, parsed: TypeScript.CompilerOptions = {}) =>
+    engineProjectConfig(
+      { parsed: { options: parsed, fileNames: [], errors: [] }, options, rootNames: ['a.ts'] },
+      { configPath: path.join(projectRoot, 'tsconfig.json'), projectRoot },
+    );
+  const compilerOptionsOf = (config: unknown) => Object(Object(config).compilerOptions);
+
+  it.each([
+    ['the base URL', { baseUrl: path.resolve('/base') }, path.resolve('/base')],
+    ['the folder of the paths', { pathsBasePath: path.resolve('/paths') }, path.resolve('/paths')],
+    ['the project root', {}, projectRoot],
+  ])('resolves the paths against %s', (_name, base, folder) => {
+    const options = compilerOptionsOf(configOf({ ...base, paths: { '@app/*': ['app/*'] } }));
+
+    expect(Object(options.paths)['@app/*']).toEqual([path.resolve(folder, 'app/*')]);
+  });
+
+  it('keeps the JSX setting of the project and maps no paths when it has none', () => {
+    const options = compilerOptionsOf(configOf({}, { jsx: 4 }));
+
+    expect(options.paths).toEqual({});
+    expect(options.jsx).toBeUndefined();
+    expect(compilerOptionsOf(configOf({})).jsx).toBe('react-jsx');
+  });
+});

@@ -133,6 +133,11 @@ tester.run('no-production-console', rule, {
     { filename: adapter, code: 'export { stdout } from "node:process";', errors: stream('stdout') },
     {
       filename: adapter,
+      code: 'export { "stderr" as err } from "node:process";',
+      errors: stream('stderr'),
+    },
+    {
+      filename: adapter,
       code: 'export * from "node:process";',
       errors: stream('stdout and process.stderr'),
     },

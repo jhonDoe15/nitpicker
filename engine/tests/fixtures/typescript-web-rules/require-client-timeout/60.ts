@@ -1,0 +1,1 @@
+export default { type: "postgres", entities: ["dist/**/*.entity.js"], migrations: [] };

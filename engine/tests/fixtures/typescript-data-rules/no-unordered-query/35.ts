@@ -1,0 +1,1 @@
+export const text = "Set a limit of 20 items";

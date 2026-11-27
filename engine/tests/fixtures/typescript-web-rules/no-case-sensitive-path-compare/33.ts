@@ -1,0 +1,1 @@
+if (workspace.cwd === project.cwd) {}

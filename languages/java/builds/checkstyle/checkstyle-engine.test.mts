@@ -8,7 +8,7 @@ import {
   nitpickerCheckstyleConfig,
   reportingCheckstyleConfig,
   withGuardChecks,
-} from '../rulesets/checkstyle-config.mts';
+} from './checkstyle-config.mts';
 import {
   checkstyleEnginePlanOf,
   checkstyleOnEngine,
@@ -118,11 +118,15 @@ describe('checkstyleOnEngine', () => {
     expect(readFileSync(plan.left, 'utf8')).toBe([b, c].join('\n'));
     const xml = readFileSync(plan.engineReport, 'utf8');
     expect(ingestCheckstyle(xml, { root: path.dirname(a) }).findings).toEqual([
-      expect.objectContaining({
+      {
+        tool: 'checkstyle',
         rule: METHOD_NAME,
         path: 'A.java',
+        identity: 'checkstyle:26b6daf294dd53b1',
+        message: 'm',
+        classification: 'enforceable',
         location: { line: 4, column: 3 },
-      }),
+      },
     ]);
     expect(existsSync(`${plan.engineReport}.json`)).toBe(false);
   });
@@ -179,5 +183,42 @@ describe('checkstyleOnEngine', () => {
     expect(written).toEqual([
       'nitpicker: the engine did not run the Checkstyle checks, Checkstyle does: broken\n',
     ]);
+  });
+
+  it('sorts the findings of a file by line and column and reads a check named without a package', () => {
+    const { plan, environment, sources } = setup(['checkstyle-all.xml']);
+    const [a = ''] = sources;
+    const { run } = engineWriting([
+      { file: a, rule: 'MethodName', line: 4, column: 7, message: 'second' },
+      { file: a, rule: METHOD_NAME, line: 4, column: 3, message: 'first' },
+      { file: a, rule: METHOD_NAME, line: 1, message: 'no column' },
+    ]);
+    expect(checkstyleOnEngine(plan, environment, { run })).toEqual([]);
+    const xml = readFileSync(plan.engineReport, 'utf8');
+    const findings = ingestCheckstyle(xml, { root: path.dirname(a) }).findings;
+    expect(findings.map(({ message }) => message)).toEqual(['no column', 'first', 'second']);
+  });
+
+  it('leaves everything to Checkstyle when the engine writes no report or names a file it was not given', () => {
+    const { plan, environment } = setup(['checkstyle-all.xml']);
+    const written: string[] = [];
+    const log = { write: (text: string) => written.push(text) };
+    const silent: EngineStart = () => ({ status: 0, stdout: '', stderr: '' });
+    const other = path.join(path.dirname(plan.files), 'Other.java');
+    const { run } = engineWriting([], [other]);
+    expect(checkstyleOnEngine(plan, environment, { run: silent, log })).toBeUndefined();
+    expect(checkstyleOnEngine(plan, environment, { run, log })).toBeUndefined();
+    expect(written).toEqual([
+      'nitpicker: the engine did not run the Checkstyle checks, Checkstyle does: exit status 0\n',
+      `nitpicker: the engine did not run the Checkstyle checks, Checkstyle does: the engine named a file it was not given: ${other}\n`,
+    ]);
+  });
+
+  it('leaves everything to Checkstyle when the configuration is missing', () => {
+    const { plan, environment } = setup(['checkstyle-all.xml']);
+    const { calls, run } = engineWriting([]);
+    const missing = { ...plan, config: `${plan.config}.missing` };
+    expect(checkstyleOnEngine(missing, environment, { run })).toBeUndefined();
+    expect(calls).toEqual([]);
   });
 });

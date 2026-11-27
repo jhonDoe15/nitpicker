@@ -1,0 +1,1 @@
+const a = <a href={getSafeHttpUrl(model.serverUrl)}>x</a>;

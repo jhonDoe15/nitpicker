@@ -1,6 +1,15 @@
 import { between, forward } from '../max-value-sums/source/source-file.mts';
 import { declaresAt, inCaseLabel, namesDeclaredIn } from './declared-names.mts';
-import { frameSpan, inside, ownIndexes, ownRegions, textAt } from './own-regions.mts';
+import {
+  frameSpan,
+  inside,
+  kindAt,
+  openerAt,
+  ownIndexes,
+  ownRegions,
+  partnerAt,
+  textAt,
+} from './own-regions.mts';
 import type { DeclaredName } from './declared-names.mts';
 import type { Inherited } from './inherited-fields.mts';
 import type { OwnFrame, OwnRegions } from './own-regions.mts';
@@ -33,70 +42,91 @@ const AFTER_MEMBER = 3;
 const ASSIGNED_VALUE = 4;
 const CAST_BEFORE = new Set(['return', 'throw', 'yield', 'case', 'assert', 'else']);
 const CAST_OPERANDS = new Set(['(', '!', '~', 'new', THIS, SUPER]);
-const OPERAND_KINDS = new Set(['identifier', 'number', 'string', 'char']);
+const IDENTIFIER = 'identifier';
+const OPERAND_KINDS = new Set([IDENTIFIER, 'number', 'string', 'char']);
 const TYPE_LEADERS = new Set(['new', 'instanceof', 'throws', 'extends', 'implements', '@']);
 const TYPE_FOLLOWERS = new Set(['<', '::', '[', '...']);
 const UPPER_START = /^[A-Z]/u;
 
 function inAnnotation(source: SourceFile, index: number): boolean {
-  const open = source.opener[index] ?? -1;
+  const open = openerAt(source, index);
   const steps = [open - 1];
+  let last = open - 1;
   for (const at of steps) {
-    if (source.tokens[at]?.kind === 'identifier' && textAt(source, at - 1) === '.') {
-      steps.push(at - 2);
+    if (kindAt(source, at) === IDENTIFIER && textAt(source, at - 1) === '.') {
+      last = at - 2;
+      steps.push(last);
     }
   }
-  return textAt(source, open) === '(' && textAt(source, (steps.at(-1) ?? open) - 1) === '@';
+  return textAt(source, open) === '(' && textAt(source, last - 1) === '@';
+}
+
+function castsBefore(source: SourceFile, at: number): boolean {
+  const text = textAt(source, at);
+  return kindAt(source, at) !== IDENTIFIER || CAST_BEFORE.has(text) || CAST_OPERANDS.has(text);
+}
+
+function startsOperand(source: SourceFile, at: number): boolean {
+  return OPERAND_KINDS.has(kindAt(source, at)) || CAST_OPERANDS.has(textAt(source, at));
 }
 
 function isCastType(source: SourceFile, index: number): boolean {
-  const before = source.tokens[index - 2];
-  const operand = source.tokens[index + 2];
-  const casting =
-    before === undefined ||
-    before.kind !== 'identifier' ||
-    CAST_BEFORE.has(before.text) ||
-    CAST_OPERANDS.has(before.text);
   return (
     textAt(source, index - 1) === '(' &&
     textAt(source, index + 1) === ')' &&
-    casting &&
-    (OPERAND_KINDS.has(operand?.kind ?? '') || CAST_OPERANDS.has(operand?.text ?? ''))
+    castsBefore(source, index - 2) &&
+    startsOperand(source, index + 2)
+  );
+}
+
+function prefixEnd(source: SourceFile, index: number): number {
+  const steps = [index];
+  let last = index;
+  for (const at of steps) {
+    if (textAt(source, at + 1) === '.' && kindAt(source, at + 2) === IDENTIFIER) {
+      last = at + 2;
+      steps.push(last);
+    }
+  }
+  return last;
+}
+
+function inTypeContext(source: SourceFile, index: number, end: number): boolean {
+  return (
+    kindAt(source, end + 1) === IDENTIFIER ||
+    TYPE_FOLLOWERS.has(textAt(source, end + 1)) ||
+    TYPE_LEADERS.has(textAt(source, index - 1)) ||
+    textAt(source, end) === 'class'
   );
 }
 
 function isPackagePrefix(source: SourceFile, index: number): boolean {
-  const steps = [index];
-  for (const at of steps) {
-    if (textAt(source, at + 1) === '.' && source.tokens[at + 2]?.kind === 'identifier') {
-      steps.push(at + 2);
-    }
-  }
-  const end = steps.at(-1) ?? index;
-  const typed = steps.slice(1).some((at) => UPPER_START.test(textAt(source, at)));
-  const typeContext =
-    source.tokens[end + 1]?.kind === 'identifier' ||
-    TYPE_FOLLOWERS.has(textAt(source, end + 1)) ||
-    TYPE_LEADERS.has(textAt(source, index - 1)) ||
-    textAt(source, end) === 'class';
-  return end > index && typed && typeContext;
+  const end = prefixEnd(source, index);
+  const typed = source.tokens.slice(index + 1, end + 1).some(({ text }) => UPPER_START.test(text));
+  return end > index && typed && inTypeContext(source, index, end);
 }
 
 function isTypePosition(source: SourceFile, index: number): boolean {
-  const next = source.tokens[index + 1];
-  const typeArgument = textAt(source, index - 1) === '<' && ['>', ','].includes(next?.text ?? '');
-  return typeArgument || (next?.kind === 'identifier' && next.text !== 'instanceof');
+  const next = textAt(source, index + 1);
+  const typeArgument = textAt(source, index - 1) === '<' && ['>', ','].includes(next);
+  return typeArgument || (kindAt(source, index + 1) === IDENTIFIER && next !== 'instanceof');
 }
 
-function isShortUse(source: SourceFile, index: number): boolean {
+function isReadPosition(source: SourceFile, index: number): boolean {
   const next = textAt(source, index + 1);
   const before = textAt(source, index - 1);
   return (
-    source.tokens[index]?.kind === 'identifier' &&
+    kindAt(source, index) === IDENTIFIER &&
     !NOT_USES.has(before) &&
     next !== '(' &&
     !(next === ':' && LABEL_STARTS.has(before)) &&
-    !(before === ',' && inCaseLabel(source, index)) &&
+    !(before === ',' && inCaseLabel(source, index))
+  );
+}
+
+function isShortUse(source: SourceFile, index: number): boolean {
+  return (
+    isReadPosition(source, index) &&
     !declaresAt(source, index) &&
     !inAnnotation(source, index) &&
     !isCastType(source, index) &&
@@ -111,7 +141,7 @@ function memberAt(source: SourceFile, index: number, owner: string): string | un
     textAt(source, index) === owner &&
     textAt(source, index - 1) !== '.' &&
     textAt(source, index + 1) === '.' &&
-    member?.kind === 'identifier' &&
+    member?.kind === IDENTIFIER &&
     textAt(source, index + AFTER_MEMBER) !== '(';
   return read ? member.text : undefined;
 }
@@ -124,7 +154,7 @@ function scopeOf(
   source: SourceFile,
   { indexes, own, classOpen }: { indexes: readonly number[]; own?: OwnFrame; classOpen?: number },
 ): Scope {
-  const local = indexes.filter((index) => (source.opener[index] ?? -1) !== classOpen);
+  const local = indexes.filter((index) => openerAt(source, index) !== classOpen);
   const declared = namesDeclaredIn(source, local);
   const firstDeclared = new Map(declared.toReversed().map(({ name, index }) => [name, index]));
   const used = indexes
@@ -185,7 +215,7 @@ function passedToSuper(source: SourceFile, frame: OwnFrame['frame'], name: strin
       textAt(source, index + 1) === '.' &&
       textAt(source, index + 2) === frame.name &&
       textAt(source, open) === '(' &&
-      readsName(source, { from: open + 1, to: source.partner[open] ?? open }, name)
+      readsName(source, { from: open + 1, to: partnerAt(source, open) }, name)
     );
   });
 }

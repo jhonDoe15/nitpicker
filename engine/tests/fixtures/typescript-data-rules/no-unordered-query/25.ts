@@ -1,0 +1,1 @@
+export const f = (prisma) => prisma.user.findMany({ orderBy: { id: "asc" }, take: 10, skip: 20 });

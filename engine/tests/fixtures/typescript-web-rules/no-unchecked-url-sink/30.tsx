@@ -1,0 +1,1 @@
+export const A = ({ survey }) => <a href={survey.url}>x</a>;

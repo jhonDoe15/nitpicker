@@ -1,0 +1,1 @@
+test.describe('x', { skip: true }, () => {});

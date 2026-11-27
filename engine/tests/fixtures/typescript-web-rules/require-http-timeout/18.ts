@@ -1,0 +1,1 @@
+import https from "node:https"; export const get = (url, signal) => https.get(url, { signal }, (res) => res.resume());

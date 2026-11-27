@@ -44,23 +44,33 @@ export function indexedLists(
   return [...found.values()];
 }
 
+function lengthOwner(node: TSESTree.Node): TSESTree.Node | undefined {
+  return node.type === AST_NODE_TYPES.MemberExpression &&
+    !node.computed &&
+    node.property.type === AST_NODE_TYPES.Identifier &&
+    node.property.name === 'length'
+    ? node.object
+    : undefined;
+}
+
+function lengthBound(
+  test: TSESTree.Expression | null,
+  index: string | undefined,
+): TSESTree.Node | undefined {
+  return test?.type === AST_NODE_TYPES.BinaryExpression &&
+    test.operator === '<' &&
+    test.left.type === AST_NODE_TYPES.Identifier &&
+    test.left.name === index
+    ? lengthOwner(test.right)
+    : undefined;
+}
+
 export function countedLoop(
   loop: TSESTree.ForStatement,
 ): { readonly index: string; readonly bound: TSESTree.Node } | undefined {
   const { init, test } = loop;
   const [declarator] = init?.type === AST_NODE_TYPES.VariableDeclaration ? init.declarations : [];
-  if (
-    declarator?.id.type !== AST_NODE_TYPES.Identifier ||
-    test?.type !== AST_NODE_TYPES.BinaryExpression ||
-    test.operator !== '<' ||
-    test.left.type !== AST_NODE_TYPES.Identifier ||
-    test.left.name !== declarator.id.name ||
-    test.right.type !== AST_NODE_TYPES.MemberExpression ||
-    test.right.computed ||
-    test.right.property.type !== AST_NODE_TYPES.Identifier ||
-    test.right.property.name !== 'length'
-  ) {
-    return undefined;
-  }
-  return { index: declarator.id.name, bound: test.right.object };
+  const index = declarator?.id.type === AST_NODE_TYPES.Identifier ? declarator.id.name : undefined;
+  const bound = lengthBound(test, index);
+  return index === undefined || bound === undefined ? undefined : { index, bound };
 }

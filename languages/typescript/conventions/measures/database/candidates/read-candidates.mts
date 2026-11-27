@@ -52,7 +52,8 @@ function isStringCall(text: string, name: string): boolean {
 }
 
 function lastNonSpace(text: string, from: number): number {
-  return from - (TRAILING_BLANK.exec(text.slice(0, from + 1))?.[0].length ?? 0);
+  const head = text.slice(0, from + 1);
+  return from - (head.length - head.replace(TRAILING_BLANK, '').length);
 }
 
 function receiverEnd(text: string, dot: number): number {
@@ -112,18 +113,27 @@ function hasAny(tokens: ReadonlySet<string>, names: Iterable<string>): boolean {
   return [...names].some((name) => tokens.has(name));
 }
 
+function startsQuery(tokens: ReadonlySet<string>): boolean {
+  const hasClient = [...tokens].some((token) => isClientName(token));
+  return (
+    hasAny(tokens, STARTS) ||
+    (hasClient && (hasAny(tokens, DRIZZLE_READS) || hasAny(tokens, PRISMA_READS))) ||
+    (tokens.has('query') && hasAny(tokens, DRIZZLE_FIND))
+  );
+}
+
+function callsReader(text: string, tokens: ReadonlySet<string>): boolean {
+  return (
+    isTableCall(text, tokens) ||
+    hasMethodCall(text, tokens, { names: REPOSITORY_READS, receiver: isRepositoryName }) ||
+    hasMethodCall(text, tokens, { names: SEQUELIZE_READS, receiver: isModelName })
+  );
+}
+
 export function mayReadTables(text: string): boolean {
   if (ESCAPE.test(text)) {
     return true;
   }
   const tokens = new Set(text.match(TOKEN));
-  const hasClient = [...tokens].some((token) => isClientName(token));
-  return (
-    hasAny(tokens, STARTS) ||
-    (hasClient && (hasAny(tokens, DRIZZLE_READS) || hasAny(tokens, PRISMA_READS))) ||
-    (tokens.has('query') && hasAny(tokens, DRIZZLE_FIND)) ||
-    isTableCall(text, tokens) ||
-    hasMethodCall(text, tokens, { names: REPOSITORY_READS, receiver: isRepositoryName }) ||
-    hasMethodCall(text, tokens, { names: SEQUELIZE_READS, receiver: isModelName })
-  );
+  return startsQuery(tokens) || callsReader(text, tokens);
 }

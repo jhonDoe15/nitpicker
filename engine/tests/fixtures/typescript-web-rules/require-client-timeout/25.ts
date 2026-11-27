@@ -1,0 +1,1 @@
+import { TypeOrmModule } from "@nestjs/typeorm"; export const m = TypeOrmModule.forRootAsync({ useFactory: (config) => ({ type: "postgres", extra: { statement_timeout: config.get("DB_TIMEOUT") } }) });

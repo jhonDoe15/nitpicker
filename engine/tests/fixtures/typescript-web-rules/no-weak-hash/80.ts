@@ -1,0 +1,1 @@
+export const algos = [{ label: "MD5", algorithm: "md5" }];

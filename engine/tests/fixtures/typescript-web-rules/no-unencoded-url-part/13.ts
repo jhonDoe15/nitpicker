@@ -1,0 +1,1 @@
+const url = new URL(`${basePath}/integrations`, origin);

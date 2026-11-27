@@ -1,0 +1,1 @@
+const mod = await import(`./locales/${lang}.js`);

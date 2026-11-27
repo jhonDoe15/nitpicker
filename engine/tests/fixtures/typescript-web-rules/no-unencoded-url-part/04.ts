@@ -1,0 +1,1 @@
+const link = `https://example.test/search?q=${encodeURIComponent(query)}`;

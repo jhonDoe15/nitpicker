@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export function paged(query) { return query.limit(10); }

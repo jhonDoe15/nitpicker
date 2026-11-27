@@ -1,0 +1,1 @@
+return Response.redirect("/login");

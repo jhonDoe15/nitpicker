@@ -18,4 +18,8 @@ public final class Sets {
   public static <E> java.util.Set<E> newConcurrentHashSet() {
     return new HashSet<E>();
   }
+
+  public static <E> java.util.Set<E> difference(java.util.Set<E> set1, java.util.Set<?> set2) {
+    return set1;
+  }
 }

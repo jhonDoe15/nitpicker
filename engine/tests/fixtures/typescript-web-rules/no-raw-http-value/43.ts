@@ -1,0 +1,1 @@
+const type = String(req.headers.accept).trim(); if (type === 'text/html') { run(); }

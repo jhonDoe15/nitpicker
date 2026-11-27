@@ -1,0 +1,1 @@
+function f(req, res) { if (!ok) { res.set("a", "b").json({}); } else { save(); } }

@@ -1,0 +1,1 @@
+import { eq } from "drizzle-orm"; export const f = (g) => g.select().limit(5);

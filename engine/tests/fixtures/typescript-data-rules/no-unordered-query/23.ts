@@ -1,0 +1,1 @@
+import { Repository } from "typeorm"; export const f = (repo) => repo.find({ where: { active: true }, order: { id: "ASC" }, take: 10 });

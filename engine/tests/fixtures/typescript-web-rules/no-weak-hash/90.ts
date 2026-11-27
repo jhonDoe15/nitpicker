@@ -1,0 +1,1 @@
+import CryptoJS from "crypto-js"; export const h = () => CryptoJS.algo.SHA1.create();

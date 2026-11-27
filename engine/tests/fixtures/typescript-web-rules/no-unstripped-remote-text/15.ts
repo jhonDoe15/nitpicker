@@ -1,0 +1,1 @@
+const res = await fetch(u); const body = await res.json(); console.log(body.name);

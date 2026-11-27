@@ -1,0 +1,1 @@
+export const ssl = { rejectUnauthorized: process.env.DB_SSL_VERIFY === "true" };

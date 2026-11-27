@@ -1,0 +1,1 @@
+if (uri.authority.toLowerCase() === other.authority.toLowerCase()) {}

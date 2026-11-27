@@ -1,0 +1,1 @@
+function mw(req, reply) { if (!ok) { reply.code(401).send({}); } work(); }

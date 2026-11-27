@@ -1,0 +1,1 @@
+export const rename = (id, name) => db.exec(`UPDATE users SET name = '${name}' WHERE id = ${id}`);

@@ -45,6 +45,15 @@ const EFFECTS = new Set<string>([
 
 type Verdict = { readonly pure: boolean; readonly parses: boolean };
 
+function constFunction(node: TSESTree.Node | undefined): FunctionNode | undefined {
+  return node?.type === AST_NODE_TYPES.VariableDeclarator &&
+    node.parent.kind === 'const' &&
+    node.init !== null &&
+    isFunction(node.init)
+    ? node.init
+    : undefined;
+}
+
 export function localFunction(
   sourceCode: SourceCode,
   callee: TSESTree.Node,
@@ -52,17 +61,8 @@ export function localFunction(
   if (callee.type !== AST_NODE_TYPES.Identifier) {
     return undefined;
   }
-  const definition = variableNamed(sourceCode, callee)?.defs[0];
-  const node = definition?.node;
-  if (node?.type === AST_NODE_TYPES.FunctionDeclaration) {
-    return node;
-  }
-  return node?.type === AST_NODE_TYPES.VariableDeclarator &&
-    node.parent.kind === 'const' &&
-    node.init !== null &&
-    isFunction(node.init)
-    ? node.init
-    : undefined;
+  const node = variableNamed(sourceCode, callee)?.defs[0]?.node;
+  return node?.type === AST_NODE_TYPES.FunctionDeclaration ? node : constFunction(node);
 }
 
 function readsOuterState(sourceCode: SourceCode, fn: FunctionNode, node: TSESTree.Node): boolean {

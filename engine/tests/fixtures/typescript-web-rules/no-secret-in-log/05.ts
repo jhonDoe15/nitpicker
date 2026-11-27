@@ -1,0 +1,1 @@
+logger.info({ tokenCount: 3 });

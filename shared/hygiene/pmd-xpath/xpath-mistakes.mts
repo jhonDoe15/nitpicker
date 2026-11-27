@@ -1,4 +1,5 @@
 import { escapeRegExp } from '../../paths/glob.mts';
+import { textOf } from '../../values/readers.mts';
 
 const SINGLE_ITEM_FUNCTIONS =
   /(?<![\w:$.-])(?:fn:)?(?:string|lower-case|upper-case|starts-with|ends-with|contains|matches|normalize-space)\s*\(/gu;
@@ -30,7 +31,7 @@ const OPERATOR_BEFORE_PATH = new Set(['(', '[', ',', '=', '!', '<', '>', '|', '+
 function previousWord(xpath: string, end: number): string {
   const before = xpath.slice(0, end);
   const match = /([\w-]+)\s*$/u.exec(before);
-  return match === null || before[match.index - 1] === '$' ? '' : (match[1] ?? '');
+  return match === null || before[match.index - 1] === '$' ? '' : textOf(match[1]);
 }
 
 function startsAbsolutePath(xpath: string, index: number): boolean {
@@ -38,10 +39,7 @@ function startsAbsolutePath(xpath: string, index: number): boolean {
     return false;
   }
   const before = xpath.slice(0, index).trimEnd();
-  const last = before.at(-1);
-  if (last === undefined) {
-    return true;
-  }
+  const last = before.slice(-1);
   return (
     OPERATOR_BEFORE_PATH.has(last) ||
     (/\w/u.test(last) && KEYWORDS.has(previousWord(xpath, before.length)))
@@ -102,7 +100,7 @@ function topLevelOf(text: string): string {
 
 function unguardedSteps(operand: string, xpath: string): string[] {
   return [...topLevelOf(operand).matchAll(MULTI_CHILD_STEP)]
-    .map((match) => `${match[1] ?? ''}/${match[2] ?? ''}`)
+    .map((match) => `${textOf(match[1])}/${textOf(match[2])}`)
     .filter((step) => {
       const [parent = '', child = ''] = step.split('/');
       const guard = new RegExp(

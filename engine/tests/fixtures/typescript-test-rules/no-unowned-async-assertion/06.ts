@@ -1,0 +1,1 @@
+it('x', () => { const waits = { ready: new Promise((r) => setTimeout(() => { expect(a).toBe(1); r(); })) }; });

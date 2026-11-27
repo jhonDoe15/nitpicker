@@ -1,0 +1,1 @@
+import knex from "knex"; export const f = (db, users) => db("users").insert(users.map((user) => user.row));

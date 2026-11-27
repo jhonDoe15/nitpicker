@@ -1,0 +1,1 @@
+import { Model } from "sequelize"; export const f = (User) => User.findAll({ where: { active: true }, limit: 10 });

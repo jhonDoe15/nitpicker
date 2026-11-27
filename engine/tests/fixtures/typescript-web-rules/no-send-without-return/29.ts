@@ -1,0 +1,1 @@
+const casTicket = function (req, token, callback) { if (!enabled) { logger.error("off"); callback(); } const ticket = parse(req); validate(ticket); };

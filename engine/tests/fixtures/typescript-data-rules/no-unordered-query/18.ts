@@ -1,0 +1,1 @@
+import knex from "knex"; export const f = (db) => db("users").where({ active: true }).orderBy("id").limit(20);

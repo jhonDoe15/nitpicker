@@ -1,0 +1,1 @@
+const headers = { "User-Agent": "tool", ...callerHeaders }; await got(url, { headers });

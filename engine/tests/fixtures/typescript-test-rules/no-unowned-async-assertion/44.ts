@@ -1,0 +1,1 @@
+it('x', () => { const go = () => setTimeout(() => expect(a).toBe(1)); go(); });

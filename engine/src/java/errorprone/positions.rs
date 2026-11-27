@@ -22,7 +22,6 @@ pub fn preferred(context: &Context, node: Node) -> usize {
         "assignment_expression" => node.child_by_field_name("operator").map(|operator| operator.start_byte()),
         "array_access" => token(node, "["),
         "ternary_expression" => token(node, "?"),
-        "lambda_expression" => token(node, "->"),
         "instanceof_expression" => token(node, "instanceof"),
         "unary_expression" => node.child_by_field_name("operator").map(|operator| operator.start_byte()),
         "update_expression" => children(node).into_iter().find(|part| matches!(context.text(*part), "++" | "--")).map(|part| part.start_byte()),

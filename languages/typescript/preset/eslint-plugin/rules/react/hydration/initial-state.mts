@@ -36,7 +36,7 @@ function stateBinding(
   hook: string,
 ): TSESTree.Identifier | undefined {
   const { parent } = call;
-  if (parent.type !== AST_NODE_TYPES.VariableDeclarator || parent.init !== call) {
+  if (parent.type !== AST_NODE_TYPES.VariableDeclarator) {
     return undefined;
   }
   const { id } = parent;
@@ -83,12 +83,12 @@ function isRendered(
   context: FileContext,
 ): boolean {
   const fn = enclosingComponent(binding)?.fn;
-  const variable = context.sourceCode
-    .getDeclaredVariables(call.parent)
-    .find((each) => each.name === binding.name);
   return (
     fn !== undefined &&
-    (variable?.references.some((reference) => renderedReference(reference, fn)) ?? false)
+    context.sourceCode
+      .getDeclaredVariables(call.parent)
+      .filter((each) => each.name === binding.name)
+      .some((variable) => variable.references.some((reference) => renderedReference(reference, fn)))
   );
 }
 
@@ -118,18 +118,31 @@ function decidedByBrowser(initializer: TSESTree.Node, context: FileContext): boo
   return decidingParts(initializer).some((part) => testsBrowser(part, context));
 }
 
+function candidateBinding(
+  call: TSESTree.CallExpression,
+  hook: string,
+  initializer: TSESTree.Node,
+): TSESTree.Identifier | undefined {
+  if (
+    !INITIALIZERS.has(hook) ||
+    (LAZY_ONLY.has(hook) && !isFunction(initializer)) ||
+    !inComponentRender(call)
+  ) {
+    return undefined;
+  }
+  return stateBinding(call, hook);
+}
+
 export function browserInitialValue(
   call: TSESTree.CallExpression,
   context: FileContext,
 ): BrowserInitialValue | undefined {
   const hook = calleeNameOf(call.callee) ?? '';
   const [initializer] = call.arguments;
-  const binding = INITIALIZERS.has(hook) ? stateBinding(call, hook) : undefined;
+  const binding = initializer === undefined ? undefined : candidateBinding(call, hook, initializer);
   if (
     initializer === undefined ||
     binding === undefined ||
-    (LAZY_ONLY.has(hook) && !isFunction(initializer)) ||
-    !inComponentRender(call) ||
     !decidedByBrowser(initializer, context) ||
     !isRendered(binding, call, context)
   ) {

@@ -1,0 +1,1 @@
+export const url = `postgres://db/app?sslmode=no-verify`;

@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
-  findVariable,
+  referencesOf,
   resolveConstant,
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
@@ -32,14 +32,16 @@ function dataArgument(call: TSESTree.CallExpression): TSESTree.Node | undefined 
     : undefined;
 }
 
+function resolved(context: SourceContext, node: TSESTree.Node): TSESTree.Node {
+  return resolveConstant(context, node);
+}
+
 function pieces(context: SourceContext, data: TSESTree.Node): readonly TSESTree.Node[] {
-  const value = resolveConstant(context, data) ?? data;
+  const value = resolved(context, data);
   if (value.type === AST_NODE_TYPES.TemplateLiteral) {
-    return value.expressions.map(
-      (expression) => resolveConstant(context, expression) ?? expression,
-    );
+    return value.expressions.map((expression) => resolved(context, expression));
   }
-  return operandsOf(value, '+').map((operand) => resolveConstant(context, operand) ?? operand);
+  return operandsOf(value, '+').map((operand) => resolved(context, operand));
 }
 
 function isWholeText(context: SourceContext, piece: TSESTree.Node): boolean {
@@ -84,7 +86,7 @@ function readsList(context: SourceContext, parse: TSESTree.CallExpression): bool
   if (id.type !== AST_NODE_TYPES.Identifier) {
     return false;
   }
-  return (findVariable(context, id, id.name)?.references ?? []).some((reference) => {
+  return referencesOf(context, id, id.name).some((reference) => {
     const member = reference.identifier.parent;
     return (
       member.type === AST_NODE_TYPES.MemberExpression &&

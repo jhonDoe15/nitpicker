@@ -1,0 +1,1 @@
+async function all() { let r = await s3.listObjectsV2({ Bucket }).promise(); while (r.IsTruncated) { r = await s3.listObjectsV2({ Bucket, ContinuationToken: r.NextContinuationToken }).promise(); } }

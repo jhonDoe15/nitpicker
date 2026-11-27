@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import type { Environment } from '../../../../../shared/processes/environment.mts';
+import { valueOr } from '../../../../../shared/values/attempt/attempt.mts';
 import type { EnginePart } from '../../unused-api/engine/typed-plans.mts';
 import { fieldOf, fieldsOf, listOf, textsOf } from '../../../../../shared/values/readers.mts';
 import { fileEntry } from '../../unused-api/context.mts';
@@ -88,7 +90,9 @@ function hasTypedComment(text: string): boolean {
 }
 
 function declaresDocumentationTypes({ fileName }: Owned): boolean {
-  return SCRIPT_FILE.test(fileName) && hasTypedComment(ts.sys.readFile(fileName) ?? '');
+  return (
+    SCRIPT_FILE.test(fileName) && hasTypedComment(valueOr(() => readFileSync(fileName, 'utf8'), ''))
+  );
 }
 
 function isPublished(value: unknown, published: PublishedNames | undefined): boolean {

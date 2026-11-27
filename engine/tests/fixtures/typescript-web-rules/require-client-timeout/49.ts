@@ -1,0 +1,1 @@
+import * as lambda from "@aws-sdk/client-lambda"; export const fn = new lambda.LambdaClient({});

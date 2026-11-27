@@ -6,6 +6,19 @@ fn shortest(scientific: &str) -> (String, i32) {
     (mantissa.replace('.', ""), exponent.parse().unwrap_or(0))
 }
 
+/// The scientific form of the digits `Double.toString` and `Float.toString` choose: the shortest that read back as the
+/// value, and when one digit is enough, the two-digit decimal nearest the value that still reads back as it.
+pub fn java_scientific<T: std::fmt::LowerExp + std::str::FromStr + PartialEq + Copy>(value: T) -> String {
+    let shortest = format!("{value:e}");
+    if shortest.split_once('e').is_some_and(|(mantissa, _)| mantissa.trim_start_matches('-').len() == 1) {
+        let two = format!("{value:.1e}");
+        if !two.contains(".0e") && two.parse::<T>().is_ok_and(|back| back == value) {
+            return two;
+        }
+    }
+    shortest
+}
+
 /// Lays out digits `d1 d2 ...` of the value `0.d1d2... * 10^(exponent + 1)` like `Double.toString`.
 fn layout(negative: bool, digits: &str, exponent: i32) -> String {
     let sign = if negative { "-" } else { "" };
@@ -32,7 +45,7 @@ pub fn double_to_string(value: f64) -> String {
     if value == 0.0 {
         return if value.is_sign_negative() { "-0.0" } else { "0.0" }.to_string();
     }
-    let (digits, exponent) = shortest(&format!("{:e}", value.abs()));
+    let (digits, exponent) = shortest(&java_scientific(value.abs()));
     layout(value < 0.0, &digits, exponent)
 }
 
@@ -46,7 +59,7 @@ pub fn float_to_string(value: f32) -> String {
     if value == 0.0 {
         return if value.is_sign_negative() { "-0.0" } else { "0.0" }.to_string();
     }
-    let (digits, exponent) = shortest(&format!("{:e}", value.abs()));
+    let (digits, exponent) = shortest(&java_scientific(value.abs()));
     layout(value < 0.0, &digits, exponent)
 }
 
@@ -86,6 +99,11 @@ mod tests {
         assert_eq!(double_to_string(1e23), "1.0E23");
         assert_eq!(float_to_string(1.5), "1.5");
         assert_eq!(float_to_string(3.0e10), "3.0E10");
+        assert_eq!(double_to_string(0.002), "0.002");
+        let doubles = "4.9E-324 9.9E-324 1.5E-323 2.0E-323 2.5E-323 3.0E-323 3.5E-323 4.0E-323 4.4E-323 4.9E-323 5.4E-323";
+        assert_eq!((1..12).map(|bits| double_to_string(f64::from_bits(bits))).collect::<Vec<_>>().join(" "), doubles);
+        let floats = "1.4E-45 2.8E-45 4.2E-45 5.6E-45 7.0E-45 8.4E-45 9.8E-45 1.1E-44 1.3E-44 1.4E-44 1.5E-44";
+        assert_eq!((1..12).map(|bits| float_to_string(f32::from_bits(bits))).collect::<Vec<_>>().join(" "), floats);
     }
 
     #[test]

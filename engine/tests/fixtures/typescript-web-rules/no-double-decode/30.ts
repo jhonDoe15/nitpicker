@@ -1,0 +1,1 @@
+const [searchParams] = useSearchParams(); const v = decodeURIComponent(searchParams.get("q"));

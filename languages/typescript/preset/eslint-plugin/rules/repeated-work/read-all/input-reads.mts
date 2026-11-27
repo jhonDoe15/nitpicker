@@ -6,17 +6,18 @@ import { isFsRead } from '../early-exits/pure-work.mts';
 
 const READS = new Set(['readFile', 'readFileSync', 'readJson', 'readJsonSync']);
 
+function isGlobalJson(sourceCode: SourceCode, owner: TSESTree.Node | undefined): boolean {
+  if (owner?.type !== AST_NODE_TYPES.Identifier || owner.name !== 'JSON') {
+    return false;
+  }
+  const variable = variableNamed(sourceCode, owner);
+  return variable === undefined || variable.defs.length === 0;
+}
+
 export function isJsonParse(sourceCode: SourceCode, callee: TSESTree.Node): boolean {
   const owner =
     callee.type === AST_NODE_TYPES.MemberExpression ? unwrapped(callee.object) : undefined;
-  const variable =
-    owner?.type === AST_NODE_TYPES.Identifier ? variableNamed(sourceCode, owner) : undefined;
-  return (
-    owner?.type === AST_NODE_TYPES.Identifier &&
-    owner.name === 'JSON' &&
-    memberName(callee) === 'parse' &&
-    (variable === undefined || variable.defs.length === 0)
-  );
+  return isGlobalJson(sourceCode, owner) && memberName(callee) === 'parse';
 }
 
 export function isInputRead(sourceCode: SourceCode, node: TSESTree.Node | undefined): boolean {

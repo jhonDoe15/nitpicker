@@ -34,6 +34,9 @@ fn main_method(context: &Context, method: Node) -> bool {
 }
 
 fn method(context: &Context, node: Node) {
+    if context.test_only() {
+        return;
+    }
     let Some(body) = node.child_by_field_name("body") else { return };
     let index = context.resolver.index;
     let under = |name: &str, above: &str| index.is_subtype(name, above);

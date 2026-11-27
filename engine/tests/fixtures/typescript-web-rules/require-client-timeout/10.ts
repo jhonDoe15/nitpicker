@@ -1,0 +1,1 @@
+import { Pool, Client } from "pg"; export const client = new Client({ query_timeout: 30_000 });

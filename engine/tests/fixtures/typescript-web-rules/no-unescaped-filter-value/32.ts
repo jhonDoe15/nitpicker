@@ -1,0 +1,1 @@
+export const a = (n: string) => prisma.user.count({ where: { OR: [{ email: { endsWith: n.trim() } }] } });

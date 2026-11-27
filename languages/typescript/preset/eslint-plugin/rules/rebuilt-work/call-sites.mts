@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { findVariable, type SourceContext } from '../analysis/constant-resolution.mts';
+import { referencesOf, type SourceContext } from '../analysis/constant-resolution.mts';
 import { innermostRepeat } from '../repeated-work/support/loop-invariance.mts';
 import { depthFirst, nameOf, nodeChildren } from '../typed/node-views.mts';
 import type { FunctionNode } from '../typed/syntax-views.mts';
@@ -23,7 +23,6 @@ function bindingOf(fn: FunctionNode): TSESTree.Identifier | undefined {
   }
   const { parent } = fn;
   return parent.type === AST_NODE_TYPES.VariableDeclarator &&
-    parent.init === fn &&
     parent.id.type === AST_NODE_TYPES.Identifier
     ? parent.id
     : undefined;
@@ -33,8 +32,7 @@ function functionCalls(
   context: SourceContext,
   binding: TSESTree.Identifier,
 ): TSESTree.CallExpression[] {
-  const variable = findVariable(context, binding, binding.name);
-  return (variable?.references ?? []).flatMap(({ identifier }) => {
+  return referencesOf(context, binding, binding.name).flatMap(({ identifier }) => {
     const { parent } = identifier;
     return parent.type === AST_NODE_TYPES.CallExpression && parent.callee === identifier
       ? [parent]

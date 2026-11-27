@@ -121,6 +121,21 @@ describe('inspectRepository', () => {
     expect(found.projects[0]?.overlay?.settings).toEqual({ layout: { sourceRoots: ['.'] } });
   });
 
+  it('keeps the layout settings a project entry declares next to the derived source roots', () => {
+    const found = planned({
+      'nitpicker.config.json': JSON.stringify({
+        projects: [{ path: 'packages/app', settings: { layout: { testRoots: ['checks'] } } }],
+      }),
+      'packages/app/package.json': '{"name":"app","version":"1.0.0","main":"./index.tsx"}',
+      'packages/app/index.tsx': 'export {};\n',
+    });
+
+    expect(found.projects[0]?.derivedSourceRoots).toEqual(['.']);
+    expect(found.projects[0]?.overlay?.settings).toEqual({
+      layout: { testRoots: ['checks'], sourceRoots: ['.'] },
+    });
+  });
+
   it('keeps a repository without a workspace one project and names its nested projects', () => {
     const { root } = git.createGitRepository(
       {

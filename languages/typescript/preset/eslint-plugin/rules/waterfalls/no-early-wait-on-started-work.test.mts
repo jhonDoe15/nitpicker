@@ -4,6 +4,7 @@ import { rule } from './no-early-wait-on-started-work.mts';
 const { tester, write } = typedTsProject('nitpicker-early-wait-');
 const PRELUDE = `declare function startReport(files: string[]): Promise<string>;
 declare function startServer(): Promise<string>;
+declare function startEither(): Promise<string> | Promise<number>;
 declare function spawnChild(): Promise<{ code: number }>;
 declare function listNames(report?: string): Promise<string[]>;
 declare function measureAll(files: string[]): number;
@@ -93,6 +94,19 @@ tester.run('no-early-wait-on-started-work', rule, {
       `${MEMBER_START} const report = await this.job; send(this); ${LATER} return merge(report, names, sizes);`,
     ),
     inMethod(`const report = await this.job; ${LATER} return merge(report, names, sizes);`),
+    {
+      filename: write(
+        `${PRELUDE}export async function collect(files: string[], job: Promise<string>) { const report = await job; ${LATER} return merge(report, names, sizes); }`,
+        'ts',
+      ),
+      code: `${PRELUDE}export async function collect(files: string[], job: Promise<string>) { const report = await job; ${LATER} return merge(report, names, sizes); }`,
+    },
+    inFunction(
+      `${START} const one = 1, report = await reportJob; ${LATER} return merge(report, names, sizes, one);`,
+    ),
+    inFunction(
+      `${START} const report = await reportJob; const handlers: Array<() => void> = []; handlers[0](); const a = 1; return merge(report, a);`,
+    ),
     inMethod(
       `this.job = Promise.resolve(compute(files)); this.reset(); const report = await this.job; ${LATER} return merge(report, names, sizes);`,
     ),
@@ -132,6 +146,14 @@ tester.run('no-early-wait-on-started-work', rule, {
           messageId: 'early',
           data: { task: 'reportJob', next: 'const names = await listNames();' },
         },
+      ],
+    },
+    {
+      ...inFunction(
+        `const job = startEither(); const report = await job; ${LATER} return merge(report, names, sizes);`,
+      ),
+      errors: [
+        { messageId: 'early', data: { task: 'job', next: 'const names = await listNames();' } },
       ],
     },
     {

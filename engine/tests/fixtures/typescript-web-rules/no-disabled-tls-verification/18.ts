@@ -1,0 +1,1 @@
+export const FLAG = "--ignore-certificate-errors-spki-list";

@@ -1,0 +1,1 @@
+if (fs.existsSync(`${options.dir}/config.json`)) { fs.readFileSync(`${options.dir}/config.json`, "utf8"); }

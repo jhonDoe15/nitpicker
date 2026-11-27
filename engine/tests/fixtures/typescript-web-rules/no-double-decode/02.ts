@@ -1,0 +1,1 @@
+const hash = decodeURIComponent(location.hash);

@@ -2,19 +2,26 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
-import { parseJson } from '../../../../shared/values/readers.mts';
+import { fieldOf, listOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import { ENGINE_REPORT, positionIn, withEngineDiagnostics } from './engine-diagnostics.mts';
 import {
+  argumentFilesToCompile,
   errorPronePlanOf,
   errorProneOnEngine,
   javaHomeOf,
   type ErrorProneEnginePlan,
 } from './errorprone-engine.mts';
 import { ENGINE_CHECKS, NULL_AWAY } from './engine-checks.mts';
+import { ENABLED_CHECKS, IMMUTABLE } from './skip/runner-checks.mts';
 
 import { engineWriting, type Started } from '../test-support/engine-writing.mts';
 
 const projectWith = useTempProjects('nitpicker-errorprone-engine-');
+const LEFT = ENABLED_CHECKS.filter(
+  (check) => !ENGINE_CHECKS.includes(check) && check !== IMMUTABLE,
+);
+const IMMUTABLE_NAMED = ['ImmutableAnnotationChecker', 'ImmutableEnumChecker'];
+const ON_ENGINE = ENGINE_CHECKS.filter((check) => !IMMUTABLE_NAMED.includes(check));
 
 type Setup = {
   readonly plan: ErrorProneEnginePlan;
@@ -61,6 +68,10 @@ function rowIn(file: string, rule: string) {
   return { file, rule, line: 3, column: 24, message: `[${rule}] found` };
 }
 
+function mayReportIn(file: string, checks = '') {
+  return { file, rule: '_MayReport', line: 1, column: 1, message: checks };
+}
+
 describe('errorProneOnEngine', () => {
   it('runs its checks on the engine, reports them like Error Prone and switches them off there', () => {
     const { plan, environment, source, generated, argumentFile } = setup();
@@ -69,6 +80,8 @@ describe('errorProneOnEngine', () => {
       rowIn(source, 'SystemOut'),
       rowIn(generated, NULL_AWAY),
       rowIn(source, 'Other'),
+      mayReportIn(source),
+      mayReportIn(generated),
     ];
 
     errorProneOnEngine(plan, environment, { run: engineWriting({ findings }, started) });
@@ -98,15 +111,119 @@ describe('errorProneOnEngine', () => {
     );
     expect(passed).toStrictEqual({
       ...environment,
-      NP_EP_ONLY: ENGINE_CHECKS.join(','),
+      NP_EP_ONLY: ON_ENGINE.join(','),
+      NP_EP_MAY_REPORT: LEFT.join(','),
       NP_NULLAWAY_PACKAGES: 'demo',
       NITPICKER_JDK: plan.javaHome,
     });
     const lines = readFileSync(argumentFile, 'utf8').split('\n');
-    expect(lines.slice(lines.indexOf('--sources') - ENGINE_CHECKS.length)).toStrictEqual([
-      ...ENGINE_CHECKS.map((check) => `--errorprone-flag=-Xep:${check}:OFF`),
-      ...['--sources', source, generated, ''],
+    expect(lines.slice(lines.indexOf('--sources'))).toStrictEqual(['--sources', '']);
+    expect(lines.filter((line) => line.startsWith('--errorprone-flag='))).toStrictEqual([]);
+    expect(argumentFilesToCompile(plan.argumentFiles)).toStrictEqual([]);
+  });
+
+  it('narrows Error Prone to the files and checks the engine cannot answer', () => {
+    const { plan, environment, source, generated, argumentFile } = setup();
+    const notes: string[] = [];
+    const findings = [
+      { ...rowIn(source, 'UnicodeDirectionalityCharacters'), line: 1, column: 1 },
+      { ...rowIn(generated, 'UnicodeDirectionalityCharacters'), line: 1, column: 1 },
+      { ...rowIn(source, 'IdentifierName'), arguments: ['demo.Marked'] },
+      mayReportIn(source, 'StatementSwitchToExpressionSwitch,NotAsked'),
+      mayReportIn(generated),
+    ];
+
+    errorProneOnEngine(plan, environment, {
+      run: engineWriting({ findings }),
+      log: { write: (text: string) => notes.push(text) },
+    });
+
+    const lines = readFileSync(argumentFile, 'utf8').split('\n');
+    expect(lines.slice(lines.indexOf('--narrowed'))).toStrictEqual([
+      '--narrowed',
+      '--sources',
+      source,
+      '',
     ]);
+    expect(lines).not.toContain('--errorprone-flag=-Xep:StatementSwitchToExpressionSwitch:OFF');
+    expect(
+      lines.filter((line) => /-Xep:(?:SwitchDefault|Immutable):OFF$/u.test(line)).toSorted(),
+    ).toStrictEqual([
+      '--errorprone-flag=-Xep:Immutable:OFF',
+      '--errorprone-flag=-Xep:SwitchDefault:OFF',
+    ]);
+    const reported = textsOf(
+      listOf(parseJson(readFileSync(path.join(plan.reportDir, ENGINE_REPORT), 'utf8'))).map((row) =>
+        JSON.stringify([fieldOf(row, 'message'), fieldOf(row, 'classAnnotations')]),
+      ),
+    );
+    expect(reported).toStrictEqual([JSON.stringify(['[IdentifierName] found', ['demo.Marked']])]);
+    expect(notes).toStrictEqual([
+      'nitpicker: Error Prone compiles 1 of 2 files of main for 1 checks the engine does not run: StatementSwitchToExpressionSwitch\n',
+    ]);
+    expect(argumentFilesToCompile(plan.argumentFiles)).toStrictEqual([argumentFile]);
+  });
+
+  it('reads the sources in the encoding of the compile', () => {
+    const { plan, environment } = setup('-encoding', 'ISO-8859-1');
+    const started: Started[] = [];
+
+    errorProneOnEngine(plan, environment, { run: engineWriting({ findings: [] }, started) });
+
+    const [{ argumentList } = { argumentList: [] }] = started;
+    expect(argumentList.slice(-4)).toStrictEqual([
+      ...['--encoding', 'ISO-8859-1'],
+      ...['--out', `${plan.argumentFiles[0] ?? ''}.engine-report.json`],
+    ]);
+  });
+
+  it('reads the sources at the language level of a compile that patches the JDK', () => {
+    const { plan, environment, argumentFile } = setup(
+      '--project-arg=--add-exports=java.base/sun.misc=ALL-UNNAMED',
+    );
+    const text = readFileSync(argumentFile, 'utf8');
+    const started: Started[] = [];
+
+    errorProneOnEngine(plan, environment, { run: engineWriting({ findings: [] }, started) });
+    writeFileSync(argumentFile, text.replace('--release=17\n', ''));
+    errorProneOnEngine(plan, environment, { run: engineWriting({ findings: [] }, started) });
+
+    const [patched, unset] = started.map(({ argumentList }) => argumentList);
+    expect(started).toHaveLength(2);
+    expect(patched).not.toContain('--release');
+    expect(patched?.slice(-4, -2)).toStrictEqual(['--source', '17']);
+    expect(unset).not.toContain('--release');
+    expect(unset).not.toContain('--source');
+  });
+
+  it('gives the module path to the engine apart from the class path', () => {
+    const { plan, environment } = setup('--module-path', '/mods/a.jar');
+    const started: Started[] = [];
+
+    errorProneOnEngine(plan, environment, { run: engineWriting({ findings: [] }, started) });
+
+    const [{ argumentList, environment: passed } = { argumentList: [], environment: {} }] = started;
+    const listed = `${plan.argumentFiles[0] ?? ''}.engine-modulepath.txt`;
+    expect(argumentList.slice(4, 8)).toStrictEqual([
+      ...['--classpath', `${plan.argumentFiles[0] ?? ''}.engine-classpath.txt`],
+      ...['--module-path', listed],
+    ]);
+    expect(readFileSync(listed, 'utf8')).toBe('/mods/a.jar');
+    expect(fieldOf(passed, 'NP_NULLAWAY_PACKAGES')).toBe('demo');
+  });
+
+  it('runs test sources in the test-only mode of the engine, without NullAway', () => {
+    const { plan, environment } = setup('--test-only');
+    const started: Started[] = [];
+
+    errorProneOnEngine(plan, environment, { run: engineWriting({ findings: [] }, started) });
+
+    const [{ argumentList, environment: passed } = { argumentList: [], environment: {} }] = started;
+    expect(argumentList.includes('--test-only')).toBe(true);
+    expect(fieldOf(passed, 'NP_EP_ONLY')).toBe(
+      ON_ENGINE.filter((check) => check !== NULL_AWAY).join(','),
+    );
+    expect(passed).not.toHaveProperty('NP_NULLAWAY_PACKAGES');
   });
 
   it.each([
@@ -133,7 +250,9 @@ describe('errorProneOnEngine', () => {
   });
 
   it('does nothing without the engine, without the JDK modules or when the project passes options', () => {
-    const { plan, environment, argumentFile } = setup('--errorprone-flag=-XepDisableAllChecks');
+    const { plan, environment, argumentFile } = setup(
+      '--errorprone-flag=-XepPatchChecks:MissingOverride',
+    );
     const before = readFileSync(argumentFile, 'utf8');
     const started: Started[] = [];
     writeFileSync(path.join(plan.reportDir, ENGINE_REPORT), '[{}]');

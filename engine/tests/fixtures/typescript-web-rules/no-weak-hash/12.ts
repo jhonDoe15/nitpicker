@@ -1,0 +1,1 @@
+import { pbkdf2Sync } from "node:crypto"; export const key = (p, s) => pbkdf2Sync(p, s, 600000, 32, "sha256");

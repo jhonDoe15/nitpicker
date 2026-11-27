@@ -53,19 +53,26 @@ function mentions(node: TSESTree.Node, parameter: string): boolean {
   );
 }
 
+function isTypeFlagsHolder(object: TSESTree.Node): boolean {
+  if (object.type === AST_NODE_TYPES.MemberExpression) {
+    return (
+      !object.computed &&
+      object.property.type === AST_NODE_TYPES.Identifier &&
+      object.property.name === 'TypeFlags'
+    );
+  }
+  return object.type === AST_NODE_TYPES.Identifier && object.name === 'TypeFlags';
+}
+
 function singletonFlag(node: TSESTree.Node): boolean {
   if (node.type !== AST_NODE_TYPES.MemberExpression || node.computed) {
     return false;
   }
   const { object, property } = node;
-  const holder =
-    object.type === AST_NODE_TYPES.MemberExpression
-      ? !object.computed &&
-        object.property.type === AST_NODE_TYPES.Identifier &&
-        object.property.name === 'TypeFlags'
-      : object.type === AST_NODE_TYPES.Identifier && object.name === 'TypeFlags';
   return (
-    holder && property.type === AST_NODE_TYPES.Identifier && SINGLETON_FLAGS.has(property.name)
+    isTypeFlagsHolder(object) &&
+    property.type === AST_NODE_TYPES.Identifier &&
+    SINGLETON_FLAGS.has(property.name)
   );
 }
 

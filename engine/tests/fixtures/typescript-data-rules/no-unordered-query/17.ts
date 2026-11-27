@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export const f = (db) => db.updateTable("asset").set({ a: 1 }).limit(10).execute();

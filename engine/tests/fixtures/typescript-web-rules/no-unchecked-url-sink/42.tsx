@@ -1,0 +1,1 @@
+function F({ record }) { const url = record.url; return <a href={url}>x</a>; }

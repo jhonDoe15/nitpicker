@@ -1,0 +1,1 @@
+cy.get(`[data-cy="${name}"]`);

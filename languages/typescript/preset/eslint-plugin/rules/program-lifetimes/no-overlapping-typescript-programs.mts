@@ -34,15 +34,19 @@ function importedFrom(context: SourceContext, node: TSESTree.Node): TSESTree.Nod
     : undefined;
 }
 
+function isMemberBuild(context: SourceContext, callee: TSESTree.MemberExpression): boolean {
+  const owner = importedFrom(context, callee.object);
+  return (
+    BUILDERS.has(nameOf(callee.property) ?? '') &&
+    (owner?.type === AST_NODE_TYPES.ImportNamespaceSpecifier ||
+      owner?.type === AST_NODE_TYPES.ImportDefaultSpecifier)
+  );
+}
+
 function isBuild(context: SourceContext, call: TSESTree.CallExpression): boolean {
   const { callee } = call;
   if (callee.type === AST_NODE_TYPES.MemberExpression) {
-    const owner = importedFrom(context, callee.object);
-    return (
-      BUILDERS.has(nameOf(callee.property) ?? '') &&
-      (owner?.type === AST_NODE_TYPES.ImportNamespaceSpecifier ||
-        owner?.type === AST_NODE_TYPES.ImportDefaultSpecifier)
-    );
+    return isMemberBuild(context, callee);
   }
   const specifier = importedFrom(context, callee);
   return (

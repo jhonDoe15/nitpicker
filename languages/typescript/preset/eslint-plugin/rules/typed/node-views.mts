@@ -105,7 +105,7 @@ export function nameOf(node: unknown): string | undefined {
 }
 
 export function requiredLiteral(
-  init: TSESTree.Node | undefined,
+  init: TSESTree.Node | null | undefined,
 ): TSESTree.Literal['value'] | undefined {
   if (
     init?.type !== AST_NODE_TYPES.CallExpression ||
@@ -162,6 +162,19 @@ export function isPlainString(node: TSESTree.Node): boolean {
 
 type SoleStatement = 'ReturnStatement' | 'ExpressionStatement';
 
+function statementValue(
+  only: TSESTree.Statement | undefined,
+  statement: SoleStatement,
+): TSESTree.Node | undefined {
+  if (only?.type === AST_NODE_TYPES.ReturnStatement && statement === 'ReturnStatement') {
+    return only.argument ?? undefined;
+  }
+  if (only?.type === AST_NODE_TYPES.ExpressionStatement && statement === 'ExpressionStatement') {
+    return only.expression;
+  }
+  return undefined;
+}
+
 export function soleBodyValue(
   fn: TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression,
   statement: SoleStatement,
@@ -170,17 +183,7 @@ export function soleBodyValue(
   if (body.type !== AST_NODE_TYPES.BlockStatement) {
     return body;
   }
-  const [only] = body.body;
-  if (body.body.length !== 1) {
-    return undefined;
-  }
-  if (only?.type === AST_NODE_TYPES.ReturnStatement && statement === 'ReturnStatement') {
-    return only.argument ?? undefined;
-  }
-  if (only?.type === AST_NODE_TYPES.ExpressionStatement && statement === 'ExpressionStatement') {
-    return only.expression;
-  }
-  return undefined;
+  return body.body.length === 1 ? statementValue(body.body[0], statement) : undefined;
 }
 
 export function compositeOperands(value: TSESTree.Node): TSESTree.Node[] | undefined {

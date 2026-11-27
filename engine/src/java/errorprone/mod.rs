@@ -1,5 +1,33 @@
 //! Error Prone checks written for the engine: same check name, line and column as Error Prone reports.
+mod collection_types;
+mod compiled;
 mod doc;
+mod javac_print;
+mod formatter;
+mod regex;
+mod temporal_fields;
+mod jdk_parse;
+mod jdk_values;
+mod always_throws;
+mod sun_api;
+mod ast_helpers;
+mod record_components;
+mod modify_source;
+mod type_shadowing;
+mod use_binds;
+mod fix_compiles;
+mod assert_throws_fix;
+mod assert_throws_minimizer;
+mod assert_throws_types;
+mod missing_fail;
+mod missing_fail_parts;
+mod truth_expected;
+mod fix_compiles_writes;
+mod inline_me;
+mod format_validation;
+mod format_string;
+mod format_annotation;
+mod float_epsilon;
 mod docparse;
 mod docref;
 pub mod fixes;
@@ -197,7 +225,7 @@ mod symbol_key;
 mod stmt_defects;
 mod junit_asserts;
 mod const_checks;
-mod java_text;
+pub(crate) mod java_text;
 mod call_consts;
 mod auto_value;
 mod tz_data;
@@ -295,10 +323,22 @@ mod assert_throws;
 mod truth_checks;
 mod three_letter_zones;
 mod wakelock;
+mod may_report;
+mod restricted;
+mod reach;
+mod reach_checks;
+mod oneof;
+mod idents;
+mod idents_found;
+mod pattern_instanceof;
+mod nullness_declared;
+mod nullness_placement;
 mod flogger_args;
 mod no_allocation;
 mod must_be_closed;
 mod must_be_closed_fix;
+mod processor_audit;
+mod lombok_rewrites;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -309,10 +349,14 @@ use tree_sitter::Node;
 /// What a check gets: the file, its types and a place to report.
 pub struct Context<'a> {
     pub resolver: &'a Resolver<'a>,
+    /// The run's classes; with Lombok and the build's class directories, their class files too.
+    pub project: &'a JavaProject,
     pub file: &'a SourceFile,
     line_starts: Vec<usize>,
     selected: Option<Vec<String>>,
     out: std::cell::RefCell<Vec<Finding>>,
+    /// The checks that leave this file to Error Prone: the engine cannot tell what they report here.
+    handed: std::cell::RefCell<Vec<&'static str>>,
     /// The class each name in the file stands for, as written and in full: two checks read every name.
     pub named: std::cell::RefCell<std::collections::HashMap<usize, Option<(String, String)>>>,
 }
@@ -328,6 +372,16 @@ impl Context<'_> {
         }
         self.report_always(check, offset, message);
     }
+    /// Leaves the check in this file to Error Prone, unless a `@SuppressWarnings` around the node turns it off there.
+    pub fn hand_back(&self, check: &'static str, node: Node) {
+        if self.suppressed(check, node) || self.skipped(check) || self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == check)) {
+            return;
+        }
+        let mut handed = self.handed.borrow_mut();
+        if !handed.contains(&check) {
+            handed.push(check);
+        }
+    }
     /// Reports with Error Prone's "Did you mean" sentence for the check's suggested fixes.
     pub fn report_fixed(&self, check: &'static str, matched: Node, offset: usize, message: &str, fixes: &[fixes::Fix]) {
         if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == check)) || self.suppressed(check, matched) {
@@ -341,29 +395,59 @@ impl Context<'_> {
     }
     /// Reports without looking for a suppression: some checks report from the file as a whole.
     pub fn report_always(&self, check: &'static str, offset: usize, message: &str) {
-        if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == check)) {
+        if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == check)) || self.skipped(check) {
             return;
         }
-        let line = self.line_starts.partition_point(|start| *start <= offset) - 1;
-        let mut column = 0usize;
-        for character in self.file.text[self.line_starts[line]..offset].chars() {
-            column = if character == '\t' { column / 8 * 8 + 8 } else { column + character.len_utf16() };
-        }
+        let (line, column) = self.line_column(offset);
         self.out.borrow_mut().push(Finding {
             file: self.file.path.clone(),
-            line: line + 1,
-            column: column + 1,
+            line,
+            column,
             rule: check.to_string(),
             message: format!("[{check}] {message}"),
             symbol: None,
-            priority: None, arguments: None,
+            priority: None,
+            arguments: CLASS_EXEMPTED
+                .contains(&check)
+                .then(|| self.class_annotations(offset))
+                .filter(|names| !names.is_empty()),
         });
+    }
+    /// The annotations of the classes around an offset, innermost class first, each followed by the annotations on its
+    /// own declaration, the way Error Prone's runner lists them: full names, without `java.lang.annotation`.
+    fn class_annotations(&self, offset: usize) -> Vec<String> {
+        let mut names = Vec::new();
+        let mut current = self.file.tree.root_node().descendant_for_byte_range(offset, offset);
+        while let Some(node) = current {
+            if CLASS_KINDS.contains(&node.kind()) {
+                self.add_annotations(self.resolver.annotation_names(node), &mut names);
+            }
+            current = node.parent();
+        }
+        names
+    }
+    fn add_annotations(&self, found: Vec<String>, names: &mut Vec<String>) {
+        for name in found {
+            if name.starts_with("java.lang.annotation.") || names.contains(&name) {
+                continue;
+            }
+            names.push(name.clone());
+            let above = self.resolver.index.get(&name).map(|info| info.class_annotations.clone()).unwrap_or_default();
+            self.add_annotations(above, names);
+        }
+    }
+    /// Whether the run compiles test-only code: Error Prone's `-XepCompilingTestOnlyCode`.
+    pub fn test_only(&self) -> bool {
+        self.resolver.index.test_only
+    }
+    fn skipped(&self, check: &str) -> bool {
+        self.test_only() && NOT_ON_TEST_ONLY.contains(&check)
     }
     /// Whether the node or a declaration around it carries `@SuppressWarnings` with the check's name or "all".
     pub fn suppressed(&self, check: &str, node: Node) -> bool {
         let mut current = Some(node);
         while let Some(at) = current {
-            if DECLARATIONS.contains(&at.kind()) && self.suppress_strings(at).iter().any(|name| name == check || name == "all") {
+            if DECLARATIONS.contains(&at.kind()) && self.suppress_strings(at).iter().any(|name| name == check || name == "all" || ALT_NAMES.contains(&(check, name.as_str()))) {
                 return true;
             }
             current = parent(at);
@@ -391,6 +475,15 @@ impl Context<'_> {
             });
         }
         names
+    }
+    /// javac's line and column of a byte offset, from one: UTF-16 units, a tab moves to the next multiple of eight.
+    pub fn line_column(&self, offset: usize) -> (usize, usize) {
+        let line = self.line_of(offset);
+        let mut column = 0usize;
+        for character in self.file.text[self.line_starts[line]..offset].chars() {
+            column = if character == '\t' { column / 8 * 8 + 8 } else { column + character.len_utf16() };
+        }
+        (line + 1, column + 1)
     }
     /// The line of a byte offset, from zero.
     pub fn line_of(&self, offset: usize) -> usize {
@@ -540,6 +633,15 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["AvoidCommonTypeNames"], types::avoid_common_type_names),
     (&["UnnecessaryLongToIntConversion"], types::unnecessary_long_to_int),
     (&["LiteByteStringUtf8"], types::lite_byte_string_utf8),
+    (&["FallThrough"], reach_checks::fall_through),
+    (&["MissingDefault"], reach_checks::missing_default),
+    (&["SwitchDefault"], reach_checks::switch_default),
+    (&["ReachabilityFenceUsage"], reach_checks::reachability_fence_usage),
+    (&["WrongOneof"], oneof::wrong_oneof),
+    (&["PatternMatchingInstanceof"], pattern_instanceof::pattern_matching_instanceof),
+    (&["MultipleNullnessAnnotations", "NullablePrimitive", "NullableWildcard"], nullness_placement::annotated_type_checks),
+    (&["MultipleNullnessAnnotations", "NullablePrimitive", "NullablePrimitiveArray", "NullableVoid"], nullness_declared::declaration_checks),
+    (&["NullableTypeParameter"], nullness_placement::nullable_type_parameter),
     (&["URLEqualsHashCode"], types::url_equals_hash_code),
     (&["UnusedTypeParameter"], types::unused_type_parameter),
     (&["StringCharset"], strings::string_charset),
@@ -632,6 +734,9 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["InjectMoreThanOneScopeAnnotationOnClass"], guice::more_than_one_scope_annotation),
     (&["InjectOnMemberAndConstructor"], guice::inject_on_member_and_constructor),
     (&["IncompatibleModifiers"], guice::incompatible_modifiers),
+    (&["RequiredModifiers"], guice::required_modifiers),
+    (&["RestrictedApi"], restricted::restricted_api),
+    (&["CollectionIncompatibleType"], collection_types::collection_incompatible_type),
     (&["JUnit4SetUpNotRun"], junit_init::set_up_not_run),
     (&["JUnit4TearDownNotRun"], junit_init::tear_down_not_run),
     (&["JUnit4ClassAnnotationNonStatic"], junit_init::class_annotation_non_static),
@@ -729,6 +834,14 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["InvalidTimeZoneID"], time_constants::invalid_time_zone_id),
     (&["InvalidZoneId"], time_constants::invalid_zone_id),
     (&["InvalidJavaTimeConstant"], time_constants::invalid_java_time_constant),
+    (&["AlwaysThrows"], always_throws::always_throws),
+    (&["StaticMockMember"], fix_compiles::static_mock_member),
+    (&["MissingFail"], missing_fail::missing_fail),
+    (&["TryFailRefactoring"], assert_throws_fix::try_fail_refactoring),
+    (&["AssertThrowsMinimizer"], assert_throws_minimizer::assert_throws_minimizer),
+    (&["TruthAssertExpected"], truth_expected::truth_assert_expected),
+    (&["MutableGuiceModule"], fix_compiles::mutable_guice_module),
+    (&["NewFileSystem"], always_throws::new_file_system),
     (&["StringJoin"], size_join::string_join),
     (&["SizeGreaterThanOrEqualsZero"], size_join::size_greater_than_or_equals_zero),
     (&["ThrowIfUncheckedKnownChecked"], size_join::throw_if_unchecked_known_checked),
@@ -793,6 +906,15 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["CacheLoaderNull"], async_nulls::cache_loader_null),
     (&["DoNotMockAutoValue"], do_not_mock::do_not_mock_auto_value),
     (&["BareDotMetacharacter"], misc_defect_calls::bare_dot_metacharacter),
+    (&["InvalidPatternSyntax"], misc_defect_calls::invalid_pattern_syntax),
+    (&["TemporalAccessorGetChronoField"], temporal_fields::temporal_accessor_get_chrono_field),
+    (&["SunApi"], sun_api::sun_api),
+    (&["ASTHelpersSuggestions"], ast_helpers::ast_helpers_suggestions),
+    (&["RecordComponentAccessorAnnotationConflict"], record_components::record_component_accessor_annotation_conflict),
+    (&["ModifySourceCollectionInStream"], modify_source::modify_source_collection_in_stream),
+    (&["TypeNameShadowing"], type_shadowing::type_name_shadowing),
+    (&["UseBinds"], use_binds::use_binds),
+    (&["InlineMeValidator"], inline_me::inline_me_validator),
     (&["CharacterGetNumericValue"], misc_defect_calls::character_get_numeric_value),
     (&["GetClassOnEnum"], misc_defect_calls::get_class_on_enum),
     (&["BigDecimalEquals"], misc_defect_calls::big_decimal_equals),
@@ -892,6 +1014,11 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["DateFormatConstant"], date_format_constant::date_format_constant),
     (&["ExpensiveLenientFormatString"], format_checks::expensive_lenient_format_string),
     (&["FormatStringShouldUsePlaceholders"], format_checks::format_string_should_use_placeholders),
+    (&["FormatString"], format_string::format_string),
+    (&["FloggerFormatString"], format_string::flogger_format_string),
+    (&["OrphanedFormatString"], format_string::orphaned_format_string),
+    (&["FormatStringAnnotation"], format_annotation::format_string_annotation),
+    (&["FloatingPointAssertionWithinEpsilon"], float_epsilon::floating_point_assertion_within_epsilon),
     (&["TruthGetOrDefault"], truth_checks::truth_get_or_default),
     (&["BugPatternNaming"], bug_pattern_naming::bug_pattern_naming),
     (&["ExpectedExceptionChecker"], expected_exception::expected_exception_checker),
@@ -943,7 +1070,48 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["GuardedBy"], guarded_by::guarded_by),
 ];
 
+/// Checks Error Prone runs only on code that is not test-only (`isTestOnlyTarget()` makes them return early).
+const NOT_ON_TEST_ONLY: &[&str] = &[
+    "BanClassLoader", "BanJNDI", "BanSerializableRead", "CheckedExceptionNotThrown", "ConstantPatternCompile", "DefaultPackage",
+    "ExposedPrivateType", "Interruption", "LiteProtoToString", "MissingSummary",
+    "StaticAssignmentOfThrowable", "ThrowSpecificExceptions", "TimeInStaticInitializer",
+];
+
+/// Other names a check answers to in `@SuppressWarnings` (`altNames`), for the checks ported with theirs.
+const ALT_NAMES: &[(&str, &str)] = &[("MissingFail", "missing-fail")];
+
 pub struct ErrorProne;
+
+/// The row that lists, for each file the engine read, the checks of `NP_EP_MAY_REPORT` that may report there.
+const MAY_REPORT: &str = "_MayReport";
+/// The row for a class an annotation processor changed (`NP_EP_AUDIT_CLASSES`): the class file the build wrote for it
+/// has members its source does not explain.
+const REWRITTEN: &str = "_Rewritten";
+/// The row that lists, for a file, the engine's checks it leaves to Error Prone there.
+const HAND_BACK: &str = "_HandBack";
+/// The row for a place where Lombok rewrites written code in a way the engine does not model (`lombok_rewrites`):
+/// Error Prone has to check that file.
+const LOMBOK_REWRITE: &str = "_LombokRewrite";
+/// Checks whose findings nitpicker drops inside classes with certain annotations; their rows carry the annotations.
+const CLASS_EXEMPTED: &[&str] = &["IdentifierName", "PrivateConstructorForUtilityClass"];
+const CLASS_KINDS: &[&str] = &[
+    "class_declaration",
+    "interface_declaration",
+    "enum_declaration",
+    "record_declaration",
+    "annotation_type_declaration",
+];
+
+/// The directories an environment variable lists, split like a class path.
+fn paths_of(variable: &str) -> Vec<std::path::PathBuf> {
+    std::env::var_os(variable).map(|value| std::env::split_paths(&value).filter(|path| !path.as_os_str().is_empty()).collect()).unwrap_or_default()
+}
+
+/// javac analyzes a `package-info.java` that declares types as two units, so Error Prone reports each finding there twice.
+fn twice_analyzed(file: &SourceFile) -> bool {
+    file.path.replace('\\', "/").rsplit('/').next() == Some("package-info.java")
+        && crate::engine::source::children(file.tree.root_node()).into_iter().any(|part| CLASS_KINDS.contains(&part.kind()))
+}
 
 impl FileRule for ErrorProne {
     fn id(&self) -> &'static str {
@@ -955,14 +1123,35 @@ impl FileRule for ErrorProne {
     fn check(&self, _file: &SourceFile, _out: &mut Vec<Finding>) {}
     fn check_in(&self, file: &SourceFile, project: &Project, out: &mut Vec<Finding>) {
         let Some(project) = project.downcast_ref::<JavaProject>() else { return };
+        if paths_of("NP_EP_CONTEXT_ROOTS").iter().any(|root| std::path::Path::new(&file.path).starts_with(root)) {
+            return;
+        }
         let scope = &FileScope::of(file);
+        let audited = paths_of("NP_EP_AUDIT_CLASSES");
+        if !audited.is_empty() {
+            for found in processor_audit::rewritten(file, &scope.package, &audited) {
+                out.push(Finding {
+                    file: file.path.clone(),
+                    line: found.line,
+                    column: found.column,
+                    rule: REWRITTEN.to_string(),
+                    message: found.message,
+                    symbol: None,
+                    priority: None,
+                    arguments: None,
+                });
+            }
+        }
         let resolver = &Resolver::new(&project.index, file, scope);
         let _parents = ParentTable::of(file.tree.root_node());
         let mut line_starts = vec![0];
         line_starts.extend(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1));
         let selected = std::env::var("NP_EP_ONLY").ok().map(|names| names.split(',').map(String::from).collect());
-        let context = Context { resolver, file, line_starts, selected, out: std::cell::RefCell::new(Vec::new()), named: std::cell::RefCell::new(std::collections::HashMap::new()) };
-        let wanted = |names: &[&str]| context.selected.as_ref().is_none_or(|selected| names.iter().any(|name| selected.iter().any(|one| one == name)));
+        let context = Context { resolver, project, file, line_starts, selected, out: std::cell::RefCell::new(Vec::new()), handed: std::cell::RefCell::new(Vec::new()), named: std::cell::RefCell::new(std::collections::HashMap::new()) };
+        let wanted = |names: &[&str]| {
+            !names.iter().all(|name| context.skipped(name))
+                && context.selected.as_ref().is_none_or(|selected| names.iter().any(|name| selected.iter().any(|one| one == name)))
+        };
         let checks: Vec<Check> = CHECKS.iter().filter(|(names, _)| wanted(names)).map(|(_, check)| *check).collect();
         walk(file.tree.root_node(), |node| {
             if node.is_named() {
@@ -974,6 +1163,51 @@ impl FileRule for ErrorProne {
         for (_, check) in FILE_CHECKS.iter().filter(|(names, _)| wanted(names)) {
             check(&context, file.tree.root_node());
         }
-        out.append(&mut context.out.into_inner());
+        let rewrites = if project.index.lombok { lombok_rewrites::rewrites(&context, file.tree.root_node()) } else { Vec::new() };
+        let places: Vec<(usize, usize)> = rewrites.iter().map(|rewrite| context.line_column(rewrite.at)).collect();
+        let handed = context.handed.take();
+        let mut found = context.out.into_inner();
+        for (rewrite, (line, column)) in rewrites.into_iter().zip(places) {
+            found.push(Finding {
+                file: file.path.clone(),
+                line,
+                column,
+                rule: LOMBOK_REWRITE.to_string(),
+                message: rewrite.feature.to_string(),
+                symbol: None,
+                priority: None,
+                arguments: None,
+            });
+        }
+        if twice_analyzed(file) {
+            found = found.into_iter().flat_map(|finding| [finding.clone(), finding]).collect();
+        }
+        out.append(&mut found);
+        if !handed.is_empty() {
+            out.push(Finding {
+                file: file.path.clone(),
+                line: 1,
+                column: 1,
+                rule: HAND_BACK.to_string(),
+                message: handed.join(","),
+                symbol: None,
+                priority: None,
+                arguments: None,
+            });
+        }
+        if let Ok(asked) = std::env::var("NP_EP_MAY_REPORT") {
+            let asked: Vec<&str> = asked.split(',').filter(|name| !name.is_empty()).collect();
+            let found = may_report::may_report(&asked, &file.text, file.tree.root_node(), &project.index);
+            out.push(Finding {
+                file: file.path.clone(),
+                line: 1,
+                column: 1,
+                rule: MAY_REPORT.to_string(),
+                message: found.join(","),
+                symbol: None,
+                priority: None,
+                arguments: None,
+            });
+        }
     }
 }

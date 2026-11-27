@@ -27,11 +27,6 @@ const UNKNOWN_ON_BASE = [
   'so only added files and edited lines are judged on them.',
 ].join(' ');
 
-const COUNTS_AS_NEW = [
-  'The change removes tests, so every coverage, CRAP, mutation, slow-test and test-console result',
-  'of the head counts as new.',
-].join(' ');
-
 function outcomeOf(failed: readonly ReportEntry[]): string {
   if (failed.every(({ rule }) => rule === TESTS_BASE_NOT_RUN_RULE)) {
     return 'were not run';
@@ -49,9 +44,9 @@ export function noteSummaryLines(notes: readonly ReportEntry[] = []): string[] {
     return [];
   }
   const tools = [...new Set(failed.map(({ tool }) => tool))].join(', ');
-  const removed = notes.some(({ rule }) => rule === 'tests-removed');
+  const removed = notes.find(({ rule }) => rule === 'tests-removed');
   return [
     `Note: the project's tests ${outcomeOf(failed)} on the base (${tools}).`,
-    removed ? COUNTS_AS_NEW : UNKNOWN_ON_BASE,
+    removed === undefined ? UNKNOWN_ON_BASE : textOf(removed.message),
   ];
 }

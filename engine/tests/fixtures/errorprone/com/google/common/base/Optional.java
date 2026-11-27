@@ -16,4 +16,6 @@ public abstract class Optional<T> {
   }
 
   public abstract <V> Optional<V> transform(Function<? super T, V> function);
+
+  public abstract T get();
 }

@@ -138,12 +138,19 @@ fn condition_mark(context: &Context, part: Node) -> Option<(usize, usize)> {
 /// that finished before it (the compiler marks the line of a call where it is made, after its arguments) and by
 /// the condition of a `?:` or a loop it is in or after (marked at its operator).
 fn load_line(context: &Context, node: Node) -> usize {
+    line_before(context, node, node.start_byte())
+}
+
+/// The line the compiled code gives an instruction that runs at `offset` inside the statement around `node`.
+pub fn line_before(context: &Context, node: Node, offset: usize) -> usize {
     let Some(statement) = crate::engine::source::ancestor(node, STATEMENTS) else { return context.line(node) };
     let mut last = (statement.start_byte(), context.line(statement));
     crate::engine::source::walk(statement, |part| {
-        let call = part.kind() == "method_invocation" && part.end_byte() <= node.start_byte();
+        let inside = crate::engine::source::ancestor(part, &["class_body", "lambda_expression"]).filter(|nested| nested.start_byte() >= statement.start_byte());
+        let elsewhere = inside.is_some_and(|nested| !(nested.start_byte() <= node.start_byte() && node.end_byte() <= nested.end_byte()));
+        let call = part.kind() == "method_invocation" && part.end_byte() <= offset && !elsewhere;
         let mark = if call { Some((part.end_byte(), context.line(part.child_by_field_name("name").unwrap_or(part)))) } else { condition_mark(context, part) };
-        if let Some((at, line)) = mark.filter(|(at, _)| *at <= node.start_byte() && *at >= last.0) {
+        if let Some((at, line)) = mark.filter(|(at, _)| *at <= offset && *at >= last.0) {
             last = (at, line);
         }
     });

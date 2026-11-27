@@ -2,7 +2,7 @@
 //! JLM_JSR166_UTILCONCURRENT_MONITORENTER, JLM_JSR166_LOCK_MONITORENTER and PREDICTABLE_RANDOM.
 mod layout;
 mod maps;
-mod random;
+pub(super) mod random;
 mod switches;
 mod volatile;
 
@@ -91,6 +91,7 @@ fn check_method(context: &Context, member: Node, nodes: &[Node], label: Option<&
         maps::check(context, member, nodes, label);
         switches::check(context, member, nodes, label);
     }
+    let mut locked = std::collections::HashSet::new();
     for node in nodes {
         random::check(context, *node);
         let Some(label) = label else { continue };
@@ -103,10 +104,15 @@ fn check_method(context: &Context, member: Node, nodes: &[Node], label: Option<&
             "synchronized_statement" => {
                 let Some(lock) = node.named_child(0) else { continue };
                 if let Some((pattern, kind)) = monitor(context, lock) {
+                    let place = place::value(context, label, lock);
+                    // SpotBugs keeps one of the findings that name the same place on the same line.
+                    if !locked.insert((pattern, context.line(*node), place.clone())) {
+                        continue;
+                    }
                     let message = format!("Synchronization performed on {} in {label}", names::binary(context, &kind));
                     let priority = if pattern == "JLM_JSR166_LOCK_MONITORENTER" { 1 } else { 2 };
                     let arguments = vec![names::binary(context, &kind), label.to_string()];
-                    context.report_listed(pattern, *node, context.line(*node), message, place::value(context, label, lock), priority, arguments);
+                    context.report_listed(pattern, *node, context.line(*node), message, place, priority, arguments);
                 }
             }
             _ => {}

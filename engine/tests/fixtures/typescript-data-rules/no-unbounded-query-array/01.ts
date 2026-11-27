@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export async function f(db, ids) { if (ids.length === 0) { return []; } return db.selectFrom("a").selectAll().where("id", "in", ids.map(String)).execute(); }

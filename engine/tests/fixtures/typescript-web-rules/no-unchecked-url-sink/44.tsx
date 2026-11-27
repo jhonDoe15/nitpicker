@@ -1,0 +1,1 @@
+function open(item) { window.open(item.url, "_blank"); }

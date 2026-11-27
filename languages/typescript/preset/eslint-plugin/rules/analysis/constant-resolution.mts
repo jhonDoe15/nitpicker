@@ -63,6 +63,14 @@ export function findVariable(
   return undefined;
 }
 
+export function referencesOf(
+  context: SourceContext,
+  node: TSESTree.Node,
+  name: string,
+): readonly TSESLint.Scope.Reference[] {
+  return findVariable(context, node, name)?.references ?? [];
+}
+
 function constantInitializer(
   context: SourceContext,
   node: MaybeNode,
@@ -84,6 +92,12 @@ function unwrapTypes(node: TSESTree.Node): TSESTree.Node | undefined {
   return chainOf<TSESTree.Node>(node, typeWrapped).at(-1);
 }
 
+export function resolveConstant(
+  context: SourceContext,
+  node: TSESTree.Node,
+  depth?: number,
+): TSESTree.Node;
+export function resolveConstant(context: SourceContext, node: MaybeNode, depth?: number): MaybeNode;
 export function resolveConstant(context: SourceContext, node: MaybeNode, depth = 0): MaybeNode {
   const chain: MaybeNode[] = node ? [unwrapTypes(node)] : [node];
   for (const current of chain) {

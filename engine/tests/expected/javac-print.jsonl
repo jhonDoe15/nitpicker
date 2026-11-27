@@ -1,0 +1,234 @@
+{"file":"Print1.java","start":34,"end":43,"text":"\"ab\""}
+{"file":"Print1.java","start":45,"end":58,"text":"\"ab\" + x"}
+{"file":"Print1.java","start":60,"end":73,"text":"x + \"ab\""}
+{"file":"Print1.java","start":75,"end":94,"text":"\"a\" + x + \"bc\""}
+{"file":"Print1.java","start":96,"end":109,"text":"\"a\" + 1 + \"b\""}
+{"file":"Print1.java","start":111,"end":128,"text":"(\"ab\") + \"c\""}
+{"file":"Print1.java","start":130,"end":147,"text":"\"a\" + (\"bc\")"}
+{"file":"Print1.java","start":156,"end":160,"text":"16"}
+{"file":"Print1.java","start":162,"end":165,"text":"8"}
+{"file":"Print1.java","start":167,"end":171,"text":"3"}
+{"file":"Print1.java","start":173,"end":178,"text":"1000"}
+{"file":"Print1.java","start":180,"end":190,"text":"2147483647"}
+{"file":"Print1.java","start":192,"end":202,"text":"-2147483648"}
+{"file":"Print1.java","start":204,"end":206,"text":"1L"}
+{"file":"Print1.java","start":208,"end":213,"text":"255L"}
+{"file":"Print1.java","start":215,"end":219,"text":"63L"}
+{"file":"Print1.java","start":221,"end":224,"text":"1.0"}
+{"file":"Print1.java","start":226,"end":230,"text":"1.5F"}
+{"file":"Print1.java","start":232,"end":236,"text":"1.0E10"}
+{"file":"Print1.java","start":238,"end":243,"text":"1.0E10F"}
+{"file":"Print1.java","start":245,"end":248,"text":"0.1"}
+{"file":"Print1.java","start":250,"end":254,"text":"1.0E-5"}
+{"file":"Print1.java","start":256,"end":267,"text":"1.23456789E8"}
+{"file":"Print1.java","start":269,"end":272,"text":"1.0E7"}
+{"file":"Print1.java","start":274,"end":283,"text":"9999999.0"}
+{"file":"Print1.java","start":285,"end":290,"text":"0.001"}
+{"file":"Print1.java","start":292,"end":298,"text":"1.0E-4"}
+{"file":"Print1.java","start":300,"end":302,"text":"1.0"}
+{"file":"Print1.java","start":304,"end":306,"text":"2.0"}
+{"file":"Print1.java","start":308,"end":310,"text":"3.0F"}
+{"file":"Print1.java","start":312,"end":314,"text":"0.5"}
+{"file":"Print1.java","start":316,"end":318,"text":"5.0"}
+{"file":"Print1.java","start":320,"end":325,"text":"8.0"}
+{"file":"Print1.java","start":327,"end":335,"text":"3.0F"}
+{"file":"Print1.java","start":337,"end":342,"text":"1.0E300"}
+{"file":"Print1.java","start":344,"end":352,"text":"4.9E-324"}
+{"file":"Print1.java","start":361,"end":364,"text":"'a'"}
+{"file":"Print1.java","start":366,"end":370,"text":"'\\n'"}
+{"file":"Print1.java","start":372,"end":376,"text":"'\\''"}
+{"file":"Print1.java","start":378,"end":381,"text":"'\\\"'"}
+{"file":"Print1.java","start":383,"end":387,"text":"'\\\\'"}
+{"file":"Print1.java","start":389,"end":392,"text":"'A'"}
+{"file":"Print1.java","start":394,"end":398,"text":"'\\u0000'"}
+{"file":"Print1.java","start":400,"end":404,"text":"'\\t'"}
+{"file":"Print1.java","start":406,"end":409,"text":"'\\u00e9'"}
+{"file":"Print1.java","start":411,"end":414,"text":"'\\u2028'"}
+{"file":"Print1.java","start":416,"end":422,"text":"'\\u007f'"}
+{"file":"Print1.java","start":424,"end":427,"text":"' '"}
+{"file":"Print1.java","start":429,"end":432,"text":"'~'"}
+{"file":"Print1.java","start":441,"end":452,"text":"\"tab\\there\""}
+{"file":"Print1.java","start":454,"end":464,"text":"\"quote\\\"s\""}
+{"file":"Print1.java","start":466,"end":471,"text":"\"sq\\'\""}
+{"file":"Print1.java","start":473,"end":486,"text":"\"back\\\\slash\""}
+{"file":"Print1.java","start":488,"end":494,"text":"\"nl\\n\""}
+{"file":"Print1.java","start":496,"end":502,"text":"\"cr\\r\""}
+{"file":"Print1.java","start":504,"end":510,"text":"\"ff\\f\""}
+{"file":"Print1.java","start":512,"end":518,"text":"\"bs\\b\""}
+{"file":"Print1.java","start":520,"end":527,"text":"\"nul\\u0000\""}
+{"file":"Print1.java","start":529,"end":534,"text":"\"\\u00e9t\\u00e9\""}
+{"file":"Print1.java","start":536,"end":542,"text":"\"\\u007f\""}
+{"file":"Print1.java","start":544,"end":547,"text":"\"\\u2028\""}
+{"file":"Print1.java","start":549,"end":553,"text":"\"e\\u0301\""}
+{"file":"Print1.java","start":555,"end":559,"text":"\"\\ud83d\\ude00\""}
+{"file":"Print1.java","start":561,"end":565,"text":"\" \""}
+{"file":"Print1.java","start":574,"end":628,"text":"\"text block\\n  indented \\\"q\\\"\\nend\""}
+{"file":"Print1.java","start":637,"end":642,"text":"a.b.c"}
+{"file":"Print1.java","start":644,"end":648,"text":"a[0]"}
+{"file":"Print1.java","start":650,"end":661,"text":"a[i + 1][j]"}
+{"file":"Print1.java","start":663,"end":667,"text":"this"}
+{"file":"Print1.java","start":669,"end":676,"text":"P1.this"}
+{"file":"Print1.java","start":678,"end":685,"text":"super.x"}
+{"file":"Print1.java","start":687,"end":696,"text":"int.class"}
+{"file":"Print1.java","start":698,"end":712,"text":"String[].class"}
+{"file":"Print1.java","start":714,"end":734,"text":"java.util.List.class"}
+{"file":"Print1.java","start":736,"end":749,"text":"a.<String>b()"}
+{"file":"Print1.java","start":751,"end":761,"text":"new int[3]"}
+{"file":"Print1.java","start":763,"end":778,"text":"new int[]{1, 2}"}
+{"file":"Print1.java","start":780,"end":800,"text":"new int[][]{{1}, {}}"}
+{"file":"Print1.java","start":802,"end":814,"text":"new int[3][]"}
+{"file":"Print1.java","start":816,"end":836,"text":"new String[0].length"}
+{"file":"Print1.java","start":845,"end":854,"text":"new Foo()"}
+{"file":"Print1.java","start":856,"end":867,"text":"new Foo<>()"}
+{"file":"Print1.java","start":869,"end":890,"text":"new Foo<String>(1, 2)"}
+{"file":"Print1.java","start":892,"end":909,"text":"outer.new Inner()"}
+{"file":"Print1.java","start":911,"end":923,"text":"new <T>Foo()"}
+{"file":"Print1.java","start":925,"end":968,"text":"new java.util.ArrayList<java.lang.String>()"}
+{"file":"Print1.java","start":885,"end":886,"text":"1"}
+{"file":"Print1.java","start":888,"end":889,"text":"2"}
+{"file":"Print1.java","start":977,"end":979,"text":"-x"}
+{"file":"Print1.java","start":981,"end":983,"text":"!b"}
+{"file":"Print1.java","start":985,"end":987,"text":"~i"}
+{"file":"Print1.java","start":989,"end":991,"text":"+x"}
+{"file":"Print1.java","start":993,"end":996,"text":"++i"}
+{"file":"Print1.java","start":998,"end":1001,"text":"i++"}
+{"file":"Print1.java","start":1003,"end":1006,"text":"--i"}
+{"file":"Print1.java","start":1008,"end":1011,"text":"i--"}
+{"file":"Print1.java","start":1013,"end":1017,"text":"--x"}
+{"file":"Print1.java","start":1019,"end":1024,"text":"-(-x)"}
+{"file":"Print1.java","start":1026,"end":1029,"text":"(x)"}
+{"file":"Print1.java","start":1031,"end":1036,"text":"((x))"}
+{"file":"Print1.java","start":1038,"end":1043,"text":"a = b"}
+{"file":"Print1.java","start":1045,"end":1051,"text":"a += 1"}
+{"file":"Print1.java","start":1053,"end":1061,"text":"a >>>= 2"}
+{"file":"Print1.java","start":1063,"end":1072,"text":"c ? d : e"}
+{"file":"Print1.java","start":1074,"end":1091,"text":"c ? d ? 1 : 2 : 3"}
+{"file":"Print1.java","start":1093,"end":1112,"text":"x instanceof String"}
+{"file":"Print1.java","start":1114,"end":1135,"text":"x instanceof String s"}
+{"file":"Print1.java","start":1137,"end":1164,"text":"x instanceof final String s"}
+{"file":"Print1.java","start":1166,"end":1176,"text":"(String)x"}
+{"file":"Print1.java","start":1178,"end":1204,"text":"(java.util.List<String>)x"}
+{"file":"Print1.java","start":1206,"end":1215,"text":"(int)1.5"}
+{"file":"Print1.java","start":1217,"end":1226,"text":"(A & B)x"}
+{"file":"Print1.java","start":1235,"end":1241,"text":"(a)->a"}
+{"file":"Print1.java","start":1243,"end":1251,"text":"(a)->a"}
+{"file":"Print1.java","start":1253,"end":1264,"text":"(a,b)->a"}
+{"file":"Print1.java","start":1266,"end":1285,"text":"(int a, int b)->a"}
+{"file":"Print1.java","start":1287,"end":1294,"text":"()->1"}
+{"file":"Print1.java","start":1296,"end":1308,"text":"(a)->a"}
+{"file":"Print1.java","start":1310,"end":1318,"text":"Foo::bar"}
+{"file":"Print1.java","start":1320,"end":1328,"text":"Foo::new"}
+{"file":"Print1.java","start":1330,"end":1346,"text":"Foo::<String>bar"}
+{"file":"Print1.java","start":1348,"end":1358,"text":"int[]::new"}
+{"file":"Print1.java","start":1360,"end":1368,"text":"super::m"}
+{"file":"Print1.java","start":1370,"end":1377,"text":"this::m"}
+{"file":"Print1.java","start":1379,"end":1407,"text":"java.util.List<String>::size"}
+{"file":"Print1.java","start":1416,"end":1427,"text":"a && b || c"}
+{"file":"Print1.java","start":1429,"end":1442,"text":"a & b | c ^ d"}
+{"file":"Print1.java","start":1444,"end":1450,"text":"a << 1"}
+{"file":"Print1.java","start":1452,"end":1458,"text":"a >> 2"}
+{"file":"Print1.java","start":1460,"end":1467,"text":"a >>> 3"}
+{"file":"Print1.java","start":1469,"end":1475,"text":"a == b"}
+{"file":"Print1.java","start":1477,"end":1483,"text":"a != b"}
+{"file":"Print1.java","start":1485,"end":1491,"text":"a <= b"}
+{"file":"Print1.java","start":1493,"end":1498,"text":"a % b"}
+{"file":"Print1.java","start":1500,"end":1511,"text":"a * (b + c)"}
+{"file":"Print1.java","start":1513,"end":1524,"text":"(a * b) + c"}
+{"file":"Print1.java","start":1526,"end":1537,"text":"a - (b - c)"}
+{"file":"Print1.java","start":1554,"end":1555,"text":"x"}
+{"file":"Print1.java","start":1557,"end":1558,"text":"x"}
+{"file":"Print1.java","start":1568,"end":1569,"text":"x"}
+{"file":"Print1.java","start":1590,"end":1612,"text":"a.<String, Integer>b()"}
+{"file":"Print1.java","start":1614,"end":1631,"text":"List.<String>of()"}
+{"file":"Print1.java","start":1633,"end":1642,"text":"x.y().z()"}
+{"file":"Print1.java","start":1644,"end":1651,"text":"x.y.z"}
+{"file":"Print1.java","start":1656,"end":1668,"text":"String.class"}
+{"file":"Print1.java","start":1677,"end":1700,"text":"new Object(){\u000a    int x;\u000a}"}
+{"file":"Print1.java","start":1702,"end":1747,"text":"switch (x) {\u000acase 1 -> yield \"a\";\u000adefault -> yield \"b\";\u000a}"}
+{"file":"Print1.java","start":1756,"end":1798,"text":"(Runnable & java.io.Serializable)()->{\u000a}"}
+{"file":"Print1.java","start":1800,"end":1820,"text":"(a)->{\u000a    return a;\u000a}"}
+{"file":"Print1.java","start":1829,"end":1861,"text":"x instanceof Point(int a, int b)"}
+{"file":"Print1.java","start":1863,"end":1909,"text":"x instanceof Point(/*missing*/ a, Point(int c, int d))"}
+{"file":"Print1.java","start":1918,"end":1923,"text":"1 + 2"}
+{"file":"Print1.java","start":1925,"end":1933,"text":"\"\" + 'c'"}
+{"file":"Print1.java","start":1935,"end":1944,"text":"'a' + 'b'"}
+{"file":"Print1.java","start":1946,"end":1955,"text":"\"a\" + 'b'"}
+{"file":"Print1.java","start":1957,"end":1967,"text":"\"a\" + null"}
+{"file":"Print1.java","start":1969,"end":1979,"text":"\"x\" + true"}
+{"file":"Print1.java","start":1981,"end":1994,"text":"\"a\" + \"b\" - 1"}
+{"file":"Print2.java","start":34,"end":47,"text":"\"a\" + \"b\" - 1"}
+{"file":"Print2.java","start":49,"end":62,"text":"1 + \"ab\""}
+{"file":"Print2.java","start":64,"end":89,"text":"\"ab\" + 1 + \"cd\""}
+{"file":"Print2.java","start":91,"end":106,"text":"\"a\" + 'b' + \"c\""}
+{"file":"Print2.java","start":108,"end":125,"text":"\"ab\" + (\"c\")"}
+{"file":"Print2.java","start":127,"end":156,"text":"x + \"ab\" + y + \"cd\""}
+{"file":"Print2.java","start":165,"end":178,"text":"\"a\" + \"b\" * 2"}
+{"file":"Print2.java","start":180,"end":195,"text":"\"a\" * \"b\" + \"c\""}
+{"file":"Print2.java","start":197,"end":230,"text":"\"a\" + \"b\" + \"c\" - \"d\" + \"ef\""}
+{"file":"Print2.java","start":232,"end":248,"text":"\"a\" == \"b\" + \"c\""}
+{"file":"Print2.java","start":250,"end":272,"text":"\"a\" + \"b\" == \"c\" + \"d\""}
+{"file":"Print2.java","start":274,"end":299,"text":"a ? \"xy\" : \"zw\""}
+{"file":"Print2.java","start":308,"end":328,"text":"\"ab\""}
+{"file":"Print2.java","start":330,"end":351,"text":"\"abcd\""}
+{"file":"Print2.java","start":353,"end":366,"text":"x - \"a\" + \"b\""}
+{"file":"Print2.java","start":368,"end":393,"text":"\"a\" + \"b\" + x - \"c\" + \"d\""}
+{"file":"Print2.java","start":395,"end":417,"text":"\"a\" + \"b\" << \"c\" + \"d\""}
+{"file":"Print2.java","start":419,"end":436,"text":"\"a\" + -\"b\" + \"c\""}
+{"file":"Print2.java","start":445,"end":454,"text":"1 + 2 + 3"}
+{"file":"Print2.java","start":456,"end":463,"text":"\"\""}
+{"file":"Print2.java","start":465,"end":488,"text":"\"abc\" + x + \"de\" + y"}
+{"file":"Print3.java","start":34,"end":47,"text":"(@A String)x"}
+{"file":"Print3.java","start":49,"end":67,"text":"(final int a)->a"}
+{"file":"Print3.java","start":69,"end":84,"text":"(@A\u000aint a)->a"}
+{"file":"Print3.java","start":86,"end":127,"text":"(java.util.Map<? extends K, ? super V>)m"}
+{"file":"Print3.java","start":129,"end":152,"text":"(Outer<String>.Inner)i"}
+{"file":"Print3.java","start":154,"end":173,"text":"(Map.Entry<K, V>)e"}
+{"file":"Print3.java","start":175,"end":189,"text":"new Foo<>(){\u000a}"}
+{"file":"Print3.java","start":191,"end":205,"text":"new int @A [3]"}
+{"file":"Print3.java","start":207,"end":211,"text":"\"A\\u00e9\""}
+{"file":"Print3.java","start":213,"end":215,"text":"$x"}
+{"file":"Print3.java","start":217,"end":228,"text":"(List<?>)l"}
+{"file":"Print3.java","start":230,"end":241,"text":"(int[][])a"}
+{"file":"Print3.java","start":250,"end":281,"text":"x instanceof Box<String>(/*missing*/ s)"}
+{"file":"Print3.java","start":283,"end":302,"text":"(Object)(String)x"}
+{"file":"Print3.java","start":304,"end":321,"text":"new Outer.Inner()"}
+{"file":"Print3.java","start":323,"end":335,"text":"Outer.this.x"}
+{"file":"Print3.java","start":337,"end":352,"text":"Outer.super.m()"}
+{"file":"Print3.java","start":354,"end":368,"text":"Map.<K, V>of()"}
+{"file":"Print3.java","start":370,"end":382,"text":"new int[]{}"}
+{"file":"Print3.java","start":384,"end":407,"text":"new String[]{\"a\", \"b\"}"}
+{"file":"Print3.java","start":409,"end":418,"text":"new Foo()"}
+{"file":"Print3.java","start":420,"end":443,"text":"new Foo(1).bar()"}
+{"file":"Print3.java","start":428,"end":429,"text":"1"}
+{"file":"Print3.java","start":452,"end":505,"text":"switch (x) {\u000acase 1:\u000a    yield 2;\u000a\u000adefault:\u000a    {\u000a        yield 3;\u000a    }\u000a\u000a}"}
+{"file":"Print3.java","start":507,"end":520,"text":"(a)->(b)->c"}
+{"file":"Print3.java","start":522,"end":530,"text":"()->{\u000a}"}
+{"file":"Print3.java","start":532,"end":540,"text":"(x)->{\u000a}"}
+{"file":"Print3.java","start":542,"end":564,"text":"(x)->new Object(){\u000a}"}
+{"file":"Print3.java","start":566,"end":582,"text":"a.new <T>B<C>(d)"}
+{"file":"Print3.java","start":580,"end":581,"text":"d"}
+{"file":"Print3.java","start":591,"end":594,"text":"1.0"}
+{"file":"Print3.java","start":596,"end":601,"text":"100.0"}
+{"file":"Print3.java","start":603,"end":612,"text":"1234567.0"}
+{"file":"Print3.java","start":614,"end":624,"text":"1.2345678E7"}
+{"file":"Print3.java","start":626,"end":632,"text":"0.001"}
+{"file":"Print3.java","start":634,"end":642,"text":"9.999E-4"}
+{"file":"Print3.java","start":644,"end":657,"text":"3.4028235E38F"}
+{"file":"Print3.java","start":659,"end":667,"text":"1.4E-45F"}
+{"file":"Print3.java","start":669,"end":673,"text":"0.3F"}
+{"file":"Print3.java","start":675,"end":679,"text":"1.1F"}
+{"file":"Print3.java","start":681,"end":690,"text":"1.6777216E7F"}
+{"file":"Print3.java","start":692,"end":703,"text":"0.1F + 0.2F"}
+{"file":"Print3.java","start":705,"end":709,"text":"0.002"}
+{"file":"Print3.java","start":711,"end":715,"text":"1.0E23"}
+{"file":"Print3.java","start":717,"end":724,"text":"8.41E21"}
+{"file":"Print3.java","start":726,"end":732,"text":"4.9E-324"}
+{"file":"Print3.java","start":772,"end":783,"text":"-2147483648"}
+{"file":"Print3.java","start":785,"end":806,"text":"-9223372036854775808L"}
+{"file":"Print3.java","start":808,"end":810,"text":"-5"}
+{"file":"Print3.java","start":812,"end":823,"text":"--2147483648"}
+{"file":"Print3.java","start":825,"end":828,"text":"-7"}
+{"file":"Print3.java","start":830,"end":834,"text":"-(3)"}
+{"file":"Print3.java","start":836,"end":840,"text":"-1.5"}
+{"file":"Print3.java","start":842,"end":858,"text":"x == -2147483648"}
+{"file":"Print3.java","start":860,"end":862,"text":"-x"}

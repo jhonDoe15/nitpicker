@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { findVariable, type SourceContext } from '../analysis/constant-resolution.mts';
+import type { SourceContext } from '../analysis/constant-resolution.mts';
 import { innermostRepeat, type Repeat } from '../repeated-work/support/loop-invariance.mts';
 import {
   contains,
@@ -63,27 +63,31 @@ function escapes(reference: TSESLint.Scope.Reference): boolean {
   return !(parent.type === AST_NODE_TYPES.MemberExpression && parent.object === identifier);
 }
 
-function perPass(context: SourceContext, node: TSESTree.NewExpression): boolean {
+function boundCache(node: TSESTree.NewExpression): TSESTree.VariableDeclarator | undefined {
   const { parent } = node;
-  if (
-    !CACHE_NAME.test(nameOf(node.callee) ?? '') ||
-    node.arguments.length === 0 ||
-    parent.type !== AST_NODE_TYPES.VariableDeclarator ||
-    parent.init !== node ||
-    parent.id.type !== AST_NODE_TYPES.Identifier
-  ) {
-    return false;
-  }
+  const named = CACHE_NAME.test(String(nameOf(node.callee))) && node.arguments.length > 0;
+  return named &&
+    parent.type === AST_NODE_TYPES.VariableDeclarator &&
+    parent.id.type === AST_NODE_TYPES.Identifier
+    ? parent
+    : undefined;
+}
+
+function perPass(context: SourceContext, node: TSESTree.NewExpression): boolean {
+  const declarator = boundCache(node);
   const repeat = innermostRepeat(node);
-  if (repeat === undefined || !contains(repeat.node, node)) {
+  if (declarator === undefined || repeat === undefined || !contains(repeat.node, node)) {
     return false;
   }
-  const variable = findVariable(context, parent.id, parent.id.name);
   return !(
     dependsOnPass(node.arguments, passNames(repeat)) ||
-    (variable?.references ?? []).some(
-      (reference) => reference.identifier !== parent.id && escapes(reference),
-    )
+    context.sourceCode
+      .getDeclaredVariables(declarator)
+      .some((variable) =>
+        variable.references.some(
+          (reference) => reference.identifier !== declarator.id && escapes(reference),
+        ),
+      )
   );
 }
 

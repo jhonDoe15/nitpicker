@@ -1,0 +1,1 @@
+it('x', () => { orders.forEach((o) => { expect(o.paid).toBe(true); }); });

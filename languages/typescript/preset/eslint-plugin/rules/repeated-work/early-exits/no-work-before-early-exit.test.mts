@@ -32,9 +32,17 @@ tester.run('no-work-before-early-exit', rule, {
     'export function f(enabled: boolean) { const id = createId(); if (!enabled) return ""; return id; }\ndeclare function createId(): string;',
     `${FS}export async function f(path: string, job: { cancelled: boolean }) { const text = await fs.readFile(path, "utf8"); if (job.cancelled) return ""; return text; }`,
     `${FS}export function f(path: string, enabled: boolean) { const text = readFileSync(path, "utf8"); if (!enabled) return ""; }`,
+    'export function f(nodes: ts.Node[], checker: ts.TypeChecker) { for (const node of nodes) { const type = checker.getTypeAtLocation(node); if (!ts.isCallExpression(node.getChildAt(0)) || skip) continue; use(type); } }\ndeclare const skip: boolean;\ndeclare function use(t: ts.Type): void;',
+    'export function f(nodes: ts.Node[], checker: ts.TypeChecker, method: "getTypeAtLocation") { for (const node of nodes) { const type = checker[method](node); if (!ts.isCallExpression(node)) continue; use(type); } }\ndeclare function use(t: ts.Type): void;',
+    'export function f(nodes: ts.Node[], make: () => ts.TypeChecker) { for (const node of nodes) { const type = make().getTypeAtLocation(node); if (!ts.isCallExpression(node)) continue; use(type); } }\ndeclare function use(t: ts.Type): void;',
+    'export function f(nodes: ts.Node[], checker: ts.TypeChecker, tests: Record<number, (n: ts.Node) => boolean>) { for (const node of nodes) { const type = checker.getTypeAtLocation(node); if (!tests[node.kind](node)) continue; use(type); } }\ndeclare function use(t: ts.Type): void;',
     'export function f(rows: number[], enabled: boolean) { let doubled = rows.map((row) => row * 2); if (!enabled) return []; doubled = []; return doubled; }',
   ],
   invalid: [
+    {
+      code: 'export async function f(source: object, enabled: boolean) { const keys = await Object.keys(source); if (!enabled) return []; return keys; }',
+      errors: [WORK('keys')],
+    },
     {
       code: 'export function f(nodes: ts.Node[], checker: ts.TypeChecker) { for (const node of nodes) { const type = checker.getTypeAtLocation(node); if (!ts.isCallExpression(node)) continue; use(type); } }\ndeclare function use(t: ts.Type): void;',
       errors: [WORK('type')],

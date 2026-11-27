@@ -1,0 +1,1 @@
+export const a = (p: string) => "<a href=\"" + p + "\">go</a>";

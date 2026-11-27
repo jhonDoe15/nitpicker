@@ -1,0 +1,1 @@
+const mode = headers.get(name); if (mode === 'Fast') { run(); }

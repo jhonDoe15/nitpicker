@@ -58,6 +58,9 @@ pub enum Symbol {
 
 pub fn symbol(ctx: &Ctx, id: u32) -> Option<Symbol> {
     let kind = ctx.type_of(id)?;
+    if ctx.is(id, "MethodCall") && captured(ctx, id) {
+        return None;
+    }
     match &kind {
         Type::Null | Type::Wildcard | Type::Bounded(..) => None,
         Type::Class(name, _) if ctx.machine.resolver.index.get(&kind.erased().name()).is_none() => {
@@ -65,6 +68,26 @@ pub fn symbol(ctx: &Ctx, id: u32) -> Option<Symbol> {
         }
         _ => Some(Symbol::Resolved(kind)),
     }
+}
+
+/// A call whose result PMD types with a captured wildcard, which has no symbol: `list.get(0)` on a
+/// `List<? extends Closeable>`.
+fn captured(ctx: &Ctx, call: u32) -> bool {
+    let Some(source) = ctx.tree.nodes[call as usize].source else { return false };
+    let resolver = ctx.machine.resolver.wildcards();
+    if matches!(resolver.type_of(source), Some(Type::Bounded(..) | Type::Wildcard)) {
+        return true;
+    }
+    let (Some(call), Some(object)) = (resolver.resolve_call(source), source.child_by_field_name("object")) else { return false };
+    let Type::Variable(variable) = &call.method.generic_returns else { return false };
+    let Some(receiver @ Type::Class(..)) = resolver.type_of(object) else { return false };
+    let wild = |kind: Option<&Type>| matches!(kind, Some(Type::Bounded(..) | Type::Wildcard));
+    if let (Type::Class(name, given), Some(info)) = (&receiver, resolver.index.get(&call.declaring)) {
+        if *name == call.declaring {
+            return wild(info.type_parameters.iter().position(|(known, _)| known == variable).and_then(|at| given.get(at)));
+        }
+    }
+    wild(resolver.index.member_map(&receiver, &call.declaring).get(variable))
 }
 
 fn resolved(ctx: &Ctx, id: u32) -> bool {

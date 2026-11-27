@@ -1,0 +1,1 @@
+export const a = btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join(""));

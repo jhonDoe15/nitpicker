@@ -1,7 +1,7 @@
 //! Calls from a constructor that reach a method a subclass can override.
 use crate::java::pmd::coded::ctx::{Ctx, Hit};
 use crate::java::types::expr::Call;
-use crate::java::pmd::coded::message::{TypePrinter, written_type};
+use crate::java::pmd::coded::message::{TypePrinter, shown_parameters, written_type};
 use crate::java::types::model::{Method, Type, flag};
 use std::collections::HashMap;
 
@@ -33,22 +33,19 @@ fn calls(ctx: &Ctx, body: Option<u32>) -> Vec<u32> {
         .unwrap_or_default()
 }
 
-impl Walk<'_, '_, '_, '_> {
-    fn declaration(&self, step: &Step) -> Option<u32> {
-        let ctx = self.ctx;
-        ctx.all("MethodDeclaration").iter().copied().find(|&method| {
-            let owner = ctx.enclosing_type(method).and_then(|owner| ctx.class_name(owner)).unwrap_or_default();
-            let parameters: Option<Vec<Type>> = ctx.kid(method, "FormalParameters").map(|list| {
-                ctx.kids_named(list, "FormalParameter")
-                    .filter_map(|formal| ctx.kid(formal, "VariableId").and_then(|id| ctx.type_of(id)).map(|kind| kind.erased()))
-                    .collect()
-            });
-            owner == step.declaring
-                && ctx.text(method, "Name") == step.method.name
-                && parameters.as_ref() == Some(&step.method.parameters)
-        })
-    }
+fn declaration(ctx: &Ctx, step: &Step) -> Option<u32> {
+    ctx.all("MethodDeclaration").iter().copied().find(|&method| {
+        let owner = ctx.enclosing_type(method).and_then(|owner| ctx.class_name(owner)).unwrap_or_default();
+        let parameters: Option<Vec<Type>> = ctx.kid(method, "FormalParameters").map(|list| {
+            ctx.kids_named(list, "FormalParameter")
+                .filter_map(|formal| ctx.kid(formal, "VariableId").and_then(|id| ctx.type_of(id)).map(|kind| kind.erased()))
+                .collect()
+        });
+        owner == step.declaring && ctx.text(method, "Name") == step.method.name && parameters.as_ref() == Some(&step.method.parameters)
+    })
+}
 
+impl Walk<'_, '_, '_, '_> {
     fn call_reason(&mut self, call: u32, guard: &[u32]) -> Vec<Step> {
         if !on_this(self.ctx, call) {
             return Vec::new();
@@ -65,7 +62,7 @@ impl Walk<'_, '_, '_, '_> {
         if step.method.is_static {
             return Vec::new();
         }
-        let Some(declaration) = self.declaration(step) else { return Vec::new() };
+        let Some(declaration) = declaration(self.ctx, step) else { return Vec::new() };
         if guard.contains(&declaration) {
             return Vec::new();
         }
@@ -87,54 +84,106 @@ impl Walk<'_, '_, '_, '_> {
     }
 }
 
+/// The simple names of the annotations on each formal parameter of a method declaration, which PMD prints on the
+/// parameter types.
+fn parameter_annotations(ctx: &Ctx, method: u32) -> Vec<Vec<String>> {
+    let Some(list) = ctx.kid(method, "FormalParameters") else { return Vec::new() };
+    ctx.kids_named(list, "FormalParameter")
+        .filter(|formal| !crate::java::pmd::coded::message::receiver(ctx, *formal))
+        .map(|formal| {
+            let on_type = |annotation: &u32| {
+                let name = ctx.type_of(*annotation).map(|kind| kind.erased().name());
+                let target = crate::java::types::model::target::bit("TYPE_USE");
+                name.and_then(|name| ctx.machine.resolver.index.get(&name)).is_some_and(|info| info.targets.is_none_or(|targets| targets & target != 0))
+            };
+            let written = ctx.kids(formal).iter().copied().find(|kid| !matches!(ctx.name(*kid), "ModifierList" | "VariableId"));
+            let qualified = written.is_some_and(|written| ctx.is(written, "ClassType") && ctx.kid(written, "ClassType").is_some());
+            let modifiers = ctx.kid(formal, "ModifierList").filter(|_| !qualified);
+            let mut annotations: Vec<u32> = modifiers.map(|modifiers| ctx.kids_named(modifiers, "Annotation").filter(on_type).collect()).unwrap_or_default();
+            annotations.extend(written.filter(|written| ctx.is(*written, "ClassType")).map(|written| ctx.kids_named(written, "Annotation").collect::<Vec<_>>()).unwrap_or_default());
+            annotations.into_iter().map(|annotation| ctx.text(annotation, "SimpleName")).collect()
+        })
+        .collect()
+}
+
+/// The type parameters a declaration writes, with their bounds as written; `None` for an `Object` bound.
+fn written_parameters(ctx: &Ctx, owner: u32) -> Vec<(String, Option<String>)> {
+    let Some(parameters) = ctx.kid(owner, "TypeParameters") else { return Vec::new() };
+    ctx.kids_named(parameters, "TypeParameter")
+        .map(|parameter| {
+            let bound = ctx.kids(parameter).iter().copied().find(|kid| ctx.name(*kid) != "Annotation").map(|kind| {
+                let mut text = String::new();
+                if ctx.is(kind, "IntersectionType") {
+                    for (at, member) in narrowest(ctx, ctx.kids(kind)).into_iter().enumerate() {
+                        text.push_str(if at > 0 { " & " } else { "" });
+                        written_type(ctx, member, &mut text);
+                    }
+                } else {
+                    written_type(ctx, kind, &mut text);
+                }
+                text
+            });
+            (ctx.text(parameter, "Name"), bound.filter(|text| text != "Object"))
+        })
+        .collect()
+}
+
+/// The members of an intersection that no other member is a subtype of, as PMD's greatest lower bound keeps them.
+fn narrowest(ctx: &Ctx, members: &[u32]) -> Vec<u32> {
+    let index = ctx.machine.resolver.index;
+    let names: Vec<Option<String>> = members.iter().map(|member| ctx.type_of(*member).map(|kind| kind.erased().name())).collect();
+    members
+        .iter()
+        .enumerate()
+        .filter(|(at, _)| {
+            let Some(name) = &names[*at] else { return true };
+            !names.iter().enumerate().any(|(other, below)| other != *at && below.as_ref().is_some_and(|below| below != name && index.is_subtype(below, name)))
+        })
+        .map(|(_, member)| *member)
+        .collect()
+}
+
 fn source_bounds(ctx: &Ctx, declaring: &str) -> Option<Vec<(String, Option<String>)>> {
     let owner = super::super::ctx::TYPE_DECLARATIONS
         .iter()
         .flat_map(|name| ctx.all(name).iter().copied())
         .find(|owner| ctx.class_name(*owner).as_deref() == Some(declaring))?;
-    let Some(parameters) = ctx.kid(owner, "TypeParameters") else { return Some(Vec::new()) };
-    Some(
-        ctx.kids_named(parameters, "TypeParameter")
-            .map(|parameter| {
-                let bound = ctx.kids(parameter).iter().copied().find(|kid| ctx.name(*kid) != "Annotation").map(|kind| {
-                    let mut text = String::new();
-                    written_type(ctx, kind, &mut text);
-                    text
-                });
-                (ctx.text(parameter, "Name"), bound.filter(|text| text != "Object"))
-            })
-            .collect(),
-    )
+    Some(written_parameters(ctx, owner))
+}
+
+fn class_bounds(ctx: &Ctx, printer: &mut TypePrinter, declaring: &str) -> Vec<(String, Option<String>)> {
+    source_bounds(ctx, declaring).unwrap_or_else(|| {
+        let info = ctx.machine.resolver.index.get(declaring);
+        let parameters = info.map(|info| info.type_parameters.clone()).unwrap_or_default();
+        let written = info.map(|info| info.written_bounds.clone()).unwrap_or_default();
+        parameters.iter().enumerate().map(|(at, (name, erased))| (name.clone(), printer.bound(written.get(at).unwrap_or(erased)))).collect()
+    })
 }
 
 fn overload(ctx: &Ctx, step: &Step) -> String {
     let index = ctx.machine.resolver.index;
-    let mut printer = TypePrinter { index, qualify: false, bounds: None, known: Vec::new() };
-    let info = index.get(&step.declaring);
-    let class_parameters = source_bounds(ctx, &step.declaring).unwrap_or_else(|| {
-        let parameters = info.map(|info| info.type_parameters.clone()).unwrap_or_default();
-        let written = info.map(|info| info.written_bounds.clone()).unwrap_or_default();
-        parameters
-            .iter()
-            .enumerate()
-            .map(|(at, (name, erased))| (name.clone(), printer.bound(written.get(at).unwrap_or(erased))))
-            .collect()
-    });
+    let mut printer = TypePrinter::new(index, false);
+    let mut chain = vec![step.declaring.clone()];
+    while let Some(outer) = chain.last().and_then(|inner| printer.inner(inner)) {
+        chain.push(outer);
+    }
     let mut out = String::new();
-    printer.known = class_parameters.clone();
-    let variables: Vec<Type> = class_parameters.iter().map(|(name, _)| Type::Variable(name.clone())).collect();
-    if !variables.is_empty() {
+    for class in chain.iter().rev() {
+        let known = class_bounds(ctx, &mut printer, class);
+        printer.known.extend(known);
+    }
+    if !printer.known.is_empty() {
         printer.bounds = Some(true);
     }
-    printer.class(&step.declaring, &variables, &mut out);
+    printer.implicit = chain.clone();
+    printer.declared(&step.declaring, &mut out);
     out.push('.');
     let method = &step.method;
-    let own: Vec<(String, Option<String>)> = method
-        .type_parameters
-        .iter()
-        .zip(&method.type_bounds)
-        .map(|(name, bound)| (name.clone(), printer.bound(bound)))
-        .collect();
+    let declared = declaration(ctx, step);
+    let written = declared.map(|declaration| written_parameters(ctx, declaration)).filter(|own| own.len() == method.type_parameters.len());
+    let own: Vec<(String, Option<String>)> = written.unwrap_or_else(|| {
+        method.type_parameters.iter().zip(&method.type_bounds).map(|(name, bound)| (name.clone(), printer.bound(bound))).collect()
+    });
     printer.known.extend(own.iter().cloned());
     if !own.is_empty() {
         let saved = printer.bounds;
@@ -145,7 +194,21 @@ fn overload(ctx: &Ctx, step: &Step) -> String {
     }
     out.push_str(&method.name);
     out.push('(');
-    printer.list(&method.generic_parameters, "", "", method.varargs, &mut out);
+    let variables: Vec<String> = printer.known.iter().map(|(name, _)| name.clone()).collect();
+    let shown = shown_parameters(&method.shown, &variables).filter(|shown| shown.len() == method.generic_parameters.len());
+    let parameters = shown.as_deref().unwrap_or(&method.generic_parameters);
+    let marks = declared.map(|declaration| parameter_annotations(ctx, declaration)).filter(|marks| marks.len() == parameters.len());
+    for (at, parameter) in parameters.iter().enumerate() {
+        if at > 0 {
+            out.push_str(", ");
+        }
+        for mark in marks.as_ref().map(|marks| marks[at].as_slice()).unwrap_or_default() {
+            out.push('@');
+            out.push_str(mark);
+            out.push(' ');
+        }
+        printer.kind(parameter, method.varargs && at + 1 == parameters.len(), &mut out);
+    }
     out.push(')');
     out
 }

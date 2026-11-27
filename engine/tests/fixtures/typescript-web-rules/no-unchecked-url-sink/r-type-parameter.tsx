@@ -1,0 +1,1 @@
+function F<url>({ m }) { const { url } = m; return <a href={url}>x</a>; }

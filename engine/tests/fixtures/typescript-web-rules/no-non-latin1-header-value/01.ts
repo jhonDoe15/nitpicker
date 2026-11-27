@@ -1,0 +1,1 @@
+res.setHeader("x-file-path", encodeURI(file.relative));

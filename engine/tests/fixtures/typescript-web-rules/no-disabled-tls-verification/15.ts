@@ -1,0 +1,1 @@
+import tls from "node:tls"; export const s = (key, cert) => tls.createServer({ key, cert, requestCert: true, rejectUnauthorized: false }, (socket) => { if (!socket.authorized) socket.end(); });

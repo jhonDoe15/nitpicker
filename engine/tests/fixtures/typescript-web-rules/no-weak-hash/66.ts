@@ -1,0 +1,1 @@
+import { createHMAC, createSHA1 } from "hash-wasm"; export const mac = (k: string) => createHMAC(createSHA1(), k);

@@ -1,0 +1,1 @@
+if (headers.get('etag') === 'W/"abc"') { run(); }

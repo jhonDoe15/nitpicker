@@ -1,4 +1,5 @@
 import { attributesOf, xmlFilesMatching } from './xml-files.mts';
+import { textOf } from '../../values/readers.mts';
 import type { EverywhereSuppression } from './checkstyle-suppressions.mts';
 
 const RULESET = /<ruleset[\s>]/u;
@@ -12,7 +13,10 @@ function ruleName(attributes: ReadonlyMap<string, string>): string | undefined {
   const reference = attributes.get('ref');
   return reference === undefined
     ? attributes.get('name')
-    : (reference.split('/').at(-1)?.split('.xml').join('') ?? reference);
+    : reference
+        .slice(reference.lastIndexOf('/') + 1)
+        .split('.xml')
+        .join('');
 }
 
 export function pmdEverywhereSuppressions(
@@ -21,7 +25,7 @@ export function pmdEverywhereSuppressions(
 ): EverywhereSuppression[] {
   return xmlFilesMatching(projectRoot, files, RULESET).flatMap(({ file, text }) => {
     const rules = [...text.matchAll(RULE_ELEMENT)].map((match) => ({
-      name: ruleName(attributesOf(match[1] ?? '')),
+      name: ruleName(attributesOf(textOf(match[1]))),
       text: match[0],
     }));
     const outside = text.replaceAll(RULE_ELEMENT, ' ');

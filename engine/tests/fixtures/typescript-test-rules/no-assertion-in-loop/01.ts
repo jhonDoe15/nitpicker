@@ -1,0 +1,1 @@
+it('x', () => { const check = (o) => expect(o.paid).toBe(true); for (const o of orders) { check(o); } });

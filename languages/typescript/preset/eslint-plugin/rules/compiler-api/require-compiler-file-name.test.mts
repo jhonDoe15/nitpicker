@@ -31,6 +31,18 @@ tester.run('require-compiler-file-name', rule, {
     `${NS} export function run(source, fileName) { return ts.transpileModule(source, { [key]: fileName }); }`,
     `${NS} export async function run(source) { const path = await import('node:path'); return ts.transpileModule(source, {}); }`,
     `${NS} export function run(source, file: File) { return ts.transpileModule(source, {}); }`,
+    `${NS} export function run(source, fileName) { return ts.transpileModule(...args); }`,
+    `const note = 'typescript'; import { transpileModule } from 'other'; export function run(source, fileName) { return transpileModule(source, {}); }`,
+    `import { 'transpileModule' as t } from 'typescript'; export function run(source, fileName) { return t(source, {}); }`,
+    `const note = 'typescript'; import ts from 'other'; export function run(source, fileName) { return ts.transpileModule(source, {}); }`,
+    `const note = 'typescript'; import ts = require('other'); export function run(source, fileName) { return ts.transpileModule(source, {}); }`,
+    `const note = 'typescript'; import ts = Other.ts; export function run(source, fileName) { return ts.transpileModule(source, {}); }`,
+    `const a = require('typescript'); const b = a; const c = b; const d = c; const e = d; export function run(source, fileName) { return e.transpileModule(source, {}); }`,
+    `${NS} export function run(source, fileName) { return make()(source, {}); }`,
+    `const [transpileModule] = require('typescript'); export function run(source, fileName) { return transpileModule(source, {}); }`,
+    `import { x } from 'typescript'; const { transpileModule } = x; export function run(source, fileName) { return transpileModule(source, {}); }`,
+    `const { a: { transpileModule } } = require('typescript'); export function run(source, fileName) { return transpileModule(source, {}); }`,
+    `export function run(source) { const fileName = 'a.ts'; return ts.transpileModule(source, {}); }`,
   ],
   invalid: [
     invalid(
@@ -89,5 +101,11 @@ tester.run('require-compiler-file-name', rule, {
       `${NS} export function run(source) { const fileName = pick(source); return ts.transpileModule(source, {}); }`,
     ),
     invalid(`${NS} export function run(file) { return () => ts.transpileModule(source, {}); }`),
+    invalid(
+      `const { parse, transpileModule } = require('typescript'); export function run(source, fileName) { return transpileModule(source, {}); }`,
+    ),
+    invalid(
+      `${NS} export function run(source) { let path; return ts.transpileModule(source, {}); }`,
+    ),
   ],
 });

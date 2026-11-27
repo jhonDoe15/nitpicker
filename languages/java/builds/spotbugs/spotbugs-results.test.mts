@@ -159,6 +159,28 @@ describe('spotbugsResultOf', () => {
     expect(result.message.arguments).toStrictEqual([argument]);
   });
 
+  it('writes a dead store to a variable without a name as SpotBugs SARIF does', () => {
+    const result = spotbugsResultOf({
+      file: '/src/p/R.java',
+      rule: 'DLS_DEAD_LOCAL_STORE',
+      line: 24,
+      message: 'Dead store to $L1 in p.R.a3()',
+      symbol: 'variable:p.R.a3()#?',
+      priority: 2,
+      arguments: ['$L1', 'p.R.a3()'],
+    });
+
+    expect(result.level).toBe('note');
+    expect(result.message).toStrictEqual({
+      id: 'default',
+      text: 'Dead store to local variable',
+      arguments: ['$L1', 'p.R.a3()'],
+    });
+    expect(result.locations[0].logicalLocations).toStrictEqual([
+      { name: '?', kind: 'variable', fullyQualifiedName: 'p.R.a3()#?' },
+    ]);
+  });
+
   it('refuses a placed finding without a place or with a priority it has no level for', () => {
     const finding = { file: '/A.java', rule: 'DCN_NULLPOINTER_EXCEPTION', line: 1, message: '' };
 
@@ -186,6 +208,46 @@ describe('spotbugsResultOf', () => {
       'p.A.a()',
     ]);
     expect(engineSpotbugsFindingOf(finding).arguments).toStrictEqual(['java.util.Random']);
+  });
+
+  it('names a lock field under the class of the method that takes the lock', () => {
+    const finding = {
+      file: '/src/p/K.java',
+      rule: 'JLM_JSR166_LOCK_MONITORENTER',
+      line: 5,
+      message: '',
+      symbol: 'member:p.Holder.lk',
+      priority: 1,
+      arguments: ['java.util.concurrent.locks.ReentrantLock', 'p.K.a(Holder)'],
+    };
+
+    const result = spotbugsResultOf(finding);
+
+    expect(result.message.arguments).toStrictEqual(finding.arguments);
+    expect(result.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'Holder.lk',
+      kind: 'member',
+      fullyQualifiedName: 'p.K.lk',
+    });
+  });
+
+  it('names a field of another package with its package, in the file of the method', () => {
+    const result = spotbugsResultOf({
+      file: '/src/p/A.java',
+      rule: 'NP_ALWAYS_NULL',
+      line: 6,
+      message: '',
+      symbol: 'member:q.Base.prot',
+      priority: 1,
+      arguments: ['q.Base.prot', 'p.A.b()'],
+    });
+
+    expect(result.locations[0].physicalLocation.artifactLocation.uri).toBe('p/A.java');
+    expect(result.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'q.Base.prot',
+      kind: 'member',
+      fullyQualifiedName: 'p.A.prot',
+    });
   });
 
   it('names the class in the place where SpotBugs does', () => {
@@ -292,6 +354,92 @@ describe('spotbugsResultOf', () => {
       kind: 'member',
       fullyQualifiedName: 'p.A.d',
     });
+  });
+
+  it('shows the name the engine gives after an @, in the file of the method it names', () => {
+    const result = spotbugsResultOf({
+      file: '/src/p/A.java',
+      rule: 'RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN',
+      line: 9,
+      message: '',
+      symbol: 'member:p.A.K|p@q.Q.K',
+      priority: 2,
+      arguments: ['p.A.m(Boolean)'],
+    });
+
+    expect(result.level).toBe('note');
+    expect(result.locations[0].physicalLocation.artifactLocation.uri).toBe('p/A.java');
+    expect(result.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'q.Q.K',
+      kind: 'member',
+      fullyQualifiedName: 'p.A.K',
+    });
+  });
+
+  it('places a class and a constructor of the default package without a package', () => {
+    const finding = {
+      file: '/src/A.java',
+      rule: 'DCN_NULLPOINTER_EXCEPTION',
+      line: 3,
+      message: '',
+    };
+    const placed = spotbugsResultOf({ ...finding, symbol: 'type:A', priority: 2 });
+    const thrown = resultOf(
+      'CT_CONSTRUCTOR_THROW',
+      'Exception thrown in class A at new A() will leave the constructor.',
+    );
+
+    expect(placed.locations[0].physicalLocation.artifactLocation.uri).toBe('A.java');
+    expect(placed.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'A',
+      kind: 'type',
+      fullyQualifiedName: 'A',
+    });
+    expect(thrown.locations[0].logicalLocations[0].name).toBe('new A()');
+  });
+
+  it('names a lock field of a class in the default package by its field name', () => {
+    const result = spotbugsResultOf({
+      file: '/src/K.java',
+      rule: 'JLM_JSR166_LOCK_MONITORENTER',
+      line: 5,
+      message: '',
+      symbol: 'member:K.lk',
+      priority: 1,
+      arguments: ['java.util.concurrent.locks.ReentrantLock', 'K.a()'],
+    });
+
+    expect(result.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'lk',
+      kind: 'member',
+      fullyQualifiedName: 'K.lk',
+    });
+  });
+
+  it('falls back to the place for a class finding the engine gives no values for', () => {
+    const result = spotbugsResultOf({
+      file: '/src/p/A.java',
+      rule: 'EQ_DOESNT_OVERRIDE_EQUALS',
+      line: 4,
+      message: '',
+      symbol: 'type:p.A',
+      priority: 2,
+    });
+
+    expect(result.locations[0].physicalLocation.artifactLocation.uri).toBe('p/A.java');
+    expect(result.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'p.A',
+      kind: 'type',
+      fullyQualifiedName: 'p.A',
+    });
+  });
+
+  it('refuses a placed finding without a priority', () => {
+    const finding = { file: '/A.java', rule: 'DCN_NULLPOINTER_EXCEPTION', line: 1, message: '' };
+
+    expect(() => spotbugsResultOf({ ...finding, symbol: 'function:p.A.a()' })).toThrow(
+      /cannot place/u,
+    );
   });
 
   it('refuses a message it cannot read', () => {

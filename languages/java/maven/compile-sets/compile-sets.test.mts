@@ -107,4 +107,38 @@ describe('compileSets', () => {
       ['test', false, 0],
     ]);
   });
+
+  it('keeps module-info.java with the other files of an extra execution and needs no executions', () => {
+    const { basedir, main } = moduleWith(['module-info.java', 'demo/A.java', 'demo/B.java']);
+    const compiler = compilerOf({
+      release: '8',
+      sources: { includes: [], excludes: ['module-info.java', 'demo/B.java'] },
+      executions: [
+        { release: '9', sources: { includes: ['module-info.java', 'demo/B.java'], excludes: [] } },
+      ],
+    });
+    const module = {
+      basedir,
+      outputDirectory: path.join(basedir, 'target', 'classes'),
+      testOutputDirectory: path.join(basedir, 'target', 'test-classes'),
+      sourceRoots: [main],
+      testSourceRoots: [],
+      compiler,
+    };
+    const request = {
+      module,
+      classpaths: { mainCompile: [], mainRuntime: [], testCompile: [], testRuntime: [] },
+      files: { main: javaFiles(module.sourceRoots), test: [] },
+    };
+
+    const sets = compileSets(request, compiler, true);
+    const plain = compileSets(request, { ...compiler, executions: undefined }, true);
+
+    expect(sets.map((set) => [set.name, set.modular, set.sources.length])).toEqual([
+      ['main', false, 1],
+      ['main-1-default', true, 2],
+      ['test', false, 0],
+    ]);
+    expect(plain.map((set) => set.name)).toEqual(['main', 'test']);
+  });
 });

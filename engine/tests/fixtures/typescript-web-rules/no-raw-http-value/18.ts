@@ -1,0 +1,1 @@
+const parts = req.headers['content-type'].split('/');

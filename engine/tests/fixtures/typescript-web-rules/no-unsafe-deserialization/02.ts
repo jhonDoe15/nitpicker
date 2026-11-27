@@ -1,0 +1,1 @@
+import yaml from "js-yaml"; export const data = yaml.load(text);

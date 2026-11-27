@@ -1,0 +1,1 @@
+export const f = (rows) => rows.slice(0, 10);

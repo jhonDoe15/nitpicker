@@ -282,6 +282,8 @@ pub struct Detail {
     pub marked: String,
     /// Each parameter position and type path that carries a type-use annotation named `Nullable`, from a class file.
     pub nullable_types: Vec<(u8, Vec<(u8, u8)>)>,
+    /// The annotations of `annotation_values::KEPT` on the method, with their element values.
+    pub kept: Vec<super::annotation_values::Kept>,
 }
 
 /// Where an annotation type may be used, as bits of `ClassInfo::targets`, from its `@Target`.
@@ -313,6 +315,8 @@ pub struct ClassInfo {
     pub superclass: Option<String>,
     pub interfaces: Vec<String>,
     pub generic_supers: Vec<Type>,
+    /// `generic_supers` with bounded wildcards in their type arguments kept, when any has one; empty otherwise.
+    pub bounded_supers: Vec<Type>,
     /// Name and erased bound of each type parameter.
     pub type_parameters: Vec<(String, Type)>,
     /// The first bound of each type parameter with its type arguments, when a class file gives it.
@@ -341,6 +345,8 @@ pub struct ClassInfo {
     pub null_nicknames: Vec<String>,
     /// For an annotation type read from source: the modifiers its `@IncompatibleModifiers` lists, as constant names.
     pub incompatible: Vec<String>,
+    /// For an annotation type: the modifiers its `@RequiredModifiers` lists, as constant names, those of `value` first.
+    pub required: Vec<String>,
     /// Full names of the annotations on the class itself, with `.` before a member class.
     pub class_annotations: Vec<String>,
     /// The reason a `@DoNotMock` on the class gives: its value, or the annotation's default.

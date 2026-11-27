@@ -4,7 +4,7 @@ import {
   reportingCheckstyleConfig as untypedReportingConfig,
   withGuardChecks as untypedGuardChecks,
   type Formatting,
-} from './checkstyle-config.mts';
+} from '../checkstyle/checkstyle-config.mts';
 import { unformattedCheckstyle as untypedUnformatted } from '../../adapters/tool-config/checkstyle/unformatted-checks.mts';
 import { writeGuardRulesets as untypedGuardRulesets } from './pmd-rulesets.mts';
 import { textOf, textsOf } from '../../../../shared/values/readers.mts';

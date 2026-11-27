@@ -146,7 +146,7 @@ fn text(value: &str) -> Value {
 
 impl<'t> PmdTree<'t> {
     pub fn build(file: &SourceFile, tree_root: Node<'t>, resolver: &Resolver) -> PmdTree<'t> {
-        let mut builder = Builder { file, resolver, nodes: Vec::new() };
+        let mut builder = Builder { file, resolver, nodes: Vec::new(), compact: false };
         builder.unit(tree_root);
         // PMD's lexer reads `>>` as one token, and a type that ends inside it ends where the token ends.
         let bytes = file.text.as_bytes();
@@ -229,7 +229,7 @@ struct Builder<'a, 't> {
     file: &'a SourceFile,
     resolver: &'a Resolver<'a>,
     nodes: Vec<PNode<'t>>,
-
+    compact: bool,
 }
 
 impl<'a, 't> Builder<'a, 't> {
@@ -273,11 +273,18 @@ impl<'a, 't> Builder<'a, 't> {
 
     fn unit(&mut self, root: Node<'t>) {
         let all = kids(root);
+        let compact = all.iter().any(|kid| matches!(kid.kind(), "method_declaration" | "local_variable_declaration" | "field_declaration"));
+        let mut implicit = None;
+        self.compact = compact;
         let start = all.first().map_or(0, |first| first.start_byte());
         let id = self.open(ROOT, "CompilationUnit", Some(root), start, self.file.text.len());
         self.set(id, "PackageName", text(""));
-        for kid in all {
+        let parts = children(root).into_iter().filter(|kid| kid.kind() == ";" || kid.is_named() && !kid.kind().ends_with("comment"));
+        for kid in parts {
             match kid.kind() {
+                ";" => {
+                    self.at(implicit.unwrap_or(id), "EmptyDeclaration", kid);
+                }
                 "package_declaration" => {
                     let declaration = self.at(id, "PackageDeclaration", kid);
                     let name = kids(kid).into_iter().rev().find(|part| matches!(part.kind(), "identifier" | "scoped_identifier"));
@@ -305,12 +312,38 @@ impl<'a, 't> Builder<'a, 't> {
                     let package = if wide { name.as_str() } else { name.rsplit_once('.').map_or("", |(package, _)| package) };
                     self.set(declaration, "PackageName", text(package));
                 }
-                kind if TYPE_DECLARATIONS.contains(&kind) => {
+                kind if TYPE_DECLARATIONS.contains(&kind) && implicit.is_none() => {
                     self.type_declaration(id, kid, None, false);
+                }
+                _ if compact => {
+                    let body = *implicit.get_or_insert_with(|| self.implicit_class(id, kid.start_byte()));
+                    self.member(body, kid, Owner::Class);
                 }
                 _ => {}
             }
         }
+        if let Some(body) = implicit {
+            self.sized(body);
+        }
+        self.set(id, "Compact", flag(compact));
+    }
+
+    /// The class around the members of a compact source file (JEP 512), which has no name.
+    fn implicit_class(&mut self, unit: u32, start: usize) -> u32 {
+        let end = self.file.text.len();
+        let id = self.open(unit, "ImplicitClassDeclaration", None, start, end);
+        let modifiers = self.open(id, "ModifierList", None, start, start);
+        self.set(modifiers, "ExplicitModifiers", Value::List(Vec::new()));
+        self.set(modifiers, "EffectiveModifiers", Value::List(Vec::new()));
+        for (key, value) in [("SimpleName", ""), ("CanonicalName", ""), ("BinaryName", ""), ("PackageName", ""), ("Visibility", "package")] {
+            self.set(id, key, text(value));
+        }
+        for key in ["Abstract", "Annotation", "Anonymous", "Enum", "Final", "Interface", "Local", "Nested", "Record", "RegularClass", "RegularInterface", "Static"] {
+            self.set(id, key, flag(false));
+        }
+        self.set(id, "TopLevel", flag(true));
+        self.set(id, "UnnamedToplevelClass", flag(true));
+        self.open(id, "ClassBody", None, start, end)
     }
 
     /// The modifier list of a declaration; returns the effective modifiers.
@@ -944,7 +977,7 @@ impl<'a, 't> Builder<'a, 't> {
     fn member(&mut self, parent: u32, node: Node<'t>, owner: Owner) {
         let shared = matches!(owner, Owner::Interface | Owner::Annotation);
         match node.kind() {
-            "field_declaration" | "constant_declaration" => {
+            "field_declaration" | "constant_declaration" | "local_variable_declaration" => {
                 let id = self.at(parent, "FieldDeclaration", node);
                 let effective = self.modifiers(id, node, if shared { &["public", "static", "final"] } else { &[] });
                 if let Some(written) = node.field("type") {
@@ -1019,12 +1052,11 @@ impl<'a, 't> Builder<'a, 't> {
                 let annotated = find(node, "modifiers").is_some_and(|list| {
                     kids(list).iter().any(|part| part.kind() == "marker_annotation" && self.text(*part).trim_start_matches('@').trim() == "Override")
                 });
+                let strings = || node.field("parameters").is_some_and(|parameters| self.takes_string_array(parameters));
                 let entry = named == "main"
                     && void
-                    && effective.contains(&"public")
-                    && effective.contains(&"static")
-                    && arity == 1
-                    && node.field("parameters").is_some_and(|parameters| self.takes_string_array(parameters));
+                    && (effective.contains(&"public") && effective.contains(&"static") && arity == 1 && strings()
+                        || self.compact && !effective.contains(&"private") && (arity == 0 || arity == 1 && strings()));
                 self.set(id, "Name", text(named));
                 self.set(id, "Arity", Value::Whole(arity as i64));
                 self.set(id, "Varargs", flag(varargs));
@@ -1623,6 +1655,32 @@ impl<'a, 't> Builder<'a, 't> {
         id
     }
 
+    /// The parentheses around an assignment target, which the parsed text has as spaces (see `grammar::masked`).
+    fn masked_parentheses(&mut self, id: u32) {
+        let raw = self.file.text.as_bytes();
+        let (mut start, mut end, mut depth) = (self.nodes[id as usize].start, self.nodes[id as usize].end, 0);
+        loop {
+            let open = raw[..start].iter().rposition(|byte| !byte.is_ascii_whitespace());
+            let close = (end..raw.len()).find(|at| !raw[*at].is_ascii_whitespace());
+            match (open, close) {
+                (Some(open), Some(close)) if raw[open] == b'(' && raw[close] == b')' => (start, end, depth) = (open, close + 1, depth + 1),
+                _ => break,
+            }
+        }
+        if depth > 0 {
+            let known = match self.get(id, "ParenthesisDepth") { Some(Value::Whole(known)) => *known, _ => 0 };
+            self.set(id, "Parenthesized", flag(true));
+            self.set(id, "ParenthesisDepth", Value::Whole(known + depth));
+            let before = self.nodes[id as usize].start;
+            (self.nodes[id as usize].start, self.nodes[id as usize].end) = (start, end);
+            let mut around = self.nodes[id as usize].parent;
+            while around != ROOT && self.nodes[around as usize].start == before {
+                self.nodes[around as usize].start = start;
+                around = self.nodes[around as usize].parent;
+            }
+        }
+    }
+
     /// Whether an operator expression is made of compile-time constants only.
     fn constant(&self, id: u32) -> bool {
         let node = &self.nodes[id as usize];
@@ -1645,38 +1703,13 @@ impl<'a, 't> Builder<'a, 't> {
 
     fn number(&mut self, id: u32, node: Node<'t>) {
         let image = self.text(node);
-        let digits: String = image.chars().filter(|c| *c != '_').collect::<String>().to_lowercase();
-        let whole = !node.kind().contains("floating");
-        let long = whole && digits.ends_with('l');
-        let body = digits.trim_end_matches('l');
-        let (as_whole, as_real) = if whole {
-            let parsed = if let Some(hex) = body.strip_prefix("0x") {
-                u64::from_str_radix(hex, 16)
-            } else if let Some(binary) = body.strip_prefix("0b") {
-                u64::from_str_radix(binary, 2)
-            } else if body.len() > 1 && body.starts_with('0') {
-                u64::from_str_radix(&body[1..], 8)
-            } else {
-                body.parse::<u64>()
-            }
-            .unwrap_or(0);
-            let value = if long { parsed as i64 } else { parsed as u32 as i32 as i64 };
-            (value, if long { value as f64 } else { parsed as f64 })
-        } else if let Some(hex) = body.strip_prefix("0x") {
-            let (digits, power) = hex.trim_end_matches(['f', 'd']).split_once('p').unwrap_or((hex, "0"));
-            let (whole, fraction) = digits.split_once('.').unwrap_or((digits, ""));
-            let mantissa = u64::from_str_radix(&format!("{whole}{fraction}"), 16).unwrap_or(0) as f64;
-            let real = mantissa * 2f64.powi(power.parse::<i32>().unwrap_or(0) - 4 * fraction.len() as i32);
-            (real as i64 as i32 as i64, real)
-        } else {
-            let real = body.trim_end_matches(['f', 'd']).parse::<f64>().unwrap_or(0.0);
-            (real as i64 as i32 as i64, real)
-        };
+        let parsed = crate::java::types::constant::literal(image, !node.kind().contains("floating"));
+        let (whole, long, as_whole, as_real) = (parsed.integral, parsed.long, parsed.whole, parsed.real);
         self.set(id, "Image", text(image));
         self.set(id, "IntLiteral", flag(whole && !long));
         self.set(id, "LongLiteral", flag(long));
-        self.set(id, "FloatLiteral", flag(!whole && digits.ends_with('f')));
-        self.set(id, "DoubleLiteral", flag(!whole && !digits.ends_with('f')));
+        self.set(id, "FloatLiteral", flag(parsed.float));
+        self.set(id, "DoubleLiteral", flag(!whole && !parsed.float));
         self.set(id, "ValueAsInt", Value::Whole(as_whole as i32 as i64));
         self.set(id, "ValueAsLong", Value::Whole(as_whole));
         self.set(id, "ValueAsDouble", Value::Real(as_real));
@@ -1927,7 +1960,10 @@ impl<'a, 't> Builder<'a, 't> {
                 self.set(id, "Compound", flag(operator != "="));
                 for field in ["left", "right"] {
                     if let Some(part) = node.field(field) {
-                        self.expr(id, part);
+                        let target = self.expr(id, part);
+                        if field == "left" {
+                            self.masked_parentheses(target);
+                        }
                     }
                 }
                 id

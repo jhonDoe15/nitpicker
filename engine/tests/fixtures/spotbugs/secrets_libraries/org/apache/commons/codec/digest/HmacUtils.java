@@ -1,0 +1,1 @@
+package org.apache.commons.codec.digest; public class HmacUtils { public HmacUtils(String alg, String key) {} public HmacUtils(String alg, byte[] key) {} public static byte[] hmacSha256(String k, String v) { return null; } }

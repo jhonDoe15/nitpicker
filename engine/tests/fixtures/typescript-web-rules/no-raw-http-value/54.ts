@@ -1,0 +1,1 @@
+const tags = (headers.get('if-none-match') ?? '').split(', ');

@@ -1,0 +1,1 @@
+function go(next) { if (/^\/.*$/.test(next)) { router.replace(next); } }

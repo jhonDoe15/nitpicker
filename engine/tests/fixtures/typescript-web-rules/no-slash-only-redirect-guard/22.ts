@@ -1,0 +1,1 @@
+function go(req, res) { const next = req.query.next; if (next && next.startsWith("/")) { res.redirect(next); } }

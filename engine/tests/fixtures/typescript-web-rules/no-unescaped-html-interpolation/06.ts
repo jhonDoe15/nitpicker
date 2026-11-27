@@ -1,0 +1,1 @@
+export const a = (u: string) => `<a href="${encodeURI(u)}">x</a>`;

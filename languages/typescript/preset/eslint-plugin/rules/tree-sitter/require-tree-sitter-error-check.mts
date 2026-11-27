@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { textOf } from '../../../../../../shared/values/readers.mts';
 import { ancestorsOf, contains, depthFirst, nameOf, nodeChildren } from '../typed/node-views.mts';
 import { enclosingFunction, isFunction, type FunctionNode } from '../typed/syntax-views.mts';
 import { isTreeSitterBinding, sourceOf } from './tree-sitter-module.mts';
@@ -40,7 +41,7 @@ function readsStructure(callback: TSESTree.Node | undefined): boolean {
   return [...depthFirst<TSESTree.Node>(callback.body, nodeChildren)].some(
     (node) =>
       node.type === AST_NODE_TYPES.MemberExpression &&
-      (node.computed || STRUCTURE.has(memberName(node) ?? '')),
+      (node.computed || STRUCTURE.has(textOf(memberName(node)))),
   );
 }
 
@@ -54,7 +55,7 @@ function isChildWalk(node: TSESTree.MemberExpression): boolean {
   }
   const { parent: call } = parent;
   return (
-    MAPPERS.has(memberName(parent) ?? '') &&
+    MAPPERS.has(textOf(memberName(parent))) &&
     call.type === AST_NODE_TYPES.CallExpression &&
     readsStructure(call.arguments[0])
   );

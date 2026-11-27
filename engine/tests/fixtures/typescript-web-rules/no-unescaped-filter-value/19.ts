@@ -1,0 +1,1 @@
+export const a = (n: string) => ({ $like: `%${escapeLike(n)}%` });

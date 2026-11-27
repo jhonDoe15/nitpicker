@@ -1,0 +1,1 @@
+class Client { private secret = "abc123def456"; }

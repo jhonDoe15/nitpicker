@@ -1,0 +1,1 @@
+import { createHash, createHmac } from "node:crypto"; export const sign = (s, k) => createHmac("sha256", k).update(s).digest();

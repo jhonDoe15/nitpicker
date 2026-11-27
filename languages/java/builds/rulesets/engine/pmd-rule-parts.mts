@@ -160,8 +160,9 @@ export function ruleLevel(rule: ResolvedRule): 'error' | 'warning' | 'note' {
   return priority === WARNING_PRIORITY ? 'warning' : 'note';
 }
 
-function isPorted(rule: ResolvedRule): boolean {
-  return PORTED_RULES.has(rule.definition.attrs['class'] ?? '');
+function portOf(rule: ResolvedRule): string {
+  const name = rule.definition.attrs['class'];
+  return name !== undefined && PORTED_RULES.has(name) ? name : '';
 }
 
 export function needsWholeRun(rule: ResolvedRule): boolean {
@@ -172,13 +173,21 @@ export function runsOnPmd(rule: ResolvedRule): boolean {
   return !runsOnEngine(rule) && rule.definition.attrs['maximumLanguageVersion'] === undefined;
 }
 
+function isWrittenQuery(
+  rule: ResolvedRule,
+  properties: ReturnType<typeof ruleProperties>,
+): boolean {
+  const xpath = properties.get(QUERY)?.value;
+  return (
+    rule.definition.attrs['class'] === XPATH_RULE && xpath !== undefined && xpath.trim() !== ''
+  );
+}
+
 export function runsOnEngine(rule: ResolvedRule): boolean {
   const { attrs } = rule.definition;
   const properties = ruleProperties(rule);
-  const written =
-    attrs['class'] === XPATH_RULE && (properties.get(QUERY)?.value ?? '').trim() !== '';
   return (
-    (written || isPorted(rule)) &&
+    (isWrittenQuery(rule, properties) || portOf(rule) !== '') &&
     attrs['language'] === 'java' &&
     attrs['maximumLanguageVersion'] === undefined &&
     (properties.get(SUPPRESS_REGEX)?.value ?? '') === ''
@@ -202,7 +211,7 @@ export function engineRule(
   return {
     name: rule.name,
     xpath: properties.get(QUERY)?.value ?? '',
-    port: isPorted(rule) ? (rule.definition.attrs['class'] ?? '') : '',
+    port: portOf(rule),
     message: ruleMessage(rule),
     suppress: properties.get(SUPPRESS_QUERY)?.value ?? '',
     properties: Object.fromEntries(

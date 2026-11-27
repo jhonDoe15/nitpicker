@@ -1,0 +1,1 @@
+export const a = (t: string) => `<p>${escapeHtml(t).replaceAll("\n", "<br>")}</p>`;

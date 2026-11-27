@@ -1,0 +1,1 @@
+import CryptoJS from "crypto-js"; export const id = (s) => CryptoJS.MD5(s).toString();

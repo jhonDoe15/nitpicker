@@ -1,0 +1,1 @@
+import https from "node:https"; export const agent = new https.Agent({ rejectUnauthorized: process.env.NODE_ENV === "production" });

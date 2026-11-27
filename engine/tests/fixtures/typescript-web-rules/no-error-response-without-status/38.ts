@@ -1,0 +1,1 @@
+async function f(req) { const res = await fetch(url); try { await save(); } catch (e) { res.json({ error: e.message }); } }

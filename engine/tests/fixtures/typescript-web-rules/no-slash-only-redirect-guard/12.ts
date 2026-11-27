@@ -1,0 +1,1 @@
+function f(next) { if (next.startsWith("https://")) { redirect(next); } }

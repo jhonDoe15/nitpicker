@@ -1,0 +1,1 @@
+import { Repository } from "typeorm"; export const f = (repo) => repo.createQueryBuilder("u").where("u.active").skip(20).take(10).getMany();

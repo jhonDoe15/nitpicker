@@ -1,0 +1,1 @@
+async function create(req, res) { try { await save(); res.status(201).json({}); } catch (error) { res.writeHead(500); res.send({ error: error.message }); } }

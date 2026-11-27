@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { MEMORY_TOOL, withMemoryKillReport } from './memory-kills.mts';
 import { reportFromAnalyzerOutput } from './analyzer-report.mts';
-import type { AnalyzerReport, ReportEntry } from '../../../../shared/values/findings.mts';
+import type { AnalyzerReport, Finding, ReportEntry } from '../../../../shared/values/findings.mts';
 
 const GIB = 1024 ** 3;
 const USE = { peak: 15 * GIB, limit: 16 * GIB, source: 'cgroup memory.peak and memory.max' };
@@ -88,5 +88,29 @@ describe('withMemoryKillReport', () => {
   it('ignores failures that are not kills', () => {
     const other = run([{ tool: 'structure', snapshot: 'head', message: 'structure timed out' }]);
     expect(withMemoryKillReport(other, 'head', () => USE)).toBe(other);
+  });
+
+  it('keeps the findings and failures that are not kills as they are', () => {
+    const lint = lintReport();
+    const otherFinding: Finding = {
+      tool: 'eslint-lint',
+      rule: 'tool-error',
+      path: '.',
+      identity: 'other',
+      classification: 'tool-error',
+      message: 'oxlint stopped',
+    };
+    const timeout = { tool: 'knip', snapshot: 'head', message: 'knip timed out' };
+    const killed = withMemoryKillReport(
+      {
+        reports: new Map([['eslint-lint', { findings: [...lint.findings, otherFinding] }]]),
+        toolErrors: [{ tool: 'structure', snapshot: 'head', message: crash('structure') }, timeout],
+      },
+      'head',
+      () => USE,
+    );
+
+    expect(killed.reports.get('eslint-lint')?.findings[1]).toBe(otherFinding);
+    expect(killed.toolErrors[1]).toBe(timeout);
   });
 });

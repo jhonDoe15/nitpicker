@@ -1,0 +1,1 @@
+import { Md5 } from "ts-md5"; export const id = (s) => Md5.hashStr(s);

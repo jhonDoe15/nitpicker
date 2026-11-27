@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export const f = (db, rows: Row[]) => db.insertInto("asset").values(rows).execute();
