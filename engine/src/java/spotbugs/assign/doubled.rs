@@ -1,6 +1,10 @@
 //! SA_LOCAL_DOUBLE_ASSIGNMENT, measured on test code: `x = x = value` for a local variable or parameter that takes
-//! one slot (not `long` or `double`), parentheses or not, always priority 2. Three or more in a row are not
-//! reported. One finding per variable and line of a method.
+//! one slot (not `long` or `double`), parentheses or not, always priority 2, when nothing uses its value (a
+//! statement, or the init or update of a `for`) and the stores of local variables chained right after it are even
+//! in number: `x = x = y = z = 1` is reported, `x = x = y = 1` and `x = x = x = 1` are not. A store counts when it
+//! is `=`, or a compound one but `+=` or `-=` of a number into an `int`, `short`, `byte` or `char`; the chain stops
+//! at anything else (a cast, an operator, a field, an array, a `long` or `double`, `y++`). One finding per
+//! variable and line of a method.
 use super::super::idioms::Compiled;
 use super::super::nulls::redundant::line_before;
 use super::super::{Context, place};
@@ -12,25 +16,60 @@ use tree_sitter::Node;
 
 pub const DOUBLE: &str = "SA_LOCAL_DOUBLE_ASSIGNMENT";
 
-/// The local variable a plain `=` stores into, when the node is one.
-fn stored(context: &Context, node: Node) -> Option<String> {
+fn operator<'s>(context: &'s Context, node: Node) -> Option<&'s str> {
+    node.child_by_field_name("operator").map(|operator| context.text(operator))
+}
+
+fn wide(context: &Context, node: Node) -> bool {
+    context.resolver.type_of(node).is_some_and(|kind| matches!(kind, Type::Primitive("long" | "double")))
+}
+
+/// The local variable an assignment stores into, when it is one that takes one slot.
+fn local<'t>(context: &Context, node: Node<'t>) -> Option<Node<'t>> {
     let node = unwrap(node);
-    let plain = node.kind() == "assignment_expression" && node.child_by_field_name("operator").is_some_and(|operator| operator.kind() == "=");
-    let left = node.child_by_field_name("left").map(unwrap).filter(|left| plain && left.kind() == "identifier")?;
-    let name = context.text(left);
-    matches!(context.resolver.binding(left, name), Some(Binding::Local(_))).then(|| name.to_string())
+    let left = node.child_by_field_name("left").map(unwrap).filter(|left| node.kind() == "assignment_expression" && left.kind() == "identifier")?;
+    let bound = matches!(context.resolver.binding(left, context.text(left)), Some(Binding::Local(_)));
+    (bound && !wide(context, left)).then_some(left)
+}
+
+/// The local variable a plain `=` stores into.
+fn stored(context: &Context, node: Node) -> Option<String> {
+    let left = local(context, node).filter(|_| operator(context, unwrap(node)) == Some("="))?;
+    Some(context.text(left).to_string())
 }
 
 fn inner<'a>(node: Node<'a>) -> Option<Node<'a>> {
     node.child_by_field_name("right").map(unwrap)
 }
 
-fn outer<'a>(node: Node<'a>) -> Option<Node<'a>> {
-    let mut above = parent(node)?;
-    while above.kind() == "parenthesized_expression" {
-        above = parent(above)?;
+/// The stores of local variables chained in a value.
+fn chained(context: &Context, node: Node) -> usize {
+    let node = unwrap(node);
+    let Some(left) = local(context, node) else { return 0 };
+    match operator(context, node) {
+        Some("=") => 1 + inner(node).map_or(0, |right| chained(context, right)),
+        Some("+=" | "-=") if inner(node).is_some_and(|right| right.kind().ends_with("integer_literal"))
+            && matches!(context.resolver.type_of(left), Some(Type::Primitive("int" | "short" | "byte" | "char"))) => 0,
+        _ => 1,
     }
-    Some(above)
+}
+
+/// Whether nothing uses the value of the expression.
+fn unused(context: &Context, node: Node) -> bool {
+    let mut at = node;
+    while let Some(above) = parent(at).filter(|above| above.kind() == "parenthesized_expression") {
+        at = above;
+    }
+    let Some(above) = parent(at) else { return false };
+    match above.kind() {
+        "expression_statement" => true,
+        "for_statement" => {
+            let mut cursor = above.walk();
+            let update = above.children_by_field_name("update", &mut cursor).any(|part| part.id() == at.id());
+            above.child_by_field_name("condition").is_none_or(|condition| condition.id() != at.id()) && (!update || super::flow::reach::loops_back(context, above))
+        }
+        _ => false,
+    }
 }
 
 pub fn check<'a>(context: &Context<'a>, method: &Compiled<'a>) {
@@ -38,10 +77,7 @@ pub fn check<'a>(context: &Context<'a>, method: &Compiled<'a>) {
     for node in method.nodes.iter().copied().filter(|node| node.kind() == "assignment_expression") {
         let Some(name) = stored(context, node) else { continue };
         let Some(second) = inner(node).filter(|second| stored(context, *second).as_ref() == Some(&name)) else { continue };
-        let third = inner(second).is_some_and(|third| stored(context, third).as_ref() == Some(&name));
-        let above = outer(node).is_some_and(|above| stored(context, above).as_ref() == Some(&name) && inner(above).is_some_and(|part| part.id() == node.id()));
-        let wide = node.child_by_field_name("left").and_then(|left| context.resolver.type_of(left)).is_some_and(|kind| matches!(kind, Type::Primitive("long" | "double")));
-        if third || above || wide {
+        if !unused(context, node) || inner(second).is_some_and(|rest| chained(context, rest) % 2 == 1) {
             continue;
         }
         let line = line_before(context, node, node.end_byte());

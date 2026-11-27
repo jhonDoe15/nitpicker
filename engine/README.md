@@ -1884,24 +1884,40 @@ FindFieldSelfAssignment of the long tail (#2535): `src/java/spotbugs/assign/`, l
   (`v = f; ...; f = v`, copies of copies, any type), and `x.f = x.f++`. Locals follow each path (paths that meet
   must agree, as for `c ? f : f`), but what makes the value read out of date counts for all code after it in
   javac's order, on any path: a call (`new` too, one on a path that returns or throws too, an `assert`), a store
-  into the field of any object, the head of a loop (`do { } while (false)` is none). A lambda, a string
-  concatenation, a cast javac writes no code for, a store into another field, a static field or an array, and
-  `synchronized` change nothing. A `finally` block counts where javac copies it. Static fields, `o.f = o.f` with
-  `o` a field, and fields of an outer object are not reported. One finding per field, line and priority of a
-  method; the message names the field by the class the code names it by (`super.f` names the superclass).
+  into the field of any object, the head of a loop that javac writes a jump back to (none when the body never gets
+  to its end or a `continue`, none for `do { } while (false)`). Calls javac writes without a call in the source
+  count too: boxing and unboxing (`Integer i = 1`, `int i = boxed`, `boxed++`, `-boxed`, `boxed > 2`, not
+  `boxed == null` or `"a" + boxed`), a `switch` on anything but a primitive (`ordinal`, `hashCode`, a pattern
+  switch) and a for-each over an `Iterable` (not an array). A lambda, a string concatenation, a cast javac writes
+  no code for, a store into another field, a static field or an array, and `synchronized` change nothing. A
+  `finally` block counts where javac copies it, and code after a statement that cannot complete is not there.
+  Catch parameters, pattern variables and for-each variables hold a new value. A cast of `this` or of a local
+  (`((B) this).f = ((B) this).f`) keeps the object and names the field by the cast's class. Static fields and
+  `o.f = o.f` with `o` a field are not reported; fields of the object around are reported only in the body of a
+  constructor of an inner or local class (`k = k`, `X.this.k = X.this.k`, javac reads its hidden parameter
+  there), not in its initializers, its methods or a lambda. One finding per class the code names the field by,
+  field, line and priority of a method; the message names the field by that class (`super.f` names the
+  superclass, `b.f` the type of `b`).
 - The SARIF place is the parameter SpotBugs suggests, else the field (always under the class whose code it is).
-  Candidates are the parameters of the field's erased type, javac's hidden ones first (the name and number of an
-  enum constant, the outer object of an inner class, the captured variables of a lambda). SpotBugs looks each one
+  Candidates are the parameters of the field's erased type (a varargs one is its array), javac's hidden ones
+  first: the name and number of an enum constant (named `$enum$name` and `$enum$ordinal`), the outer object of an
+  inner or local class (`this$0`), the captured variables of a lambda. SpotBugs looks each one
   up at slot index + 1 (index in a static method), as if no parameter took two slots: the name of the parameter
   starting there or `?`, and whether the method reads that slot (`x++` and `x += 1` read, `x = 1` does not). Of
   the unread candidates, or of all when all are read, the first without a name wins, else the nearest name to the
   field's when no other is as near (edit distance where a change of case costs half); a read one must be at most
-  2 away. Priority 1 when the chosen slot is unread, the object is not in slot 0, or for `x.f = x.f++`; else 2.
+  2 away. Priority 1 for every finding of a method when one of them has its object outside slot 0 (a local, the
+  object around), else when the chosen slot is unread or for `x.f = x.f++`; else 2.
   SpotBugs also makes every finding priority 1 once the run has seen a `dup` that javac follows with a store into
   a local (`synchronized`, `x = y = 1`, `while ((n = read()) > 0)`, `y = (x += z)`), in class visiting order; the
   engine does not follow that, since both priorities have the same SARIF level.
 - SA_LOCAL_DOUBLE_ASSIGNMENT: `x = x = value` (parentheses or not) for a local or parameter of one slot (not
-  `long` or `double`), priority 2; three or more in a row are not reported. Once per variable and line of a method.
+  `long` or `double`), priority 2, when nothing uses its value (a statement, or the init or a reachable update of
+  a `for`) and the stores into locals chained right after it are even in number: `x = x = 1`, `x = x = y = z = 1`
+  and `x = x = x = x = 1` are reported, `x = x = y = 1`, `x = x = x = 1` and `y = x = x = 1` are not. A store
+  counts when it is `=` (any type) or compound, except `+=` or `-=` of a number into an `int`, `short`, `byte` or
+  `char`; the chain stops at anything else (a cast, an operator, a field, an array, a `long` or `double`, `y++`).
+  Once per variable and line of a method.
 
 On the comparison code bases, SARIF results: guava 1 / 0 / 0, commons-lang, jackson-databind, javaparser-core and
 mybatis-3 0 / 0 / 0. The saved Nacos and Elasticsearch server reports have none of these patterns, and the engine

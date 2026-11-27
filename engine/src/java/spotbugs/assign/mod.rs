@@ -2,20 +2,19 @@
 //! SA_LOCAL_DOUBLE_ASSIGNMENT (`doubled`).
 //! - A store into an instance field of `this` or of the object in a local variable or parameter of the value read
 //!   from that same field of that same object (`f = f`, `x.f = x.f`, `v = f; ...; f = v`, `r = this; r.f = f`),
-//!   when nothing in between made the value read out of date (`values`, `exprs`, `walk`): no call, no store into
-//!   that field (of any object), no loop head; paths that meet must agree. `o.f = o.f` with `o` a field, static
-//!   fields and fields of an outer object are not reported. `x.f = x.f++` is reported too.
-//! - The SARIF place is the parameter SpotBugs suggests (`suggest`), else the field. The priority is 1 for a
-//!   suggested parameter the method does not read, an object not in slot 0, or `x.f = x.f++`; else 2. SpotBugs
-//!   also gives priority 1 to every finding after the first `dup` that javac follows with a store into a local
-//!   (`synchronized`, `x = y = 1`, `while ((n = read()) > 0)`) in the run, which the engine does not follow: both
-//!   priorities have the same SARIF level.
-//! - One finding per field, line and priority of a method; the message names the field by the class the code names it by.
+//!   when nothing in between made the value read out of date (`flow`): no call (boxing, a switch on an object),
+//!   no store into that field (of any object), no loop head with a jump back; paths that meet must agree. Fields
+//!   of the object around count in the body of a constructor of an inner class (`outer_of`). `x.f = x.f++` too.
+//! - The SARIF place is the parameter SpotBugs suggests (`suggest`), else the field. The priority is 1 for all
+//!   findings of a method when one has its object outside slot 0, else for a suggested parameter the method does
+//!   not read or `x.f = x.f++`; else 2. SpotBugs also gives priority 1 to every finding after the first `dup`
+//!   that javac follows with a store into a local in the run, which the engine does not follow: both priorities
+//!   have the same SARIF level.
+//! - One finding per qualifying class, field, line and priority of a method; the message names the field by the
+//!   class the code names it by.
 mod doubled;
-mod exprs;
+mod flow;
 mod suggest;
-mod values;
-mod walk;
 
 use super::idioms::{Compiled, compiled, initializes};
 use super::nulls::redundant::line_before;
@@ -25,8 +24,8 @@ use crate::java::helpers::has_modifier;
 use crate::java::types::scope::TYPE_DECLARATIONS;
 use std::collections::HashSet;
 use tree_sitter::Node;
-use values::State;
-use walk::Walk;
+use flow::Walk;
+use flow::values::State;
 
 pub const SELF: &str = "SA_FIELD_SELF_ASSIGNMENT";
 pub use doubled::DOUBLE;
@@ -100,7 +99,9 @@ fn walk_method<'c, 'a>(walk: &mut Walk<'c, 'a>, class: Node<'a>, method: &Compil
             }
             let delegates = first.is_some_and(|call| walk.context.text(call).trim_start().starts_with("this"));
             let state = if delegates { Some(state) } else { walk.statements(&initializers(class, false), Some(state)) };
+            walk.outer = outer_of(walk.context, class);
             walk.statements(&parts, state);
+            walk.outer = None;
         }
         _ if fixed(walk.context, method) => drop(walk.statements(&initializers(class, true), state)),
         _ => {
@@ -116,14 +117,16 @@ fn self_assignments<'a>(context: &Context<'a>, own: &str, class: Node<'a>, metho
     walk_method(&mut walk, class, method);
     let fixed = fixed(context, method);
     let mut seen = HashSet::new();
-    for store in std::mem::take(&mut walk.found) {
+    let found = std::mem::take(&mut walk.found);
+    let moved = |store: &flow::Store| store.outer || store.register.is_some_and(|local| !(fixed && first_parameter(context, method, local)));
+    let any_moved = found.iter().any(moved);
+    for store in found {
         let (declaring, name) = &store.field;
         let Some(kind) = context.resolver.index.get(declaring).and_then(|info| info.fields.iter().find(|field| &field.name == name)).map(|field| field.kind.clone()) else { continue };
         let suggested = suggest::suggest(context, class, method, fixed, &kind, name);
-        let moved = store.register.is_some_and(|local| !(fixed && first_parameter(context, method, local)));
-        let priority = if store.postfix || moved || suggested.as_ref().is_some_and(|suggested| suggested.unread) { 1 } else { 2 };
+        let priority = if store.postfix || any_moved || suggested.as_ref().is_some_and(|suggested| suggested.unread) { 1 } else { 2 };
         let line = line_before(context, store.at, store.at.end_byte());
-        if !seen.insert((store.field.clone(), line, priority)) {
+        if !seen.insert((store.qualifying.clone(), name.clone(), line, priority)) {
             continue;
         }
         let shown = names::field(context, own, &store.qualifying, name);
@@ -134,6 +137,33 @@ fn self_assignments<'a>(context: &Context<'a>, own: &str, class: Node<'a>, metho
         let message = format!("Self assignment of field {shown} in {}", method.label);
         context.report_listed(SELF, store.at, line, message, at, priority, vec![shown, method.label.clone()]);
     }
+}
+
+/// The class whose object a constructor of the class gets as a hidden parameter: the one around an inner class,
+/// or around a local class declared where there is a `this`.
+pub fn outer_of(context: &Context, class: Node) -> Option<String> {
+    if class.kind() != "class_declaration" || has_modifier(class, "static") {
+        return None;
+    }
+    let holder = crate::engine::source::parent(class)?;
+    let member = holder.kind() == "class_body" && crate::engine::source::parent(holder).is_some_and(|around| !interface(around));
+    let mut local = None;
+    let mut at = Some(holder);
+    while let Some(node) = at.filter(|_| holder.kind() != "class_body") {
+        match node.kind() {
+            "method_declaration" => local = Some(!has_modifier(node, "static")),
+            "constructor_declaration" | "compact_constructor_declaration" => local = Some(true),
+            "static_initializer" => local = Some(false),
+            "field_declaration" => local = Some(!has_modifier(node, "static")),
+            "class_body" => local = Some(true),
+            _ => {}
+        }
+        if local.is_some() {
+            break;
+        }
+        at = crate::engine::source::parent(node);
+    }
+    (member || local == Some(true)).then(|| crate::java::types::scope::enclosing_types(context.resolver.scope, holder).into_iter().next()).flatten()
 }
 
 /// Whether a local variable is the first parameter of the method, the one in slot 0 of a static method.

@@ -8,6 +8,8 @@ pub type Key = (String, String);
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Val {
     This,
+    /// The object around, from the hidden parameter of a constructor of an inner class.
+    Outer,
     /// A value nothing else is known about; two different numbers are two different values.
     Fresh(u32),
     /// A value read from a field of the object `receiver`, while the field's values were as `epoch` says.

@@ -9,10 +9,8 @@
 use super::super::Context;
 use super::super::idioms::Compiled;
 use crate::engine::source::{named_children, parent, walk};
-use crate::java::helpers::has_modifier;
 use crate::java::types::expr::Binding;
 use crate::java::types::model::Type;
-use crate::java::types::scope::enclosing_types;
 use tree_sitter::Node;
 
 struct Parameter {
@@ -72,13 +70,11 @@ fn parameters(context: &Context, class: Node, method: &Compiled, fixed: bool) ->
     let member = method.member;
     let constructor = member.kind().ends_with("constructor_declaration") || (member.id() == class.id() && !method.label.contains(".<static initializer for "));
     if constructor && class.kind() == "enum_declaration" {
-        found.push((None, Some(Type::class("java.lang.String")), true));
-        found.push((None, Some(Type::Primitive("int")), true));
+        found.push((Some("$enum$name".to_string()), Some(Type::class("java.lang.String")), true));
+        found.push((Some("$enum$ordinal".to_string()), Some(Type::Primitive("int")), true));
     }
-    let inner = class.kind() == "class_declaration" && !has_modifier(class, "static") && parent(class).is_some_and(|holder| holder.kind() == "class_body");
-    if constructor && inner {
-        let outer = parent(class).and_then(|body| enclosing_types(context.resolver.scope, body).into_iter().next());
-        found.push((None, outer.map(|outer| Type::class(&outer)), true));
+    if let Some(outer) = super::outer_of(context, class).filter(|_| constructor) {
+        found.push((Some("this$0".to_string()), Some(Type::class(&outer)), true));
     }
     if method.lambda {
         for (name, kind) in captured(context, member) {
@@ -98,9 +94,11 @@ fn parameters(context: &Context, class: Node, method: &Compiled, fixed: bool) ->
         let text = context.text(name).to_string();
         let kind = match context.resolver.binding(name, &text) {
             Some(Binding::Local(Some(kind))) => Some(kind.erased()),
-            _ => parameter.child_by_field_name("type").and_then(|written| context.resolver.type_node(written)).map(|kind| kind.erased()),
+            _ => {
+                let written = parameter.child_by_field_name("type").and_then(|written| context.resolver.type_node(written)).map(|kind| kind.erased());
+                if parameter.kind() == "spread_parameter" { written.map(|kind| Type::Array(Box::new(kind))) } else { written }
+            }
         };
-        let kind = if parameter.kind() == "spread_parameter" { kind.map(|kind| Type::Array(Box::new(kind))) } else { kind };
         found.push((Some(text.clone()), kind, reads(context, body, &text)));
     }
     let mut slot = usize::from(!fixed);
