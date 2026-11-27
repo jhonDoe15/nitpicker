@@ -12,6 +12,7 @@ mod expose;
 mod fields;
 mod handlers;
 mod held;
+mod idioms;
 mod flow;
 mod folds;
 mod known;
@@ -26,6 +27,7 @@ pub mod place;
 mod observed;
 mod statements;
 mod stores;
+mod taint;
 mod threads;
 
 use super::types::project::JavaProject;
@@ -223,6 +225,7 @@ const DETECTORS: &[Detector] = &[
     dead::dead_stores as Detector,
     threads::threads as Detector,
     concurrent::concurrent as Detector,
+    idioms::idioms as Detector,
 ];
 
 #[derive(Default)]
@@ -231,6 +234,7 @@ pub struct SpotBugs {
     elsewhere: nulls::Elsewhere,
     serial: serial::Serial,
     attributes: attributes::Attributes,
+    taint: taint::Derived,
 }
 
 impl FileRule for SpotBugs {
@@ -255,6 +259,7 @@ impl FileRule for SpotBugs {
         }
         compare::ref_comparisons(&context);
         nulls::null_dereference(&context, &declared);
+        taint::path_traversal(&context, &declared, &self.taint);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
         if context.wants(attributes::PATTERNS) {
             let names = self.attributes.names(&project.index, &project.sources);
@@ -270,6 +275,7 @@ impl FileRule for SpotBugs {
             self.known.settle(&project.index, out);
             self.serial.settle(project, out);
             self.attributes.settle(&project.index, || self.known.visits(&project.index), out);
+            self.taint.settle(out);
         }
     }
 }

@@ -99,6 +99,8 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-lookup-as-presence', TYPED],
   ['no-many-to-many-cascade-remove', {}],
   ['no-mutating-method-in-domain', TYPED],
+  ['no-orm-query-logging', {}],
+  ['no-orm-schema-sync', {}],
   ['no-parameter-mutation', TYPED],
   ['no-remote-call-in-transaction', EFFECTS],
   ['no-remote-call-under-lock', EFFECTS],

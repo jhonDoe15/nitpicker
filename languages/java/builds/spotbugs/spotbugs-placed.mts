@@ -128,6 +128,25 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     placement: 'relative',
   },
   NN_NAKED_NOTIFY: { text: 'Naked notify', levels: { 2: WARNING } },
+  IA_AMBIGUOUS_INVOCATION_OF_INHERITED_OR_OUTER_METHOD: {
+    text: 'Potentially ambiguous invocation of either an inherited or outer method',
+    levels: { 1: NOTE, 2: NOTE },
+    classNamed: [1, 2],
+  },
+  IT_NO_SUCH_ELEMENT: {
+    text: 'Iterator next() method cannot throw NoSuchElementException',
+    levels: { 2: NOTE },
+  },
+  DM_DEFAULT_ENCODING: {
+    text: 'Reliance on default encoding',
+    levels: { 1: NOTE },
+    placement: 'relative',
+  },
+  UCF_USELESS_CONTROL_FLOW: { text: 'Useless control flow', levels: { 2: NOTE } },
+  UCF_USELESS_CONTROL_FLOW_NEXT_LINE: {
+    text: 'Useless control flow to next line',
+    levels: { 1: NOTE },
+  },
   NP_BOOLEAN_RETURN_NULL: {
     text: 'Method with Boolean return type returns explicit null',
     levels: { 1: WARNING, 2: WARNING },

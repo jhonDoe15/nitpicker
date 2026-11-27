@@ -10,7 +10,12 @@ import {
 } from '../../../../shared/engine/engine-run.mts';
 import { fieldOf, listOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import { engineSpotbugsFindingOf, spotbugsResultOf } from './spotbugs-results.mts';
-import { type ProcessorKind, lombokMarksGenerated, processorKind } from './spotbugs-lombok.mts';
+import {
+  type ProcessorKind,
+  lombokMarksGenerated,
+  processorKind,
+  withoutLombokWrites,
+} from './spotbugs-lombok.mts';
 
 export type SpotbugsEnginePlan = {
   readonly reportDir: string;
@@ -87,17 +92,11 @@ export const ON_ENGINE: readonly string[] = [
   ...SHARED_WRITES,
   SEQUENCE_ON_CONCURRENT,
   UNSYNC_GET,
-];
-const LOMBOK_WRITES: readonly string[] = [
-  'SING_',
-  'HSM_',
-  'PA_',
-  'MS_SHOULD_BE_FINAL',
-  'MS_PKGPROTECT',
-  'SS_',
-  ...DEAD_STORES,
-  'AT_',
-  'UG_',
+  'IA_AMBIGUOUS_INVOCATION_OF_INHERITED_OR_OUTER_METHOD',
+  'IT_NO_SUCH_ELEMENT',
+  'DM_DEFAULT_ENCODING',
+  'UCF_USELESS_CONTROL_FLOW',
+  'UCF_USELESS_CONTROL_FLOW_NEXT_LINE',
 ];
 const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   MultipleInstantiationsOfSingletons: [
@@ -115,6 +114,10 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   SharedVariableAtomicityDetector: SHARED_WRITES,
   AtomicityProblem: [SEQUENCE_ON_CONCURRENT],
   FindUnsyncGet: [UNSYNC_GET],
+  ConfusionBetweenInheritedAndOuterMethod: ['IA_AMBIGUOUS_INVOCATION_OF_INHERITED_OR_OUTER_METHOD'],
+  IteratorIdioms: ['IT_NO_SUCH_ELEMENT'],
+  DefaultEncodingDetector: ['DM_DEFAULT_ENCODING'],
+  FindUselessControlFlow: ['UCF_USELESS_CONTROL_FLOW', 'UCF_USELESS_CONTROL_FLOW_NEXT_LINE'],
   DontCatchNullPointerException: ['DCN_NULLPOINTER_EXCEPTION'],
   WrongMapIterator: [WRONG_MAP_ITERATOR],
   BooleanReturnNull: ['NP_BOOLEAN_RETURN_NULL'],
@@ -265,9 +268,7 @@ export function withoutSpotbugsEngineReport(reportDir: string): void {
 }
 
 function enginePatterns(lombok: boolean): readonly string[] {
-  return lombok
-    ? ON_ENGINE.filter((pattern) => !LOMBOK_WRITES.some((prefix) => pattern.startsWith(prefix)))
-    : ON_ENGINE;
+  return lombok ? withoutLombokWrites(ON_ENGINE) : ON_ENGINE;
 }
 
 export function spotbugsOnEngine(

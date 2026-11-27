@@ -915,6 +915,68 @@ values only through a superclass or a constructor reference. Every pattern of
 
 Labs: 572 same / 4 missed / 2 extra (all #2508). On the six comparison code bases: Nacos 5 / 0 / 0, the others 0.
 
+### Code idioms
+
+Four whole detectors (#2263, `src/java/spotbugs/idioms/`), so SpotBugs no longer runs
+ConfusionBetweenInheritedAndOuterMethod, IteratorIdioms, DefaultEncodingDetector and FindUselessControlFlow. All
+findings have level `note`. `compiled` in `idioms/mod.rs` lists the methods javac writes for a class: field
+initializers and initializer blocks go into each constructor that does not start with `this(...)` (or the one javac
+writes), static ones and enum constant arguments into the static initializer, and each lambda is a method of its
+own.
+
+IA_AMBIGUOUS_INVOCATION_OF_INHERITED_OR_OUTER_METHOD (`outer.rs`, `outer_this.rs`, fixtures `ambiguous*`): a class
+with an outer instance calls, on `this` (`m()`, `this.m()`, `In.this.m()`), an inherited instance method while a class
+around it declares an instance method with the same name and descriptor, return type included (a private one too).
+A method the class declares itself, a static or `super.` call, a method the outer class only inherits, or the very
+method the outer class declares are not reported. SpotBugs looks only at classes that keep the outer instance in a
+field: javac 18 and later leave `this$0` out unless the class is serializable or code outside its own constructors
+uses the outer instance (an outer field or method, `Outer.this`, `new` of another inner class, also inside its
+lambdas and the classes declared in it). Calls inside lambdas are not reported. One finding per method and inherited
+method, at the `(` of its first call; arguments the inherited method (its declaring class, or the calling class when
+an interface declares it, `java.lang.` dropped) and the calling method; priority 1 when that class is in another
+package, else 2. The SARIF place is the outer method, named with its class (`B10.m()`).
+
+IT_NO_SUCH_ELEMENT (`iterators.rs`, fixture `iterators`): a `next()` without parameters, not static, abstract or
+native, in a class that is an `Iterator`, whose own code has no instance method call and no object creation (static
+calls, string concatenation, array reads and `throw` of a value do not count; unboxing, a `for` over an `Iterable`, a
+`switch` on anything but a primitive, `assert` and `try` with resources do). A class whose own `hasNext()` only
+returns `true` is left alone (one inherited from a superclass is not). Line = the last instruction of `next()`.
+
+DM_DEFAULT_ENCODING (`encoding.rs`, fixtures `encoding*`): the JDK constructors and methods SpotBugs lists for the
+default charset, as measured (`new String(byte[])`, `getBytes()`, `InputStreamReader(InputStream)`, `FileReader`,
+`FileWriter`, `PrintStream`, `PrintWriter`, `Scanner`, `Formatter` and `ByteArrayOutputStream.toString()`, see
+`CONSTRUCTORS` and `METHODS`). Not `Scanner(Path)`, not commons-io, not method references. SpotBugs looks the
+called method up again from the type it tracks for the receiver and names that type when the lookup still lands on
+the JDK's own: what a local was given (its declared type where different values meet), what the class stores in a
+field (one type only; stores of different types say nothing; a public field or one never stored keeps its declared
+type), a cast's value when it fits the cast, nothing for a conditional of two types, and the class itself for
+`this`, `super.m()` and `super(...)` (`new p.E$PS1(OutputStream)`; not when the class declares a constructor with
+the same parameters). A class that overrides the method is not reported. A call that names a subclass counts only
+in a class whose own code calls a listed JDK member directly (a nested class has its own code). One finding per
+method and called method, priority 1, arguments the calling method and the called one; the SARIF place is the
+called one, without the package when it is the class's own. Enum constant arguments belong to the static
+initializer.
+
+UCF_USELESS_CONTROL_FLOW and UCF_USELESS_CONTROL_FLOW_NEXT_LINE (`control/`, fixtures `control*`): an `if` whose
+branches make no code (empty blocks and statements, declarations without a value, local classes, an `if` on a
+constant that leaves nothing, a `break` or `continue` to where the code goes anyway), so its jump targets the next
+instruction. Not when javac points the jump past a `goto` it writes next (the end of a `while` or of a `for` without
+update, a `then` with an `else`, a `break` or `continue`, an arrow `case` before the last). SpotBugs takes the first
+line after the jump, in code order, that is below the jump's line: NEXT_LINE (priority 1) when it is one line below,
+UCF (priority 2) when two lines below, nothing otherwise. The line table (`control/lines.rs`) holds each statement,
+each call at its `(`, loop tests and catch clauses, and what javac writes after a body: a `for` update, the jump back
+of an enhanced `for` (at the header over an array, else at the body's closing brace), the exit of `synchronized` (its
+closing brace) and of a `try` with catches or resources (the `try`'s last line), the inlined `finally`, its rethrow
+(the `finally`'s closing brace) and the closing brace of a body that ends without `return`. The jump is on the last
+line javac marks in the condition: the `if`, each call at its `(`, a protected field of a superclass in another
+package read from a nested class (javac reads it through an accessor method). One finding per method and pattern.
+
+SBSC_USE_STRINGBUFFER_CONCATENATION (StringConcatenation) is not ported: what it reports depends on how javac
+compiles string concatenation for the target release (#2589).
+
+On the six comparison code bases (commons-lang, guava, jackson-databind, javaparser-core, mybatis-3, Nacos), SARIF
+results for the five patterns, same / missed / extra: 18 / 0 / 0 (guava 8, mybatis-3 5, javaparser-core 3, Nacos 2).
+
 ### Field patterns
 
 Field patterns (#2262, `src/java/spotbugs/attributes/`, labs in `tests/fixtures/spotbugs/attr_*`). Each file notes
