@@ -1,5 +1,7 @@
 //! Error Prone checks written for the engine: same check name, line and column as Error Prone reports.
+mod collection_types;
 mod doc;
+mod javac_print;
 mod docparse;
 mod docref;
 pub mod fixes;
@@ -668,6 +670,7 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["InjectOnMemberAndConstructor"], guice::inject_on_member_and_constructor),
     (&["IncompatibleModifiers"], guice::incompatible_modifiers),
     (&["RequiredModifiers"], guice::required_modifiers),
+    (&["CollectionIncompatibleType"], collection_types::collection_incompatible_type),
     (&["JUnit4SetUpNotRun"], junit_init::set_up_not_run),
     (&["JUnit4TearDownNotRun"], junit_init::tear_down_not_run),
     (&["JUnit4ClassAnnotationNonStatic"], junit_init::class_annotation_non_static),

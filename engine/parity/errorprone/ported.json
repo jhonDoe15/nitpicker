@@ -532,5 +532,6 @@
  "ImmutableAnnotationChecker",
  "CacheLoaderNull",
  "DoNotMockAutoValue",
- "RequiredModifiers"
+ "RequiredModifiers",
+ "CollectionIncompatibleType"
 ]

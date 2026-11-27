@@ -313,6 +313,8 @@ pub struct ClassInfo {
     pub superclass: Option<String>,
     pub interfaces: Vec<String>,
     pub generic_supers: Vec<Type>,
+    /// `generic_supers` with bounded wildcards in their type arguments kept, when any has one; empty otherwise.
+    pub bounded_supers: Vec<Type>,
     /// Name and erased bound of each type parameter.
     pub type_parameters: Vec<(String, Type)>,
     /// The first bound of each type parameter with its type arguments, when a class file gives it.

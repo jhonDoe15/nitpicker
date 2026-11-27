@@ -96,14 +96,6 @@ pub const PRECONDITIONS: &[(&str, Gate)] = &[
     ("AlwaysThrows", Gate::Text(&["put", "of", "parse", "fromHex", "fromString", "plus", "minus"])),
     ("FloatingPointAssertionWithinEpsilon", Gate::Text(&["isWithin", "isNotWithin", "assertEquals", "of"])),
     ("ModifySourceCollectionInStream", Gate::Text(&["stream", "parallelStream"])),
-    (
-        "CollectionIncompatibleType",
-        Gate::Text(&[
-            "contains", "containsAll", "containsKey", "containsValue", "difference", "disjoint", "get", "getOrDefault",
-            "indexOf", "lastIndexOf", "remove", "removeAll", "removeElement", "removeFirstOccurrence",
-            "removeLastOccurrence", "retainAll", "search",
-        ]),
-    ),
     ("EqualsBrokenForNull", Gate::Text(&["equals"])),
     ("RedundantNullCheck", NULL),
     ("ReturnsNullCollection", NULL),

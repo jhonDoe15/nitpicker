@@ -3,7 +3,7 @@ use crate::java::fields::Fields;
 use super::index::TypeIndex;
 use super::model::{ClassInfo, Field, Method, OBJECT, Type};
 use std::cell::{Cell, RefCell};
-use crate::engine::source::{SourceFile, children};
+use crate::engine::source::{SourceFile, children, named_children};
 use std::collections::HashMap;
 use tree_sitter::Node;
 
@@ -779,6 +779,7 @@ impl<'a> Resolver<'a> {
             name,
             superclass: parent.as_ref().map(Type::name),
             interfaces: above.iter().map(Type::name).collect(),
+            bounded_supers: self.bounded_supers(declaration),
             generic_supers: parent.into_iter().chain(above).collect(),
             package: self.scope.package.clone(),
             type_parameters,
@@ -809,6 +810,31 @@ impl<'a> Resolver<'a> {
             outer_instance: None,
             hidden: Vec::new(),
         }
+    }
+
+    /// The supertypes of a class, interface or record with bounded wildcards kept, when one of them is written with a
+    /// wildcard; nothing otherwise, the supertypes then being `generic_supers`.
+    fn bounded_supers(&self, declaration: Node) -> Vec<Type> {
+        if !matches!(declaration.kind(), "class_declaration" | "interface_declaration" | "record_declaration") {
+            return Vec::new();
+        }
+        let holders: Vec<Node> = ["superclass", "interfaces", "extends_interfaces"]
+            .into_iter()
+            .filter_map(|field| declaration.field(field).or_else(|| children(declaration).into_iter().find(|child| child.kind() == field)))
+            .collect();
+        if !holders.iter().any(|holder| self.file.text_of(*holder).contains('?')) {
+            return Vec::new();
+        }
+        let wild = self.wildcards();
+        let mut found = Vec::new();
+        if declaration.kind() == "record_declaration" {
+            found.push(Type::class("java.lang.Record"));
+        }
+        for holder in holders {
+            let list = children(holder).into_iter().find(|child| child.kind() == "type_list").unwrap_or(holder);
+            found.extend(named_children(list).into_iter().filter_map(|written| wild.written(written, true)).filter(|kind| matches!(kind, Type::Class(..))));
+        }
+        found
     }
 
     /// The constant names that the elements `keys` of the annotation `marker` list on an annotation type, in the order written.

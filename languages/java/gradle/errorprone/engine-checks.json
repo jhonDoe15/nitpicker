@@ -68,6 +68,7 @@
   "ClassNewInstance",
   "CloseableProvides",
   "ClosingStandardOutputStreams",
+  "CollectionIncompatibleType",
   "CollectionToArraySafeParameter",
   "CollectionUndefinedEquality",
   "CollectorShouldNotUseState",
