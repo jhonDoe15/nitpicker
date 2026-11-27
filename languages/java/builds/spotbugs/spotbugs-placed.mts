@@ -234,4 +234,39 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   SQL_INJECTION_JPA: { text: 'Potential SQL/JPQL Injection (JPA)', levels: INJECTION_LEVELS },
   COMMAND_INJECTION: { text: 'Potential Command Injection', levels: INJECTION_LEVELS },
   LDAP_INJECTION: { text: 'Potential LDAP Injection', levels: INJECTION_LEVELS },
+  NM_METHOD_NAMING_CONVENTION: {
+    text: 'Method names should start with a lower case letter',
+    levels: { 2: NOTE },
+  },
+  NM_FIELD_NAMING_CONVENTION: {
+    text: 'Non-final field names should start with a lower case letter, final fields should be uppercase with words separated by underscores',
+    levels: { 2: NOTE },
+  },
+  NM_CLASS_NOT_EXCEPTION: {
+    text: 'Class is not derived from an Exception, even though it is named as such',
+    levels: { 2: NOTE },
+  },
+  NM_SAME_SIMPLE_NAME_AS_SUPERCLASS: {
+    text: "Class names shouldn't shadow simple name of superclass",
+    levels: { 1: WARNING },
+  },
+  NM_SAME_SIMPLE_NAME_AS_INTERFACE: {
+    text: "Class names shouldn't shadow simple name of implemented interface",
+    levels: { 2: NOTE },
+  },
+  DMI_RANDOM_USED_ONLY_ONCE: {
+    text: 'Random object created and used only once',
+    levels: { 1: WARNING },
+    placement: 'relative',
+  },
+  IC_SUPERCLASS_USES_SUBCLASS_DURING_INITIALIZATION: {
+    text: 'Superclass uses subclass during initialization',
+    levels: { 1: WARNING, 2: NOTE },
+    classNamed: [1, 2],
+  },
+  URF_UNREAD_FIELD: { text: 'Unread field', levels: { 2: NOTE } },
+  URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD: {
+    text: 'Unread public/protected field',
+    levels: { 2: NOTE },
+  },
 };

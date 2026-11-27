@@ -19,6 +19,8 @@ const LOMBOK_WRITES: readonly string[] = [
   'IP_PARAMETER_IS_DEAD_BUT_OVERWRITTEN',
   'AT_',
   'UG_',
+  'URF_',
+  'NM_METHOD_NAMING_CONVENTION',
 ];
 const FILE_WRITERS: readonly string[] = [
   'com.google.auto.service.processor.',
