@@ -1,0 +1,1 @@
+package com.auth0.jwt.algorithms; public class Algorithm { public static Algorithm HMAC256(String k) { return null; } public static Algorithm HMAC256(byte[] k) { return null; } public static Algorithm HMAC512(String k) { return null; } }

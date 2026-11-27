@@ -1,0 +1,1 @@
+package io.jsonwebtoken; public class JwtBuilder { public JwtBuilder signWith(Object a, String k) { return this; } public JwtBuilder signWith(Object a, byte[] k) { return this; } public JwtBuilder setSigningKey(String k) { return this; } }
