@@ -50,7 +50,7 @@ pub fn parameter_fields(context: &Context, class: Node, own: &str, members: &[No
             }
         }
     }
-    let all = context.store_counts.get_or_init(|| stored(context).into_iter().map(|(key, values)| (key, values.len())).collect());
+    let all = context.memo.counts.get_or_init(|| stored(context).into_iter().map(|(key, values)| (key, values.len())).collect());
     seen.into_iter()
         .filter(|(name, found)| {
             let everywhere = all.get(&(own.to_string(), name.clone())).copied().unwrap_or(0);

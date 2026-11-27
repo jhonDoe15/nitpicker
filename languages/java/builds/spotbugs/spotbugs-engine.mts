@@ -9,6 +9,7 @@ import {
   type EngineHooks,
 } from '../../../../shared/engine/engine-run.mts';
 import { fieldOf, listOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
+import { CAST_PATTERNS } from './casts/spotbugs-casts-placed.mts';
 import { INVOCATION_PATTERNS, URL_PATTERNS } from './spotbugs-dumb-placed.mts';
 import { engineSpotbugsFindingOf, spotbugsResultOf } from './spotbugs-results.mts';
 import {
@@ -77,6 +78,7 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   BooleanReturnNull: ['NP_BOOLEAN_RETURN_NULL'],
   FindDeadLocalStores: DEAD_STORES,
   FindLocalSelfAssignment2: SELF_ASSIGNMENTS,
+  FindBadCast2: CAST_PATTERNS,
   FindJSR166LockMonitorenter: [
     LOCK_MONITORENTER,
     UTIL_MONITORENTER,
