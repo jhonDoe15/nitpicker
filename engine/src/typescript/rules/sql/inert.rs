@@ -20,7 +20,6 @@ pub struct Piece<'s> {
 }
 
 const MAX_OBLIGATIONS: usize = 256;
-const MAX_CHAIN: usize = 64;
 const NUMERIC_FUNCTIONS: [&str; 5] = ["Number", "parseInt", "parseFloat", "BigInt", "Boolean"];
 const ESCAPE_FUNCTIONS: [&str; 4] = ["escape", "escapeId", "escapeLiteral", "escapeIdentifier"];
 const NUMERIC_METHODS: [&str; 3] = ["getTime", "now", "toFixed"];
@@ -66,11 +65,9 @@ fn resolved_list<'s>(scopes: &Scopes<'_, 's>, node: Option<Node<'s>>) -> Option<
 
 fn is_constant_collection<'s>(scopes: &Scopes<'_, 's>, node: Option<Node<'s>>) -> bool {
     let mut list = resolved_list(scopes, node);
-    for _ in 0..MAX_CHAIN {
-        match list.filter(|value| is_set_call(*value)).and_then(|value| resolved_list(scopes, first_argument(value))) {
-            Some(next) => list = Some(next),
-            None => break,
-        }
+    let mut seen = HashSet::new();
+    while let Some(next) = list.filter(|value| is_set_call(*value) && seen.insert(value.index)).and_then(|value| resolved_list(scopes, first_argument(value))) {
+        list = Some(next);
     }
     let Some(list) = list.filter(|list| list.is("ArrayExpression")) else { return false };
     let elements = list.list("elements");

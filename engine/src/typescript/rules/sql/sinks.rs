@@ -7,6 +7,7 @@ use crate::typescript::rules::support::scope::Scopes;
 use crate::typescript::rules::support::view::Node;
 use oxc_semantic::SymbolId;
 use regex::Regex;
+use std::collections::HashSet;
 use std::sync::LazyLock;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -17,7 +18,6 @@ pub enum Sink {
     Query,
 }
 
-const MAX_CHAIN: usize = 256;
 const RAW_METHODS: [&str; 11] = ["whereRaw", "orWhereRaw", "andWhereRaw", "whereNotRaw", "havingRaw", "orHavingRaw", "orderByRaw", "groupByRaw", "joinRaw", "fromRaw", "onRaw"];
 const CLAUSE_METHODS: [&str; 6] = ["where", "andWhere", "orWhere", "having", "andHaving", "orHaving"];
 const ORDER_METHODS: [&str; 4] = ["orderBy", "addOrderBy", "groupBy", "addGroupBy"];
@@ -72,11 +72,9 @@ fn builder_step<'s>(scopes: &Scopes<'_, 's>, node: Node<'s>) -> Option<Node<'s>>
 
 fn is_query_builder<'s>(scopes: &Scopes<'_, 's>, node: Node<'s>) -> bool {
     let Some(mut last) = resolve_constant(scopes, Some(unwrapped(node))).map(unwrapped) else { return false };
-    for _ in 0..MAX_CHAIN {
-        match builder_step(scopes, last) {
-            Some(next) => last = next,
-            None => break,
-        }
+    let mut seen = HashSet::new();
+    while let Some(next) = builder_step(scopes, last).filter(|_| seen.insert(last.index)) {
+        last = next;
     }
     if last.is("Identifier") {
         return last.name().is_some_and(|name| BUILDER_NAME.is_match(&name));

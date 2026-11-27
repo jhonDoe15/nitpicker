@@ -17,8 +17,6 @@ const GLOBAL_OBJECTS: [&str; 4] = ["globalThis", "window", "self", "global"];
 const TIMEOUT_KEYS: [&str; 2] = ["timeout", "signal"];
 const AXIOS_CALL_POSITIONS: [(&str, usize); 11] =
     [("request", 0), ("get", 1), ("delete", 1), ("head", 1), ("options", 1), ("post", 2), ("put", 2), ("patch", 2), ("postForm", 2), ("putForm", 2), ("patchForm", 2)];
-const MAX_CHAIN: usize = 256;
-
 static REQUEST_NAME: LazyLock<Regex> = LazyLock::new(|| Regex::new("^(?:request|req)$").expect("request name"));
 
 pub struct ClientScope<'c, 'a, 's> {
@@ -68,11 +66,8 @@ fn chained_listener(call: Node) -> Option<Node> {
 
 fn has_set_timeout_call<'s>(scopes: &Scopes<'_, 's>, call: Node<'s>) -> bool {
     let mut holder = call;
-    for _ in 0..MAX_CHAIN {
-        match chained_listener(holder) {
-            Some(next) => holder = next,
-            None => break,
-        }
+    while let Some(next) = chained_listener(holder) {
+        holder = next;
     }
     let Some(owner) = holder.parent() else { return false };
     if owner.is("MemberExpression") && member_name(owner).as_deref() == Some("setTimeout") {

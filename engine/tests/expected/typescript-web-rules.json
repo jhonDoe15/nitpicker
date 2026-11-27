@@ -3105,6 +3105,51 @@
   81
  ],
  [
+  "no-sql-string-building/55.ts",
+  "nitpicker/no-sql-string-building",
+  4,
+  11,
+  "SQL text built by concatenation lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  4,
+  56
+ ],
+ [
+  "no-sql-string-building/55.ts",
+  "nitpicker/no-sql-string-building",
+  5,
+  11,
+  "SQL text built by concatenation lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  5,
+  43
+ ],
+ [
+  "no-sql-string-building/55.ts",
+  "nitpicker/no-sql-string-building",
+  7,
+  11,
+  "SQL text built by concatenation lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  7,
+  39
+ ],
+ [
+  "no-sql-string-building/55.ts",
+  "nitpicker/no-sql-string-building",
+  8,
+  11,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  8,
+  54
+ ],
+ [
+  "no-sql-string-building/57.ts",
+  "nitpicker/no-sql-string-building",
+  2,
+  4510,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  2,
+  4521
+ ],
+ [
   "no-unchecked-response-json/01.ts",
   "nitpicker/require-http-timeout",
   1,
