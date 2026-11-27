@@ -558,7 +558,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// The value of a constant `boolean` expression made of literals, constant fields and the boolean operators.
-    fn constant_boolean(&self, expression: Node) -> Option<bool> {
+    pub fn constant_boolean(&self, expression: Node) -> Option<bool> {
         let expression = unwrap(expression);
         let read = |field: &Field| (field.kind == Type::Primitive("boolean")).then(|| field.constant.as_deref().map(|value| value == "true")).flatten();
         match expression.kind() {
