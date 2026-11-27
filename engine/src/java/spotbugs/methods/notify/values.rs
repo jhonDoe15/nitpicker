@@ -1,9 +1,9 @@
 //! The instructions javac writes for expressions, as `code.rs` counts them.
 use super::super::super::folds;
 use super::code::{AWAY, Code, Op};
-use crate::engine::source::named_children;
+use crate::engine::source::{children, named_children};
 use crate::java::types::expr::{Binding, Receiver, unwrap};
-use crate::java::types::model::{Type, flag};
+use crate::java::types::model::{Field, Type, flag};
 use tree_sitter::Node;
 
 const LITERALS: &[&str] = &[
@@ -116,6 +116,7 @@ impl<'a> Code<'_, 'a> {
                 }
                 self.push(Op::Other);
             }
+            "method_reference" if self.creates_inner(node) => self.ops.extend([Op::Load, Op::Other]),
             "method_reference" => {
                 match node.named_child(0) {
                     Some(object) if matches!(object.kind(), "this" | "super") => self.push(Op::Load),
@@ -185,6 +186,9 @@ impl<'a> Code<'_, 'a> {
     /// Whether javac calls a method of `java.lang.Object` with `invokeinterface`: on a value of an interface type.
     fn on_interface(&self, call: Node, object: Option<Node>) -> bool {
         let index = self.context.resolver.index;
+        if object.is_some_and(|object| self.several_bounds(object)) {
+            return false;
+        }
         let owner = match object {
             Some(object) => match self.context.resolver.type_of(object).map(|kind| kind.erased()) {
                 Some(Type::Class(name, _)) => name,
@@ -196,6 +200,34 @@ impl<'a> Code<'_, 'a> {
             }
         };
         index.get(&owner).is_some_and(|info| info.is_interface)
+    }
+
+    /// A value whose type is a type variable with several bounds: javac calls `Object`'s methods on it with
+    /// `invokevirtual`, whatever its erasure.
+    fn several_bounds(&self, object: Node) -> bool {
+        let resolver = self.context.resolver;
+        let object = unwrap(object);
+        if let Some(Type::Class(name, _)) = resolver.type_of(object) {
+            if name.contains('&') {
+                return true;
+            }
+        }
+        let variable = match resolver.symbolic().type_of(object) {
+            Some(Type::Variable(name)) => Some(name),
+            _ => {
+                let field = match object.kind() {
+                    "identifier" => Some(object),
+                    "field_access" if object.child_by_field_name("object").is_some_and(|owner| owner.kind() == "this") => object.child_by_field_name("field"),
+                    _ => None,
+                };
+                field.and_then(|field| match resolver.binding(field, self.context.text(field)) {
+                    Some(Binding::Field(_, _, Field { generic: Type::Variable(name), .. })) => Some(name.clone()),
+                    _ => None,
+                })
+            }
+        };
+        let Some(parameter) = variable.and_then(|name| crate::java::types::scope::type_parameter(self.context.file, object, &name)) else { return false };
+        children(parameter).into_iter().find(|part| part.kind() == "type_bound").is_some_and(|bound| named_children(bound).len() > 1)
     }
 
     fn creation(&mut self, node: Node<'a>) {
@@ -216,16 +248,45 @@ impl<'a> Code<'_, 'a> {
 
     /// A class created with `new` that takes the instance around it.
     pub(super) fn inner(&self, creation: Node) -> bool {
-        let kind = creation.child_by_field_name("type").and_then(|kind| self.context.resolver.type_node(kind));
+        self.takes_values(creation.child_by_field_name("type"))
+    }
+
+    /// `Class::new` for a class that takes the instance around it or variables of the method: javac hands them
+    /// to the lambda it writes.
+    fn creates_inner(&self, reference: Node) -> bool {
+        let last = reference.child(reference.child_count().saturating_sub(1) as u32);
+        last.is_some_and(|last| last.kind() == "new") && self.takes_values(reference.child(0))
+    }
+
+    /// Whether creating the class written at `written` takes the instance around it, or for a local class also
+    /// variables of the method, its own or those of a local class it extends.
+    fn takes_values(&self, written: Option<Node>) -> bool {
+        let kind = written.and_then(|kind| self.context.resolver.type_node(kind));
         let Some(Type::Class(name, _)) = kind.map(|kind| kind.erased()) else { return false };
-        let local = self.context.classes.get(&name).copied().filter(|declaration| crate::java::javac::declared_locally(*declaration));
-        if let Some(local) = local {
-            return !self.is_static || local.child_by_field_name("body").is_some_and(|body| self.captures(body, false));
+        if let Some(takes) = self.local_takes(&name) {
+            return !self.is_static || takes;
         }
         self.context.resolver.index.get(&name).is_some_and(|info| {
             let nested = info.name.rsplit_once('.').is_some_and(|(outer, _)| self.context.resolver.index.get(outer).is_some());
             nested && !info.is_interface && info.flags & (flag::STATIC | flag::ENUM | flag::RECORD) == 0
         })
+    }
+
+    /// For a local class, whether creating it takes variables of the method; `None` for any other class.
+    pub(super) fn local_takes(&self, name: &str) -> Option<bool> {
+        let local = self.context.classes.get(name).copied().filter(|declaration| crate::java::javac::declared_locally(*declaration))?;
+        Some(!self.context.compiled().local_class_extras(self.context.resolver, local).is_empty())
+    }
+
+    /// `new Local(...)` or `Local::new` for a local class that takes variables of the method.
+    pub(super) fn creates_taking(&self, node: Node) -> bool {
+        let written = match node.kind() {
+            "object_creation_expression" => node.child_by_field_name("type"),
+            "method_reference" if node.child(node.child_count().saturating_sub(1) as u32).is_some_and(|last| last.kind() == "new") => node.child(0),
+            _ => None,
+        };
+        let kind = written.and_then(|kind| self.context.resolver.type_node(kind)).map(|kind| kind.erased());
+        matches!(kind, Some(Type::Class(name, _)) if self.local_takes(&name) == Some(true))
     }
 
     /// `false && x` and `true || x` fold to a constant; `true && x` and `false || x` are `x`.

@@ -851,9 +851,12 @@ parameter, `assert`. A notify call made without a read first (`"x".notify()`, `g
 `R.class.notify()`) is not counted, and the watch goes on. After the call, one `return` or jump may follow, and the
 end of the code reports it; in a block, a local load and `monitorexit` report it right away. Any other instruction
 after the call ends the watch, as does a second call. `super.notify()` (`invokespecial`) and calls on a value of an
-interface type (`invokeinterface`) do not count. There is one finding per method, at the first call reported, with
+interface type (`invokeinterface`) do not count; on a type variable with several bounds javac calls `Object`'s
+method with `invokevirtual`, whatever the erasure. There is one finding per method, at the first call reported, with
 priority 2, level `warning`, the line of the call's `(`, and the method as the argument. Inner class creation reads
-`this`, as does an anonymous class in an instance method; capturing lambdas and classes read what they capture. javac
+`this`, as does an anonymous class in an instance method; capturing lambdas and classes read what they capture,
+also a local class that takes values only through the local class it extends, and `Local::new` or `Inner::new`
+(the lambda javac writes takes them). javac
 writes the value of a constant (also a `final` instance field or a `final` local set from a constant), folds
 `true ?`, `false &&` and `true ||`, turns `x += constant` on an `int` local into `iinc`, reads a static field named
 through a value after dropping the value, and leaves out casts to a supertype, jumps to the next instruction and
@@ -862,11 +865,11 @@ each constructor that does not call `this(...)`). `int.class` reads `Integer.TYP
 its selector and one instruction. Lombok's `@Synchronized` is a `synchronized` block on a
 field. The engine writes the instructions from the source (`code.rs`, `values.rs`); code it does not follow
 (`switch` on strings, enums and boxes, `try` with resources, `assert`, `yield`, unknown expressions) counts as a
-read. Known differences (#2508): type variables with an intersection bound, and local classes that take captured
-values only through a superclass or a constructor reference. Every pattern of
+read. Every pattern of
 `FindNakedNotify` is on the engine, so SpotBugs no longer runs that detector.
 
-Labs: 572 same / 4 missed / 2 extra (all #2508). On the six comparison code bases: Nacos 5 / 0 / 0, the others 0.
+Labs: 460 same / 0 missed / 0 extra (#2508 fixed the six differences; `tests/fixtures/spotbugs/notify_review_e`).
+Code nested hundreds of levels deep takes time in step with its size. On the six comparison code bases: Nacos 5 / 0 / 0, the others 0.
 
 ### Field patterns
 

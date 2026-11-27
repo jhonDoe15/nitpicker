@@ -28,6 +28,7 @@ impl Code<'_, '_> {
         while let Some(node) = stack.pop() {
             let named = match node.kind() {
                 "this" | "super" if outer_this => return true,
+                "object_creation_expression" | "method_reference" if self.creates_taking(node) => return true,
                 "object_creation_expression" if outer_this && !self.is_static && (self.inner(node) || named_children(node).iter().any(|part| part.kind() == "class_body")) => return true,
                 "method_invocation" if outer_this && node.child_by_field_name("object").is_none() && !resolver.resolve_call(node).is_some_and(|call| call.method.is_static) => return true,
                 "identifier" => {
