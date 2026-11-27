@@ -6,6 +6,7 @@ mod contracts;
 mod defaults;
 mod delegation;
 mod domain;
+mod database;
 mod dual_writes;
 mod effects;
 mod empty_lists;
@@ -29,6 +30,7 @@ mod persistence;
 mod presence;
 mod promises;
 mod react_tests;
+mod security_values;
 mod signatures;
 mod spreads;
 mod stale_retries;
@@ -132,7 +134,7 @@ impl<'a> Context<'a, '_> {
 pub type Rule = fn(&mut Context);
 
 /// Rules written against the ESTree-shaped view.
-const ON_VIEW: &[&str] = &["contract-infrastructure-type", "exhaustive-union-predicate", "handler-entity-type", "hover-test-needs-keyboard", "no-accumulator-concat", "no-add-only-collection", "no-array-spread-arguments", "no-blank-number-coercion", "no-chunkwise-stream-text", "no-copied-constant", "no-dropped-delegate-result", "no-dual-write", "no-eager-relation", "no-empty-every-signal", "no-expanding-replacement-string", "no-external-executables-in-unit-tests", "no-falsy-default", "no-forwarding-method-alias", "no-forwarding-wrapper", "no-in-presence-check", "no-internal-module-mocks", "no-io-in-loop", "no-lazy-relation-in-loop", "no-local-time-zone", "no-lookup-as-presence", "no-many-to-many-cascade-remove", "no-mutating-method-in-domain", "no-parameter-mutation", "no-remote-call-in-transaction", "no-remote-call-under-lock", "no-retry-without-idempotency", "no-shadowed-spread-key", "no-stale-retry-after-conflict", "no-string-as-regex", "no-swapped-arguments", "no-unhandled-void-promise", "no-union-order-dependence", "no-unisolated-job-loop", "no-unknown-in-domain", "no-unpaged-listing", "no-unversioned-orm-entity", "no-wait-for-with-fake-timers", "preserve-error-cause", "react-test-no-implementation-details", "report-module-load-effects", "require-error-listener", "settle-pending-on-close", "structured-catch-logging", "test-must-use-production-runtime", "time-unit-mismatch"];
+const ON_VIEW: &[&str] = &["contract-infrastructure-type", "exhaustive-union-predicate", "handler-entity-type", "hover-test-needs-keyboard", "no-accumulator-concat", "no-add-only-collection", "no-array-spread-arguments", "no-blank-number-coercion", "no-chunkwise-stream-text", "no-copied-constant", "no-dropped-delegate-result", "no-dual-write", "no-eager-relation", "no-empty-every-signal", "no-expanding-replacement-string", "no-external-executables-in-unit-tests", "no-falsy-default", "no-forwarding-method-alias", "no-forwarding-wrapper", "no-in-presence-check", "no-internal-module-mocks", "no-io-in-loop", "no-lazy-relation-in-loop", "no-local-time-zone", "no-lookup-as-presence", "no-many-to-many-cascade-remove", "no-mutating-method-in-domain", "no-orm-query-logging", "no-orm-schema-sync", "no-parameter-mutation", "no-remote-call-in-transaction", "no-remote-call-under-lock", "no-retry-without-idempotency", "no-shadowed-spread-key", "no-stale-retry-after-conflict", "no-string-as-regex", "no-swapped-arguments", "no-unhandled-void-promise", "no-union-order-dependence", "no-unisolated-job-loop", "no-unknown-in-domain", "no-unpaged-listing", "no-unversioned-orm-entity", "no-wait-for-with-fake-timers", "preserve-error-cause", "react-test-no-implementation-details", "report-module-load-effects", "require-error-listener", "settle-pending-on-close", "structured-catch-logging", "test-must-use-production-runtime", "time-unit-mismatch"];
 
 pub const ALL: &[(&str, Rule)] = &[
     ("hover-test-needs-keyboard", react_tests::hover_test_needs_keyboard::check),
@@ -143,6 +145,8 @@ pub const ALL: &[(&str, Rule)] = &[
     ("no-internal-module-mocks", test_runtime::no_internal_module_mocks::check),
     ("no-listen-on-all-interfaces", listeners::no_listen_on_all_interfaces::check),
     ("no-many-to-many-cascade-remove", persistence::no_many_to_many_cascade_remove::check),
+    ("no-orm-query-logging", database::no_orm_query_logging::check),
+    ("no-orm-schema-sync", database::no_orm_schema_sync::check),
     ("no-production-console", modules::no_production_console::check),
     ("no-silent-catch", errors::no_silent_catch::check),
     ("no-unpaged-listing", listings::no_unpaged_listing::check),

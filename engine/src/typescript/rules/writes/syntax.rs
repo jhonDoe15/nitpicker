@@ -68,7 +68,7 @@ pub fn static_key(property: Node) -> Option<String> {
     }
 }
 
-fn js_number(number: f64) -> String {
+pub fn js_number(number: f64) -> String {
     if number.fract() == 0.0 && number.abs() < 1e21 { format!("{}", number as i64) } else { number.to_string() }
 }
 
