@@ -11,6 +11,7 @@ const REMOTE_CALLS: [&str; 2] = ["no-remote-call-in-transaction", "no-remote-cal
 const WRITES: [&str; 4] = ["no-retry-without-idempotency", "no-dual-write", "no-stale-retry-after-conflict", "no-unisolated-job-loop"];
 const LOOPS: [&str; 2] = ["no-lazy-relation-in-loop", "no-io-in-loop"];
 const ROWS: [&str; 2] = ["no-whole-rows-for-one-value", "no-loaded-rows-saved-back"];
+const LOOKUPS: [&str; 1] = ["no-lookup-per-element"];
 
 fn compiler() -> Option<PathBuf> {
     if let Some(named) = std::env::var_os("NITPICKER_TYPESCRIPT_COMPILER") {
@@ -134,6 +135,11 @@ fn loop_rules_match_the_plugin_on_the_fixture_project() {
 #[test]
 fn query_row_rules_match_the_plugin_on_the_fixture_project() {
     compare("typescript-typed-rows", &ROWS);
+}
+
+#[test]
+fn lookup_rules_match_the_plugin_on_the_fixture_project() {
+    compare("typescript-typed-lookups", &LOOKUPS);
 }
 
 #[test]

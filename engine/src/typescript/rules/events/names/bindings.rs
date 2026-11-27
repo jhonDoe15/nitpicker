@@ -104,6 +104,12 @@ fn base_bindings(program: Node, modules: &[&str]) -> (HashMap<String, String>, H
 }
 
 pub fn bindings_of(program: Node, modules: &'static [&'static str]) -> Bindings {
+    let (named, namespaces) = module_names(program, modules);
+    Bindings { named, namespaces, modules }
+}
+
+/// The `named` and `namespaces` maps of `bindingsOf` for any list of module names.
+pub fn module_names(program: Node, modules: &[&str]) -> (HashMap<String, String>, HashSet<String>) {
     let (base_named, mut namespaces) = base_bindings(program, modules);
     let mut named = HashMap::new();
     for (local, imported) in base_named {
@@ -138,7 +144,7 @@ pub fn bindings_of(program: Node, modules: &'static [&'static str]) -> Bindings 
             }
         }
     }
-    Bindings { named, namespaces, modules }
+    (named, namespaces)
 }
 
 fn unaliased<'a, 'v>(env: &Env<'a, 'v>, node: Node<'v>) -> Node<'v> {
