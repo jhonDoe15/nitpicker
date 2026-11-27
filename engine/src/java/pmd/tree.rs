@@ -279,8 +279,12 @@ impl<'a, 't> Builder<'a, 't> {
         let start = all.first().map_or(0, |first| first.start_byte());
         let id = self.open(ROOT, "CompilationUnit", Some(root), start, self.file.text.len());
         self.set(id, "PackageName", text(""));
-        for kid in all {
+        let parts = children(root).into_iter().filter(|kid| kid.kind() == ";" || kid.is_named() && !kid.kind().ends_with("comment"));
+        for kid in parts {
             match kid.kind() {
+                ";" => {
+                    self.at(implicit.unwrap_or(id), "EmptyDeclaration", kid);
+                }
                 "package_declaration" => {
                     let declaration = self.at(id, "PackageDeclaration", kid);
                     let name = kids(kid).into_iter().rev().find(|part| matches!(part.kind(), "identifier" | "scoped_identifier"));
@@ -308,16 +312,12 @@ impl<'a, 't> Builder<'a, 't> {
                     let package = if wide { name.as_str() } else { name.rsplit_once('.').map_or("", |(package, _)| package) };
                     self.set(declaration, "PackageName", text(package));
                 }
-                kind if TYPE_DECLARATIONS.contains(&kind) && !compact => {
+                kind if TYPE_DECLARATIONS.contains(&kind) && implicit.is_none() => {
                     self.type_declaration(id, kid, None, false);
                 }
                 _ if compact => {
                     let body = *implicit.get_or_insert_with(|| self.implicit_class(id, kid.start_byte()));
-                    if kid.kind() == ";" {
-                        self.at(body, "EmptyDeclaration", kid);
-                    } else if kid.is_named() {
-                        self.member(body, kid, Owner::Class);
-                    }
+                    self.member(body, kid, Owner::Class);
                 }
                 _ => {}
             }
@@ -1671,7 +1671,13 @@ impl<'a, 't> Builder<'a, 't> {
             let known = match self.get(id, "ParenthesisDepth") { Some(Value::Whole(known)) => *known, _ => 0 };
             self.set(id, "Parenthesized", flag(true));
             self.set(id, "ParenthesisDepth", Value::Whole(known + depth));
+            let before = self.nodes[id as usize].start;
             (self.nodes[id as usize].start, self.nodes[id as usize].end) = (start, end);
+            let mut around = self.nodes[id as usize].parent;
+            while around != ROOT && self.nodes[around as usize].start == before {
+                self.nodes[around as usize].start = start;
+                around = self.nodes[around as usize].parent;
+            }
         }
     }
 

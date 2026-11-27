@@ -68,11 +68,65 @@ impl Walk<'_, '_, '_, '_> {
     pub fn block_like(&mut self, statements: &[u32]) {
         for &statement in statements {
             if self.ctx.is(statement, "LocalVariableDeclaration") {
-                self.local_variables(statement);
+                self.declaration_statement(statement);
             } else {
                 let introduced = self.statement(statement);
                 self.declare_all(&introduced);
             }
+        }
+    }
+
+    /// A declaration among the statements of a block: PMD declares its variables one by one with their initializers,
+    /// then visits the declaration once more as a statement, with all its variables in scope. That second visit
+    /// gives a new scope only to the parts that open one (lambdas, switch expressions, the branches that pattern
+    /// variables reach), so only names there may name a later variable of the same declaration.
+    pub fn declaration_statement(&mut self, declaration: u32) {
+        self.local_variables(declaration);
+        if self.again.is_none() && self.ctx.below(declaration).any(|at| self.opens_scope(at)) {
+            self.again = Some(declaration);
+            self.kids_of(declaration);
+            self.again = None;
+        }
+    }
+
+    fn opens_scope(&self, at: u32) -> bool {
+        let ctx = self.ctx;
+        if matches!(ctx.name(at), "LambdaExpression" | "SwitchExpression") {
+            return true;
+        }
+        let Some(parent) = ctx.parent(at) else { return false };
+        let place = ctx.kids(parent).iter().position(|kid| *kid == at).unwrap_or(0);
+        let first = ctx.nth(parent, 0);
+        match ctx.name(parent) {
+            "InfixExpression" if place == 1 => {
+                let left = first.map(|left| self.binders(left)).unwrap_or_default();
+                match ctx.text(parent, "Operator").as_str() {
+                    "&&" => !left.when_true.is_empty(),
+                    "||" => !left.when_false.is_empty(),
+                    _ => false,
+                }
+            }
+            "ConditionalExpression" if place > 0 => first.is_some_and(|condition| self.may_bind(condition)),
+            _ => false,
+        }
+    }
+
+    /// Whether an access gets the scope of the second visit of its declaration (see `declaration_statement`).
+    pub fn restamped(&self, access: u32, declaration: u32) -> bool {
+        std::iter::once(access)
+            .chain(self.ctx.ancestors(access))
+            .take_while(|at| *at != declaration)
+            .any(|at| self.opens_scope(at))
+    }
+
+    /// PMD's test of a condition's bindings against its shared empty set: `&&` and `||` always count, the rest only
+    /// when they bind a pattern variable.
+    fn may_bind(&self, expression: u32) -> bool {
+        let ctx = self.ctx;
+        match ctx.name(expression) {
+            "UnaryExpression" if ctx.text(expression, "Operator") == "!" => ctx.nth(expression, 0).is_some_and(|inner| self.may_bind(inner)),
+            "InfixExpression" if matches!(ctx.text(expression, "Operator").as_str(), "&&" | "||") => true,
+            _ => !self.binders(expression).is_empty(),
         }
     }
 
@@ -162,6 +216,19 @@ impl Walk<'_, '_, '_, '_> {
         }
     }
 
+    /// The constant a bare case label names in a switch on an enum: `Some` of its declaration when this file declares
+    /// it, `Some(None)` for a constant of an enum from elsewhere, `None` when the name is no constant of the type.
+    fn constant(&self, enum_type: &str, name: &str) -> Option<Option<u32>> {
+        let ctx = self.ctx;
+        let own = self.types.get(enum_type).and_then(|fields| fields.iter().find(|(known, _)| known == name)).map(|(_, at)| *at);
+        if let Some(variable) = own.filter(|variable| ctx.parent(*variable).is_some_and(|parent| ctx.is(parent, "EnumConstant"))) {
+            return Some(Some(variable));
+        }
+        let index = &ctx.machine.resolver.index;
+        let (_, field) = index.field(enum_type, name)?;
+        (field.flags & crate::java::types::model::flag::ENUM != 0).then_some(None)
+    }
+
     /// Whether no `break` in a loop's body leaves the loop or a statement around it.
     fn no_break_out(&self, ring: u32) -> bool {
         let ctx = self.ctx;
@@ -181,18 +248,14 @@ impl Walk<'_, '_, '_, '_> {
         let ctx = self.ctx;
         let kids = ctx.kids(switch).to_vec();
         kids.first().into_iter().for_each(|tested| self.node(*tested));
-        let constants = kids.first().and_then(|tested| ctx.type_of(*tested)).and_then(|kind| self.types.get(&kind.erased().name()).cloned());
+        let tested = kids.first().and_then(|tested| ctx.type_of(*tested)).map(|kind| kind.erased().name());
         self.scoped(|walk| {
             for &branch in kids.iter().skip(1) {
                 let Some(label) = ctx.nth(branch, 0) else { continue };
                 let bound: Vec<u32> = ctx.kids(label).iter().flat_map(|kid| walk.pattern(*kid).when_true).collect();
                 for kid in ctx.kids(label).to_vec() {
-                    let name = ctx.is(kid, "VariableAccess").then(|| ctx.text(kid, "Name"));
-                    let constant = constants.iter().flatten().find(|(known, variable)| {
-                        Some(known) == name.as_ref() && ctx.parent(*variable).is_some_and(|parent| ctx.is(parent, "EnumConstant"))
-                    });
-                    match constant {
-                        Some(&(_, variable)) => walk.bind(kid, variable),
+                    match tested.as_deref().filter(|_| ctx.is(kid, "VariableAccess")).and_then(|enum_type| walk.constant(enum_type, &ctx.text(kid, "Name"))) {
+                        Some(constant) => constant.into_iter().for_each(|variable| walk.bind(kid, variable)),
                         None => walk.node(kid),
                     }
                 }

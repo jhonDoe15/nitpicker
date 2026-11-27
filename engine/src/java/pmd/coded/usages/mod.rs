@@ -32,6 +32,7 @@ impl Usages {
             fields: Vec::new(),
             types: HashMap::new(),
             found: Usages::default(),
+            again: None,
         };
         walk.types = walk.types_in_file();
         for root in 0..ctx.tree.nodes.len() as u32 {
@@ -61,6 +62,7 @@ struct Walk<'c, 'm, 'a, 't> {
     fields: Vec<Vec<(String, u32)>>,
     types: HashMap<String, Vec<(String, u32)>>,
     found: Usages,
+    again: Option<u32>,
 }
 
 impl Walk<'_, '_, '_, '_> {
@@ -70,8 +72,10 @@ impl Walk<'_, '_, '_, '_> {
     }
 
     fn bind(&mut self, access: u32, variable: u32) {
+        if let Some(earlier) = self.found.declared.insert(access, variable) {
+            self.found.of.entry(earlier).or_default().retain(|known| *known != access);
+        }
         self.found.of.entry(variable).or_default().push(access);
-        self.found.declared.insert(access, variable);
     }
 
     fn scoped(&mut self, run: impl FnOnce(&mut Self)) {
@@ -119,7 +123,7 @@ impl Walk<'_, '_, '_, '_> {
                 self.scoped(|walk| {
                     for resource in resources.map(|list| ctx.kids(list).to_vec()).unwrap_or_default() {
                         match ctx.nth(resource, 0) {
-                            Some(declaration) if ctx.is(declaration, "LocalVariableDeclaration") => walk.local_variables(declaration),
+                            Some(declaration) if ctx.is(declaration, "LocalVariableDeclaration") => walk.declaration_statement(declaration),
                             Some(concise) => walk.node(concise),
                             None => {}
                         }
@@ -162,6 +166,8 @@ impl Walk<'_, '_, '_, '_> {
                 }
                 self.kids_of(id);
             }
+            "AnonymousClassDeclaration" if self.again.is_some() => {}
+            "VariableAccess" if self.again.is_some_and(|declaration| !self.restamped(id, declaration)) => self.kids_of(id),
             "VariableAccess" => {
                 let name = ctx.text(id, "Name");
                 let found = self.names.iter().rev().find(|(known, _)| *known == name).map(|(_, at)| *at);

@@ -1,4 +1,4 @@
-package h.patterns;
+package i.patterns;
 class A {
     String s;
     void a(Object o) { if (!(o instanceof String s)) { s = "a"; } }

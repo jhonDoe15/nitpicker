@@ -42,21 +42,21 @@ fn blank_parenthesized_targets(text: &str, bytes: &mut Option<Vec<u8>>) {
             continue;
         }
         let code = code.get_or_insert_with(|| code_bytes(text));
+        if !code[close] {
+            continue;
+        }
         let mut depth = 0usize;
         let Some(open) = (0..=close).rev().filter(|at| code[*at]).find(|at| {
             match raw[*at] {
                 b')' => depth += 1,
-                b'(' => depth -= 1,
+                b'(' => depth = depth.saturating_sub(1),
                 _ => {}
             }
             depth == 0
         }) else {
             continue;
         };
-        let before = text[..open].trim_end();
-        let word = before.rsplit(|character: char| !(character.is_alphanumeric() || character == '_' || character == '$')).next();
-        let keyword = word.is_some_and(|word| matches!(word, "return" | "throw" | "yield" | "else" | "case"));
-        if !code[open..=close].iter().all(|inside| *inside) || (before.ends_with([')', ']', '>']) || !word.is_none_or(str::is_empty)) && !keyword {
+        if !code[open..=close].iter().all(|inside| *inside) {
             continue;
         }
         let inner: String = text[open..=close].chars().filter(|character| !character.is_whitespace() && !matches!(character, '(' | ')')).collect();

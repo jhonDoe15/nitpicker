@@ -1,4 +1,4 @@
-package h.quirks;
+package i.quirks;
 class E {
     String s; int i; Object x;
     void a(Object o, java.util.List<String> xs) { for (String a : xs) for (int i = 0; i < 3; i++) use(i); }
@@ -29,4 +29,14 @@ class E {
     void ae(Object o) { x: for (;;) { if (!(o instanceof String s)) continue x; use(s); } }
     void af(Object o) { while (!(o instanceof String s)) { } use(s); int s = 1; use(s); }
     void use(Object o) { }
+}
+class SecondVisit {
+    int y; int z;
+    static void use(Object... o) {}
+    void a(Object o) { int a = o instanceof String s ? y : 0, y = 2; use(a, y); }
+    void b(Object o) { int a = o instanceof String s && y > 0 ? 1 : 2, y = 1; use(a, y); }
+    void c(Object o) { int a = o instanceof String s && y > 0 ? 1 : 2, b = y; int y = 5; use(a, b, y); }
+    void d(Object o) { try (java.io.Reader r = o instanceof String s ? null : null; java.io.Reader q = r) { use(r, q, y); } catch (Exception e) {} }
+    void e(Object o) { int a = (o instanceof String s) || y > 0 ? 1 : 2, y = 1; use(a, y); }
+    void f(Object o) { Runnable r = () -> use(z), z = null; use(z); }
 }

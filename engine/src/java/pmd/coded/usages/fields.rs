@@ -134,7 +134,7 @@ impl Walk<'_, '_, '_, '_> {
         };
         classes.iter().find_map(|class| {
             let (info, field) = index.field(class, name)?;
-            (field.flags & flag::STATIC != 0).then(|| self.in_file(info, name)).flatten()
+            (field.flags & flag::STATIC != 0 && !field.is_private).then(|| self.in_file(info, name)).flatten()
         })
     }
 }

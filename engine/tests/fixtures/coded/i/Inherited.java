@@ -1,4 +1,4 @@
-package h.inherited;
+package i.inherited;
 interface K { int c = 3; }
 class C {
     int f;

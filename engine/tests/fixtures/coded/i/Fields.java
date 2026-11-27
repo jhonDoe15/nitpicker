@@ -1,6 +1,6 @@
-package h.fields;
-import static h.fields.Holder.LIMIT;
-import static h.fields.Holder.Mode.*;
+package i.fields;
+import static i.fields.Holder.LIMIT;
+import static i.fields.Holder.Mode.*;
 class A { int f; protected int g; private int h; static int S; }
 class B extends A {
     int own;
