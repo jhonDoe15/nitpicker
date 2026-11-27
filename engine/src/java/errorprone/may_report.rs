@@ -18,6 +18,8 @@ pub enum Gate {
     Text(&'static [&'static str]),
     /// javac's tree of the file may nest deeper than `DeeplyNested`'s default limit of 1000 levels.
     Deep,
+    /// The file holds a name that a call to a method or constructor with an annotation named `InlineMe` spells.
+    Inlined,
 }
 
 /// The most javac tree levels that one level of the parse tree stands for: a parse node is at most a javac node with
@@ -74,7 +76,7 @@ pub const PRECONDITIONS: &[(&str, Gate)] = &[
     ("DeeplyNested", Gate::Deep),
     ("UnsafeWildcard", Gate::Always),
     ("IncompatibleArgumentType", Gate::Always),
-    ("InlineMeInliner", Gate::Always),
+    ("InlineMeInliner", Gate::Inlined),
     ("NullArgumentForNonNullParameter", Gate::Always),
     ("Immutable", Gate::Always),
     ("MutableGuiceModule", Gate::Types(&["com.google.inject.AbstractModule"])),
@@ -140,6 +142,10 @@ fn has_any(text: &str, entries: &[&str]) -> bool {
 fn holds(gate: &Gate, text: &str, root: tree_sitter::Node, index: &TypeIndex) -> bool {
     match gate {
         Gate::Deep => root.has_error() || parse_depth(root) * JAVAC_LEVELS_PER_NODE > DEEPLY_NESTED,
+        Gate::Inlined => {
+            let names = index.inline_me_names();
+            index.manifest_paths || (!names.is_empty() && (text.contains("\\u") || names.iter().any(|name| has_word(text, name))))
+        }
         Gate::Android => index.android_compatible,
         Gate::Always => true,
         Gate::Types(names) => names.iter().any(|name| index.has(name)),

@@ -38,6 +38,36 @@ fn row(file: &str, checks: &str) -> (String, String) {
 }
 
 #[test]
+fn inline_me_inliner_needs_a_name_of_an_inline_me_member() {
+    let api = "package p;\n@interface InlineMe { String replacement(); }\npublic class Api {\n  @InlineMe(replacement = \"this.fresh()\")\n  public void stale() {}\n  public void fresh() {}\n  @InlineMe(replacement = \"new Api()\")\n  public Api(int x) {}\n  public Api() {}\n}\n";
+    let files = [
+        ("Api.java", api.to_string()),
+        ("Calls.java", "package p;\nclass Calls { void f(Api api) { api.stale(); } }\n".to_string()),
+        ("Builds.java", "package p;\nclass Builds { Object f() { return new Api(1); } }\n".to_string()),
+        ("Extends.java", "package p;\nclass Extends extends Api { Extends() { super(1); } }\n".to_string()),
+        ("Escaped.java", "package p;\nclass Escaped { void f(Api api) { api.\\u0073tale(); } }\n".to_string()),
+        ("Other.java", "package p;\nclass Other { void f(StringBuilder b) { b.reverse(); } }\n".to_string()),
+    ];
+    assert_eq!(
+        may_report("members", &files, "InlineMeInliner"),
+        vec![
+            row("Api.java", "InlineMeInliner"),
+            row("Builds.java", "InlineMeInliner"),
+            row("Calls.java", "InlineMeInliner"),
+            row("Escaped.java", "InlineMeInliner"),
+            row("Extends.java", "InlineMeInliner"),
+            row("Other.java", ""),
+        ]
+    );
+}
+
+#[test]
+fn inline_me_inliner_cannot_report_without_inline_me_members() {
+    let files = [("Calls.java", "package p;\nclass Calls { void f(StringBuilder b) { b.reverse(); } }\n".to_string())];
+    assert_eq!(may_report("none", &files, "InlineMeInliner"), vec![row("Calls.java", "")]);
+}
+
+#[test]
 fn deeply_nested_needs_a_deep_tree() {
     let chain = format!("class Deep {{ Object f(StringBuilder b) {{ return b{}; }} }}\n", ".append(1)".repeat(400));
     let files = [

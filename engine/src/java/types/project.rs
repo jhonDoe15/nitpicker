@@ -125,7 +125,7 @@ pub fn build(files: &[SourceFile], options: &crate::engine::Options) -> JavaProj
     // An older release sees the library as it was then: the JDK keeps those signatures in `lib/ct.sym`.
     if !release.is_some_and(|release| index.load_release(&jdk_home().join("lib").join("ct.sym"), release)) {
         let modules = jdk_modules();
-        index.load_binaries(&modules);
+        index.load_jdk(&modules);
         entries.extend(modules);
     }
     let binaries_ms = started.elapsed().as_secs_f64() * 1e3;
