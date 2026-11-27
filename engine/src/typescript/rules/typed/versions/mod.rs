@@ -2,6 +2,6 @@
 //! imports, and whether the entity or a base class maps a version column.
 mod classes;
 mod mappings;
-mod trees;
+pub mod trees;
 
 pub use mappings::Form;

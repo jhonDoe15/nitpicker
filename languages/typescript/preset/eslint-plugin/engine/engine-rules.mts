@@ -154,6 +154,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-lazy-relation-in-loop', TYPED],
   ['no-lossy-utf8-decode', {}],
   ['no-local-time-zone', TYPED],
+  ['no-loaded-rows-saved-back', TYPED],
   ['no-lookup-as-presence', TYPED],
   ['no-many-to-many-cascade-remove', {}],
   ['no-mutating-method-in-domain', TYPED],
@@ -251,6 +252,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-weak-hash', {}],
   ['no-unversioned-orm-entity', TYPED],
   ['no-wait-for-with-fake-timers', {}],
+  ['no-whole-rows-for-one-value', TYPED],
   [
     'preserve-error-cause',
     { facts: (_filename, options) => ({ options: JSON.stringify(options[0] ?? {}) }) },
