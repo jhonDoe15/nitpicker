@@ -1,4 +1,5 @@
 import { DUMB_PLACED } from './spotbugs-dumb-placed.mts';
+import { TAIL_PLACED } from './spotbugs-tail-placed.mts';
 
 export type Placed = {
   readonly text: string;
@@ -291,4 +292,5 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     levels: { 1: NOTE, 2: NOTE },
   },
   ...DUMB_PLACED,
+  ...TAIL_PLACED,
 };

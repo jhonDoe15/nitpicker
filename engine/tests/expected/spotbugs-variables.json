@@ -157,5 +157,6 @@
 ["serial_review_b/p/B.java", "EI_EXPOSE_REP2", 12, "new p.B(List, Map, Collection)#ts"],
 ["serial_review_b/p/B.java", "EI_EXPOSE_REP2", 12, "new p.B(List, Map, Collection)#xs"],
 ["serial_review_c/p/C.java", "EI_EXPOSE_REP2", 8, "new p.C(List)#xs"],
-["naming5/p/S.java", "EI_EXPOSE_REP2", 15, "new p.S$StatusOrException(Exception)#exception"]
+["naming5/p/S.java", "EI_EXPOSE_REP2", 15, "new p.S$StatusOrException(Exception)#exception"],
+["tail_enums1/p/A.java", "EI_EXPOSE_REP2", 27, "p.A.setDate(Date)#d"]
 ]

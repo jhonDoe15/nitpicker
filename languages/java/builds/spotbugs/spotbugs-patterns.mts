@@ -7,6 +7,12 @@ import {
   URL_PATTERNS,
 } from './spotbugs-dumb-placed.mts';
 import { INJECTIONS } from './spotbugs-placed.mts';
+import {
+  CAST_PATTERNS,
+  ENUM_PATTERNS,
+  START_PATTERNS,
+  WAIT_PATTERNS,
+} from './spotbugs-tail-placed.mts';
 
 export const WRONG_MAP_ITERATOR = 'WMI_WRONG_MAP_ITERATOR';
 export const LOCK_MONITORENTER = 'JLM_JSR166_LOCK_MONITORENTER';
@@ -97,4 +103,8 @@ export const ON_ENGINE: readonly string[] = [
   ...NUMBER_PATTERNS,
   ...CALL_PATTERNS,
   ...INVOCATION_PATTERNS,
+  ...CAST_PATTERNS,
+  ...WAIT_PATTERNS,
+  ...START_PATTERNS,
+  ...ENUM_PATTERNS,
 ];

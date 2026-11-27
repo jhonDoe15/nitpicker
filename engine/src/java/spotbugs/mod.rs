@@ -33,6 +33,7 @@ pub mod place;
 mod observed;
 mod statements;
 mod stores;
+mod tail;
 mod taint;
 mod threads;
 
@@ -239,6 +240,7 @@ const DETECTORS: &[Detector] = &[
     naming::naming as Detector,
     sequence::sequence as Detector,
     dumb::dumb as Detector,
+    tail::tail as Detector,
 ];
 
 #[derive(Default)]
