@@ -216,6 +216,204 @@
   38
  ],
  [
+  "no-double-decode/19.ts",
+  "nitpicker/no-double-decode",
+  1,
+  52,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  90
+ ],
+ [
+  "no-double-decode/20.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  45
+ ],
+ [
+  "no-double-decode/21.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  55
+ ],
+ [
+  "no-double-decode/22.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  35
+ ],
+ [
+  "no-double-decode/23.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  48
+ ],
+ [
+  "no-double-decode/24.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  52
+ ],
+ [
+  "no-double-decode/25.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  55
+ ],
+ [
+  "no-double-decode/26.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  62
+ ],
+ [
+  "no-double-decode/27.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  77
+ ],
+ [
+  "no-double-decode/28.ts",
+  "nitpicker/no-double-decode",
+  1,
+  53,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  88
+ ],
+ [
+  "no-double-decode/29.ts",
+  "nitpicker/no-double-decode",
+  1,
+  51,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  92
+ ],
+ [
+  "no-double-decode/30.ts",
+  "nitpicker/no-double-decode",
+  1,
+  53,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  94
+ ],
+ [
+  "no-double-decode/31.ts",
+  "nitpicker/no-double-decode",
+  1,
+  43,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  68
+ ],
+ [
+  "no-double-decode/32.ts",
+  "nitpicker/no-double-decode",
+  1,
+  45,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  70
+ ],
+ [
+  "no-double-decode/33.ts",
+  "nitpicker/no-double-decode",
+  1,
+  34,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  63
+ ],
+ [
+  "no-double-decode/34.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  50
+ ],
+ [
+  "no-double-decode/35.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  48
+ ],
+ [
+  "no-double-decode/36.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  46
+ ],
+ [
+  "no-double-decode/37.ts",
+  "nitpicker/no-double-decode",
+  1,
+  36,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  62
+ ],
+ [
+  "no-double-decode/38.ts",
+  "nitpicker/no-double-decode",
+  1,
+  42,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  76
+ ],
+ [
+  "no-double-decode/39.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  67
+ ],
+ [
+  "no-double-decode/40.ts",
+  "nitpicker/no-double-decode",
+  1,
+  56,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  103
+ ],
+ [
   "no-dynamic-import-of-path/20.ts",
   "nitpicker/no-dynamic-import-of-path",
   3,

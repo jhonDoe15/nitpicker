@@ -106,6 +106,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
     },
   ],
   ['no-copy-pasted-tests', { facts: runnerWords('eachCase') }],
+  ['no-double-decode', {}],
   ['no-dropped-delegate-result', TYPED],
   ['no-dynamic-import-of-path', {}],
   ['no-eager-relation', {}],
