@@ -36,6 +36,8 @@ pub struct Options {
     pub source: Option<u32>,
     /// javac ran Lombok over the sources: source classes have the members Lombok writes, and `val` infers a local's type.
     pub lombok: bool,
+    /// The build's class directories for the sources: with `lombok`, the members Lombok wrote are read from them.
+    pub classes: Vec<std::path::PathBuf>,
     /// The compile runs with `-XDandroidCompatible=true`.
     pub android_compatible: bool,
     /// The sources are test code only: Error Prone's `-XepCompilingTestOnlyCode`.

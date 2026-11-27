@@ -89,6 +89,12 @@ fn main() {
                 let entries = listed.split(['\n', ':']).filter(|entry| !entry.trim().is_empty()).map(|entry| PathBuf::from(entry.trim()));
                 if args[index - 1] == "--classpath" { options.classpath.extend(entries) } else { options.module_path.extend(entries) }
             }
+            "--classes" => {
+                index += 1;
+                value(index);
+                let listed = std::fs::read_to_string(&args[index]).unwrap_or_else(|_| args[index].clone());
+                options.classes.extend(listed.split(['\n', ':']).filter(|entry| !entry.trim().is_empty()).map(|entry| PathBuf::from(entry.trim())));
+            }
             "--lombok" => options.lombok = true,
             "--android-compatible" => options.android_compatible = true,
             "--test-only" => options.test_only = true,

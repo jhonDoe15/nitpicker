@@ -8,7 +8,7 @@ export type ProcessorKind = 'none' | 'lombok' | 'other';
 const PROCESSOR_SERVICE = 'META-INF/services/javax.annotation.processing.Processor';
 const CONFIG = 'lombok.config';
 const LOMBOK_PROCESSOR = 'lombok.';
-const LOMBOK_WRITES: readonly string[] = [
+const LOMBOK_WITHOUT_CLASSES: readonly string[] = [
   'SING_',
   'HSM_',
   'PA_',
@@ -17,11 +17,8 @@ const LOMBOK_WRITES: readonly string[] = [
   'SS_',
   'DLS_',
   'IP_PARAMETER_IS_DEAD_BUT_OVERWRITTEN',
-  'AT_',
-  'UG_',
-  'URF_',
-  'NM_METHOD_NAMING_CONVENTION',
 ];
+const LOMBOK_WRITES: readonly string[] = ['AT_', 'UG_', 'URF_', 'NM_METHOD_NAMING_CONVENTION'];
 const FILE_WRITERS: readonly string[] = [
   'com.google.auto.service.processor.',
   'com.google.auto.value.',
@@ -288,6 +285,10 @@ export function lombokMarksGenerated(sources: readonly string[]): boolean {
   return [...directories].every((directory) => markedIn(directory) === true);
 }
 
-export function withoutLombokWrites(patterns: readonly string[]): readonly string[] {
-  return patterns.filter((pattern) => !LOMBOK_WRITES.some((prefix) => pattern.startsWith(prefix)));
+export function withoutLombokWrites(
+  patterns: readonly string[],
+  compiled: boolean,
+): readonly string[] {
+  const written = compiled ? LOMBOK_WRITES : [...LOMBOK_WITHOUT_CLASSES, ...LOMBOK_WRITES];
+  return patterns.filter((pattern) => !written.some((prefix) => pattern.startsWith(prefix)));
 }

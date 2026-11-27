@@ -33,6 +33,7 @@ export type SpotbugsEnginePlan = {
   readonly reportDir: string;
   readonly sources: readonly string[];
   readonly classpath: readonly string[];
+  readonly classes?: readonly string[];
   readonly processorPath: readonly string[];
   readonly processors?: ProcessorKind;
   readonly javaHome: string;
@@ -43,6 +44,7 @@ export const SPOTBUGS_ENGINE_ARGUMENTS = 'spotbugs-engine-arguments.txt';
 const EXCLUDE_FILE = 'spotbugs-engine-exclude.xml';
 const SOURCES_FILE = 'spotbugs-engine-sources.txt';
 const CLASSPATH_FILE = 'spotbugs-engine-classpath.txt';
+const CLASSES_FILE = 'spotbugs-engine-classes.txt';
 const REPORT_FILE = 'spotbugs-engine-report.json';
 const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   MultipleInstantiationsOfSingletons: [
@@ -97,6 +99,7 @@ export function spotbugsPlanOf(plan: unknown): SpotbugsEnginePlan {
     reportDir: String(fieldOf(plan, 'reportDir')),
     sources: textsOf(fieldOf(plan, 'sources')),
     classpath: textsOf(fieldOf(plan, 'classpath')),
+    classes: textsOf(fieldOf(plan, 'classes')),
     processorPath: textsOf(fieldOf(plan, 'processorPath')),
     javaHome: String(fieldOf(plan, 'javaHome')),
   };
@@ -148,6 +151,11 @@ function engineReport(
     plan.sources.map((file) => `${file}\n`).join(''),
   );
   const lookup = writtenFile(path.join(plan.reportDir, CLASSPATH_FILE), plan.classpath.join('\n'));
+  const classes = plan.classes ?? [];
+  const compiled =
+    lombok && classes.length > 0
+      ? ['--classes', writtenFile(path.join(plan.reportDir, CLASSES_FILE), classes.join('\n'))]
+      : [];
   const report = path.join(plan.reportDir, REPORT_FILE);
   rmSync(report, { force: true });
   const { status, stderr } = run(
@@ -159,6 +167,7 @@ function engineReport(
       '--classpath',
       lookup,
       ...(lombok ? ['--lombok'] : []),
+      ...compiled,
       '--out',
       report,
     ],
@@ -213,8 +222,8 @@ export function withoutSpotbugsEngineReport(reportDir: string): void {
   }
 }
 
-function enginePatterns(lombok: boolean): readonly string[] {
-  return lombok ? withoutLombokWrites(ON_ENGINE) : ON_ENGINE;
+function enginePatterns(plan: SpotbugsEnginePlan, lombok: boolean): readonly string[] {
+  return lombok ? withoutLombokWrites(ON_ENGINE, (plan.classes ?? []).length > 0) : ON_ENGINE;
 }
 
 export function spotbugsOnEngine(
@@ -229,7 +238,7 @@ export function spotbugsOnEngine(
     return [];
   }
   const lombok = processors === 'lombok';
-  const patterns = enginePatterns(lombok);
+  const patterns = enginePatterns(plan, lombok);
   try {
     const report = engineReport(plan, lombok, { binary, environment, run });
     writeFileSync(path.join(plan.reportDir, SPOTBUGS_ENGINE_SARIF), engineSarif(report, patterns));

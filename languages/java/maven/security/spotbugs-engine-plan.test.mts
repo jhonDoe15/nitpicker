@@ -49,6 +49,7 @@ describe('spotbugsEnginePlan', () => {
         path.join(root, `src/main/java/p/${name}.java`),
       ),
       classpath: ['/build/other/classes'],
+      classes: [module.outputDirectory],
       processorPath: ['/lib/a.jar'],
       javaHome: '/jdk',
     });
@@ -95,6 +96,7 @@ describe('spotbugsEnginePlan', () => {
         path.join(root, `src/main/java/p/${name}.java`),
       ),
       classpath: [],
+      classes: [module.outputDirectory],
       processorPath: [],
       javaHome: '/jdk',
       ...fields,
@@ -125,6 +127,7 @@ describe('spotbugsEnginePlan', () => {
         path.join(root, `src/main/java/p/${name}.java`),
       ),
       classpath: [],
+      classes: [module.outputDirectory],
       processorPath: [],
       javaHome: '/jdk',
     });

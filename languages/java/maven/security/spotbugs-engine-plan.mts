@@ -102,6 +102,7 @@ export function spotbugsEnginePlan({
     reportDir,
     sources: sources.map(({ file }) => file).sort(),
     classpath: auxiliary,
+    classes: [module.outputDirectory],
     ...processorsOf(compiler, compileClasspath),
     javaHome,
   };

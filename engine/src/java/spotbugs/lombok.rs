@@ -3,6 +3,7 @@
 use super::Context;
 use crate::engine::source::children;
 use crate::java::helpers::annotation_names;
+use crate::java::types::compiled::{CompiledClass, CompiledMethod, shown_parameters};
 use tree_sitter::Node;
 
 /// Annotations on a class that make Lombok write its constructors.
@@ -56,4 +57,24 @@ pub fn reads_field(context: &Context, declaration: Node) -> bool {
     let shown = |class: Node| crate::java::helpers::modifiers(class).is_none_or(|modifiers| !context.text(modifiers).contains("AccessLevel.NONE"));
     let reads = |class: Node, name: &&str| annotated(context, class, name) && (*name != "Getter" || shown(class));
     getter || class.is_some_and(|class| READERS.iter().any(|name| reads(class, name)))
+}
+
+/// The class file of a class of the run, read for Lombok runs that get the build's class directories.
+pub fn compiled<'c>(context: &'c Context, class: &str) -> Option<&'c CompiledClass> {
+    if context.project.compiled.is_empty() {
+        return None;
+    }
+    context.project.compiled.get(&super::names::binary(context, class))
+}
+
+/// The methods Lombok wrote into a class, in class-file order.
+pub fn written<'c>(context: &'c Context, class: &str) -> impl Iterator<Item = &'c CompiledMethod> {
+    compiled(context, class).into_iter().flat_map(|class| class.methods.iter().filter(|method| method.generated))
+}
+
+/// `pkg.Class.method(A, B)` or `new pkg.Class(A, B)` for a method Lombok wrote.
+pub fn label(context: &Context, class: &str, method: &CompiledMethod) -> String {
+    let owner = super::names::binary(context, class);
+    let shown = shown_parameters(&method.descriptor).join(", ");
+    if method.name == "<init>" { format!("new {owner}({shown})") } else { format!("{owner}.{}({shown})", method.name) }
 }

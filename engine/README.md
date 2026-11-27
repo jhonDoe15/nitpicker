@@ -745,8 +745,8 @@ the build makes, and finds most sinks by name). Known differences (#2632 for the
 ### Lombok
 
 SpotBugs skips the members Lombok writes, because Lombok marks them with `@lombok.Generated` (unless a
-`lombok.config` sets `lombok.addLombokGeneratedAnnotation = false`). The engine reads source and does not see
-them either, so only what Lombok changes in hand-written code matters (`tests/fixtures/spotbugs/lombok`):
+`lombok.config` sets `lombok.addLombokGeneratedAnnotation = false`). What Lombok changes in hand-written code
+matters (`tests/fixtures/spotbugs/lombok`):
 
 - A constructor parameter marked with Lombok's `@NonNull` makes the constructor start with a null check that
   throws: `CT_CONSTRUCTOR_THROW` on the line of the parameter, after a `this(...)` call that already throws.
@@ -768,6 +768,30 @@ also knows what Lombok writes that the lock and map-iterator patterns need (#240
   `prefix` (a field without one of the prefixes gets none); a `lombok.config` that changes accessor names
   (`lombok.accessors.fluent`, `prefix`, `capitalization`, `lombok.getter.noIsPrefix`) runs SpotBugs alone.
 - `val` and `var` from Lombok take the type of their value, like Java's `var`.
+
+With `--lombok --classes <class directories>` (real runs pass the build's class directories of the module), the
+engine reads the class files javac wrote for the sources (`src/java/types/compiled.rs`) and takes from them what
+Lombok wrote, the way SpotBugs sees it (#2536, fixtures `lombok_compiled_*`, their class files in
+`tests/fixtures/spotbugs-classes`, written by javac 21 with Lombok 1.18.36):
+
+- Field access bits: `@Value`, `@FieldDefaults` and `@UtilityClass` make fields private, public, final or static.
+  SS_SHOULD_BE_STATIC also needs the `ConstantValue` javac writes, which `@Builder.Default` takes away, and a
+  `@Getter(lazy = true)` field is no longer a `String` or a primitive.
+- The constructors Lombok writes: SING_SINGLETON_HAS_NONPRIVATE_CONSTRUCTOR takes the first constructor in the class
+  file that is not private; when Lombok wrote it, the finding sits on its line (the line of the annotation that asked
+  for it) and names it from its descriptor. No non-private constructor, no finding.
+- A class's first line, where class findings sit, is the lowest line of any method in the class file.
+- HSM_HIDING_METHOD counts the static methods Lombok writes (static getters and setters, `builder()`) on both sides:
+  a hand-written static method hides a written one and a written one hides a hand-written one.
+- PA_PUBLIC_PRIMITIVE_ATTRIBUTE, MS_SHOULD_BE_FINAL and MS_PKGPROTECT count the loads and stores in the code of the
+  written methods, after the hand-written members of the same kind. A written constructor also holds the field
+  initializers, which the source already gives: only the code on the constructor's own line counts.
+- A `@Synchronized` method is synchronized for SING_SINGLETON_GETTER_NOT_SYNCHRONIZED.
+
+On these, Lombok modules leave the singleton, hiding and field patterns to the engine like other modules. Measured
+on mall (7 modules, Lombok 1.18.46), eladmin (5 modules, built with Lombok 1.18.36) and the 315 test sources of
+Lombok 1.18.36 that compile alone: the moved patterns are identical to SpotBugs at the SARIF level; the other
+differences on Lombok code are listed in #2596.
 
 Real runs decide Lombok from the processors javac uses (#2402): the declared `annotationProcessorPaths` when a
 build lists them, else the `META-INF/services` entry of each classpath jar, read without unpacking the jar.
