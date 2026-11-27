@@ -32,6 +32,7 @@ import {
   type EngineDiagnostic,
 } from './engine-diagnostics.mts';
 import { narrowedFlags } from './options/narrowed-flags.mts';
+import { excludedFile, handedBack } from './options/project-options.mts';
 import { lombokOff } from './options/runner-levels.mts';
 import { keptRows, mayReportOf, rowsOf } from './skip/plan-rows.mts';
 import {
@@ -146,11 +147,13 @@ function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
   const remaining = remainingChecks(set, selected.checks);
   const report = everyFileRead(engineReport({ file, ...set, ...selected, remaining }, setting));
   const found = rowsOf(report, selected.checks, generatedRoots(set.head));
-  const plan = sourceSetPlan(set, remaining, mayReportOf(report));
+  const back = handedBack(set, found, sourceSetLevels(set) ?? new Map());
+  const plan = sourceSetPlan(set, remaining, mayReportOf(report), back);
   const rows = keptRows(found, {
     set,
     plan,
     lombokOff: lombokOff(set.head, true),
+    excluded: excludedFile(set.head),
   });
   writePlan(file, set, plan);
   setting.log?.write(planLine(name, set, plan));

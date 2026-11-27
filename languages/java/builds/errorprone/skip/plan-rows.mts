@@ -44,16 +44,17 @@ export type RowContext = {
   readonly set: ArgumentSet;
   readonly plan: SourceSetPlan;
   readonly lombokOff: readonly string[];
+  readonly excluded: (file: string) => boolean;
 };
 
 /**
- * Drops the rows Error Prone's runner would not report or reports itself: a check
+ * Drops the rows Error Prone's runner would not report or reports itself: rows in files the project excludes, a check
  * Error Prone still runs in the files it compiles, and its Lombok checks under a `lombok.config` that turns off
  * `@SuppressWarnings`.
  */
 export function keptRows(
   rows: readonly EngineRow[],
-  { set, plan, lombokOff }: RowContext,
+  { set, plan, lombokOff, excluded }: RowContext,
 ): EngineRow[] {
   const unsuppressed = lombokUnsuppressed(set.sources);
   const compiled = new Set(plan.kind === 'narrowed' ? plan.files : []);
@@ -61,6 +62,7 @@ export function keptRows(
   return rows.filter(
     ({ rule, file }) =>
       !(
+        excluded(file) ||
         (compiled.has(file) && (rerun.has(rule) || NOT_DISABLEABLE.has(rule))) ||
         (lombokOff.includes(rule) && unsuppressed.has(file))
       ),

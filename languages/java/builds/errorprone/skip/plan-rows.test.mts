@@ -36,7 +36,7 @@ describe('keptRows', () => {
     ];
 
     const plan = { kind: 'narrowed', files: [a, b], checks: ['SystemOut'] } as const;
-    const context = { set, plan, lombokOff: ['MissingBraces'] };
+    const context = { set, plan, lombokOff: ['MissingBraces'], excluded: () => false };
 
     expect(keptRows(rows, { ...context, plan: { ...plan, files: [a] } })).toStrictEqual([
       rows[1],
@@ -45,5 +45,8 @@ describe('keptRows', () => {
     expect(keptRows(rows, { ...context, plan: { ...plan, files: [a, c] } })).toStrictEqual([
       rows[1],
     ]);
+    expect(
+      keptRows(rows, { ...context, excluded: (file) => file === b, plan: { kind: 'none' } }),
+    ).toStrictEqual([rows[0], rows[3]]);
   });
 });

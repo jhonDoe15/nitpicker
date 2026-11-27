@@ -131,4 +131,20 @@ describe('sourceSetPlan', () => {
       checks: ['FallThrough'],
     });
   });
+
+  it('hands engine checks back for the files they were given back in, and leaves excluded files out', () => {
+    const set = setIn(project(), '--errorprone-flag=-XepExcludedPaths:.*/B\\.java');
+    const [a = '', , c = ''] = set.sources;
+    const plan = sourceSetPlan(
+      set,
+      [],
+      new Map(),
+      new Map([
+        [a, ['SystemOut']],
+        [c, ['MissingBraces']],
+      ]),
+    );
+
+    expect(plan).toStrictEqual({ kind: 'narrowed', files: [a], checks: ['SystemOut'] });
+  });
 });

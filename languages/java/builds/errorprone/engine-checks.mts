@@ -1,9 +1,9 @@
 import PORTED_CHECKS from '../../gradle/errorprone/engine-checks.json' with { type: 'json' };
 import { ownClasses, ownPackages, runsProcessors, type ArgumentSet } from './engine-arguments.mts';
 import { NOT_DISABLEABLE, type CheckLevels } from './options/check-levels.mts';
-import { unsupportedOption } from './options/project-options.mts';
+import { optionReaders, unsupportedOption } from './options/project-options.mts';
 import { runnerLevels } from './options/runner-levels.mts';
-import { hasCheckPlugins, immutableInReach } from './skip/runner-checks.mts';
+import { immutableInReach } from './skip/runner-checks.mts';
 
 export const NULL_AWAY = 'NullAway';
 export const ENGINE_CHECKS: readonly string[] = [...PORTED_CHECKS, NULL_AWAY];
@@ -45,9 +45,6 @@ export function wholeReason(set: ArgumentSet): string | undefined {
   if (sourceSetLevels(set) === undefined) {
     return 'Error Prone refuses the project check levels';
   }
-  if (hasCheckPlugins(set.head)) {
-    return 'its processor path brings checks';
-  }
   return runsProcessors(set.head) ? 'it runs annotation processors' : undefined;
 }
 
@@ -57,16 +54,21 @@ function runsOnEngine(check: string, levels: CheckLevels): boolean {
 }
 
 /**
- * The engine's checks that Error Prone's runner would run on the source set below error level; NullAway only on main sources with own packages.
+ * The engine's checks that Error Prone's runner would run on the source set at warning level and without a project
+ * option they read; NullAway only on main sources with own packages.
  */
 export function engineChecksFor(set: ArgumentSet): EngineChecks {
   const levels = sourceSetLevels(set);
   if (levels === undefined || wholeReason(set) !== undefined) {
     return NONE;
   }
+  const readers = optionReaders(set.head);
   const packages = testOnly(set.head) ? [] : ownPackages(ownClasses(set.head));
   const checks = ENGINE_CHECKS.filter(
-    (check) => runsOnEngine(check, levels) && (check !== NULL_AWAY || packages.length > 0),
+    (check) =>
+      runsOnEngine(check, levels) &&
+      !readers.has(check) &&
+      (check !== NULL_AWAY || packages.length > 0),
   );
   return { checks, packages: checks.includes(NULL_AWAY) ? packages : [] };
 }

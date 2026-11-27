@@ -100,9 +100,36 @@ describe('engineChecksFor', () => {
   });
 
   it.each([
-    '-XepExcludedPaths:.*/generated/.*',
-    '-XepOpt:NullAway:ExcludedClasses=demo.A',
-    '-XepDisableAllChecks',
+    [['-Xep:SystemOut:WARN', '-XepDisableAllChecks'], ['UnicodeDirectionalityCharacters']],
+    [
+      ['-XepDisableAllChecks', '-Xep:SystemOut:WARN'],
+      ['SystemOut', 'UnicodeDirectionalityCharacters'],
+    ],
+  ])('applies %j to the check list as Error Prone does', (flags, checks) => {
+    const head = headWith(classesIn('demo'), ...flags.map((flag) => `--errorprone-flag=${flag}`));
+
+    expect(engineChecksFor(setOf(head)).checks).toStrictEqual(checks);
+  });
+
+  it('keeps the checks that read a project -XepOpt option on Error Prone', () => {
+    const head = headWith(
+      classesIn('demo'),
+      '--errorprone-flag=-XepOpt:NullAway:ExcludedClasses=demo.A',
+      '--errorprone-flag=-XepOpt:IdentifierName:AllowInitialismsInTypeName=true',
+    );
+    const { checks } = engineChecksFor(setOf(head));
+
+    expect(
+      [NULL_AWAY, 'IdentifierName', 'PatternMatchingInstanceof'].filter((check) =>
+        checks.includes(check),
+      ),
+    ).toStrictEqual([]);
+    expect(checks).toContain('SystemOut');
+  });
+
+  it.each([
+    '-XepExcludedPaths:(?i).*/generated/.*',
+    '-XepOpt:Unknown:Flag=1',
     '-XepPatchChecks:MissingOverride',
     '-XepIgnoreSuppressionAnnotations',
     '-Xep:SystemOut:LOUD',

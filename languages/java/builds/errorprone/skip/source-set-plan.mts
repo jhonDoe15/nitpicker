@@ -6,8 +6,9 @@ import {
   QUIET_AT_SUGGESTION,
   type CheckLevels,
 } from '../options/check-levels.mts';
+import { excludedFile } from '../options/project-options.mts';
 import { lombokOff } from '../options/runner-levels.mts';
-import { lombokUnsuppressed } from './runner-checks.mts';
+import { hasCheckPlugins, lombokUnsuppressed } from './runner-checks.mts';
 
 /**
  * What Error Prone still does for a source set once the engine has run its checks: nothing, or a run of only the
@@ -23,6 +24,7 @@ export type SourceSetPlan =
 
 export const NARROWED = '--narrowed';
 const SHOWN_CHECKS = 5;
+const NO_HAND_BACK: ReadonlyMap<string, readonly string[]> = new Map();
 
 function quiet(check: string, levels: CheckLevels): boolean {
   return QUIET_AT_SUGGESTION.includes(check) && levels.get(check) === 'SUGGESTION';
@@ -51,6 +53,7 @@ type PlanContext = {
   readonly remaining: readonly string[];
   readonly wanted: ReadonlySet<string>;
   readonly mayReport: ReadonlyMap<string, readonly string[]>;
+  readonly handedBack: ReadonlyMap<string, readonly string[]>;
   readonly unsuppressed: ReadonlySet<string>;
   readonly lombokOff: readonly string[];
 };
@@ -59,29 +62,36 @@ function fileChecks(file: string, context: PlanContext): string[] {
   const answer = context.mayReport.get(file);
   const asked =
     answer === undefined ? context.remaining : answer.filter((check) => context.wanted.has(check));
-  return asked.filter(
+  return [...new Set([...asked, ...(context.handedBack.get(file) ?? [])])].filter(
     (check) => !(context.unsuppressed.has(file) && context.lombokOff.includes(check)),
   );
 }
 
 /**
  * The plan from the engine's answer: for each file, the checks of `remaining` that may report there, all of them for a
- * file the engine did not answer for. A file under a `lombok.config` that turns off `@SuppressWarnings` gets the
- * runner's Lombok checks off as well.
+ * file the engine did not answer for, and the engine's checks handed back to Error Prone there. A file under a
+ * `lombok.config` that turns off `@SuppressWarnings` gets the runner's Lombok checks off as well, files the project
+ * excludes are left out, and every other file is compiled when the processor path brings checks.
  */
 export function sourceSetPlan(
   set: ArgumentSet,
   remaining: readonly string[],
   mayReport: ReadonlyMap<string, readonly string[]>,
+  handedBack: ReadonlyMap<string, readonly string[]> = NO_HAND_BACK,
 ): SourceSetPlan {
   const context = {
     remaining,
     wanted: new Set(remaining),
     mayReport,
+    handedBack,
     unsuppressed: lombokUnsuppressed(set.sources),
     lombokOff: lombokOff(set.head, true),
   };
-  const files = set.sources.filter((file) => fileChecks(file, context).length > 0);
+  const excluded = excludedFile(set.head);
+  const plugins = hasCheckPlugins(set.head);
+  const files = set.sources.filter(
+    (file) => !excluded(file) && (plugins || fileChecks(file, context).length > 0),
+  );
   if (files.length === 0) {
     return { kind: 'none' };
   }
