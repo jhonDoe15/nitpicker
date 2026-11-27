@@ -120,7 +120,10 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     text: 'Dead store to local variable that shadows field',
     levels: { 1: ERROR, 2: WARNING },
   },
-  DLS_DEAD_LOCAL_STORE_OF_NULL: { text: 'Dead store of null to local variable', levels: { 1: NOTE } },
+  DLS_DEAD_LOCAL_STORE_OF_NULL: {
+    text: 'Dead store of null to local variable',
+    levels: { 1: NOTE },
+  },
   DLS_DEAD_STORE_OF_CLASS_LITERAL: { text: 'Dead store of class literal', levels: { 2: ERROR } },
   DLS_DEAD_LOCAL_INCREMENT_IN_RETURN: {
     text: 'Useless increment in return statement',

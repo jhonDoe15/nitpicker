@@ -8,7 +8,7 @@ import {
   nitpickerCheckstyleConfig,
   reportingCheckstyleConfig,
   withGuardChecks,
-} from '../rulesets/checkstyle-config.mts';
+} from './checkstyle-config.mts';
 import {
   checkstyleEnginePlanOf,
   checkstyleOnEngine,

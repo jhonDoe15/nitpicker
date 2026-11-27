@@ -15,7 +15,7 @@ import {
   reportingCheckstyleConfig,
   suppressionsFile,
   withGuardChecks,
-} from '../../builds/rulesets/checkstyle-config.mts';
+} from '../../builds/checkstyle/checkstyle-config.mts';
 import { removeQuietly } from '../../builds/cleanup/remove-quietly.mts';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mts';
 import { layerCheckstyle } from '../../adapters/tool-config/checkstyle/checkstyle-layers.mts';

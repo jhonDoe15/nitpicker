@@ -12,7 +12,7 @@ import {
   nitpickerCheckstyleConfig,
   reportingCheckstyleConfig,
   withGuardChecks,
-} from '../rulesets/checkstyle-config.mts';
+} from './checkstyle-config.mts';
 import { checkstyleXml, fileElements, type CheckstyleRow } from './checkstyle-xml.mts';
 
 export type CheckstyleEnginePlan = {
