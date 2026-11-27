@@ -234,6 +234,11 @@ impl<'a> Resolver<'a> {
         Resolver { bounded: true, ..self.symbolic() }
     }
 
+    /// A second resolver for the same file whose types keep bounded wildcards.
+    pub fn wildcards(&self) -> Resolver<'a> {
+        Resolver { bounded: true, ..Resolver::new(self.index, self.file, self.scope) }
+    }
+
     /// The class a simple name stands for at a place. Every place directly inside the same block or class body
     /// gets the same answer, so it is kept per block or body.
     fn simple(&self, at: Node, name: &str) -> Option<String> {
@@ -292,10 +297,14 @@ impl<'a> Resolver<'a> {
         if self.index.has(&local) {
             return Some(local);
         }
+        let mut hidden = None;
         for package in &self.scope.on_demand {
             let candidate = format!("{package}.{name}");
             if self.index.has(&candidate) {
-                return Some(candidate);
+                if self.importable(package, &candidate) {
+                    return Some(candidate);
+                }
+                hidden.get_or_insert(candidate);
             }
         }
         let mut wide = self.scope.static_on_demand.iter().map(|owner| format!("{owner}.{name}"));
@@ -303,7 +312,17 @@ impl<'a> Resolver<'a> {
             return Some(found);
         }
         let lang = format!("java.lang.{name}");
-        self.index.has(&lang).then_some(lang)
+        // Code that names a class it cannot see does not compile; the class is still the best guess.
+        if self.index.has(&lang) { Some(lang) } else { hidden }
+    }
+
+    /// Whether an on-demand import of a package brings in one of its top-level classes: javac and PMD skip a class
+    /// that is not public when the file is in another package.
+    fn importable(&self, package: &str, class: &str) -> bool {
+        use super::model::flag;
+        self.index.get(class).is_none_or(|info| {
+            info.package != package || info.flags & flag::PUBLIC != 0 || info.package == self.scope.package
+        })
     }
 
     /// A possibly qualified class name as written, without type arguments.

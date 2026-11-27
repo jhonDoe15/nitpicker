@@ -1,6 +1,6 @@
 //! What Lombok adds to source classes when javac runs it: the getters and setters it writes, and the types of `val` and
 //! `var` locals. Used only for runs over code compiled with Lombok (`Options::lombok`).
-use super::model::{ClassInfo, Detail, Method, Type, flag};
+use super::model::{ClassInfo, Detail, Field, Method, Type, flag};
 use super::scope::Resolver;
 use crate::engine::source::children;
 use crate::java::fields::Fields;
@@ -159,6 +159,26 @@ impl Resolver<'_> {
             }
         }
         asked
+    }
+
+    /// Adds the `log` field PMD gives every class annotated with `@lombok.extern.slf4j.Slf4j`, Lombok on the class path
+    /// or not.
+    pub fn slf4j_field(&self, declaration: Node, info: &mut ClassInfo) {
+        if !self.annotation_names(declaration).iter().any(|name| name == "lombok.extern.slf4j.Slf4j") {
+            return;
+        }
+        let logger = Type::class("org.slf4j.Logger");
+        info.fields.push(Field {
+            name: "log".to_string(),
+            kind: logger.clone(),
+            generic: logger,
+            constant: None,
+            number: None,
+            fixed: None,
+            strict: false,
+            is_private: true,
+            flags: flag::STATIC | flag::FINAL,
+        });
     }
 
     /// Adds the getters and setters Lombok writes for `declaration` to `info`, which already holds its own members.
