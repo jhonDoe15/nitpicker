@@ -4,6 +4,8 @@
 //! differences, which the engine never reports. Both come from `parity/errorprone/lombok/corpus.py expected`.
 //! `fixtures/errorprone-lombok-members` comes with the class files javac and Lombok wrote for it
 //! (`errorprone-lombok-members-classes`): the engine reads the members Lombok added from them.
+//! `fixtures/errorprone-lombok-rewrites` uses each Lombok feature that rewrites written code in a way the engine does
+//! not model: the engine lists those places as `_LombokRewrite` rows, so a run leaves the file to Error Prone.
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::process::Command;
@@ -23,8 +25,10 @@ fn expected(name: &str) -> BTreeMap<Row, usize> {
     counted(serde_json::from_str::<Vec<Row>>(&std::fs::read_to_string(file).expect("expected")).expect("rows"))
 }
 
+const LOMBOK_REWRITE: &str = "_LombokRewrite";
+
 fn engine_rows() -> BTreeMap<Row, usize> {
-    rows_of("errorprone-lombok", false)
+    rows_of("errorprone-lombok", false).into_iter().filter(|(row, _)| row.1 != LOMBOK_REWRITE).collect()
 }
 
 fn rows_of(fixture: &str, with_classes: bool) -> BTreeMap<Row, usize> {
@@ -81,4 +85,74 @@ fn error_prone_checks_see_the_members_lombok_wrote_into_the_class_files() {
 fn without_the_class_files_a_class_that_only_has_a_lombok_logger_is_not_a_utility_class() {
     let found = rows_of("errorprone-lombok-members", false);
     assert!(!found.keys().any(|row| row.0 == "crew/Audit.java" && row.1 == "PrivateConstructorForUtilityClass"));
+}
+
+fn rewrite_rows(fixture: &str) -> Vec<(String, u64, u64, String)> {
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures");
+    let out = std::env::temp_dir().join(format!("nitpicker-engine-{fixture}-rewrites-{}.json", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
+        .arg(fixtures.join(fixture))
+        .args(["--rules", "_ErrorProne", "--lombok", "--out"])
+        .arg(&out)
+        .status()
+        .expect("engine runs");
+    assert!(status.success());
+    let text = std::fs::read_to_string(&out).expect("report");
+    let _ = std::fs::remove_file(&out);
+    let report: serde_json::Value = serde_json::from_str(&text).expect("json");
+    let findings = report["findings"].as_array().expect("findings");
+    let findings = findings.iter().filter(|finding| finding["rule"] == LOMBOK_REWRITE);
+    let mut rows: Vec<(String, u64, u64, String)> = findings
+        .map(|finding| {
+            let file = finding["file"].as_str().expect("file");
+            let name = file.rsplit('/').next().unwrap_or(file).to_string();
+            let line = finding["line"].as_u64().expect("line");
+            let column = finding["column"].as_u64().expect("column");
+            (name, line, column, finding["message"].as_str().expect("message").to_string())
+        })
+        .collect();
+    rows.sort();
+    rows
+}
+
+#[test]
+fn every_place_lombok_rewrites_written_code_the_engine_does_not_model_is_listed() {
+    let wanted = [
+        (17, 1, "ExtensionMethod"),
+        (20, 3, "Builder.Default"),
+        (21, 3, "Getter(lazy)"),
+        (22, 3, "onX"),
+        (25, 3, "Javadoc"),
+        (27, 3, "SneakyThrows"),
+        (29, 5, "Cleanup"),
+        (33, 3, "Synchronized"),
+        (38, 3, "Locked"),
+        (43, 20, "NonNull"),
+        (44, 5, "val"),
+        (45, 5, "Helper"),
+    ];
+    let on_demand = [(7, 1, "onX"), (11, 19, "NonNull"), (15, 3, "Locked")];
+    let row = |file: &str, (line, column, feature): &(u64, u64, &str)| {
+        (file.to_string(), *line, *column, feature.to_string())
+    };
+    let on_demand = on_demand.iter().map(|place| row("OnDemand.java", place));
+    let rewritten = wanted.iter().map(|place| row("Rewritten.java", place));
+    let wanted: Vec<(String, u64, u64, String)> = on_demand.chain(rewritten).collect();
+    assert_eq!(rewrite_rows("errorprone-lombok-rewrites"), wanted);
+}
+
+#[test]
+fn without_lombok_nothing_is_listed_as_rewritten() {
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures");
+    let out = std::env::temp_dir().join(format!("nitpicker-engine-no-lombok-rewrites-{}.json", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
+        .arg(fixtures.join("errorprone-lombok-rewrites"))
+        .args(["--rules", "_ErrorProne", "--out"])
+        .arg(&out)
+        .status()
+        .expect("engine runs");
+    assert!(status.success());
+    let report = std::fs::read_to_string(&out).expect("report");
+    let _ = std::fs::remove_file(&out);
+    assert!(!report.contains(LOMBOK_REWRITE));
 }

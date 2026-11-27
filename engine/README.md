@@ -367,16 +367,32 @@ utility class, a private method that only a generated `toString` or delegate cal
 generated code keeps the class around it from being static, as in Error Prone. `tests/fixtures/errorprone-lombok-members`
 comes with its class files. Without class files these differences stay (#2583).
 
-Lombok moves the `@deprecated` and `@param` sections of a field's doc comment to the accessors it writes, and
-Error Prone then reports `EmptyBlockTag` at the field instead of at the tag: one of the rewrites of written code
-(#2584).
+Lombok also rewrites code the programmer wrote, and Error Prone checks the rewritten statements. The engine does
+not model these rewrites yet (#2723); with `--lombok` it lists each place as a `_LombokRewrite` row whose message
+names the feature (`src/java/errorprone/lombok_rewrites.rs`), so a run can leave that file to Error Prone instead of
+guessing (#2584):
+
+- `SneakyThrows`, `Cleanup`, `Synchronized`, `Locked`: the body or the rest of the block wrapped in a
+  try/catch, a try/finally, a synchronized block or lock calls.
+- `NonNull` on a parameter or record component: a null check before the written statements.
+- `ExtensionMethod` and `Helper`: calls rewritten to static calls or to a helper instance.
+- `Builder.Default` and `Getter(lazy)`: the field's initializer moved into a generated method.
+- `onX`: an `onMethod`, `onParam` or `onConstructor` argument, which Lombok takes off the annotation.
+- `val`: a `val` or Lombok `var` local with modifiers or annotations, after which Lombok adds a `@val` annotation.
+- `Javadoc`: a field with a doc comment that gets a getter, setter, wither or builder setter. Lombok copies the
+  comment to the accessor and strips sections and `@param` or `@return` lines from the field's own; Error Prone
+  then reports every finding in that comment at the start of the field.
+
+`tests/fixtures/errorprone-lombok-rewrites` uses each of them, also through on-demand and static imports.
 
 `parity/errorprone/lombok/corpus.sh <work folder> <Lombok version>...` compares the engine with Error Prone on
 Lombok's own transformation test sources (`test/transform/resource/before`, fetched with the release, not kept
 here): each file compiled alone with javac 21, its `//CONF:` lines as a `lombok.config` (its `//version`
 lines are not followed: a file that does not compile on 21 is counted as such), Lombok on the processor
 path, the libraries of Lombok's own tests and its stubs on the class path, and Error Prone with the preset's
-`checks.json` (NullAway off). A check that crashes is switched off and the file compiled again, as Java runs do.
+`checks.json` (NullAway off). A check that crashes is switched off and the file compiled again, as Java runs do;
+the engine's findings of that check are then not compared in that file. Files with a `_LombokRewrite` row are
+counted per feature and not compared, since a run leaves them to Error Prone.
 It prints a table per version: files compared, findings the same, only from Error Prone, only from the engine,
 with another sentence, and inside generated code; `ONLY=<file pattern>` runs part of the files. Real runs read the
 Lombok version from the `Lombok-Version` line of the jar's manifest and keep a source set on Error Prone with
