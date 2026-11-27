@@ -83,7 +83,7 @@ pub fn instant_temporal_unit(context: &Context, call: Node) {
         return;
     }
     let list = arguments(call);
-    if list.len() != 2 || context.resolver.scope.package.starts_with("java.") || receiver_class(context, call).as_deref() != Some("java.time.Instant") {
+    if list.len() != 2 || super::call_consts::package_starts_with(context, "java.") || receiver_class(context, call).as_deref() != Some("java.time.Instant") {
         return;
     }
     let Some(resolved) = context.resolver.resolve_call(call) else { return };

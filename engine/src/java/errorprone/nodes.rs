@@ -31,7 +31,6 @@ pub fn position(node: Node) -> usize {
         "object_creation_expression" | "array_creation_expression" => at(token(node, "new")),
         "ternary_expression" => at(token(node, "?")),
         "instanceof_expression" => at(token(node, "instanceof")),
-        "lambda_expression" => at(token(node, "->")),
         "array_access" => at(token(node, "[")),
         "update_expression" => {
             let operator = children(node).into_iter().find(|part| matches!(part.kind(), "++" | "--"));

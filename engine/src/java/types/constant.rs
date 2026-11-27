@@ -1,6 +1,6 @@
 //! Java's constant arithmetic on numbers, characters and booleans, as javac and PMD's `ConstantFolder` fold it.
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Constant {
     Int(i32),
     Long(i64),

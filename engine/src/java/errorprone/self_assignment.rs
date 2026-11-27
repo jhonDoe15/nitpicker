@@ -103,8 +103,8 @@ fn field_fixes(context: &Context, assignment: Node, lhs: Node) -> Vec<Fix> {
     nearest(simple_name(context, lhs), candidates).into_iter().map(|(name, _)| Fix::replace(lhs.start_byte(), lhs.end_byte(), format!("this.{name}"))).collect()
 }
 
-fn same_target(context: &Context, lhs: Node, rhs: Node) -> bool {
-    super::lookup::same_variable(context, lhs, rhs)
+fn same_target<'t>(context: &Context<'t>, lhs: Node<'t>, rhs: Node<'t>) -> bool {
+    super::symbol_key::same_symbol(context, lhs, rhs)
 }
 
 pub fn self_assignment(context: &Context, node: Node) {

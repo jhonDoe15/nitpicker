@@ -72,7 +72,7 @@ pub fn duration_temporal_unit(context: &Context, call: Node) {
     }
     let parameters = [Type::Primitive("long"), Type::class(TEMPORAL_UNIT)];
     let matched = static_on_class(context, call, DURATION, &["of"]) || instance_on_exact_class(context, call, DURATION, &["plus", "minus"]);
-    if !matched || context.resolver.scope.package.starts_with("java.") || !parameters_are(context, call, &parameters) {
+    if !matched || super::call_consts::package_starts_with(context, "java.") || !parameters_are(context, call, &parameters) {
         return;
     }
     let Some(unit) = arguments(call).get(1).and_then(|argument| enum_name(context, *argument)) else { return };

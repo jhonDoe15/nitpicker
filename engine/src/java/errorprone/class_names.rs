@@ -32,9 +32,6 @@ pub fn class_name(context: &Context, root: Node) {
     let at = if name.kind() == "scoped_identifier" { children(name).into_iter().rev().find(|part| part.kind() == ".").map_or(name.start_byte(), |dot| dot.start_byte()) } else { name.start_byte() };
     let message = format!("Expected a class declaration named {stem} inside {stem}.java, instead found: {}", names.join(", "));
     context.report_always("ClassName", at, &message);
-    if stem == "package-info" {
-        context.report_always("ClassName", at, &message);
-    }
 }
 
 /// The interfaces a class declaration or an anonymous class implements: the types after `implements`, or `extends` for an interface.
