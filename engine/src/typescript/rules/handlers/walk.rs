@@ -53,20 +53,7 @@ pub fn name_of(node: Option<Node>) -> Option<String> {
     node.and_then(|node| node.name()).map(|name| name.into_owned())
 }
 
-/// The variable a name in a `catch` parameter pattern has: the clause's own, as ESLint scopes the pattern.
-fn catch_parameter_defs<'s>(scopes: &Scopes<'_, 's>, identifier: Node<'s>) -> Option<Vec<Def<'s>>> {
-    let clause = identifier.ancestors().find(|ancestor| ancestor.is("CatchClause"))?;
-    clause.node("param").filter(|param| param.contains(identifier))?;
-    let body = clause.node("body")?;
-    let variable = scopes.variable_by_name(&identifier.name()?, body.start())?;
-    let found = scopes.defs(variable);
-    found.iter().any(|definition| definition.kind == DefKind::CatchClause && definition.node == clause).then_some(found)
-}
-
-/// `findVariable(getScope(identifier), identifier)?.defs[0]`. ESLint keeps type parameters in a scope of their own
-/// around the function, so a value of the same name comes first.
+/// `findVariable(getScope(identifier), identifier)?.defs[0]`.
 pub fn first_def<'s>(scopes: &Scopes<'_, 's>, identifier: Node<'s>) -> Option<Def<'s>> {
-    let found = catch_parameter_defs(scopes, identifier).unwrap_or_else(|| defs(scopes, identifier));
-    let value = found.iter().position(|definition| definition.kind != DefKind::Type).unwrap_or(0);
-    found.into_iter().nth(value)
+    defs(scopes, identifier).into_iter().next()
 }

@@ -1296,6 +1296,15 @@
   78
  ],
  [
+  "no-raw-http-value/r-satisfies-write.ts",
+  "nitpicker/no-raw-http-value",
+  4,
+  7,
+  "The `content-type` header value is compared as exact text, but media types, charsets, encodings and schemes are case-insensitive, so `Application/JSON` or `HTTPS` is missed. Lowercase it first (`value.toLowerCase()`), or use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`).",
+  4,
+  31
+ ],
+ [
   "no-secret-in-log/24.ts",
   "nitpicker/no-secret-in-log",
   1,
@@ -2023,6 +2032,15 @@
   "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
   1,
   46
+ ],
+ [
+  "no-unchecked-url-sink/r-catch-default.ts",
+  "nitpicker/no-unchecked-url-sink",
+  3,
+  59,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  3,
+  64
  ],
  [
   "no-unencoded-url-part/42.ts",
@@ -2869,6 +2887,15 @@
   "`vm.runInNewContext` runs text as code, and a vm context is not a security boundary. Do not execute data: look the behavior up in a table keyed by name, or read the data as JSON and check it against a schema. A fixed string literal is allowed. An exception fits only when the text is trusted and cannot be a literal.",
   1,
   118
+ ],
+ [
+  "no-unsafe-deserialization/r-catch-default.ts",
+  "nitpicker/no-unsafe-deserialization",
+  3,
+  27,
+  "`vm.runInNewContext` runs text as code, and a vm context is not a security boundary. Do not execute data: look the behavior up in a table keyed by name, or read the data as JSON and check it against a schema. A fixed string literal is allowed. An exception fits only when the text is trusted and cannot be a literal.",
+  3,
+  51
  ],
  [
   "no-unstripped-remote-text/01.ts",

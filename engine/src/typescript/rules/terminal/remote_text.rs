@@ -1,7 +1,7 @@
 //! `remote-text.mts` of the ESLint plugin: whether a value is a network response, its body, or text read from a
 //! response or a socket message, followed back through `await`, members, readers and declarations.
 use crate::typescript::rules::security_values::{defs, member_name, unwrapped};
-use crate::typescript::rules::support::scope::{Def, DefKind, Scopes};
+use crate::typescript::rules::support::scope::{Def, Scopes};
 use crate::typescript::rules::support::view::Node;
 use crate::typescript::rules::urls::values::{last_name_of, string_value};
 use regex::Regex;
@@ -125,16 +125,6 @@ fn declared_link<'v>(definition: &Def<'v>) -> Link<'v> {
     Link::Result(parameter_taint(definition.node, definition.name))
 }
 
-/// `findVariable(...).defs`, as ESLint scopes them: a type parameter of the same name is in a scope of its own.
-fn value_defs<'s>(scopes: &Scopes<'_, 's>, identifier: Node<'s>) -> Vec<Def<'s>> {
-    let found = defs(scopes, identifier);
-    let type_parameter = |definition: &Def| definition.kind == DefKind::Type && definition.node.is("TSTypeParameter");
-    if found.iter().any(|definition| !type_parameter(definition)) {
-        return found.into_iter().filter(|definition| !type_parameter(definition)).collect();
-    }
-    found
-}
-
 fn link_of<'s>(scopes: &Scopes<'_, 's>, node: Node<'s>) -> Link<'s> {
     let plain = peel(node);
     match plain.kind() {
@@ -143,7 +133,7 @@ fn link_of<'s>(scopes: &Scopes<'_, 's>, node: Node<'s>) -> Link<'s> {
             Some(object) => Link::Next(object, Step::Member(plain)),
             None => Link::Result(None),
         },
-        "Identifier" => match value_defs(scopes, plain).as_slice() {
+        "Identifier" => match defs(scopes, plain).as_slice() {
             [definition] => declared_link(definition),
             _ => Link::Result(None),
         },
