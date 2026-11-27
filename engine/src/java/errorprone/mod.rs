@@ -1,5 +1,6 @@
 //! Error Prone checks written for the engine: same check name, line and column as Error Prone reports.
 mod collection_types;
+mod compiled;
 mod doc;
 mod javac_print;
 mod formatter;
@@ -325,6 +326,8 @@ use tree_sitter::Node;
 /// What a check gets: the file, its types and a place to report.
 pub struct Context<'a> {
     pub resolver: &'a Resolver<'a>,
+    /// The run's classes; with Lombok and the build's class directories, their class files too.
+    pub project: &'a JavaProject,
     pub file: &'a SourceFile,
     line_starts: Vec<usize>,
     selected: Option<Vec<String>>,
@@ -1052,7 +1055,7 @@ impl FileRule for ErrorProne {
         let mut line_starts = vec![0];
         line_starts.extend(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1));
         let selected = std::env::var("NP_EP_ONLY").ok().map(|names| names.split(',').map(String::from).collect());
-        let context = Context { resolver, file, line_starts, selected, out: std::cell::RefCell::new(Vec::new()), named: std::cell::RefCell::new(std::collections::HashMap::new()) };
+        let context = Context { resolver, project, file, line_starts, selected, out: std::cell::RefCell::new(Vec::new()), named: std::cell::RefCell::new(std::collections::HashMap::new()) };
         let wanted = |names: &[&str]| {
             !names.iter().all(|name| context.skipped(name))
                 && context.selected.as_ref().is_none_or(|selected| names.iter().any(|name| selected.iter().any(|one| one == name)))

@@ -62,7 +62,7 @@ run_one() {
     off="$off,$crashed"; echo "$off" > "$folder/crashed.txt"; run_ep
   done
   "$engine" --files "$folder/sources.txt" --rules _ErrorProne --classpath "$folder/cp.txt" --out "$folder/engine.json" \
-    --lombok > "$folder/engine.log" 2>&1 || true
+    --lombok --classes "$folder/ep.json.classes" > "$folder/engine.log" 2>&1 || true
 }
 export -f run_one
 for version in "$@"; do

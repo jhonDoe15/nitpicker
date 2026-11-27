@@ -2,6 +2,8 @@
 //! Lombok 1.18.46 reported on the written code of `fixtures/errorprone-lombok`, and
 //! `expected/errorprone-lombok-generated.json` what it reported inside the code Lombok generated: the known
 //! differences, which the engine never reports. Both come from `parity/errorprone/lombok/corpus.py expected`.
+//! `fixtures/errorprone-lombok-members` comes with the class files javac and Lombok wrote for it
+//! (`errorprone-lombok-members-classes`): the engine reads the members Lombok added from them.
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::process::Command;
@@ -22,14 +24,21 @@ fn expected(name: &str) -> BTreeMap<Row, usize> {
 }
 
 fn engine_rows() -> BTreeMap<Row, usize> {
-    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join("errorprone-lombok");
-    let out = std::env::temp_dir().join(format!("nitpicker-engine-errorprone-lombok-{}.json", std::process::id()));
-    let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
-        .arg(&source)
-        .args(["--rules", "_ErrorProne", "--lombok", "--out"])
-        .arg(&out)
-        .status()
-        .expect("engine runs");
+    rows_of("errorprone-lombok", false)
+}
+
+fn rows_of(fixture: &str, with_classes: bool) -> BTreeMap<Row, usize> {
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures");
+    let source = fixtures.join(fixture);
+    static RUNS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let run = RUNS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let out = std::env::temp_dir().join(format!("nitpicker-engine-{fixture}-{}-{run}.json", std::process::id()));
+    let mut command = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"));
+    command.arg(&source).args(["--rules", "_ErrorProne", "--lombok", "--out"]).arg(&out);
+    if with_classes {
+        command.arg("--classes").arg(fixtures.join(format!("{fixture}-classes")));
+    }
+    let status = command.status().expect("engine runs");
     assert!(status.success());
     let report: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&out).expect("report")).expect("json");
     let _ = std::fs::remove_file(&out);
@@ -59,4 +68,17 @@ fn nothing_is_reported_where_only_lombok_generated_code_sits() {
     assert!(inside.is_empty(), "reported inside generated code: {inside:?}");
     let kinds: std::collections::BTreeSet<&str> = generated.keys().map(|row| row.1.as_str()).collect();
     assert_eq!(kinds.into_iter().collect::<Vec<_>>(), ["RedundantNullCheck", "UnnecessarilyFullyQualified", "UnnecessarySemicolon"]);
+}
+
+#[test]
+fn error_prone_checks_see_the_members_lombok_wrote_into_the_class_files() {
+    let found: BTreeMap<Row, usize> = rows_of("errorprone-lombok-members", true).into_iter().filter(|(row, _)| row.1 != "NullAway").collect();
+    let wanted: BTreeMap<Row, usize> = expected("errorprone-lombok-members").into_iter().filter(|(row, _)| row.1 != "NullAway").collect();
+    assert_eq!(found, wanted);
+}
+
+#[test]
+fn without_the_class_files_a_class_that_only_has_a_lombok_logger_is_not_a_utility_class() {
+    let found = rows_of("errorprone-lombok-members", false);
+    assert!(!found.keys().any(|row| row.0 == "crew/Audit.java" && row.1 == "PrivateConstructorForUtilityClass"));
 }
