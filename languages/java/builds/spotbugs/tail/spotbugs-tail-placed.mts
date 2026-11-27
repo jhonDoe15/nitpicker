@@ -1,5 +1,6 @@
 import type { Placed } from '../spotbugs-placed.mts';
 import {
+  ASSIGNMENT_PATTERNS,
   CALENDAR_PATTERNS,
   CIRCUIT_PATTERNS,
   FLOAT_PATTERNS,
@@ -34,6 +35,7 @@ export const TAIL_DETECTORS: Readonly<Record<string, readonly string[]>> = {
   FindFloatEquality: FLOAT_PATTERNS,
   FindNonShortCircuit: CIRCUIT_PATTERNS,
   StaticCalendarDetector: CALENDAR_PATTERNS,
+  FindFieldSelfAssignment: ASSIGNMENT_PATTERNS,
 };
 
 export const TAIL_PLACED: Readonly<Record<string, Placed>> = {

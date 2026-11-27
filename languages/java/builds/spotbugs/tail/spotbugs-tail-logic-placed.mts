@@ -22,6 +22,11 @@ export const CALENDAR_PATTERNS: readonly string[] = [
   'STCAL_INVOKE_ON_STATIC_CALENDAR_INSTANCE',
 ];
 
+export const ASSIGNMENT_PATTERNS: readonly string[] = [
+  'SA_FIELD_SELF_ASSIGNMENT',
+  'SA_LOCAL_DOUBLE_ASSIGNMENT',
+];
+
 export const LOGIC_PLACED: Readonly<Record<string, Placed>> = {
   FE_FLOATING_POINT_EQUALITY: {
     text: 'Test for floating point equality',
@@ -38,6 +43,15 @@ export const LOGIC_PLACED: Readonly<Record<string, Placed>> = {
   NS_DANGEROUS_NON_SHORT_CIRCUIT: {
     text: 'Potentially dangerous use of non-short-circuit logic',
     levels: { 1: NOTE },
+  },
+  SA_FIELD_SELF_ASSIGNMENT: {
+    text: 'Self assignment of field',
+    levels: { 1: ERROR, 2: ERROR },
+    placement: SHOWN,
+  },
+  SA_LOCAL_DOUBLE_ASSIGNMENT: {
+    text: 'Double assignment of local variable',
+    levels: { 2: NOTE },
   },
   STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE: {
     text: 'Static DateFormat',

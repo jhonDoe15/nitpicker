@@ -1,0 +1,1 @@
+export function show(req, log) { const q = req.query.q; log.info(q); }

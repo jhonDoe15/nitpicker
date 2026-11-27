@@ -1,0 +1,1 @@
+export function find(req, repo) { const id = req.query.id; return repo.findByName(id); }

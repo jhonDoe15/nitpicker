@@ -1,0 +1,9 @@
+package p;
+public class S4 {
+    int f, g; static int st;
+    void m() { }
+    void a1() { int x = f; f = x; }
+    void k(boolean c) { if (c) g = 1; }
+    void a2() { int x = f; f = x; }
+    void a3() { f = f; }
+}

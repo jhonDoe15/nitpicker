@@ -38,9 +38,11 @@ import {
   UNCHECKED_READS,
   UNINITIALIZED_READ,
   UNSYNC_GET,
+  USELESS_CONDITIONS,
   UTIL_MONITORENTER,
   WRONG_MAP_ITERATOR,
 } from './spotbugs-patterns.mts';
+import { VALUE_DETECTORS } from './values/spotbugs-values-placed.mts';
 
 export { ON_ENGINE } from './spotbugs-patterns.mts';
 
@@ -80,6 +82,7 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   FindUnsyncGet: [UNSYNC_GET],
   ReadReturnShouldBeChecked: UNCHECKED_READS,
   FindUninitializedGet: [UNINITIALIZED_READ],
+  RedundantConditions: USELESS_CONDITIONS,
   ConfusionBetweenInheritedAndOuterMethod: ['IA_AMBIGUOUS_INVOCATION_OF_INHERITED_OR_OUTER_METHOD'],
   IteratorIdioms: ['IT_NO_SUCH_ELEMENT'],
   DefaultEncodingDetector: ['DM_DEFAULT_ENCODING'],
@@ -100,6 +103,7 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   DontCatchNullPointerException: ['DCN_NULLPOINTER_EXCEPTION'],
   WrongMapIterator: [WRONG_MAP_ITERATOR],
   BooleanReturnNull: ['NP_BOOLEAN_RETURN_NULL'],
+  ...VALUE_DETECTORS,
   FindDeadLocalStores: DEAD_STORES,
   FindLocalSelfAssignment2: SELF_ASSIGNMENTS,
   FindBadCast2: CAST_PATTERNS,

@@ -1,12 +1,12 @@
 //! The URL, header, file path, secret, escaping, wildcard, response, hash, deserialization, redirect, encoding,
-//! selector, HTML and TLS rules on the engine against what their ESLint-plugin rules report for the same files. The
+//! selector, HTML, TLS and request-input rules on the engine against what their ESLint-plugin rules report for the same files. The
 //! expected rows come from `parity/typescript-lint-expected.mts <list> <out> <rules>`.
 use std::path::Path;
 use std::process::Command;
 
 type Row = Vec<serde_json::Value>;
 
-const RULES: [&str; 25] = [
+const RULES: [&str; 27] = [
     "no-btoa-on-runtime-text",
     "no-case-mixed-header-merge",
     "no-case-sensitive-path-compare",
@@ -23,6 +23,7 @@ const RULES: [&str; 25] = [
     "no-slash-only-redirect-guard",
     "no-unchecked-response-json",
     "no-unchecked-url-sink",
+    "no-uncoerced-request-input",
     "no-unencoded-url-part",
     "no-unescaped-css-selector",
     "no-unescaped-filter-value",
@@ -31,6 +32,7 @@ const RULES: [&str; 25] = [
     "no-unresolved-relative-url",
     "no-unsafe-deserialization",
     "no-unstripped-remote-text",
+    "no-untrimmed-request-text",
     "no-weak-hash",
 ];
 

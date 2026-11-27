@@ -21,6 +21,8 @@ pub struct JavaProject {
     pub null_finals: HashSet<(String, String)>,
     /// Integer constants the project declares, by field name; `None` when two declarations disagree.
     pub numbers: HashMap<String, Option<i64>>,
+    /// Names of the fields the code stores into outside constructors and initializers, read when first asked.
+    pub rewritten: std::sync::OnceLock<HashSet<(String, String)>>,
     /// The classes some class of the sources extends.
     pub extended: HashSet<String>,
     /// With Lombok: the class files of the source classes, by binary name (see `compiled`).
@@ -247,6 +249,7 @@ pub fn build(files: &[SourceFile], options: &crate::engine::Options) -> JavaProj
         compiled,
         binaries,
         field_uses,
+        rewritten: Default::default(),
     }
 }
 
