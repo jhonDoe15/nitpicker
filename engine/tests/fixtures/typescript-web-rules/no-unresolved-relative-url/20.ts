@@ -1,0 +1,1 @@
+function f() { const target = res.headers.location; if (/^https?:/.test(target)) { fetch(target); } }

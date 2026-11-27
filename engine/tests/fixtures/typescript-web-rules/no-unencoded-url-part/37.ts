@@ -1,0 +1,1 @@
+const link = `https://gitea.test/${o}/${r}/_edit/${ref}/${filePath}`;

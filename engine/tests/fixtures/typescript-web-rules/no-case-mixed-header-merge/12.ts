@@ -1,0 +1,1 @@
+const res = await fetch(url, { headers: { Authorization: token, ...(extra as object) } });

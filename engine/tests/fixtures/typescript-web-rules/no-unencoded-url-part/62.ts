@@ -1,0 +1,1 @@
+const db = `mongodb+srv://${dbUser}:${dbPassword}@${host}/db`;

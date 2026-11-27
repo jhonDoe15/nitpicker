@@ -1,0 +1,1 @@
+const headers = { ...req.headers, Host: u.host };

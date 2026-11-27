@@ -1,0 +1,1 @@
+const link = `${apiUrl}/verify/${token}`;

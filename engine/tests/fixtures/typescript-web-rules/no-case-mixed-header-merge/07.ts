@@ -1,0 +1,1 @@
+const lowered = Object.fromEntries(Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v])); const res = await fetch(url, { headers: { "content-type": "application/json", ...lowered } });

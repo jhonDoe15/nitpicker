@@ -92,6 +92,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
     },
   ],
   ['no-blank-number-coercion', TYPED],
+  ['no-case-mixed-header-merge', {}],
   ['no-chunkwise-stream-text', TYPED],
   [
     'no-copied-constant',
@@ -148,6 +149,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-retry-without-idempotency', EFFECTS],
   ['no-dual-write', EFFECTS],
   ['no-stale-retry-after-conflict', EFFECTS],
+  ['no-unencoded-url-part', {}],
   ['no-unisolated-job-loop', EFFECTS],
   [
     'no-production-console',
@@ -201,6 +203,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-unordered-query', {}],
   ['no-unowned-async-assertion', {}],
   ['no-unpaged-listing', {}],
+  ['no-unresolved-relative-url', {}],
   ['no-unversioned-orm-entity', TYPED],
   ['no-wait-for-with-fake-timers', {}],
   [
