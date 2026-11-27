@@ -76,6 +76,7 @@ export const ON_ENGINE: readonly string[] = [
   'HSM_HIDING_METHOD',
   'NN_NAKED_NOTIFY',
   ...DEAD_STORES,
+  'RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN',
 ];
 const LOMBOK_WRITES: readonly string[] = [
   'SING_',

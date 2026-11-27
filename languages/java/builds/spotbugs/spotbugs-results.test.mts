@@ -316,6 +316,26 @@ describe('spotbugsResultOf', () => {
     });
   });
 
+  it('shows the name the engine gives after an @, in the file of the method it names', () => {
+    const result = spotbugsResultOf({
+      file: '/src/p/A.java',
+      rule: 'RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN',
+      line: 9,
+      message: '',
+      symbol: 'member:p.A.K|p@q.Q.K',
+      priority: 2,
+      arguments: ['p.A.m(Boolean)'],
+    });
+
+    expect(result.level).toBe('note');
+    expect(result.locations[0].physicalLocation.artifactLocation.uri).toBe('p/A.java');
+    expect(result.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'q.Q.K',
+      kind: 'member',
+      fullyQualifiedName: 'p.A.K',
+    });
+  });
+
   it('refuses a message it cannot read', () => {
     expect(() => resultOf('EI_EXPOSE_REP', 'something else')).toThrow(/cannot read/u);
     expect(() => resultOf('OTHER_PATTERN', 'x')).toThrow(/OTHER_PATTERN/u);

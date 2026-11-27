@@ -17,6 +17,8 @@ pub struct JavaProject {
     pub literals: HashSet<String>,
     /// The project's `volatile` fields, as the class that declares them and their name.
     pub volatiles: HashSet<(String, String)>,
+    /// The project's final fields initialized to `null`.
+    pub null_finals: HashSet<(String, String)>,
     /// Integer constants the project declares, by field name; `None` when two declarations disagree.
     pub numbers: HashMap<String, Option<i64>>,
     /// The classes some class of the sources extends.
@@ -161,10 +163,14 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>, 
     );
     index.settle();
     let literals = class_literals(files, &scopes, &index);
-    let volatiles = volatile_fields(files, &scopes);
+    let volatiles = fields_where(files, &scopes, |_, field, _| field.kind() == "field_declaration" && crate::java::helpers::has_modifier(field, "volatile"));
+    let null_finals = fields_where(files, &scopes, |_, field, declarator| {
+        let fixed = field.kind() == "constant_declaration" || crate::java::helpers::has_modifier(field, "final");
+        fixed && declarator.child_by_field_name("value").is_some_and(|value| value.kind() == "null_literal")
+    });
     let numbers = integer_constants(files);
     let extended = declared.iter().flatten().filter_map(|(_, name)| index.get(name)?.superclass.clone()).collect();
-    JavaProject { index, sources, literals, volatiles, numbers, extended }
+    JavaProject { index, sources, literals, volatiles, null_finals, numbers, extended }
 }
 
 /// Puts back, as statements of the blanked body, the class literals and `assert` statements that `literals` reads.
@@ -186,19 +192,21 @@ fn keep_class_objects(file: &SourceFile, body: Node, bytes: &mut [u8]) {
     }
 }
 
-fn volatile_fields(files: &[SourceFile], scopes: &[FileScope]) -> HashSet<(String, String)> {
+type FieldTest = fn(&SourceFile, Node, Node) -> bool;
+
+fn fields_where(files: &[SourceFile], scopes: &[FileScope], test: FieldTest) -> HashSet<(String, String)> {
     files
         .par_iter()
         .zip(scopes)
         .flat_map_iter(|(file, scope)| {
             let mut found = Vec::new();
             walk(file.tree.root_node(), |node| {
-                if node.kind() != "field_declaration" || !crate::java::helpers::has_modifier(node, "volatile") {
+                if !matches!(node.kind(), "field_declaration" | "constant_declaration") {
                     return;
                 }
                 let Some(class) = super::scope::enclosing_types(scope, node).into_iter().next() else { return };
                 let mut cursor = node.walk();
-                for declarator in node.children_by_field_name("declarator", &mut cursor) {
+                for declarator in node.children_by_field_name("declarator", &mut cursor).filter(|declarator| test(file, node, *declarator)) {
                     found.extend(declarator.child_by_field_name("name").map(|name| (class.clone(), file.text_of(name).to_string())));
                 }
             });
