@@ -45,7 +45,7 @@ impl Keys {
             "field_access" => {
                 let object = node.child_by_field_name("object").map(unwrap);
                 match object {
-                    Some(object) if !matches!(object.kind(), "this" | "super") && context.resolver.receiver(object).is_some_and(|holder| matches!(holder, crate::java::types::expr::Receiver::Value(_))) => {
+                    Some(object) if !matches!(object.kind(), "this" | "super") && valued(context, object) => {
                         let name = node.child_by_field_name("field").map(|field| context.text(field)).unwrap_or_default();
                         format!("{}.{name}", self.of(context, object))
                     }
@@ -98,11 +98,22 @@ impl Keys {
     }
 }
 
+/// Whether an object names a value, not a class.
+fn valued(context: &Context, object: Node) -> bool {
+    matches!(context.resolver.receiver(object), Some(crate::java::types::expr::Receiver::Value(_)))
+}
+
 /// Whether a field of `declaring` named without an object is one of an instance around the innermost class.
 fn outer(context: &Context, node: Node, declaring: &str) -> bool {
     let around = crate::java::types::scope::enclosing_types(context.resolver.scope, node);
     let Some(inner) = around.first() else { return false };
     inner != declaring && !context.resolver.index.is_subtype(inner, declaring)
+}
+
+/// Whether a `catch (Throwable)` around the block takes whatever it rethrows.
+fn takes_all(context: &Context, block: &crate::java::flow::cfg::Block) -> bool {
+    let named = |written: &Node| context.resolver.type_node(*written).is_some_and(|kind| kind.erased().name() == "java.lang.Throwable");
+    block.catches.iter().flatten().any(|catch| catch.types.iter().any(named))
 }
 
 /// Per path kind (without an exception edge, with one): whether such a path gets here, and which sites it holds.
@@ -207,6 +218,7 @@ pub fn leaks<'t>(context: &Context, graph: &Cfg<'t>, resource: &dyn Resource) ->
                 let thrown_here = here.steps.last().is_some_and(|step| step.kind() == "throw_statement");
                 if !thrown_here {
                     let (handlers, caught) = handled(context, here, &Thrown::Throw(None));
+                    let caught = caught || takes_all(context, here);
                     let out = state.thrown();
                     next.extend(handlers.into_iter().map(|to| (to, out.clone())));
                     if !caught {

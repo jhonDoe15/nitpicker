@@ -57,12 +57,13 @@ impl Resource for Locks {
             "method_invocation" if self.event(context, step, &Keys::default()).is_some() || half(context, step) => None,
             "field_access" => {
                 let length = step.child_by_field_name("field").is_some_and(|field| context.text(field) == "length");
-                let array = step.child_by_field_name("object").and_then(|object| context.resolver.type_of(object)).is_some_and(|kind| matches!(kind, Type::Array(..)));
+                let object = step.child_by_field_name("object").and_then(|object| context.resolver.type_of(object));
+                let array = object.is_some_and(|kind| matches!(kind, Type::Array(..)));
                 (length && array).then_some(Thrown::Implicit)
             }
             "update_expression" if other(step.named_child(0)) => Some(Thrown::Implicit),
             "cast_expression" if upcast(context, step) => None,
-            "binary_expression" if [step.child_by_field_name("left"), step.child_by_field_name("right")].iter().all(|side| side.map(unwrap).is_some_and(|side| side.kind().ends_with("_literal"))) => None,
+            "binary_expression" if folded(step) => None,
             _ => throws(context, step),
         }
     }
@@ -87,6 +88,12 @@ fn half(context: &Context, step: Node) -> bool {
         name == READ_WRITE || context.resolver.index.is_subtype(&name, READ_WRITE)
     });
     named && empty && typed
+}
+
+/// Arithmetic on two literals, which javac works out itself.
+fn folded(step: Node) -> bool {
+    let literal = |side: Option<Node>| side.map(unwrap).is_some_and(|side| side.kind().ends_with("_literal"));
+    literal(step.child_by_field_name("left")) && literal(step.child_by_field_name("right"))
 }
 
 /// A cast to a type the value already has: javac writes no check for it.
