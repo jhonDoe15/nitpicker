@@ -1,0 +1,1 @@
+if (uri.authority === remoteAuthority) {}

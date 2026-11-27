@@ -1,0 +1,1 @@
+NextResponse.redirect(new URL("/login", request.url));

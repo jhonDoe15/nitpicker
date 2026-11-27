@@ -1,0 +1,1 @@
+const db = `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}/db`;

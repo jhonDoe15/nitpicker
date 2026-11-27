@@ -1,0 +1,1 @@
+const v = decodeURIComponent(new URLSearchParams(location.search).get("q")!);

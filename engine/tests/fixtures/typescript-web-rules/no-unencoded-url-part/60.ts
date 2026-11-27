@@ -1,0 +1,1 @@
+const db = `postgres://${user}:${password}@${host}/db`;

@@ -1,0 +1,1 @@
+const next = new URL(`https://example.test/${path}`);

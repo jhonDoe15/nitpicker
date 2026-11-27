@@ -1,0 +1,1 @@
+const next = new URL(res.headers["location"]);

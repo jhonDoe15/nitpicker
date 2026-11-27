@@ -1,0 +1,1 @@
+if (filePath.startsWith(rootDir + path.sep)) {}

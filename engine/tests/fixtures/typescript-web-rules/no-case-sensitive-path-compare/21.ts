@@ -1,0 +1,1 @@
+function same(a, b) { if (process.platform === "linux") { return a.workspaceRoot === b.workspaceRoot; } }

@@ -1,0 +1,1 @@
+const query = sql`select * from t where a = ${name}?x=${y}`;

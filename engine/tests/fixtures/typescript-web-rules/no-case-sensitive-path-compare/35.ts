@@ -1,0 +1,1 @@
+if (cwd === OTHER_ROOT) {}

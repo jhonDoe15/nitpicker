@@ -1,0 +1,1 @@
+if (route.path === location.pathname) {}

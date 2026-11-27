@@ -1,0 +1,1 @@
+async function load(options) { return import(options.pluginPath); }

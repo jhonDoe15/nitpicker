@@ -1,0 +1,1 @@
+const headers = { ...request.headers, ...custom, "content-type": "text/plain" };

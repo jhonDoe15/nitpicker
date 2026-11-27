@@ -1,0 +1,1 @@
+const value = other.decodeURIComponent(router.query.error);

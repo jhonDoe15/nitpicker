@@ -1,0 +1,1 @@
+const link = `${apiUrl}/files/${upload.fileName}`;

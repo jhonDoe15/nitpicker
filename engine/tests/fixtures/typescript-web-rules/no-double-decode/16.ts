@@ -1,0 +1,1 @@
+const search = location.search; const value = decodeURIComponent(search);
