@@ -230,5 +230,7 @@ impl Resolver<'_> {
                 }
             }
         }
+        let own = Type::class(&info.name);
+        info.setter_like |= info.methods.iter().any(|method| !method.is_static && super::model::setter_name(&method.name) && method.returns != own);
     }
 }

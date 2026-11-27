@@ -7,6 +7,7 @@ use super::instances::{Held, Method, creates, own_code};
 use super::{Shape, lines};
 use crate::engine::source::{children, named_children};
 use crate::java::helpers::{declarators, has_modifier};
+use crate::java::types::compiled::ACC_PRIVATE;
 use std::collections::HashSet;
 use tree_sitter::Node;
 
@@ -75,9 +76,23 @@ pub fn check(context: &Context, shape: &Shape) {
 
 fn report(context: &Context, shape: &Shape, getters: &[Getter], created: &[String]) {
     let binary = names::binary(context, &shape.own);
-    let type_place = place::class(context, &shape.own);
     let creates = ["constructor_declaration", "compact_constructor_declaration"];
     let constructors: Vec<Node> = shape.members.iter().copied().filter(|member| creates.contains(&member.kind())).collect();
+    if let Some(written) = super::super::lombok::compiled(context, &shape.own) {
+        let first = written.methods.iter().find(|method| method.name == "<init>" && method.access & ACC_PRIVATE == 0);
+        match first {
+            None => return report_rest(context, shape, getters, created),
+            Some(method) if method.generated => {
+                let label = super::super::lombok::label(context, &shape.own, method);
+                if let Some(line) = method.entry_line {
+                    let message = format!("Class ({binary}) using singleton design pattern has non-private constructor.");
+                    context.report_listed("SING_SINGLETON_HAS_NONPRIVATE_CONSTRUCTOR", shape.class, line, message, place::function(&label), 2, vec![binary.clone()]);
+                }
+                return report_rest(context, shape, getters, created);
+            }
+            Some(_) => {}
+        }
+    }
     let open = if constructors.is_empty() {
         let line = shape.class.child_by_field_name("name").map(|name| context.line(name)).filter(|_| !has_modifier(shape.class, "private"));
         line.map(|line| (shape.class, line))
@@ -90,6 +105,12 @@ fn report(context: &Context, shape: &Shape, getters: &[Getter], created: &[Strin
         let message = format!("Class ({binary}) using singleton design pattern has non-private constructor.");
         context.report_listed("SING_SINGLETON_HAS_NONPRIVATE_CONSTRUCTOR", at, line, message, place::function(&label), 2, vec![binary.clone()]);
     }
+    report_rest(context, shape, getters, created);
+}
+
+fn report_rest(context: &Context, shape: &Shape, getters: &[Getter], created: &[String]) {
+    let binary = names::binary(context, &shape.own);
+    let type_place = place::class(context, &shape.own);
     let index = context.resolver.index;
     let cloneable = index.is_subtype(&shape.own, "java.lang.Cloneable");
     let clone = shape.members.iter().copied().find(|member| is_clone(context, *member)).map(|clone| {
@@ -130,7 +151,7 @@ fn report(context: &Context, shape: &Shape, getters: &[Getter], created: &[Strin
     let eager = getters.iter().filter(|getter| getter.eager).max_by_key(latest);
     let kept = eager.or(getters.last()).map(|getter| getter.field.clone());
     let chosen = getters.iter().rev().find(|getter| Some(&getter.field) == kept.as_ref());
-    if let Some(getter) = chosen.filter(|getter| !synchronized(getter.declaration) && getters.iter().any(|other| other.lazy)) {
+    if let Some(getter) = chosen.filter(|getter| !synchronized(context, getter.declaration) && getters.iter().any(|other| other.lazy)) {
         let label = names::method(context, &shape.own, getter.declaration, None);
         if let Some(line) = lines::method_start(context, getter.declaration) {
             let message = format!("Instance-getter method of class using singleton design pattern ({binary}) is not synchronized.");
@@ -139,8 +160,8 @@ fn report(context: &Context, shape: &Shape, getters: &[Getter], created: &[Strin
     }
 }
 
-fn synchronized(method: Node) -> bool {
-    if has_modifier(method, "synchronized") {
+fn synchronized(context: &Context, method: Node) -> bool {
+    if has_modifier(method, "synchronized") || (context.resolver.index.lombok && super::super::lombok::annotated(context, method, "Synchronized")) {
         return true;
     }
     let mut code = Vec::new();

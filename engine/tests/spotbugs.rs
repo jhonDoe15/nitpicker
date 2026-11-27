@@ -14,6 +14,12 @@ fn found_with(case: &Path, name: &str, key: &str) -> BTreeSet<Row> {
     found_listed(case, name, key).into_iter().collect()
 }
 
+/// The class files javac 21 with Lombok 1.18.36 wrote for a fixture, kept in `tests/fixtures/spotbugs-classes`.
+fn compiled_classes(case: &Path, name: &str) -> Vec<std::ffi::OsString> {
+    let classes = case.parent().and_then(Path::parent).map(|fixtures| fixtures.join("spotbugs-classes").join(name));
+    classes.filter(|classes| classes.is_dir()).map(|classes| vec!["--classes".into(), classes.into_os_string()]).unwrap_or_default()
+}
+
 fn found_listed(case: &Path, name: &str, key: &str) -> Vec<Row> {
     found_findings(case, name, key).into_iter().map(|(row, _)| row).collect()
 }
@@ -27,6 +33,7 @@ fn found_findings(case: &Path, name: &str, key: &str) -> Vec<(Row, Vec<String>)>
         .args(["--rules", "_SpotBugs", "--out"])
         .arg(&out)
         .args(name.starts_with("lombok").then_some("--lombok"))
+        .args(compiled_classes(case, name))
         .status()
         .expect("engine runs");
     assert!(status.success());

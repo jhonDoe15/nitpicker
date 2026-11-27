@@ -948,6 +948,7 @@ allprojects {
                         sources      : compileTask.source.files.findAll { it.name.endsWith('.java') }*.absolutePath.sort(),
                         classpath    : sourceSets.main.compileClasspath.files
                             .findAll { it.exists() && !classDirs.contains(it) }*.absolutePath,
+                        classes      : classDirs*.absolutePath,
                         processorPath: (compileTask.options.annotationProcessorPath?.files ?: [])*.absolutePath,
                         javaHome     : (javaLauncher.orNull?.metadata?.installationPath?.asFile
                             ?: new File(System.getProperty('java.home'))).absolutePath,

@@ -5,6 +5,7 @@
 use super::super::{Context, names, place};
 use crate::engine::source::children;
 use crate::java::helpers::{declarators, has_modifier};
+use crate::java::types::compiled::{ACC_FINAL, ACC_STATIC};
 use crate::java::types::model::Type;
 use std::collections::HashMap;
 use tree_sitter::Node;
@@ -40,11 +41,19 @@ pub fn should_be_static(context: &Context, class: Node) {
     let Some(own) = context.resolver.scope.names.get(&class.id()).cloned() else { return };
     let Some(body) = class.child_by_field_name("body").or_else(|| children(class).into_iter().find(|part| part.kind() == "class_body")) else { return };
     let binary = names::binary(context, &own);
+    let written = super::super::lombok::compiled(context, &own);
     let fields: Vec<Node> = place::members(body)
         .into_iter()
-        .filter(|member| member.kind() == "field_declaration" && !has_modifier(*member, "static") && has_modifier(*member, "final"))
+        .filter(|member| member.kind() == "field_declaration" && (written.is_some() || (!has_modifier(*member, "static") && has_modifier(*member, "final"))))
         .collect();
     let simple = |member: Node, declarator: Node| {
+        if let Some(written) = written {
+            let name = declarator.child_by_field_name("name").map(|name| context.text(name)).unwrap_or_default();
+            return written.field(name).is_some_and(|field| {
+                let instance_final = field.access & (ACC_STATIC | ACC_FINAL) == ACC_FINAL;
+                instance_final && field.constant && (field.descriptor.len() == 1 || field.descriptor == "Ljava/lang/String;")
+            });
+        }
         let kind = context.resolver.declared_type(member, Some(declarator));
         kind.is_some_and(|kind| matches!(kind, Type::Primitive(_)) || kind.name() == "java.lang.String")
     };

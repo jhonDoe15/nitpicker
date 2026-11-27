@@ -23,6 +23,10 @@ pub struct JavaProject {
     pub numbers: HashMap<String, Option<i64>>,
     /// The classes some class of the sources extends.
     pub extended: HashSet<String>,
+    /// With Lombok: the class files of the source classes, by binary name (see `compiled`).
+    pub compiled: HashMap<String, super::compiled::CompiledClass>,
+    /// With Lombok: the index name of each source class that has a class file, by binary name.
+    pub binaries: HashMap<String, String>,
 }
 
 fn jdk_home() -> PathBuf {
@@ -48,6 +52,34 @@ fn jdk_modules() -> Vec<PathBuf> {
         eprintln!("nitpicker-engine: no jmods folder under NITPICKER_JDK or JAVA_HOME; JDK types are unknown");
     }
     modules
+}
+
+/// Reads the class files of the source classes and gives their fields the access bits javac wrote: Lombok's
+/// `@Value`, `@FieldDefaults` and `@UtilityClass` change them.
+fn compiled_members(
+    index: &mut TypeIndex,
+    sources: &HashMap<String, String>,
+    classes: &[PathBuf],
+) -> (HashMap<String, super::compiled::CompiledClass>, HashMap<String, String>) {
+    use super::compiled::{ACC_FINAL, ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC};
+    use super::model::flag;
+    let compiled = super::compiled::read(classes);
+    let mut binaries = HashMap::new();
+    for name in sources.keys() {
+        let binary = crate::java::javac::binary(index, name);
+        let (Some(class), Some(info)) = (compiled.get(&binary), index.get(name)) else { continue };
+        let mut info = info.clone();
+        for field in &mut info.fields {
+            let Some(written) = class.field(&field.name) else { continue };
+            let bits = [(ACC_FINAL, flag::FINAL), (ACC_PUBLIC, flag::PUBLIC), (ACC_PROTECTED, flag::PROTECTED), (ACC_STATIC, flag::STATIC)];
+            field.flags &= !(flag::FINAL | flag::PUBLIC | flag::PROTECTED | flag::STATIC);
+            field.flags |= bits.iter().filter(|(access, _)| written.access & access != 0).map(|(_, bit)| bit).sum::<u32>();
+            field.is_private = written.access & ACC_PRIVATE != 0;
+        }
+        index.put(info);
+        binaries.insert(binary, name.clone());
+    }
+    (compiled, binaries)
 }
 
 fn stub(name: String) -> ClassInfo {
@@ -163,6 +195,7 @@ pub fn build(files: &[SourceFile], options: &crate::engine::Options) -> JavaProj
             index.put(info);
         }
     }
+    let (compiled, binaries) = if options.lombok && !options.classes.is_empty() { compiled_members(&mut index, &sources, &options.classes) } else { Default::default() };
     for (file, scope) in files.iter().zip(&scopes) {
         let declaration = crate::engine::source::children(file.tree.root_node()).into_iter().find(|part| part.kind() == "package_declaration");
         if let Some(declaration) = declaration.filter(|_| file.path.ends_with("package-info.java")) {
@@ -191,7 +224,7 @@ pub fn build(files: &[SourceFile], options: &crate::engine::Options) -> JavaProj
     });
     let numbers = integer_constants(files);
     let extended = declared.iter().flatten().filter_map(|(_, name)| index.get(name)?.superclass.clone()).collect();
-    JavaProject { index, sources, literals, volatiles, null_finals, numbers, extended }
+    JavaProject { index, sources, literals, volatiles, null_finals, numbers, extended, compiled, binaries }
 }
 
 /// Puts back, as statements of the blanked body, the class literals, `forName` calls and `assert` statements that

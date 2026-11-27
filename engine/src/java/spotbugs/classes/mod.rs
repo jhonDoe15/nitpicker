@@ -37,7 +37,8 @@ pub fn class_shape(context: &Context, class: Node) {
             }
         }
     }
-    let first_line = lines::class_first(context, &own, class, &members);
+    let written = super::lombok::compiled(context, &own).and_then(|compiled| compiled.first_line());
+    let first_line = written.or_else(|| lines::class_first(context, &own, class, &members));
     let shape = Shape { class, own, members, statics, first_line };
     singletons::check(context, &shape);
     clones::check(context, &shape);

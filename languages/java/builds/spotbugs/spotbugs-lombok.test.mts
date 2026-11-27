@@ -142,6 +142,9 @@ describe('lombokMarksGenerated', () => {
     expect(
       lombokMarksGenerated([path.join(root, 'on/src/A.java'), path.join(root, 'stop/src/C.java')]),
     ).toBe(true);
+    expect(lombokMarksGenerated([path.join(root, 'on/src/A.java')], false)).toBe(true);
+    expect(lombokMarksGenerated([path.join(root, 'cleared/src/B.java')], false)).toBe(false);
+    expect(lombokMarksGenerated([path.join(root, 'stop/src/C.java')], false)).toBe(false);
   });
 
   it('is false when a config changes the names of the accessors Lombok writes', () => {

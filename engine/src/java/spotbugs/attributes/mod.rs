@@ -96,7 +96,10 @@ pub fn gather(context: &Context, names: &HashSet<String>) -> Notes {
     let known = std::cell::RefCell::new(writes::Constructors::new());
     let seen = std::cell::RefCell::new(std::collections::HashMap::new());
     let access = |notes: &mut Notes, key: (String, String), node: Node, value: Option<Node>, store: bool| {
-        let (Some(by), Some(order)) = (writes::writer(context, node), writes::order(node, &mut known.borrow_mut())) else { return };
+        let (Some(by), Some(mut order)) = (writes::writer(context, node), writes::order(node, &mut known.borrow_mut())) else { return };
+        if node.kind() == "variable_declarator" && order.0 == Phase::Construct && made_static(context, &key) {
+            order = (Phase::StaticInit, 0, 0, order.3);
+        }
         let empty = value.is_some_and(|value| writes::empty_array(context, value));
         let setup = writes::setup(context, node);
         let line = writes::line(context, node, store);
@@ -142,7 +145,48 @@ pub fn gather(context: &Context, names: &HashSet<String>) -> Notes {
         }
         _ => {}
     });
+    written_accesses(context, names, &mut notes);
     notes
+}
+
+/// A field the source declares without `static` that the class file has static: `@UtilityClass` makes it so.
+fn made_static(context: &Context, key: &(String, String)) -> bool {
+    let written = super::lombok::compiled(context, &key.0).and_then(|class| class.field(&key.1));
+    written.is_some_and(|field| field.access & crate::java::types::compiled::ACC_STATIC != 0)
+}
+
+/// The loads and stores of the methods Lombok wrote, from the class files: SpotBugs meets them after the
+/// hand-written members of the same kind. A constructor Lombok wrote also runs the field initializers, which the
+/// source already gives: only the code on the constructor's own line counts.
+fn written_accesses(context: &Context, names: &HashSet<String>, notes: &mut Notes) {
+    let path = &context.file.path;
+    let mut classes: Vec<&String> = context.classes.keys().collect();
+    classes.sort();
+    for class in classes {
+        let Some(node) = context.classes.get(class) else { continue };
+        let declared = node.child_by_field_name("body").map_or(0, |body| {
+            super::place::members(body).iter().filter(|member| member.kind().ends_with("constructor_declaration")).count()
+        });
+        let mut made = 0;
+        for (place, method) in super::lombok::written(context, class).enumerate() {
+            let order = |at: usize| match method.name.as_str() {
+                "<init>" => (Phase::Construct, declared + made, 1, at),
+                "<clinit>" => (Phase::StaticInit, 0, 1, at),
+                _ => (Phase::Method, 0, 1, usize::MAX / 2 + place * 65_536 + at),
+            };
+            for (at, access) in method.accesses.iter().enumerate() {
+                let own_line = method.name != "<init>" || Some(access.line) == method.entry_line;
+                let Some(owner) = context.project.binaries.get(&access.owner).filter(|_| own_line) else { continue };
+                if !access.store && !names.contains(&access.name) {
+                    continue;
+                }
+                let key = (owner.clone(), access.name.clone());
+                let package = context.resolver.scope.package.clone();
+                notes.writes.push(Write { store: access.store, package, key, by: class.clone(), order: order(at), code: (false, usize::MAX - 1, 1, place * 65_536 + at), copy: false, file: path.clone(), line: access.line, empty: false, setup: false });
+            }
+            made += usize::from(method.name == "<init>");
+        }
+    }
 }
 
 /// Whether a store sits in the static initializer of the class that declares the field.
