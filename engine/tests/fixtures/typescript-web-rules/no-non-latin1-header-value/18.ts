@@ -1,0 +1,1 @@
+fetch(url, { headers: { ...headers, "X-Prerender-Data": JSON.stringify(data) } });

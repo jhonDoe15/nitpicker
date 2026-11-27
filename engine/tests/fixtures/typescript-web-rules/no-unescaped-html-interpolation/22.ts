@@ -1,0 +1,1 @@
+export const a = (name: string) => "name: " + name;

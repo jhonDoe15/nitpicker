@@ -1,0 +1,1 @@
+export function f(binary: string) { return btoa(binary); }

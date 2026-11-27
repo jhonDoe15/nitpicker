@@ -1,0 +1,1 @@
+export const run = (script) => script.runInNewContext(sandbox);

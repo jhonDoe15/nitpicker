@@ -33,8 +33,8 @@ pub struct TypeIndex {
     declaring: OnceLock<HashMap<(String, usize), Vec<String>>>,
     /// The names of the fields and methods that carry `@GuardedBy`.
     guarded: OnceLock<HashSet<String>>,
-    /// The names a call to a method or constructor with an annotation named `InlineMe` spells.
-    inline_me: OnceLock<HashSet<String>>,
+    /// The names that calls to methods with annotations some checks look for spell.
+    marked: OnceLock<Marked>,
     /// The archives of the JDK's own classes.
     jdk_archives: HashSet<usize>,
     /// The class files under `META-INF/versions` of the class path's multi-release jars.
@@ -196,8 +196,48 @@ fn archive_key(origin: &Origin) -> Option<usize> {
     }
 }
 
-fn mentions_inline_me(bytes: &[u8]) -> bool {
-    bytes.windows(9).any(|window| window == b"InlineMe;")
+/// Whether the bytes hold `InlineMe;` or `RestrictedApi;`, the end of a descriptor of such an annotation.
+fn mentions_marks(bytes: &[u8]) -> bool {
+    bytes.iter().enumerate().any(|(at, byte)| *byte == b';' && (bytes[..at].ends_with(b"InlineMe") || bytes[..at].ends_with(b"RestrictedApi")))
+}
+
+const RESTRICTED_API: &str = "com.google.errorprone.annotations.RestrictedApi";
+
+/// The simple name of a class as the index names it, without an outer class or a binary name's `$` part.
+pub fn simple_name(class: &str) -> &str {
+    let last = class.rsplit('.').next().unwrap_or(class);
+    last.rsplit('$').next().unwrap_or(last)
+}
+
+/// The names of the methods and constructors in the sources or on the class path that carry an annotation some
+/// check looks for, as the calls to them spell them.
+#[derive(Default)]
+pub struct Marked {
+    /// For an annotation named `InlineMe`: the method's name, or the simple name of the constructor's class, which an
+    /// implicit or explicit `super(...)` call's class names in its `extends` clause.
+    pub inline_me: HashSet<String>,
+    /// For `@RestrictedApi`: the method's name, or `new ` and the simple name of a constructor's class.
+    pub restricted: HashSet<String>,
+}
+
+impl Marked {
+    fn add(&mut self, class: &ClassInfo) {
+        let last = class.name.rsplit('.').next().unwrap_or_default();
+        for method in &class.methods {
+            if method.detail.kept.iter().any(|kept| kept.name == RESTRICTED_API) {
+                self.restricted.insert(if method.name == "<init>" { format!("new {}", simple_name(&class.name)) } else { method.name.clone() });
+            }
+            if !method.detail.annotations.iter().any(|name| name == "InlineMe" || name.ends_with(".InlineMe")) {
+                continue;
+            }
+            if method.name != "<init>" {
+                self.inline_me.insert(method.name.clone());
+                continue;
+            }
+            self.inline_me.insert(last.to_string());
+            self.inline_me.extend(last.split('$').map(|part| part.trim_start_matches(|c: char| c.is_ascii_digit()).to_string()));
+        }
+    }
 }
 
 fn mentions_guard(bytes: &[u8]) -> bool {
@@ -708,46 +748,40 @@ impl TypeIndex {
     }
 
     /// The names that a call, `new`, or method reference to a method or constructor carrying an annotation named
-    /// `InlineMe`, in the sources or on the class path, holds: the method's name, or the simple name of the
-    /// constructor's class, which an implicit or explicit `super(...)` call's class names in its `extends` clause.
-    /// Every class file outside the JDK whose bytes mention such an annotation is parsed.
+    /// `InlineMe` holds; see `Marked`.
     pub fn inline_me_names(&self) -> &HashSet<String> {
-        self.inline_me.get_or_init(|| {
-            let mut found = HashSet::new();
-            let add = |class: &ClassInfo, found: &mut HashSet<String>| {
-                let last = class.name.rsplit('.').next().unwrap_or_default();
-                for method in &class.methods {
-                    if !method.detail.annotations.iter().any(|name| name == "InlineMe" || name.ends_with(".InlineMe")) {
-                        continue;
-                    }
-                    if method.name != "<init>" {
-                        found.insert(method.name.clone());
-                        continue;
-                    }
-                    found.insert(last.to_string());
-                    found.extend(last.split('$').map(|part| part.trim_start_matches(|c: char| c.is_ascii_digit()).to_string()));
-                }
-            };
+        &self.marked().inline_me
+    }
+
+    /// The names of the methods carrying `@RestrictedApi`; see `Marked`.
+    pub fn restricted_names(&self) -> &HashSet<String> {
+        &self.marked().restricted
+    }
+
+    /// Every class of the sources and every class file outside the JDK whose bytes mention a marking annotation.
+    fn marked(&self) -> &Marked {
+        self.marked.get_or_init(|| {
+            let mut found = Marked::default();
             let from_jdk = |origin: &Origin| archive_key(origin).is_some_and(|key| self.jdk_archives.contains(&key));
             let later: Vec<&String> = self
                 .classes
                 .iter()
                 .filter_map(|(name, slot)| match slot {
                     Slot::Ready(class) => {
-                        add(class, &mut found);
+                        found.add(class);
                         None
                     }
-                    Slot::Later(origin, _) => (!from_jdk(origin) && read_bytes(origin).is_some_and(|bytes| mentions_inline_me(&bytes))).then_some(name),
+                    Slot::Later(origin, _) => (!from_jdk(origin) && read_bytes(origin).is_some_and(|bytes| mentions_marks(&bytes))).then_some(name),
                 })
                 .collect();
             for name in later {
                 if let Some(class) = self.get(name) {
-                    add(class, &mut found);
+                    found.add(class);
                 }
             }
-            for bytes in self.versioned.iter().filter_map(read_bytes).filter(|bytes| mentions_inline_me(bytes)) {
+            for bytes in self.versioned.iter().filter_map(read_bytes).filter(|bytes| mentions_marks(bytes)) {
                 if let Some(class) = classfile::parse(&bytes) {
-                    add(&class, &mut found);
+                    found.add(&class);
                 }
             }
             found

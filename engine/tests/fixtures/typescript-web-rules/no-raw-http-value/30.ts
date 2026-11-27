@@ -1,0 +1,1 @@
+const lower = req.headers['content-type'];

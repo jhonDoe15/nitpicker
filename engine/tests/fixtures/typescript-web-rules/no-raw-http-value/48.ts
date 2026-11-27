@@ -1,0 +1,1 @@
+const [, charset] = request.headers['content-type'].split(';');

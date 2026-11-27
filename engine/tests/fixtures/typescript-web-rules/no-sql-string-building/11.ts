@@ -1,0 +1,1 @@
+export const page = (n) => pool.query(`SELECT * FROM users LIMIT ${Math.min(n, 100)}`);

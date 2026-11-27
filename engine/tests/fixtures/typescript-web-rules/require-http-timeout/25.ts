@@ -1,0 +1,1 @@
+import fetch from "./fetch.js"; export const get = (url) => fetch(url);

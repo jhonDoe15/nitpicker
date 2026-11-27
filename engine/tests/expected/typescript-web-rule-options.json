@@ -1,0 +1,155 @@
+[
+ [
+  "no-route-without-auth/v1/07.ts",
+  "nitpicker/no-route-without-auth",
+  3,
+  33,
+  "This route does not declare `@Authenticated({ permission })`, the auth requirement that almost every route in this project declares, so callers it was not meant for can reach it. Add `@Authenticated({ permission })`, or mark the route public with the marker the project uses. An exception fits a route that is open on purpose (a health check, a login, a webhook).",
+  3,
+  37
+ ],
+ [
+  "no-route-without-auth/v1/08.ts",
+  "nitpicker/no-route-without-auth",
+  3,
+  51,
+  "This route does not declare `@Authenticated({ permission })`, the auth requirement that almost every route in this project declares, so callers it was not meant for can reach it. Add `@Authenticated({ permission })`, or mark the route public with the marker the project uses. An exception fits a route that is open on purpose (a health check, a login, a webhook).",
+  3,
+  57
+ ],
+ [
+  "no-route-without-auth/v1/09.ts",
+  "nitpicker/no-route-without-auth",
+  3,
+  55,
+  "This route does not declare `@Authenticated({ permission })`, the auth requirement that almost every route in this project declares, so callers it was not meant for can reach it. Add `@Authenticated({ permission })`, or mark the route public with the marker the project uses. An exception fits a route that is open on purpose (a health check, a login, a webhook).",
+  3,
+  61
+ ],
+ [
+  "no-route-without-auth/v3/05.ts",
+  "nitpicker/no-route-without-auth",
+  3,
+  33,
+  "This route has no guard at method or class level and no public marker, while other routes in this project declare one, so every caller can reach it. Add a guard (`@UseGuards(...)` or the project auth decorator), or mark the route public. An exception fits a route that is open on purpose (a health check, a login, a webhook).",
+  3,
+  37
+ ],
+ [
+  "no-route-without-auth/v3/06.ts",
+  "nitpicker/no-route-without-auth",
+  3,
+  60,
+  "This route has no guard at method or class level and no public marker, while other routes in this project declare one, so every caller can reach it. Add a guard (`@UseGuards(...)` or the project auth decorator), or mark the route public. An exception fits a route that is open on purpose (a health check, a login, a webhook).",
+  3,
+  64
+ ],
+ [
+  "no-route-without-auth/v3/07.ts",
+  "nitpicker/no-route-without-auth",
+  3,
+  50,
+  "This route has no guard at method or class level and no public marker, while other routes in this project declare one, so every caller can reach it. Add a guard (`@UseGuards(...)` or the project auth decorator), or mark the route public. An exception fits a route that is open on purpose (a health check, a login, a webhook).",
+  3,
+  54
+ ],
+ [
+  "no-route-without-auth/v3/08.ts",
+  "nitpicker/no-route-without-auth",
+  3,
+  51,
+  "This route has no guard at method or class level and no public marker, while other routes in this project declare one, so every caller can reach it. Add a guard (`@UseGuards(...)` or the project auth decorator), or mark the route public. An exception fits a route that is open on purpose (a health check, a login, a webhook).",
+  3,
+  55
+ ],
+ [
+  "no-route-without-auth/v4/17.ts",
+  "nitpicker/no-route-without-auth",
+  3,
+  1,
+  "This route is registered without `requireAuth`, the auth middleware that almost every route in this project uses, so callers it was not meant for can reach it. Add `requireAuth` to the route, or to the router before it. An exception fits a route that is open on purpose (a health check, a login, a webhook).",
+  3,
+  36
+ ],
+ [
+  "no-route-without-auth/v4/18.ts",
+  "nitpicker/no-route-without-auth",
+  3,
+  1,
+  "This route is registered without `requireAuth`, the auth middleware that almost every route in this project uses, so callers it was not meant for can reach it. Add `requireAuth` to the route, or to the router before it. An exception fits a route that is open on purpose (a health check, a login, a webhook).",
+  3,
+  46
+ ],
+ [
+  "no-route-without-auth/v4/19.ts",
+  "nitpicker/no-route-without-auth",
+  4,
+  1,
+  "This route is registered without `requireAuth`, the auth middleware that almost every route in this project uses, so callers it was not meant for can reach it. Add `requireAuth` to the route, or to the router before it. An exception fits a route that is open on purpose (a health check, a login, a webhook).",
+  4,
+  32
+ ],
+ [
+  "no-route-without-auth/v4/20.ts",
+  "nitpicker/no-route-without-auth",
+  3,
+  1,
+  "This route is registered without `requireAuth`, the auth middleware that almost every route in this project uses, so callers it was not meant for can reach it. Add `requireAuth` to the route, or to the router before it. An exception fits a route that is open on purpose (a health check, a login, a webhook).",
+  3,
+  35
+ ],
+ [
+  "no-route-without-auth/v4/21.ts",
+  "nitpicker/no-route-without-auth",
+  3,
+  32,
+  "This route is registered without `requireAuth`, the auth middleware that almost every route in this project uses, so callers it was not meant for can reach it. Add `requireAuth` to the route, or to the router before it. An exception fits a route that is open on purpose (a health check, a login, a webhook).",
+  3,
+  68
+ ],
+ [
+  "no-route-without-auth/v4/22.ts",
+  "nitpicker/no-route-without-auth",
+  3,
+  36,
+  "This route is registered without `requireAuth`, the auth middleware that almost every route in this project uses, so callers it was not meant for can reach it. Add `requireAuth` to the route, or to the router before it. An exception fits a route that is open on purpose (a health check, a login, a webhook).",
+  3,
+  75
+ ],
+ [
+  "no-sql-string-building/v1/09.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  48,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use `sql`SELECT * FROM users WHERE id = ${id}`` from kysely, or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  86
+ ],
+ [
+  "require-http-timeout/v1/02.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  56,
+  "axios.get() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  70
+ ],
+ [
+  "require-http-timeout/v2/14.ts",
+  "nitpicker/require-http-timeout",
+  3,
+  24,
+  "got() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  3,
+  52
+ ],
+ [
+  "require-http-timeout/v2/14.ts",
+  "nitpicker/require-http-timeout",
+  4,
+  24,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  4,
+  58
+ ]
+]

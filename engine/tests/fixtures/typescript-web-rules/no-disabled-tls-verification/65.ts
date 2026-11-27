@@ -1,0 +1,1 @@
+export const launch = (puppeteer) => puppeteer.launch({ args: ["--ignore-certificate-errors"] });

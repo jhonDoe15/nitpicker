@@ -1,0 +1,1 @@
+const mime = MIME_TYPES[name];

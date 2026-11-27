@@ -1,0 +1,1 @@
+const type = parse(req.headers['content-type']); if (type.type === 'application/json') { run(); }

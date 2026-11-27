@@ -1,0 +1,1 @@
+import { request } from "node:http"; export const send = (options) => request(options, (res) => res.resume());

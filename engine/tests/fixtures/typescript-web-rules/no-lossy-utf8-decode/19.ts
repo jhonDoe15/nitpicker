@@ -1,0 +1,1 @@
+export function f(a: Uint8Array) { return createHash("sha1").update(new TextDecoder().decode(a)).digest("hex"); }

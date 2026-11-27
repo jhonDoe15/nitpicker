@@ -1,0 +1,1 @@
+export const a = () => "<p>" + "static" + "</p>";

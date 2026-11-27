@@ -1,0 +1,1 @@
+import pg from "pg"; export const pool = new pg.native.Pool({ max: 10 });

@@ -1,0 +1,1 @@
+import vm from "node:vm"; export const two = vm.runInNewContext("1 + 1");

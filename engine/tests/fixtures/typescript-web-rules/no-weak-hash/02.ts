@@ -1,0 +1,1 @@
+const subtle = crypto.subtle; export const key = (raw) => subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);

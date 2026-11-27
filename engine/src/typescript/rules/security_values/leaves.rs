@@ -9,6 +9,7 @@ use std::collections::HashSet;
 const MAX_DEPTH: usize = 8;
 const TEXT_PRESERVING_METHODS: [&str; 4] = ["toLowerCase", "toUpperCase", "trim", "toString"];
 const FUNCTION_SCOPES: [&str; 4] = ["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression", "Program"];
+const WRAPPERS: [&str; 4] = ["TSAsExpression", "TSTypeAssertion", "TSNonNullExpression", "TSSatisfiesExpression"];
 const PATTERNS: [&str; 4] = ["ObjectPattern", "ArrayPattern", "RestElement", "Property"];
 
 type Expansion<'s> = (Vec<Node<'s>>, Vec<Node<'s>>);
@@ -139,20 +140,56 @@ fn member_expansion<'s>(scopes: &Scopes<'_, 's>, resolved: Node<'s>) -> Expansio
     }
 }
 
-/// The `AssignmentPattern` defaults on the way from a target identifier up to the whole pattern, and that pattern.
-fn pattern_defaults(identifier: Node) -> (Vec<Node>, Node) {
-    let mut defaults = Vec::new();
-    let mut top = identifier;
-    while let Some(parent) = top.parent() {
-        let left = parent.is("AssignmentPattern") && parent.node("left") == Some(top);
-        if left {
-            defaults.extend(parent.node("right"));
-        } else if !(PATTERNS.contains(&parent.kind()) && (!parent.is("Property") || parent.node("value") == Some(top))) {
+/// The way from a target identifier up to the whole pattern: the `AssignmentPattern` defaults on it, the top node,
+/// whether it passes through a pattern, and the type wrappers right around the identifier.
+struct Target<'s> {
+    defaults: Vec<Node<'s>>,
+    top: Node<'s>,
+    patterned: bool,
+    wrappers: usize,
+    satisfies: bool,
+}
+
+/// ESLint's pattern visitor looks through type wrappers at any depth inside a pattern or a loop head.
+fn target_of(identifier: Node) -> Target {
+    let mut target = Target { defaults: Vec::new(), top: identifier, patterned: false, wrappers: 0, satisfies: false };
+    while let Some(parent) = target.top.parent() {
+        let top = target.top;
+        if parent.is("AssignmentPattern") && parent.node("left") == Some(top) {
+            target.defaults.extend(parent.node("right"));
+            target.patterned = true;
+        } else if PATTERNS.contains(&parent.kind()) && (!parent.is("Property") || parent.node("value") == Some(top)) {
+            target.patterned = true;
+        } else if WRAPPERS.contains(&parent.kind()) && parent.node("expression") == Some(top) {
+            target.wrappers += usize::from(!target.patterned);
+            target.satisfies |= !target.patterned && parent.is("TSSatisfiesExpression");
+        } else {
             break;
         }
-        top = parent;
+        target.top = parent;
     }
-    (defaults, top)
+    target
+}
+
+/// A direct `x = v` or `x++` target writes through at most one wrapper that is not `satisfies`, as ESLint's
+/// `visitExpressionTarget` unwraps it; a pattern or a loop head writes through any.
+fn direct_write_holds(target: &Target) -> bool {
+    target.patterned || target.wrappers == 0 || (target.wrappers == 1 && !target.satisfies)
+}
+
+/// Whether ESLint makes a write reference where oxc writes the name.
+pub fn is_eslint_write(identifier: Node) -> bool {
+    let target = target_of(identifier);
+    let direct = target.top.parent().is_some_and(|parent| {
+        (parent.is("AssignmentExpression") && parent.node("left") == Some(target.top)) || parent.is("UpdateExpression")
+    });
+    !direct || direct_write_holds(&target)
+}
+
+/// The `AssignmentPattern` defaults on the way from a target identifier up to the whole pattern, and that pattern.
+fn pattern_defaults(identifier: Node) -> (Vec<Node>, Node) {
+    let target = target_of(identifier);
+    (target.defaults, target.top)
 }
 
 fn loop_right<'s>(statement: Option<Node<'s>>, left: Node<'s>) -> Option<Node<'s>> {
@@ -207,24 +244,46 @@ fn caught_names<'s>(clause: Node<'s>, name: &str) -> Vec<Node<'s>> {
 
 /// The `writeExpr` of each write reference ESLint makes for an assigned name.
 pub fn assigned_writes(identifier: Node) -> Vec<Node> {
-    let (mut writes, top) = pattern_defaults(identifier);
-    let parent = top.parent();
-    let assigned = parent.filter(|parent| parent.is("AssignmentExpression") && parent.node("left") == Some(top)).and_then(|parent| parent.node("right"));
-    writes.extend(assigned.or_else(|| loop_right(parent, top)));
+    let target = target_of(identifier);
+    let parent = target.top.parent();
+    let assigned = parent.filter(|parent| parent.is("AssignmentExpression") && parent.node("left") == Some(target.top));
+    let right = match assigned {
+        Some(assignment) if direct_write_holds(&target) => assignment.node("right"),
+        Some(_) => return Vec::new(),
+        None => loop_right(parent, target.top),
+    };
+    let mut writes = target.defaults;
+    writes.extend(right);
     writes
 }
 
-fn written_values<'s>(scopes: &Scopes<'_, 's>, identifier: Node<'s>) -> Vec<Node<'s>> {
+/// `writtenValues` of `member-values.mts`: the defaults of every definition and the `writeExpr` of every write.
+pub fn written_values<'s>(scopes: &Scopes<'_, 's>, identifier: Node<'s>) -> Vec<Node<'s>> {
+    writes_of(scopes, identifier, true)
+}
+
+/// The `writeExpr` of every write reference of the variable a name has, as ESLint resolves them.
+pub fn write_exprs<'s>(scopes: &Scopes<'_, 's>, identifier: Node<'s>) -> Vec<Node<'s>> {
+    writes_of(scopes, identifier, false)
+}
+
+/// The `var` declarations in a catch body whose writes ESLint gives to the clause's parameter, for a catch
+/// parameter's definition.
+pub fn caught_declarations<'s>(clause: Node<'s>, name: &str) -> Vec<Node<'s>> {
+    caught_names(clause, name)
+}
+
+fn writes_of<'s>(scopes: &Scopes<'_, 's>, identifier: Node<'s>, defaults: bool) -> Vec<Node<'s>> {
     let Some(name) = identifier.name() else { return Vec::new() };
-    let Some(variable) = scopes.variable_by_name(&name, identifier.start()) else { return Vec::new() };
-    let definitions = scopes.defs(variable);
+    let Some(variable) = super::variable_of(scopes, identifier) else { return Vec::new() };
+    let definitions = defs(scopes, identifier);
     let mut found: Vec<Node> = Vec::new();
     let mut add = |node: Node<'s>| {
         if !found.contains(&node) {
             found.push(node);
         }
     };
-    for definition in &definitions {
+    for definition in definitions.iter().filter(|_| defaults) {
         let default = definition.name.parent().filter(|parent| parent.is("AssignmentPattern"));
         default.and_then(|parent| parent.node("right")).into_iter().for_each(&mut add);
     }

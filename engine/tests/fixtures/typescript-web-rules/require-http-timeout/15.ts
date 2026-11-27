@@ -1,0 +1,1 @@
+import axios from "axios"; axios.defaults.timeout = 5000; export const get = (url) => axios.get(url);

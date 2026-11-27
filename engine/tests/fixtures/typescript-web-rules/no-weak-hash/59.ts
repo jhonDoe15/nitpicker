@@ -1,0 +1,1 @@
+import { createHmac } from "node:crypto"; export const hotp = (key: Buffer, counter: Buffer) => createHmac("sha1", key).update(counter).digest();

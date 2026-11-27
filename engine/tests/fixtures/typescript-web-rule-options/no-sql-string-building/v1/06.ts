@@ -1,0 +1,1 @@
+export const find = (id) => prisma.$queryRaw`SELECT * FROM users WHERE id = ${id}`;

@@ -1,0 +1,1 @@
+const own = { 'Content-Type': 'x' }; use(own['Content-Type']);

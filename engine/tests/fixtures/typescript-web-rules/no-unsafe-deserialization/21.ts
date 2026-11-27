@@ -1,0 +1,1 @@
+import vm from "node:vm"; export const script = (code) => new vm.Script(code);

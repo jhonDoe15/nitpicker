@@ -1,0 +1,1 @@
+import { authenticator } from "otplib"; authenticator.options = { algorithm: "sha1" as never, digits: 6 };

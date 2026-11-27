@@ -647,7 +647,7 @@ impl<'a> Resolver<'a> {
             .filter(|parameter| matches!(parameter.kind(), "formal_parameter" | "spread_parameter"))
             .map(|parameter| self.annotation_names(parameter))
             .collect();
-        super::model::Detail { access, annotations: self.annotation_names(member), parameter_annotations, guards: self.guard_exprs(member), marked: String::new(), nullable_types: Vec::new() }
+        super::model::Detail { access, annotations: self.annotation_names(member), parameter_annotations, guards: self.guard_exprs(member), marked: String::new(), nullable_types: Vec::new(), kept: self.kept_annotations(member) }
     }
 
     /// Whether a declaration carries `@CheckForNull` (JSR-305 or SpotBugs) or an annotation that is itself annotated with it.
@@ -698,6 +698,9 @@ impl<'a> Resolver<'a> {
         let has = super::super::helpers::has_modifier;
         let mut bits = self.marks(declaration) | self.retention(declaration);
         let written = super::super::helpers::annotation_names(self.file, declaration);
+        if written.iter().any(|name| matches!(*name, "Deprecated" | "java.lang.Deprecated")) {
+            bits |= flag::DEPRECATED;
+        }
         if written.iter().any(|name| self.class_name(declaration, name).is_some_and(|full| CHECK_FOR_NULL_NAMES.contains(&full.as_str()))) {
             bits |= flag::CHECK_FOR_NULL;
         }
@@ -1160,7 +1163,11 @@ impl<'a> Resolver<'a> {
                             annotations: Vec::new(),
                             guards: self.guard_exprs(member),
                             folded: None,
-                            flags: super::model::flag::PUBLIC | super::model::flag::STATIC | super::model::flag::FINAL | super::model::flag::ENUM,
+                            flags: super::model::flag::PUBLIC
+                                | super::model::flag::STATIC
+                                | super::model::flag::FINAL
+                                | super::model::flag::ENUM
+                                | if super::super::helpers::annotation_names(self.file, member).iter().any(|name| matches!(*name, "Deprecated" | "java.lang.Deprecated")) { super::model::flag::DEPRECATED } else { 0 },
                         });
                     }
                 }
@@ -1240,8 +1247,20 @@ impl<'a> Resolver<'a> {
             let (parameters, generic_parameters, varargs) = self.parameters(declaration.field("parameters"));
             if !info.methods.iter().any(|method| method.name == "<init>" && method.parameters == parameters) {
                 let compact = declaration.field("body").map(children).unwrap_or_default().into_iter().find(|member| member.kind() == "compact_constructor_declaration");
-                let detail = super::model::Detail { annotations: compact.map(|member| self.annotation_names(member)).unwrap_or_default(), ..Default::default() };
-                info.methods.push(Method { generic_parameters, varargs, nullable_parameters: self.nullable_parameters(declaration), names: self.parameter_names(declaration), detail, ..plain("<init>", parameters, Type::Primitive("void")) });
+                let has = super::super::helpers::has_modifier;
+                let written = compact.unwrap_or(declaration);
+                let in_interface = declaration.parent().is_some_and(|body| body.kind() == "interface_body" || body.kind() == "annotation_type_body");
+                let access = if has(written, "public") || in_interface && compact.is_none() { 1 } else if has(written, "protected") { 4 } else if has(written, "private") { 2 } else { 0 };
+                let detail = super::model::Detail {
+                    access,
+                    annotations: compact.map(|member| self.annotation_names(member)).unwrap_or_default(),
+                    kept: compact.map(|member| self.kept_annotations(member)).unwrap_or_default(),
+                    ..Default::default()
+                };
+                let deprecated = compact.is_some_and(|member| super::super::helpers::annotation_names(self.file, member).iter().any(|name| matches!(*name, "Deprecated" | "java.lang.Deprecated")));
+                let base = plain("<init>", parameters, Type::Primitive("void"));
+                let flags = base.flags | if deprecated { super::model::flag::DEPRECATED } else { 0 };
+                info.methods.push(Method { generic_parameters, varargs, nullable_parameters: self.nullable_parameters(declaration), names: self.parameter_names(declaration), detail, flags, ..base });
             }
             for component in declaration.field("parameters").map(children).unwrap_or_default() {
                 // A variable arity component is an array field; its name sits one level down.

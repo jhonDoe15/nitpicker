@@ -28,7 +28,7 @@
 //!   cover right after the store is named `$L` and its slot.
 pub mod flow;
 mod report;
-mod slots;
+pub(super) mod slots;
 mod value;
 mod walk;
 

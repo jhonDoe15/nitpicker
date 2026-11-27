@@ -1,0 +1,1 @@
+import hash from "object-hash"; export const id = (o) => hash(o, { algorithm: "md5" });

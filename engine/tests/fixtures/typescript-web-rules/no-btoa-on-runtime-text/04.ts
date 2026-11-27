@@ -1,0 +1,1 @@
+export const a = btoa(String.fromCharCode.apply(null, bytes));

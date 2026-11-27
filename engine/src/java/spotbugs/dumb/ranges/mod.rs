@@ -5,7 +5,7 @@
 //! break it, and sizes minus offsets wrap as `int` arithmetic does. Each finding is reported once per method,
 //! pattern, value, broken bound and called method, priority 2.
 mod arrays;
-mod fields;
+pub(in crate::java::spotbugs) mod fields;
 pub mod known;
 mod strings;
 

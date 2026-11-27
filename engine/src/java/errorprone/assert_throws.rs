@@ -9,19 +9,19 @@ use tree_sitter::Node;
 /// One javac statement: a declaration with several declarators counts once per declarator.
 pub(super) struct Statement<'t> {
     pub(super) node: Node<'t>,
-    declarator: Option<Node<'t>>,
+    pub(super) declarator: Option<Node<'t>>,
     last_declarator: bool,
 }
 
 impl Statement<'_> {
-    fn end(&self) -> usize {
+    pub(super) fn end(&self) -> usize {
         match self.declarator {
             Some(declarator) if !self.last_declarator => declarator.next_sibling().map_or(declarator.end_byte(), |comma| comma.end_byte()),
             _ => self.node.end_byte(),
         }
     }
 
-    fn position(&self) -> usize {
+    pub(super) fn position(&self) -> usize {
         match self.declarator {
             Some(declarator) => name_position(declarator),
             None if self.node.kind() == "class_declaration" => class_position(self.node),

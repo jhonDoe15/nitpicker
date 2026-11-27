@@ -1,0 +1,1 @@
+import { createHash } from "node:crypto"; const enum Algo { Legacy = "sha1" } export const h = (s: string) => createHash(Algo.Legacy).digest("hex");

@@ -1,0 +1,1 @@
+export const theme = { type: "postgres", label: "Postgres" };

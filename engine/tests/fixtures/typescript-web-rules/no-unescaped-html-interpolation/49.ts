@@ -1,0 +1,1 @@
+export const a = (t: string) => { let x = t; x = `<b>${x}</b>`; return x; };

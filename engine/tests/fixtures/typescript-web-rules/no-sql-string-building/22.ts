@@ -1,0 +1,1 @@
+import format from "pg-format"; export const find = (t, id) => pool.query(format("SELECT * FROM %I WHERE id = %L", t, id));

@@ -1,0 +1,1 @@
+const a = <iframe src={`${origin}/embed`} />;

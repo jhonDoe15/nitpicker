@@ -1,0 +1,1 @@
+if (existsSync(options.file)) { log(readFileSync); }

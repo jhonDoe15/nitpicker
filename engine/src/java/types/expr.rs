@@ -52,8 +52,15 @@ fn numeric_rank(kind: &Type) -> Option<u8> {
 /// The value of a string literal with its escapes decoded. Text blocks are left out.
 pub fn literal_text(file: &crate::engine::source::SourceFile, literal: Node) -> Option<String> {
     let literal = unwrap(literal);
-    let text = file.text_of(literal);
-    if literal.kind() != "string_literal" || text.len() < 2 {
+    if literal.kind() != "string_literal" {
+        return None;
+    }
+    string_value(file.text_of(literal))
+}
+
+/// The value of a string literal or text block as written in source, quotes included.
+pub fn string_value(text: &str) -> Option<String> {
+    if text.len() < 2 {
         return None;
     }
     let block = text.starts_with("\"\"\"");
@@ -1967,6 +1974,30 @@ impl<'a> Resolver<'a> {
         let candidates: Vec<(&ClassInfo, &Method)> =
             info.methods.iter().filter(|method| method.name == "<init>").map(|method| (info, method)).collect();
         self.select(owner, &candidates, &self.shapes(call))
+    }
+
+    /// The constructor an enum constant calls, with the constant's arguments.
+    pub fn resolve_enum_constant(&self, constant: Node) -> Option<Call> {
+        let own = enclosing_type(self.file, self.scope, constant)?;
+        self.constructor_of(constant, self.own_type(&own))
+    }
+
+    /// The constructor of the superclass that a constructor without `this(...)` or `super(...)` calls.
+    pub fn resolve_implicit_super(&self, constructor: Node) -> Option<Call> {
+        let own = enclosing_type(self.file, self.scope, constructor)?;
+        self.constructor_of(constructor, self.type_of_super(&own)?)
+    }
+
+    fn constructor_of(&self, node: Node, owner: Type) -> Option<Call> {
+        if self.spent() {
+            return None;
+        }
+        self.in_turn(node, || {
+            let info = self.index.get(&owner.name())?;
+            let candidates: Vec<(&ClassInfo, &Method)> =
+                info.methods.iter().filter(|method| method.name == "<init>").map(|method| (info, method)).collect();
+            self.select(owner.clone(), &candidates, &self.shapes(node))
+        })
     }
 
     fn type_of_super(&self, own: &str) -> Option<Type> {

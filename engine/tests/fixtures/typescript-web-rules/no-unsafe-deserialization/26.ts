@@ -1,0 +1,1 @@
+import { deserialize } from "bson"; export const doc = deserialize(bytes, { evalFunctions: true });

@@ -1,0 +1,1 @@
+export function find(c, db) { const q = c.req.query('q'); return db.select().from(t).where(ilike(t.name, q)); }

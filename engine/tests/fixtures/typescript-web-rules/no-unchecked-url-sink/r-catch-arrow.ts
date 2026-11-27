@@ -1,0 +1,1 @@
+const { url } = m; function f() { try {} catch ({ a = () => window.open(url), url }) { } }

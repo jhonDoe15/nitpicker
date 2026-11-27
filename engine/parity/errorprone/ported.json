@@ -533,6 +533,7 @@
  "CacheLoaderNull",
  "DoNotMockAutoValue",
  "RequiredModifiers",
+ "RestrictedApi",
  "CollectionIncompatibleType",
  "FallThrough",
  "MissingDefault",
@@ -559,5 +560,13 @@
  "RecordComponentAccessorAnnotationConflict",
  "ModifySourceCollectionInStream",
  "TypeNameShadowing",
- "UseBinds"
+ "UseBinds",
+ "StaticMockMember",
+ "TruthAssertExpected",
+ "MutableGuiceModule",
+ "MissingFail",
+ "TryFailRefactoring",
+ "AssertThrowsMinimizer",
+ "InlineMeValidator",
+ "ASTHelpersSuggestions"
 ]

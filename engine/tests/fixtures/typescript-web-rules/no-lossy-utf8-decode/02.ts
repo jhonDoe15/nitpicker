@@ -1,0 +1,1 @@
+export const v = JSON.parse(new TextDecoder().decode(base64url.decode(segment)));

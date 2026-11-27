@@ -4,6 +4,10 @@ const ERROR = 'error';
 const WARNING = 'warning';
 const NOTE = 'note';
 
+export const VALUE_DETECTORS: Readonly<Record<string, readonly string[]>> = {
+  OptionalReturnNull: ['NP_OPTIONAL_RETURN_NULL'],
+};
+
 export const VALUES_PLACED: Readonly<Record<string, Placed>> = {
   SR_NOT_CHECKED: {
     text: 'Method ignores results of InputStream.skip()',
@@ -24,9 +28,21 @@ export const VALUES_PLACED: Readonly<Record<string, Placed>> = {
     levels: { 1: WARNING, 2: WARNING },
     placement: 'shown',
   },
+  UC_USELESS_CONDITION: {
+    text: 'Condition has no effect',
+    levels: { 1: WARNING, 2: NOTE },
+  },
+  UC_USELESS_CONDITION_TYPE: {
+    text: 'Condition has no effect due to the variable type',
+    levels: { 1: WARNING, 2: NOTE },
+  },
   HARD_CODE_KEY: {
     text: 'Hard coded key',
     levels: { 1: WARNING, 2: WARNING },
     placement: 'shown',
+  },
+  NP_OPTIONAL_RETURN_NULL: {
+    text: 'Method with Optional return type returns explicit null',
+    levels: { 1: ERROR },
   },
 };

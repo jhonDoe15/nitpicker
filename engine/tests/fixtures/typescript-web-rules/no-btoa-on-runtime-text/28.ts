@@ -1,0 +1,1 @@
+export function f(map: object) { const text = JSON.stringify(map); return btoa(text); }

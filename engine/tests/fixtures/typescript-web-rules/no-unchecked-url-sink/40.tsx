@@ -1,0 +1,1 @@
+const a = <embed src={doc.fileUrl} />;

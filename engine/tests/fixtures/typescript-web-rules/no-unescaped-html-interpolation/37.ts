@@ -1,0 +1,1 @@
+export const a = (nonce: string) => `<script nonce="${nonce}">x</script>`;

@@ -1,0 +1,1 @@
+export const A = () => <>{[{ url: "/a" }].map((i) => <a href={i.url}>x</a>)}</>;

@@ -3,4 +3,4 @@
 pub mod modules;
 pub mod no_orm_query_logging;
 pub mod no_orm_schema_sync;
-mod options;
+pub mod options;

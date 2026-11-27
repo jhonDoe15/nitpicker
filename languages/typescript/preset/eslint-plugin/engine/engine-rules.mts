@@ -15,6 +15,7 @@ import type { RunnerVocabulary } from '../../test-runner/vocabulary/typed-vocabu
 import path from 'node:path';
 import { featureOf } from '../rules/contracts/contract-infrastructure-type.mts';
 import { testSourcesFact } from './test-sources-fact.mts';
+import { hasGlobalTrimmer } from '../rules/request-text/global-trimmer.mts';
 
 const stylesheetSpecifier: RegExp = untypedStylesheetSpecifier;
 
@@ -58,16 +59,22 @@ function testRootOf(options: readonly unknown[]): string {
   return typeof root === 'string' ? root : 'test';
 }
 
+function kebab(word: string): string {
+  return word.replaceAll(/[A-Z]/gu, (upper) => `-${upper.toLowerCase()}`);
+}
+
 function runnerWords(...words: readonly (keyof RunnerVocabulary)[]): FileFacts {
   return (_filename, options) => {
     const vocabulary = vocabularyOf({ options });
-    return Object.fromEntries(
-      words.map((word) => [
-        word.replaceAll(/[A-Z]/gu, (upper) => `-${upper.toLowerCase()}`),
-        vocabulary[word],
-      ]),
-    );
+    return Object.fromEntries(words.map((word) => [kebab(word), vocabulary[word]]));
   };
+}
+
+function optionFacts(...names: readonly string[]): FileFacts {
+  const text = (options: readonly unknown[], name: string): string =>
+    String(Reflect.get(Object(options[0]), name) ?? '');
+  return (_filename, options) =>
+    Object.fromEntries(names.map((name) => [kebab(name), text(options, name)]));
 }
 
 export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<string, EngineRule>([
@@ -92,6 +99,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
     },
   ],
   ['no-blank-number-coercion', TYPED],
+  ['no-btoa-on-runtime-text', {}],
   ['no-case-mixed-header-merge', {}],
   ['no-case-sensitive-path-compare', {}],
   ['no-chunkwise-stream-text', TYPED],
@@ -106,6 +114,8 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
     },
   ],
   ['no-copy-pasted-tests', { facts: runnerWords('eachCase') }],
+  ['no-disabled-tls-verification', {}],
+  ['no-directory-passing-existence-check', {}],
   ['no-double-decode', {}],
   ['no-dropped-delegate-result', TYPED],
   ['no-dynamic-import-of-path', {}],
@@ -142,22 +152,28 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-listen-on-all-interfaces', {}],
   ['no-io-in-loop', EFFECTS],
   ['no-lazy-relation-in-loop', TYPED],
+  ['no-lossy-utf8-decode', {}],
   ['no-local-time-zone', TYPED],
   ['no-lookup-as-presence', TYPED],
   ['no-many-to-many-cascade-remove', {}],
   ['no-mutating-method-in-domain', TYPED],
   ['no-node-process-per-test', {}],
+  ['no-non-latin1-header-value', {}],
   ['no-orm-query-logging', {}],
   ['no-orm-schema-sync', {}],
   ['no-parameter-mutation', TYPED],
+  ['no-raw-http-value', {}],
   ['no-remote-call-in-transaction', EFFECTS],
   ['no-remote-call-under-lock', EFFECTS],
   ['no-retry-without-idempotency', EFFECTS],
   ['no-dual-write', EFFECTS],
   ['no-stale-retry-after-conflict', EFFECTS],
   ['no-unchecked-response-json', {}],
+  ['no-unchecked-url-sink', {}],
   ['no-unencoded-url-part', {}],
+  ['no-unescaped-css-selector', {}],
   ['no-unescaped-filter-value', {}],
+  ['no-unescaped-html-interpolation', {}],
   ['no-unescaped-pattern-translation', {}],
   ['no-unisolated-job-loop', EFFECTS],
   [
@@ -215,6 +231,24 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-unowned-async-assertion', {}],
   ['no-unpaged-listing', {}],
   ['no-unresolved-relative-url', {}],
+  ['no-unsafe-deserialization', { facts: optionFacts('yamlMajor') }],
+  ['no-unstripped-remote-text', {}],
+  ['no-uncoerced-request-input', {}],
+  [
+    'no-untrimmed-request-text',
+    { facts: (filename) => ({ 'global-trimmer': String(hasGlobalTrimmer(filename)) }) },
+  ],
+  ['no-slash-only-redirect-guard', {}],
+  [
+    'no-route-without-auth',
+    {
+      facts: (_filename, options) => ({
+        entries: JSON.stringify(Reflect.get(Object(options[0]), 'entries') ?? []),
+      }),
+    },
+  ],
+  ['no-sql-string-building', { facts: optionFacts('sqlLibrary') }],
+  ['no-weak-hash', {}],
   ['no-unversioned-orm-entity', TYPED],
   ['no-wait-for-with-fake-timers', {}],
   [
@@ -222,7 +256,9 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
     { facts: (_filename, options) => ({ options: JSON.stringify(options[0] ?? {}) }) },
   ],
   ['react-test-no-implementation-details', {}],
+  ['require-client-timeout', {}],
   ['require-error-listener', {}],
+  ['require-http-timeout', { facts: optionFacts('fetch', 'nodeFetchTimeout', 'projectDefaults') }],
   [
     'report-module-load-effects',
     {

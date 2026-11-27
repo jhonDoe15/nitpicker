@@ -1,0 +1,1 @@
+const files = paths.filter((p) => fs.existsSync(p)).map((p) => p.length);

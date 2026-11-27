@@ -1,0 +1,1 @@
+import { hmac } from "@noble/hashes/hmac"; import { sha1 } from "@noble/hashes/legacy"; export const mac = (k: Uint8Array, m: Uint8Array) => hmac(sha1, k, m);

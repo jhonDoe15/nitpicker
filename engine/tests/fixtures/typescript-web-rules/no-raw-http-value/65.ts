@@ -1,0 +1,1 @@
+export const f = (m: Map<string, string>) => m.get('content-type') === 'text/html';

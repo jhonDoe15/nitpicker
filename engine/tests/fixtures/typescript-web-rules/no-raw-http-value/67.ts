@@ -1,0 +1,1 @@
+export const f = (x: Request) => x.headers.get('accept')?.startsWith('text/');

@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ENGINE_PLUGIN_RULES, PLUGIN_RULE_PREFIX } from './engine-rules.mts';
 import { engineSettings } from './engine-requests.mts';
@@ -55,7 +58,14 @@ describe('facts the engine rules get from the project', () => {
       'no-unhandled-void-promise.runners=[]',
       'no-unknown-in-domain.jsdoc=false',
       expect.stringMatching(/^no-unknown-in-domain\.phrase=./u),
+      'no-unsafe-deserialization.yaml-major=',
+      'no-untrimmed-request-text.global-trimmer=false',
+      'no-route-without-auth.entries=[]',
+      'no-sql-string-building.sql-library=',
       'preserve-error-cause.options={}',
+      'require-http-timeout.fetch=',
+      'require-http-timeout.node-fetch-timeout=',
+      'require-http-timeout.project-defaults=',
       'report-module-load-effects.common-js-exports=false',
       expect.stringMatching(/^structured-catch-logging\.logger-shapes=/u),
       expect.stringMatching(/^test-must-use-production-runtime\.exempt=(?:true|false)$/u),
@@ -71,6 +81,13 @@ describe('facts the engine rules get from the project', () => {
       'nitpicker/preserve-error-cause': ['error', { wrap: true }],
       'nitpicker/no-unhandled-void-promise': ['error', { runners: ['vitest'] }],
       'nitpicker/report-module-load-effects': ['error', { commonJsExports: true }],
+      'nitpicker/no-unsafe-deserialization': ['error', { yamlMajor: 3 }],
+      'nitpicker/no-route-without-auth': ['error', { entries: ['route__requireAuth'] }],
+      'nitpicker/no-sql-string-building': ['error', { sqlLibrary: 'kysely' }],
+      'nitpicker/require-http-timeout': [
+        'error',
+        { fetch: false, nodeFetchTimeout: false, projectDefaults: ['axios', 'got'] },
+      ],
     };
 
     expect(settingsOf(rules)).toEqual([
@@ -82,7 +99,29 @@ describe('facts the engine rules get from the project', () => {
       'preserve-error-cause.options={"wrap":true}',
       'no-unhandled-void-promise.runners=["vitest"]',
       'report-module-load-effects.common-js-exports=true',
+      'no-unsafe-deserialization.yaml-major=3',
+      'no-route-without-auth.entries=["route__requireAuth"]',
+      'no-sql-string-building.sql-library=kysely',
+      'require-http-timeout.fetch=false',
+      'require-http-timeout.node-fetch-timeout=false',
+      'require-http-timeout.project-defaults=axios,got',
     ]);
+  });
+
+  it('tells the request-text rule that the project trims request text in one place', () => {
+    const directory = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-engine-trimmer-')));
+    mkdirSync(path.join(directory, 'src'));
+    writeFileSync(path.join(directory, 'package.json'), '{}');
+    const registration = ['app.useGlobalPipes', '(new TrimPipe());'].join('');
+    writeFileSync(path.join(directory, 'src/main.ts'), registration);
+    const rules = { 'nitpicker/no-untrimmed-request-text': 'error' };
+    try {
+      expect(settingsOf(rules, path.join(directory, 'src/a.ts'))).toEqual([
+        'no-untrimmed-request-text.global-trimmer=true',
+      ]);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });
 

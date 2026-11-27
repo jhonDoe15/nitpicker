@@ -1,0 +1,1 @@
+el.querySelector(`.${props.className}__tab`);

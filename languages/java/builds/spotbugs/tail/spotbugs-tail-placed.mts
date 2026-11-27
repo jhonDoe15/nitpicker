@@ -1,4 +1,11 @@
 import type { Placed } from '../spotbugs-placed.mts';
+import {
+  ASSIGNMENT_PATTERNS,
+  CALENDAR_PATTERNS,
+  CIRCUIT_PATTERNS,
+  FLOAT_PATTERNS,
+  LOGIC_PLACED,
+} from './spotbugs-tail-logic-placed.mts';
 
 const ERROR = 'error';
 const WARNING = 'warning';
@@ -20,7 +27,19 @@ export const START_PATTERNS: readonly string[] = ['SC_START_IN_CTOR'];
 
 export const ENUM_PATTERNS: readonly string[] = ['ME_ENUM_FIELD_SETTER', 'ME_MUTABLE_ENUM_FIELD'];
 
+export const TAIL_DETECTORS: Readonly<Record<string, readonly string[]>> = {
+  IDivResultCastToDouble: DIVISION_PATTERNS,
+  WaitInLoop: WAIT_PATTERNS,
+  StartInConstructor: START_PATTERNS,
+  MutableEnum: ENUM_PATTERNS,
+  FindFloatEquality: FLOAT_PATTERNS,
+  FindNonShortCircuit: CIRCUIT_PATTERNS,
+  StaticCalendarDetector: CALENDAR_PATTERNS,
+  FindFieldSelfAssignment: ASSIGNMENT_PATTERNS,
+};
+
 export const TAIL_PLACED: Readonly<Record<string, Placed>> = {
+  ...LOGIC_PLACED,
   ICAST_IDIV_CAST_TO_DOUBLE: {
     text: 'Integral division result cast to double or float',
     levels: { 2: NOTE },

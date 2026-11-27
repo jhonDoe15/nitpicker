@@ -1,0 +1,1 @@
+export const a = (bodyHtml: string) => `<main>${bodyHtml}</main>`;

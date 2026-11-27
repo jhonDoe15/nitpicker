@@ -1,0 +1,1 @@
+function f(next) { if (allowed.includes(next)) { redirect(next); } }

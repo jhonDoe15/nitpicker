@@ -1,0 +1,1 @@
+export const a = (title: string) => `<title>${title}</title>`;

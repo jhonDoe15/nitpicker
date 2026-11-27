@@ -1,0 +1,1 @@
+function f() { if (other.existsSync(options.file)) { fs.readFileSync(options.file); } }

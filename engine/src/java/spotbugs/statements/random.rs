@@ -61,20 +61,30 @@ pub fn check(context: &Context, node: Node) {
 
 /// A named class that extends `Random` directly: each of its constructors calls `Random`'s, written or not.
 pub fn subclass(context: &Context, class: Node) {
+    for (at, label) in super_calls(context, class, RANDOM) {
+        report_in(context, at, RANDOM, &label);
+    }
+}
+
+/// Where the constructors of a named class that extends a class directly call that class's constructor, with the
+/// label of each constructor: the `super(...)` call, the name of a constructor that calls none, or the `class`
+/// keyword for the constructor javac writes.
+pub fn super_calls<'a>(context: &Context, class: Node<'a>, superclass: &str) -> Vec<(Node<'a>, String)> {
     if class.kind() != "class_declaration" {
-        return;
+        return Vec::new();
     }
-    let Some(extended) = class.child_by_field_name("superclass").and_then(|written| written.named_child(0)) else { return };
-    if context.resolver.type_node(extended).is_none_or(|kind| kind.name() != RANDOM) {
-        return;
+    let Some(extended) = class.child_by_field_name("superclass").and_then(|written| written.named_child(0)) else { return Vec::new() };
+    if context.resolver.type_node(extended).is_none_or(|kind| kind.name() != superclass) {
+        return Vec::new();
     }
-    let Some(body) = class.child_by_field_name("body") else { return };
-    let Some(own) = context.resolver.scope.names.get(&class.id()) else { return };
+    let Some(body) = class.child_by_field_name("body") else { return Vec::new() };
+    let Some(own) = context.resolver.scope.names.get(&class.id()) else { return Vec::new() };
     let label = |member: Node| super::member_label(context, own, class, member).unwrap_or_default();
     let constructors: Vec<Node> = children(body).into_iter().filter(|member| member.kind() == "constructor_declaration").collect();
+    let mut found = Vec::new();
     if constructors.is_empty() {
         let keyword = children(class).into_iter().find(|part| part.kind() == "class").unwrap_or(class);
-        report_in(context, keyword, RANDOM, &label(class));
+        found.push((keyword, label(class)));
     }
     for constructor in constructors {
         let first = constructor.child_by_field_name("body").and_then(|body| body.named_child(0));
@@ -82,10 +92,11 @@ pub fn subclass(context: &Context, class: Node) {
             Some(call) => {
                 let target = call.child_by_field_name("constructor");
                 if target.is_some_and(|target| target.kind() == "super") {
-                    report_in(context, call, RANDOM, &label(constructor));
+                    found.push((call, label(constructor)));
                 }
             }
-            None => report_in(context, constructor.child_by_field_name("name").unwrap_or(constructor), RANDOM, &label(constructor)),
+            None => found.push((constructor.child_by_field_name("name").unwrap_or(constructor), label(constructor))),
         }
     }
+    found
 }

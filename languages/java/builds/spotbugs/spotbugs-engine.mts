@@ -20,12 +20,7 @@ import {
   THREAD_PATTERNS,
   URL_PATTERNS,
 } from './spotbugs-dumb-placed.mts';
-import {
-  DIVISION_PATTERNS,
-  ENUM_PATTERNS,
-  START_PATTERNS,
-  WAIT_PATTERNS,
-} from './tail/spotbugs-tail-placed.mts';
+import { TAIL_DETECTORS } from './tail/spotbugs-tail-placed.mts';
 import { engineSpotbugsFindingOf, spotbugsResultOf } from './spotbugs-results.mts';
 import {
   type ProcessorKind,
@@ -44,9 +39,11 @@ import {
   UNCHECKED_READS,
   UNINITIALIZED_READ,
   UNSYNC_GET,
+  USELESS_CONDITIONS,
   UTIL_MONITORENTER,
   WRONG_MAP_ITERATOR,
 } from './spotbugs-patterns.mts';
+import { VALUE_DETECTORS } from './values/spotbugs-values-placed.mts';
 
 export { ON_ENGINE } from './spotbugs-patterns.mts';
 
@@ -86,6 +83,7 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   FindUnsyncGet: [UNSYNC_GET],
   ReadReturnShouldBeChecked: UNCHECKED_READS,
   FindUninitializedGet: [UNINITIALIZED_READ],
+  RedundantConditions: USELESS_CONDITIONS,
   ConfusionBetweenInheritedAndOuterMethod: ['IA_AMBIGUOUS_INVOCATION_OF_INHERITED_OR_OUTER_METHOD'],
   IteratorIdioms: ['IT_NO_SUCH_ELEMENT'],
   DefaultEncodingDetector: ['DM_DEFAULT_ENCODING'],
@@ -102,13 +100,11 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
     'DMI_RANDOM_USED_ONLY_ONCE',
     'DMI_COLLECTION_OF_URLS',
   ],
-  IDivResultCastToDouble: DIVISION_PATTERNS,
-  WaitInLoop: WAIT_PATTERNS,
-  StartInConstructor: START_PATTERNS,
-  MutableEnum: ENUM_PATTERNS,
+  ...TAIL_DETECTORS,
   DontCatchNullPointerException: ['DCN_NULLPOINTER_EXCEPTION'],
   WrongMapIterator: [WRONG_MAP_ITERATOR],
   BooleanReturnNull: ['NP_BOOLEAN_RETURN_NULL'],
+  ...VALUE_DETECTORS,
   FindDeadLocalStores: DEAD_STORES,
   FindLocalSelfAssignment2: SELF_ASSIGNMENTS,
   FindBadCast2: CAST_PATTERNS,

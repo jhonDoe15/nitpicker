@@ -1,0 +1,1 @@
+import hmacSha1 from "crypto-js/hmac-sha1"; export const sign = (s: string, k: string) => hmacSha1(s, k);

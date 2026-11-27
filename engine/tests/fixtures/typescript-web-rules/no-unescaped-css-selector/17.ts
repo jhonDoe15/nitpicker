@@ -1,0 +1,1 @@
+const hasOwn = 1; hasOwnProperty.call(a, "k"); valueOf.call(a); constructor.call(a);

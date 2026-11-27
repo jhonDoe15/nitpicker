@@ -1,0 +1,1 @@
+if (fs.existsSync("/etc/app.conf")) { fs.readFileSync("/etc/app.conf", "utf8"); }

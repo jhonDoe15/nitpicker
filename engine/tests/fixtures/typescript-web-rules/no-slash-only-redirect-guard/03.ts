@@ -1,0 +1,1 @@
+function safe(callbackUrl) { const r = new URL(callbackUrl, base); if (r.origin !== base) { return "/"; } return r.pathname; }

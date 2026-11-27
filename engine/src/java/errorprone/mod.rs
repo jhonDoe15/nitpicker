@@ -10,10 +10,20 @@ mod jdk_parse;
 mod jdk_values;
 mod always_throws;
 mod sun_api;
+mod ast_helpers;
 mod record_components;
 mod modify_source;
 mod type_shadowing;
 mod use_binds;
+mod fix_compiles;
+mod assert_throws_fix;
+mod assert_throws_minimizer;
+mod assert_throws_types;
+mod missing_fail;
+mod missing_fail_parts;
+mod truth_expected;
+mod fix_compiles_writes;
+mod inline_me;
 mod format_validation;
 mod format_string;
 mod format_annotation;
@@ -314,6 +324,7 @@ mod truth_checks;
 mod three_letter_zones;
 mod wakelock;
 mod may_report;
+mod restricted;
 mod reach;
 mod reach_checks;
 mod oneof;
@@ -344,6 +355,8 @@ pub struct Context<'a> {
     line_starts: Vec<usize>,
     selected: Option<Vec<String>>,
     out: std::cell::RefCell<Vec<Finding>>,
+    /// The checks that leave this file to Error Prone: the engine cannot tell what they report here.
+    handed: std::cell::RefCell<Vec<&'static str>>,
     /// The class each name in the file stands for, as written and in full: two checks read every name.
     pub named: std::cell::RefCell<std::collections::HashMap<usize, Option<(String, String)>>>,
 }
@@ -358,6 +371,16 @@ impl Context<'_> {
             return;
         }
         self.report_always(check, offset, message);
+    }
+    /// Leaves the check in this file to Error Prone, unless a `@SuppressWarnings` around the node turns it off there.
+    pub fn hand_back(&self, check: &'static str, node: Node) {
+        if self.suppressed(check, node) || self.skipped(check) || self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == check)) {
+            return;
+        }
+        let mut handed = self.handed.borrow_mut();
+        if !handed.contains(&check) {
+            handed.push(check);
+        }
     }
     /// Reports with Error Prone's "Did you mean" sentence for the check's suggested fixes.
     pub fn report_fixed(&self, check: &'static str, matched: Node, offset: usize, message: &str, fixes: &[fixes::Fix]) {
@@ -424,7 +447,7 @@ impl Context<'_> {
     pub fn suppressed(&self, check: &str, node: Node) -> bool {
         let mut current = Some(node);
         while let Some(at) = current {
-            if DECLARATIONS.contains(&at.kind()) && self.suppress_strings(at).iter().any(|name| name == check || name == "all") {
+            if DECLARATIONS.contains(&at.kind()) && self.suppress_strings(at).iter().any(|name| name == check || name == "all" || ALT_NAMES.contains(&(check, name.as_str()))) {
                 return true;
             }
             current = parent(at);
@@ -712,6 +735,7 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["InjectOnMemberAndConstructor"], guice::inject_on_member_and_constructor),
     (&["IncompatibleModifiers"], guice::incompatible_modifiers),
     (&["RequiredModifiers"], guice::required_modifiers),
+    (&["RestrictedApi"], restricted::restricted_api),
     (&["CollectionIncompatibleType"], collection_types::collection_incompatible_type),
     (&["JUnit4SetUpNotRun"], junit_init::set_up_not_run),
     (&["JUnit4TearDownNotRun"], junit_init::tear_down_not_run),
@@ -811,6 +835,12 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["InvalidZoneId"], time_constants::invalid_zone_id),
     (&["InvalidJavaTimeConstant"], time_constants::invalid_java_time_constant),
     (&["AlwaysThrows"], always_throws::always_throws),
+    (&["StaticMockMember"], fix_compiles::static_mock_member),
+    (&["MissingFail"], missing_fail::missing_fail),
+    (&["TryFailRefactoring"], assert_throws_fix::try_fail_refactoring),
+    (&["AssertThrowsMinimizer"], assert_throws_minimizer::assert_throws_minimizer),
+    (&["TruthAssertExpected"], truth_expected::truth_assert_expected),
+    (&["MutableGuiceModule"], fix_compiles::mutable_guice_module),
     (&["NewFileSystem"], always_throws::new_file_system),
     (&["StringJoin"], size_join::string_join),
     (&["SizeGreaterThanOrEqualsZero"], size_join::size_greater_than_or_equals_zero),
@@ -879,10 +909,12 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["InvalidPatternSyntax"], misc_defect_calls::invalid_pattern_syntax),
     (&["TemporalAccessorGetChronoField"], temporal_fields::temporal_accessor_get_chrono_field),
     (&["SunApi"], sun_api::sun_api),
+    (&["ASTHelpersSuggestions"], ast_helpers::ast_helpers_suggestions),
     (&["RecordComponentAccessorAnnotationConflict"], record_components::record_component_accessor_annotation_conflict),
     (&["ModifySourceCollectionInStream"], modify_source::modify_source_collection_in_stream),
     (&["TypeNameShadowing"], type_shadowing::type_name_shadowing),
     (&["UseBinds"], use_binds::use_binds),
+    (&["InlineMeValidator"], inline_me::inline_me_validator),
     (&["CharacterGetNumericValue"], misc_defect_calls::character_get_numeric_value),
     (&["GetClassOnEnum"], misc_defect_calls::get_class_on_enum),
     (&["BigDecimalEquals"], misc_defect_calls::big_decimal_equals),
@@ -1045,6 +1077,9 @@ const NOT_ON_TEST_ONLY: &[&str] = &[
     "StaticAssignmentOfThrowable", "ThrowSpecificExceptions", "TimeInStaticInitializer",
 ];
 
+/// Other names a check answers to in `@SuppressWarnings` (`altNames`), for the checks ported with theirs.
+const ALT_NAMES: &[(&str, &str)] = &[("MissingFail", "missing-fail")];
+
 pub struct ErrorProne;
 
 /// The row that lists, for each file the engine read, the checks of `NP_EP_MAY_REPORT` that may report there.
@@ -1052,6 +1087,8 @@ const MAY_REPORT: &str = "_MayReport";
 /// The row for a class an annotation processor changed (`NP_EP_AUDIT_CLASSES`): the class file the build wrote for it
 /// has members its source does not explain.
 const REWRITTEN: &str = "_Rewritten";
+/// The row that lists, for a file, the engine's checks it leaves to Error Prone there.
+const HAND_BACK: &str = "_HandBack";
 /// The row for a place where Lombok rewrites written code in a way the engine does not model (`lombok_rewrites`):
 /// Error Prone has to check that file.
 const LOMBOK_REWRITE: &str = "_LombokRewrite";
@@ -1110,7 +1147,7 @@ impl FileRule for ErrorProne {
         let mut line_starts = vec![0];
         line_starts.extend(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1));
         let selected = std::env::var("NP_EP_ONLY").ok().map(|names| names.split(',').map(String::from).collect());
-        let context = Context { resolver, project, file, line_starts, selected, out: std::cell::RefCell::new(Vec::new()), named: std::cell::RefCell::new(std::collections::HashMap::new()) };
+        let context = Context { resolver, project, file, line_starts, selected, out: std::cell::RefCell::new(Vec::new()), handed: std::cell::RefCell::new(Vec::new()), named: std::cell::RefCell::new(std::collections::HashMap::new()) };
         let wanted = |names: &[&str]| {
             !names.iter().all(|name| context.skipped(name))
                 && context.selected.as_ref().is_none_or(|selected| names.iter().any(|name| selected.iter().any(|one| one == name)))
@@ -1128,6 +1165,7 @@ impl FileRule for ErrorProne {
         }
         let rewrites = if project.index.lombok { lombok_rewrites::rewrites(&context, file.tree.root_node()) } else { Vec::new() };
         let places: Vec<(usize, usize)> = rewrites.iter().map(|rewrite| context.line_column(rewrite.at)).collect();
+        let handed = context.handed.take();
         let mut found = context.out.into_inner();
         for (rewrite, (line, column)) in rewrites.into_iter().zip(places) {
             found.push(Finding {
@@ -1145,6 +1183,18 @@ impl FileRule for ErrorProne {
             found = found.into_iter().flat_map(|finding| [finding.clone(), finding]).collect();
         }
         out.append(&mut found);
+        if !handed.is_empty() {
+            out.push(Finding {
+                file: file.path.clone(),
+                line: 1,
+                column: 1,
+                rule: HAND_BACK.to_string(),
+                message: handed.join(","),
+                symbol: None,
+                priority: None,
+                arguments: None,
+            });
+        }
         if let Ok(asked) = std::env::var("NP_EP_MAY_REPORT") {
             let asked: Vec<&str> = asked.split(',').filter(|name| !name.is_empty()).collect();
             let found = may_report::may_report(&asked, &file.text, file.tree.root_node(), &project.index);

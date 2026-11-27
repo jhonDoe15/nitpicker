@@ -28,7 +28,7 @@ fn body_of(class: Node) -> Option<Node> {
     class.child_by_field_name("body").or_else(|| children(class).into_iter().find(|part| part.kind() == "class_body"))
 }
 
-fn initializes(member: Node, interface: bool, wanted_static: bool) -> bool {
+pub(super) fn initializes(member: Node, interface: bool, wanted_static: bool) -> bool {
     match member.kind() {
         "field_declaration" => (has_modifier(member, "static") || interface) == wanted_static,
         "constant_declaration" | "enum_constant" => wanted_static,
@@ -38,7 +38,7 @@ fn initializes(member: Node, interface: bool, wanted_static: bool) -> bool {
     }
 }
 
-fn delegates(constructor: Node) -> bool {
+pub(super) fn delegates(constructor: Node) -> bool {
     super::classes::lines::delegates(constructor)
 }
 

@@ -1,13 +1,18 @@
 //! SpotBugs bug patterns rebuilt for the engine from the documented meaning of each pattern and from what
 //! SpotBugs 4.9.8 reports on test code: same pattern name, line and message, read from source instead of class files.
+mod assign;
 mod attributes;
+mod calendars;
 mod calls;
 mod casts;
+mod circuit;
 mod catches;
 mod classes;
 mod concurrent;
+mod crypto;
 mod compare;
 mod constructors;
+mod cookies;
 mod dead;
 mod dumb;
 mod equality;
@@ -16,6 +21,7 @@ mod fields;
 mod handlers;
 mod held;
 mod idioms;
+mod floats;
 mod flow;
 mod folds;
 mod known;
@@ -38,6 +44,7 @@ mod stores;
 mod tail;
 mod taint;
 mod threads;
+mod tls;
 mod values;
 
 use super::types::project::JavaProject;
@@ -242,6 +249,9 @@ const DETECTORS: &[Detector] = &[
     sequence::sequence as Detector,
     dumb::dumb as Detector,
     tail::tail as Detector,
+    assign::assignments as Detector,
+    calendars::calendars as Detector,
+    circuit::circuits as Detector,
 ];
 
 #[derive(Default)]
@@ -252,6 +262,8 @@ pub struct SpotBugs {
     attributes: attributes::Attributes,
     taint: taint::Derived,
     effects: returns::Effects,
+    floats: floats::Floats,
+    crypto: crypto::summary::Fields,
 }
 
 impl FileRule for SpotBugs {
@@ -283,6 +295,10 @@ impl FileRule for SpotBugs {
         values::values(&context, &declared);
         nulls::null_dereference(&context, &declared);
         taint::injections(&context, &declared, &self.taint);
+        floats::floats(&context, &declared, &self.floats);
+        crypto::crypto(&context, &declared, &self.crypto);
+        tls::tls(&context, &declared);
+        cookies::cookies(&context, &declared);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
         if context.wants(attributes::PATTERNS) {
             let names = self.attributes.names(&project.index, &project.sources);
@@ -300,6 +316,8 @@ impl FileRule for SpotBugs {
             self.attributes.settle(&project.index, &project.literals, || self.known.visits(&project.index), out);
             self.taint.settle(project, &self.elsewhere, out);
             self.effects.settle(project, out);
+            self.floats.settle(out);
+            self.crypto.settle(out);
         }
     }
 }

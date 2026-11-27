@@ -1,0 +1,1 @@
+export const a = (t: string) => `if x<b then ${t}`;

@@ -1,0 +1,1 @@
+document.querySelector(`[data-id=${cssEscape(id)}]`);

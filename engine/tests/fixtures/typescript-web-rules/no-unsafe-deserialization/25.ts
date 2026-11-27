@@ -1,0 +1,1 @@
+import { load, FULL_SCHEMA } from "js-yaml"; export const data = load(text, { schema: FULL_SCHEMA });

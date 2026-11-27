@@ -1,0 +1,1 @@
+const a = <form action={model.actionUrl} />;

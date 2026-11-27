@@ -1,0 +1,1 @@
+export const a = (list: string[]) => `<td>${list.length}</td>`;

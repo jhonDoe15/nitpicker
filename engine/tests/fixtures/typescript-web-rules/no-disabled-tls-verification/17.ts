@@ -1,0 +1,1 @@
+export const args = (spki) => [`--ignore-certificate-errors-spki-list=${spki}`];

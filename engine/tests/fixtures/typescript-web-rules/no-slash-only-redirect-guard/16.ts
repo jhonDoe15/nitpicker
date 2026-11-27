@@ -1,0 +1,1 @@
+function f(raw) { const t = new URL(raw, origin); if (t.origin !== origin || t.pathname.startsWith("//")) { return; } router.push(t.pathname + t.search); }

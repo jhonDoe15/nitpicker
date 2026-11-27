@@ -1,0 +1,1 @@
+export const a = btoa("user:pass");

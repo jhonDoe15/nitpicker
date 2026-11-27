@@ -1,0 +1,1 @@
+import { createHmac } from "node:crypto"; export const sign = (s: string, k: string) => createHmac("md5", k).update(s).digest();

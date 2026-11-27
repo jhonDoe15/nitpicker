@@ -1,0 +1,1 @@
+res.setHeader("x-token", token);

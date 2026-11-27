@@ -1,0 +1,1 @@
+export const a = (to: string) => `<Link to="${to}">go</Link>`;

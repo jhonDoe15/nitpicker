@@ -3,7 +3,7 @@ mod boxing;
 mod calls;
 pub(super) mod found;
 pub(super) mod numbers;
-mod ranges;
+pub(super) mod ranges;
 mod threads;
 mod urls;
 

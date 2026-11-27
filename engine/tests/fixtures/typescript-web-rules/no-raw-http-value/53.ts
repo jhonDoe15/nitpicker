@@ -1,0 +1,1 @@
+const match = /charset=([^;]+)/i.exec(headers.get('content-type'));

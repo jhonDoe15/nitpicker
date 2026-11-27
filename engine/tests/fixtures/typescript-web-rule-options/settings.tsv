@@ -1,0 +1,7 @@
+require-http-timeout/v1	[{"fetch":false}]	require-http-timeout.fetch=false	require-http-timeout.node-fetch-timeout=	require-http-timeout.project-defaults=
+no-route-without-auth/v1	[{"entries":["nest__Authenticated__permission"]}]	no-route-without-auth.entries=["nest__Authenticated__permission"]
+no-route-without-auth/v2	[{"entries":[]}]	no-route-without-auth.entries=[]
+no-route-without-auth/v3	[{"entries":["nest__fallback"]}]	no-route-without-auth.entries=["nest__fallback"]
+no-route-without-auth/v4	[{"entries":["route__requireAuth"]}]	no-route-without-auth.entries=["route__requireAuth"]
+no-sql-string-building/v1	[{"sqlLibrary":"kysely"}]	no-sql-string-building.sql-library=kysely
+require-http-timeout/v2	[{"projectDefaults":["axios","fetch"],"nodeFetchTimeout":false}]	require-http-timeout.fetch=	require-http-timeout.node-fetch-timeout=false	require-http-timeout.project-defaults=axios,fetch
