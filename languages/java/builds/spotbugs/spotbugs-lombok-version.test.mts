@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { zipOf } from '../../../../shared/test-support/archives/zip-writer.mts';
 import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
 import {
   declaredLombokVersion,
@@ -31,6 +32,14 @@ describe('Lombok versions', () => {
     expect(
       declaredLombokVersion(['org.projectlombok:lombok-mapstruct-binding:0.2.0']),
     ).toBeUndefined();
+  });
+
+  it('reads the version from the manifest inside a Lombok jar', () => {
+    const root = projectWith({});
+    const jar = path.join(root, 'lombok.jar');
+    writeFileSync(jar, zipOf({ 'META-INF/MANIFEST.MF': 'Lombok-Version: 1.18.34\n' }));
+
+    expect(lombokVersionOf([jar])).toBe('1.18.34');
   });
 
   it('knows that Lombok marks what it writes as generated from 1.18.34 on', () => {

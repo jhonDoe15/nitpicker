@@ -22,18 +22,26 @@ const STATEMENT_ENDS = new Set([';', '{', '}']);
 const DECLARATOR_ENDS = new Set(['=', ';', ',']);
 
 function textOf(tokens: readonly Token[], index: number): string {
-  return tokens[index]?.text ?? '';
+  return tokens
+    .slice(index, index + 1)
+    .map(({ text }) => text)
+    .join('');
+}
+
+function stepBack(source: BareSource, before: number): number {
+  return textOf(source.tokens, before) === ')' ? Number(source.partner.at(before)) : before;
 }
 
 export function statementStart(source: BareSource, index: number): number {
   const steps = [index];
+  let last = index;
   for (const at of steps) {
-    const before = textOf(source.tokens, at - 1);
-    if (at > 0 && !STATEMENT_ENDS.has(before)) {
-      steps.push(before === ')' ? (source.partner[at - 1] ?? at - 1) : at - 1);
+    if (at > 0 && !STATEMENT_ENDS.has(textOf(source.tokens, at - 1))) {
+      last = stepBack(source, at - 1);
+      steps.push(last);
     }
   }
-  return steps.at(-1) ?? index;
+  return last;
 }
 
 function typeName(head: readonly Token[]): string {

@@ -81,34 +81,54 @@ function missingDefaults(
   return [...new Set(names)];
 }
 
-function wrapperOf(
+function delegateContract(
+  link: TypeDecl,
+  delegate: FieldDecl,
+  { implemented, index }: Pick<Context, 'implemented' | 'index'>,
+): TypeDecl | undefined {
+  if (delegate.generated || delegate.array || delegate.modifiers.has('static')) {
+    return undefined;
+  }
+  const contract = index.resolve(delegate.type, link);
+  return contract?.kind === 'interface' && implemented.has(contract) ? contract : undefined;
+}
+
+function forwardsEnough(type: TypeDecl, family: readonly MethodDecl[], delegate: string): boolean {
+  const own = type.methods.filter((method) => family.some((each) => sameSignature(each, method)));
+  const forwards = own.filter(({ forwardsTo }) => forwardsTo === delegate);
+  return forwards.length >= MIN_FORWARDS && forwards.length / own.length >= MIN_FORWARD_SHARE;
+}
+
+type Candidate = { readonly link: TypeDecl; readonly field: FieldDecl };
+
+function wrapperFor(
   type: TypeDecl,
-  { chain, subclasses, implemented, index }: Context,
+  { link, field: delegate }: Candidate,
+  context: Context,
 ): Wrapper | undefined {
-  const fields = chain.flatMap((link) => link.fields.map((field) => ({ link, field })));
-  for (const { link, field: delegate } of fields) {
-    const contract = index.resolve(delegate.type, link);
-    if (
-      delegate.generated ||
-      delegate.array ||
-      delegate.modifiers.has('static') ||
-      contract?.kind !== 'interface' ||
-      !implemented.has(contract)
-    ) {
-      continue;
-    }
-    const family = superInterfaces(contract, index).flatMap(instanceMethods);
-    const own = type.methods.filter((method) => family.some((each) => sameSignature(each, method)));
-    const forwards = own.filter(({ forwardsTo }) => forwardsTo === delegate.name);
-    if (forwards.length < MIN_FORWARDS || forwards.length / own.length < MIN_FORWARD_SHARE) {
-      continue;
-    }
-    const missing = missingDefaults(family, {
-      declaring: [...chain, ...subclasses],
-      implemented,
-    });
-    if (missing.length > 0 && missing.length <= MAX_SKIPPED) {
-      return { type, delegate, contract, missing };
+  const contract = delegateContract(link, delegate, context);
+  if (contract === undefined) {
+    return undefined;
+  }
+  const family = superInterfaces(contract, context.index).flatMap(instanceMethods);
+  if (!forwardsEnough(type, family, delegate.name)) {
+    return undefined;
+  }
+  const missing = missingDefaults(family, {
+    declaring: [...context.chain, ...context.subclasses],
+    implemented: context.implemented,
+  });
+  return missing.length > 0 && missing.length <= MAX_SKIPPED
+    ? { type, delegate, contract, missing }
+    : undefined;
+}
+
+function wrapperOf(type: TypeDecl, context: Context): Wrapper | undefined {
+  const candidates = context.chain.flatMap((link) => link.fields.map((field) => ({ link, field })));
+  for (const candidate of candidates) {
+    const wrapper = wrapperFor(type, candidate, context);
+    if (wrapper !== undefined) {
+      return wrapper;
     }
   }
   return undefined;

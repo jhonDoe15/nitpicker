@@ -1,5 +1,15 @@
 import path from 'node:path';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
+import {
+  CONSTRUCTOR,
+  classOf,
+  fieldName,
+  ownerOf,
+  packageOf,
+  placeName,
+  relativeName,
+  withoutPackage,
+} from './names/spotbugs-names.mts';
 import { PLACED, placesByArguments, placesByName, type Placed } from './spotbugs-placed.mts';
 
 export type EngineSpotbugsFinding = {
@@ -40,20 +50,7 @@ type Shape = {
   readonly place: (parts: readonly [string, string], symbol: string | undefined) => LogicalLocation;
 };
 
-const CONSTRUCTOR = 'new ';
 const LEVEL = 'note';
-
-export function classOf(method: string): string {
-  const signature = method.slice(0, method.indexOf('('));
-  return signature.startsWith(CONSTRUCTOR)
-    ? signature.slice(CONSTRUCTOR.length)
-    : signature.slice(0, signature.lastIndexOf('.'));
-}
-
-function packageOf(binary: string): string {
-  const dot = binary.lastIndexOf('.');
-  return dot === -1 ? '' : binary.slice(0, dot);
-}
 
 function member([method, field]: readonly [string, string]): LogicalLocation {
   return {
@@ -111,62 +108,26 @@ const SHAPES: Readonly<Record<string, Shape>> = {
   },
 };
 
-function withoutPackage(qualified: string, owner: string): string {
-  const local = packageOf(owner);
-  return local === '' ? qualified : qualified.slice(local.length + 1);
-}
-
-function ownerOf(kind: string, qualified: string): string {
-  if (kind === 'type') {
-    return qualified;
-  }
-  if (kind === 'member') {
-    return qualified.slice(0, qualified.lastIndexOf('.'));
-  }
-  const method = kind === 'variable' ? qualified.slice(0, qualified.lastIndexOf('#')) : qualified;
-  return classOf(method);
-}
-
-function placeName(kind: string, qualified: string, owner: string): string {
-  if (kind === 'variable') {
-    return qualified.slice(qualified.lastIndexOf('#') + 1);
-  }
-  if (kind !== 'function') {
-    return withoutPackage(qualified, owner);
-  }
-  if (qualified.startsWith(CONSTRUCTOR)) {
-    return `${CONSTRUCTOR}${withoutPackage(qualified.slice(CONSTRUCTOR.length), owner)}`;
-  }
-  const open = qualified.indexOf('(');
-  return qualified.slice(qualified.lastIndexOf('.', open) + 1);
-}
-
-function relativeName(qualified: string, place: string): string {
+function shownName(placed: Placed, place: string, qualified: string): string | undefined {
   const at = place.lastIndexOf('@');
-  const local = at === -1 ? '' : packageOf(place.slice(at + 1));
-  return local !== '' && packageOf(classOf(qualified)) === local
-    ? qualified.slice(local.length + 1)
-    : qualified;
+  if (!placesByName(placed) || at === -1) {
+    return undefined;
+  }
+  const shown = place.slice(at + 1);
+  return placed.placement === 'relative' ? relativeName(qualified, shown) : shown;
 }
 
-function placedNameOf(
-  finding: EngineSpotbugsFinding,
-  placed: Placed,
-  [kind, qualified, owner]: readonly [string, string, string],
-): string {
+function placedNameOf(finding: EngineSpotbugsFinding, placed: Placed, parts: PlaceParts): string {
+  const { kind, qualified, place, priority, owner } = parts;
   if (placesByArguments(placed)) {
     return finding.arguments?.[1] ?? qualified;
   }
-  if (placed.placement === 'relative' && (finding.symbol ?? '').includes('@')) {
-    return relativeName(qualified, finding.symbol ?? '');
-  }
-  const shown = (finding.symbol ?? '').lastIndexOf('@');
-  if (placed.placement === 'shown' && shown !== -1) {
-    return (finding.symbol ?? '').slice(shown + 1);
-  }
-  return placed.classNamed?.includes(finding.priority ?? 0)
-    ? withoutPackage(qualified, owner)
-    : placeName(kind, qualified, owner);
+  return (
+    shownName(placed, place, qualified) ??
+    (placed.classNamed?.includes(priority)
+      ? withoutPackage(qualified, owner)
+      : placeName(kind, qualified, owner))
+  );
 }
 
 function readerOf(
@@ -180,64 +141,74 @@ function readerOf(
     : undefined;
 }
 
-function fieldName(qualified: string, owner: string, reader: string): string {
-  const local = packageOf(reader);
-  if (local === '' && owner === reader) {
-    return qualified.slice(qualified.lastIndexOf('.') + 1);
-  }
-  return packageOf(owner) === local ? withoutPackage(qualified, owner) : qualified;
-}
-
 type PlaceParts = {
   readonly kind: string;
   readonly qualified: string;
   readonly written: string | undefined;
   readonly level: string;
+  readonly place: string;
+  readonly priority: number;
+  readonly owner: string;
 };
 
 function placePartsOf(finding: EngineSpotbugsFinding, placed: Placed): PlaceParts {
   const place = finding.symbol ?? '';
   const colon = place.indexOf(':');
-  const level = placed.levels[finding.priority ?? 0];
+  const priority = finding.priority ?? 0;
+  const level = placed.levels[priority];
   if (colon < 1 || level === undefined) {
     throw new Error(`the engine wrote a ${finding.rule} finding nitpicker cannot place: ${place}`);
   }
   const body = place.slice(colon + 1);
   const at = placesByName(placed) ? body.lastIndexOf('@') : -1;
   const [qualified = '', written] = (at === -1 ? body : body.slice(0, at)).split('|');
-  return { kind: place.slice(0, colon), qualified, written, level };
+  const kind = place.slice(0, colon);
+  return { kind, qualified, written, level, place, priority, owner: ownerOf(kind, qualified) };
+}
+
+function subjectOf(finding: EngineSpotbugsFinding, placed: Placed, owner: string): string {
+  return placesByArguments(placed) ? (finding.arguments?.[0] ?? owner) : owner;
+}
+
+function placedLogicalOf(
+  finding: EngineSpotbugsFinding,
+  placed: Placed,
+  parts: PlaceParts,
+): LogicalLocation {
+  const { kind, qualified, owner } = parts;
+  const reader = readerOf(finding, placed, kind);
+  if (reader === undefined) {
+    return { name: placedNameOf(finding, placed, parts), kind, fullyQualifiedName: qualified };
+  }
+  const field = qualified.slice(qualified.lastIndexOf('.') + 1);
+  return {
+    name: fieldName(qualified, owner, reader),
+    kind,
+    fullyQualifiedName: `${reader}.${field}`,
+  };
 }
 
 function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): SpotbugsResult {
-  const { kind, qualified, written, level } = placePartsOf(finding, placed);
-  const owner = ownerOf(kind, qualified);
-  const reader = readerOf(finding, placed, kind);
-  const subject = reader ?? (placesByArguments(placed) ? (finding.arguments?.[0] ?? owner) : owner);
-  const directory = (written ?? packageOf(subject)).replaceAll('.', '/');
+  const parts = placePartsOf(finding, placed);
+  const reader = readerOf(finding, placed, parts.kind);
+  const subject = reader ?? subjectOf(finding, placed, parts.owner);
+  const directory = (parts.written ?? packageOf(subject)).replaceAll('.', '/');
   const file = path.basename(finding.file);
   return {
     ruleId: finding.rule,
-    message: { id: 'default', text: placed.text, arguments: finding.arguments ?? [qualified] },
-    level,
+    message: {
+      id: 'default',
+      text: placed.text,
+      arguments: finding.arguments ?? [parts.qualified],
+    },
+    level: parts.level,
     locations: [
       {
         physicalLocation: {
           artifactLocation: { uri: directory === '' ? file : `${directory}/${file}` },
           ...(finding.line === 0 ? {} : { region: { startLine: finding.line } }),
         },
-        logicalLocations: [
-          {
-            name:
-              reader === undefined
-                ? placedNameOf(finding, placed, [kind, qualified, owner])
-                : fieldName(qualified, owner, reader),
-            kind,
-            fullyQualifiedName:
-              reader === undefined
-                ? qualified
-                : `${reader}.${qualified.slice(qualified.lastIndexOf('.') + 1)}`,
-          },
-        ],
+        logicalLocations: [placedLogicalOf(finding, placed, parts)],
       },
     ],
   };

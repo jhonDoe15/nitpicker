@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
@@ -83,6 +83,19 @@ describe('mergeReports', () => {
     writeFileSync(engine, checkstyleXml('13.5.0', fileElements(['/p/A.java'], [ROW])));
     mergeReports(report, engine);
     expect(readFileSync(report, 'utf8')).toBe('');
+  });
+
+  it('leaves a missing report missing and a report untouched when the engine found no files', () => {
+    const root = projectWith({});
+    const report = path.join(root, 'checkstyle.xml');
+    const engine = path.join(root, 'checkstyle-engine.xml');
+    const own = '<?xml version="1.0"?>\n<checkstyle version="13.5.0">\n</checkstyle>\n';
+    writeFileSync(engine, checkstyleXml('13.5.0', ''));
+    mergeReports(report, engine);
+    expect(existsSync(report)).toBe(false);
+    writeFileSync(report, own);
+    mergeReports(report, engine);
+    expect(readFileSync(report, 'utf8')).toBe(own);
   });
 
   it('refuses a report without a checkstyle element', () => {

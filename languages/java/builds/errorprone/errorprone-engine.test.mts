@@ -177,6 +177,25 @@ describe('errorProneOnEngine', () => {
     ]);
   });
 
+  it('reads the sources at the language level of a compile that patches the JDK', () => {
+    const { plan, environment, argumentFile } = setup(
+      '--project-arg=--add-exports=java.base/sun.misc=ALL-UNNAMED',
+    );
+    const text = readFileSync(argumentFile, 'utf8');
+    const started: Started[] = [];
+
+    errorProneOnEngine(plan, environment, { run: engineWriting({ findings: [] }, started) });
+    writeFileSync(argumentFile, text.replace('--release=17\n', ''));
+    errorProneOnEngine(plan, environment, { run: engineWriting({ findings: [] }, started) });
+
+    const [patched, unset] = started.map(({ argumentList }) => argumentList);
+    expect(started).toHaveLength(2);
+    expect(patched).not.toContain('--release');
+    expect(patched?.slice(-4, -2)).toStrictEqual(['--source', '17']);
+    expect(unset).not.toContain('--release');
+    expect(unset).not.toContain('--source');
+  });
+
   it('gives the module path to the engine apart from the class path', () => {
     const { plan, environment } = setup('--module-path', '/mods/a.jar');
     const started: Started[] = [];

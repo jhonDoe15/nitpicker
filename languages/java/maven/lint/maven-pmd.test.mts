@@ -1,7 +1,17 @@
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { zipOf } from '../../../../shared/test-support/archives/zip-writer.mts';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mts';
 import { runPmd } from '../maven-lint.mts';
 import { parseJson, textsOf } from '../../../../shared/values/readers.mts';
@@ -189,4 +199,78 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       '{"version":"2.1.0","runs":[]}',
     );
   });
+
+  it('runs no PMD when the engine runs every rule', () => {
+    const basedir = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-pmd-'));
+    roots.push(basedir);
+    fakeJava(basedir, '--report-file');
+    mkdirSync(path.join(basedir, 'jdk/jmods'));
+    const mainRoot = path.join(basedir, 'src/main/java');
+    const reportDir = path.join(basedir, 'report');
+    for (const directory of [mainRoot, reportDir]) {
+      mkdirSync(directory, { recursive: true });
+    }
+    writeFileSync(path.join(mainRoot, 'Demo.java'), 'class Demo {}\n');
+    const pmdJar = path.join(basedir, 'pmd-java-7.0.0.jar');
+    writeFileSync(pmdJar, zipOf(shippedCategories()));
+
+    runPmd({
+      module: sourceModule({ basedir, sourceRoots: [mainRoot], compiler: { compilerArgs: [] } }),
+      reportDir,
+      tools: { pmd: [pmdJar] },
+      classpaths: { mainCompile: [], testCompile: [] },
+      configs: { pmd: {} },
+      spring: false,
+      environment: { JAVA_HOME: path.join(basedir, 'jdk'), NITPICKER_ENGINE: quietEngine(basedir) },
+    });
+
+    expect(existsSync(path.join(basedir, 'arguments.json'))).toBe(false);
+    expect(readFileSync(path.join(reportDir, 'pmd.sarif'), 'utf8')).toBe(
+      '{"version":"2.1.0","runs":[]}',
+    );
+    expect(readFileSync(path.join(reportDir, 'pmd-log.txt'), 'utf8')).toBe('');
+  });
 });
+
+const XPATH = 'net.sourceforge.pmd.lang.rule.xpath.XPathRule';
+
+function shippedCategories(): Record<string, string> {
+  const rules = new Map<string, string[]>();
+  const shipped = ['pmd-ruleset.xml', 'pmd-main-ruleset.xml', 'pmd-test-ruleset.xml'];
+  for (const name of [...shipped, 'rules/guards-ruleset.xml']) {
+    const text = readFileSync(path.join(GRADLE_DIRECTORY, name), 'utf8');
+    for (const [, file = '', rule] of text.matchAll(
+      /ref="(category\/[^"]+?\.xml)(?:\/([^"]+))?"/gu,
+    )) {
+      rules.set(file, [...(rules.get(file) ?? []), ...(rule === undefined ? [] : [rule])]);
+    }
+  }
+  return Object.fromEntries(
+    [...rules].map(([file, names]) => [
+      file,
+      '<ruleset name="c" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">' +
+        names
+          .map(
+            (rule) =>
+              `<rule name="${rule}" language="java" class="${XPATH}" message="${rule}">` +
+              '<properties><property name="xpath"><value>//A</value></property></properties></rule>',
+          )
+          .join('') +
+        '</ruleset>',
+    ]),
+  );
+}
+
+function quietEngine(basedir: string): string {
+  const engine = path.join(basedir, 'engine.cjs');
+  writeFileSync(
+    engine,
+    [
+      `#!${process.execPath}`,
+      "const out = process.argv[process.argv.indexOf('--out') + 1];",
+      "require('node:fs').writeFileSync(out, JSON.stringify({ findings: [], syntaxErrorFiles: [] }));",
+    ].join('\n'),
+  );
+  chmodSync(engine, 0o755);
+  return engine;
+}
