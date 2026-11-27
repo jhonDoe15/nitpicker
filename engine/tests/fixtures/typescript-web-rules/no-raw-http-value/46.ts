@@ -1,0 +1,1 @@
+const accept = headers.get('accept'); const types = accept.split(',');

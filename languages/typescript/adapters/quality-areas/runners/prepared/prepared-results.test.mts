@@ -92,4 +92,28 @@ describe('test results prepared for the head', () => {
       ['tests-not-run-on-base', '.'],
     ]);
   });
+
+  it('counts a report that says it did not succeed as failing', () => {
+    const live = tree({});
+    const results = tree(recorded(live, { numTotalTests: 2, success: false }));
+
+    const run = preparedTestRun(
+      optionsFor('head', { live, project: tree({}) }),
+      path.join(results, 'results'),
+    );
+
+    expect(run.findings?.map(({ rule }) => rule)).toEqual(['tests-failed']);
+  });
+
+  it('refuses recorded results that are not a test report object or cannot be read', () => {
+    const live = tree({});
+    const options = optionsFor('head', { live, project: tree({}) });
+
+    expect(() =>
+      preparedTestRun(options, tree({ 'results/test-report.json': '5' }) + '/results'),
+    ).toThrow('test-report.json is not a test report object');
+    expect(() =>
+      preparedTestRun(options, tree({ 'results/test-report.json': '{' }) + '/results'),
+    ).toThrow('test-report.json cannot be read');
+  });
 });

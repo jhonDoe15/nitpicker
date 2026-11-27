@@ -1,0 +1,1 @@
+export const a = (t: string) => "<p>" + t.trim() + "</p>";

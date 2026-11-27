@@ -1,0 +1,1 @@
+import { DataSource } from "typeorm"; export const db = (type) => new DataSource({ type, entities: [] });

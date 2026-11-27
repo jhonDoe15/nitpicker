@@ -1,0 +1,1 @@
+import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb"; export const doc = (client) => DynamoDBDocumentClient.from(client);

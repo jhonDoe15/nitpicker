@@ -24,7 +24,7 @@ fn folded(node: Node) -> bool {
     }
 }
 
-fn requires_parentheses(node: Node) -> bool {
+pub(super) fn requires_parentheses(node: Node) -> bool {
     match node.kind() {
         "identifier" | "field_access" | "method_invocation" | "array_access" | "parenthesized_expression" | "object_creation_expression" | "method_reference" | "this" => false,
         "lambda_expression" => parent(node).is_some_and(|holder| holder.kind() == "lambda_expression"),

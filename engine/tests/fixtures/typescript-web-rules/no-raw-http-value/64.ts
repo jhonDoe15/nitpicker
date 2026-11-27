@@ -1,0 +1,1 @@
+export const f = (h: Headers) => h.get('content-type')?.toLowerCase() === 'text/html';

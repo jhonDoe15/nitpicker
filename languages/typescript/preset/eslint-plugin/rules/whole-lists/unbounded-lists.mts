@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import {
   findVariable,
+  referencesOf,
   resolveConstant,
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
@@ -72,8 +73,7 @@ function filledInLoop(
   node: TSESTree.Identifier,
   declarator: TSESTree.VariableDeclarator,
 ): boolean {
-  const variable = findVariable(context, node, node.name);
-  return (variable?.references ?? []).some((reference) => {
+  return referencesOf(context, node, node.name).some((reference) => {
     const member = reference.identifier.parent;
     if (
       member.type !== AST_NODE_TYPES.MemberExpression ||

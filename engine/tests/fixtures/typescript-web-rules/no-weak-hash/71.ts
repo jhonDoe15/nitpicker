@@ -1,0 +1,1 @@
+export const opts = { authMechanism: "SCRAM-SHA-1" };

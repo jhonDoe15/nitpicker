@@ -1,0 +1,1 @@
+export function allow(value: string) { const source = value.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*'); return source.length; }

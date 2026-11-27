@@ -1,0 +1,1 @@
+export const a = (n: string) => prisma.dataset.findMany({ where: { name: { contains: n.replace(/[\\%_]/g, "\\$&") } } });

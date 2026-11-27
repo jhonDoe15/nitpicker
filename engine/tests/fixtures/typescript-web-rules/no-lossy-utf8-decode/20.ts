@@ -1,0 +1,1 @@
+import { writeFileSync } from "node:fs"; export function f(a: Uint8Array) { writeFileSync(out, new TextDecoder().decode(a)); }

@@ -1,6 +1,6 @@
 //! `no-local-time-zone`: dates computed or formatted in the server's local time zone, through `Date`, `Intl`,
 //! luxon, date-fns, dayjs or moment. Needs the compiler to tell the library's `Date` from any other type.
-mod bindings;
+pub mod bindings;
 mod date_calls;
 mod library_calls;
 pub mod no_local_time_zone;

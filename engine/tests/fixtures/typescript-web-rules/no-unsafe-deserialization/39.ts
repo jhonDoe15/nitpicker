@@ -1,0 +1,1 @@
+import { deserialize } from "node:v8"; import { readFileSync } from "node:fs"; export const load = (f: string) => deserialize(readFileSync(f));

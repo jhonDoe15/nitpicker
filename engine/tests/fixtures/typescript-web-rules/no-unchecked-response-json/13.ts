@@ -1,0 +1,1 @@
+async function f(res) { return res.json(); }

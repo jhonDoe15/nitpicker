@@ -1,0 +1,3000 @@
+s%1$<12.0X%h2$%<#A	Z,C,i,f	illegal format precision: 0
+%3$4b%+10TzLc 	I,N	format specifier '%z' is not compatible with the given flag(s): +
+{%1R,sp%0 5d% Y	C	unknown format conversion: 'R'
+L.5%B	N	
+M %3$<,.2S%b	i1114111,T,D	format specifier '%s' is not compatible with the given flag(s): ,
+%5%	f	extra format arguments: used 0, provided 1
+%e		missing argument for format specifier '%e'
+3$%(H-	D	format specifier '%h' is not compatible with the given flag(s): (
+Ep%3$,.1TT% 11y%(-4.3Sx%c	T,s,D	illegal format precision: 1
+%2$<Tb%1$#wp!0	Z,C,S,Z	unknown format conversion: 'w'
+%10NpLzyH	b	unknown format conversion: 'N'
+%2$,,C<%%-(nIt%2$D	T,S	duplicate format flags: ,
+(%3$,.0rc%- tEq%2$j#	l,b	unknown format conversion: 'r'
+%-(M%2E<		unknown format conversion: 'M'
+%2$#.2p	D,S,F	unknown format conversion: 'p'
+0c	Z,b,C,n	extra format arguments: used 0, provided 4
+%6a\n\n%eB@s		missing argument for format specifier '%6a'
+.0%-5tX%%2pc%1$-Q		unknown format conversion: 'tX'
+9%  4Hz%,-1.2He	D,n,z,n	duplicate format flags:  
+ky\u00e9%%2$#-12Td(		
+rrC		
+z	S	extra format arguments: used 0, provided 1
+%<tLZ	n,D,F	missing argument for format specifier '%<tL'
+c%(.4H%1$.1fo%+.5BXo	c,D,N,i	format specifier '%h' is not compatible with the given flag(s): (
++10bSB	n,s,d,l	extra format arguments: used 0, provided 4
+u%2$-(7EF3$%0#3a%<+n%2G%#-D	D,F	illegal format flags: +<
+%3$#<3Z%z0%1$-.1a	z,c	unknown format conversion: 'Z'
++oaD% 2r	s,T	unknown format conversion: 'r'
+%1$ sz%2$C%0+h %e\n	c,N,i	format specifier '%s' is not compatible with the given flag(s):  
+c	T,I,z,F	extra format arguments: used 0, provided 4
+%b		missing argument for format specifier '%b'
+e	I,d	extra format arguments: used 0, provided 2
+B%1$-1TN0+h%2$ trk9	Z,C	format specifier '%r' is not compatible with the given flag(s):  
+ejNac2$<H	Z	extra format arguments: used 0, provided 1
+r%+.0S		format specifier '%s' is not compatible with the given flag(s): +
+{0z!E	i,T	extra format arguments: used 0, provided 2
+% +6.1HjE	l,n	format specifier '%h' is not compatible with the given flag(s): + 
+%9Ts%Tw%+	s,d	unknown format conversion: 'tw'
+H<\n	C,z	extra format arguments: used 0, provided 2
+%3$1.4GX	C	missing argument for format specifier '%3$1.4G'
+%1$ tskHY-% G%2$#y	d	format specifier '%s' is not compatible with the given flag(s):  
+%07pR%3$ t-C%#yM%2$+4X	Z	unknown format conversion: 'p'
+10p.2	C,n,i,I	extra format arguments: used 0, provided 4
+s	D	extra format arguments: used 0, provided 1
+fD	S,F	extra format arguments: used 0, provided 2
+%(6o%sC	T,T,N	illegal format conversion: 'java.util.Date' cannot be formatted using '%o'
+T{.2a2xq		
+.2 c%.3tb5c	S,i,b	illegal format precision: 3
+2$A@#B<%<,pM	Z,n,l,b	unknown format conversion: 'p'
+3$ZH%.1Toz	C,f,i,N	illegal format precision: 1
+stgSp	D,Z,F	extra format arguments: used 0, provided 3
+%3$T%%!{	l	unknown format conversion: 't%'
+YE	l,N,z	extra format arguments: used 0, provided 3
+%3$(<bR%cu.00$	l	format specifier '%b' is not compatible with the given flag(s): (
+Q0%1$ 011.3to%,0.1zug	d	illegal format precision: 3
+9%	D,z	unknown format conversion: '%'
+.5H%1.1gq.0c%-#12z%.4E	c,F	unknown format conversion: 'z'
+2$.2Tu\u00e9%<1q	C	unknown format conversion: 'q'
+20$%<+.4N%		unknown format conversion: 'N'
+q%#+nM.00$b	d,z	illegal format flags: #+
+5%+trN%1$10YAx	F,N,l	format specifier '%r' is not compatible with the given flag(s): +
+9Zk<		
+2%0F\n!tR\n	f,n,S	unknown format conversion: 'F'
+I%2%<-1pa%#x	Z,d,C,T	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%x'
+%3$l	I	%l is not a valid format specifier; use %d to format integral types as a decimal integer, and %f, %g or %e to format floating point types (depending on your formatting needs)
+DS	C,b	extra format arguments: used 0, provided 2
+aD%011tY%C% #6hn	f	format specifier '%Y' is not compatible with the given flag(s): 0
+a(99999999999N%	Z,T,d,s	unknown format conversion: '%'
+l0%1$++THxY% <tc<	c,s,c	duplicate format flags: +
+c1		
+c0uh%#Ln		unknown format conversion: 'L'
+\u00e9-	S,f,D,l	extra format arguments: used 0, provided 4
+ F%-X%2$ttcH	b,l,s	missing format width: %-X
+b	b,C,i1114112,D	extra format arguments: used 0, provided 4
+%2$(,z3$ 	l,c,b,I	unknown format conversion: 'z'
+A%1$(.1tbAYzH%	f,F	illegal format precision: 1
+.5Q%#+R%		unknown format conversion: 'R'
+IMC.2%0-j%G3$	I,z	unknown format conversion: 'j'
+hs 0.2E		
+99999999999c	N,T,N,s	extra format arguments: used 0, provided 4
+%,TA%0#A%+.4TQL3$e.0	Z	format specifier '%A' is not compatible with the given flag(s): ,
+%<1e	c,f	missing argument for format specifier '%<1e'
+%-j%ptES3$%%1$<,l	S	unknown format conversion: 'j'
+%5.4F%+F%IeEg% +D	c,d,N	unknown format conversion: 'F'
+g(%++z	I,F,f,F	duplicate format flags: +
+e\nY	s,z,Z,n	extra format arguments: used 0, provided 4
+0$	b,c,f	extra format arguments: used 0, provided 3
+pDXe		
+pS	i	extra format arguments: used 0, provided 1
+b%(1tsd	c	format specifier '%s' is not compatible with the given flag(s): (
+n2$s%1$%%2$(.2S	F,S,b	format specifier '%s' is not compatible with the given flag(s): (
+jAHaZX	C	extra format arguments: used 0, provided 1
+.5@k%+kd 		unknown format conversion: 'k'
+%-+E{e%tQ9	Z,b,c,I	missing format width: %-+E
+%+1tdR%0$	D,i-2147483648	format specifier '%d' is not compatible with the given flag(s): +
+k%	s	unknown format conversion: '%'
+l%f%.0HHIt@%.2k	F,C,Z,d	unknown format conversion: 'k'
+Sn@o%3$#+f%%<+.5b%<<6X	S,F,d	duplicate format flags: <
+%1$+#10d0$Icq	c,C	format specifier '%d' is not compatible with the given flag(s): #
+%3$%2$0n999999999990a3$		
+((cyf%2$8owl	c,i1114111,C,C	extra format arguments: used 2, provided 4
+a	b	extra format arguments: used 0, provided 1
+aCh%	c,z,d	unknown format conversion: '%'
+ .!a0$F	N,C,f	extra format arguments: used 0, provided 3
+ r-Mr<%#,5ta%1$(X		format specifier '%a' is not compatible with the given flag(s): #,
+%1$--TH	F	duplicate format flags: -
+<%-A%	f,i65,T,c	missing format width: %-A
+1B	C	extra format arguments: used 0, provided 1
+Mt-!	i	extra format arguments: used 0, provided 1
+%-+%9fRsB99999999999	s,z,S,b	illegal format flags: -+
+q!MN%as%3$tA		missing argument for format specifier '%a'
+%%,6g%q2$y		unknown format conversion: 'q'
+%2$0-.5L3$yS	i1114111,l	unknown format conversion: 'L'
+ + 	S,I,S	extra format arguments: used 0, provided 3
+1%10ej%1$#<6.5dG%-+G g	c,c,c	illegal format precision: 5
+c%r		unknown format conversion: 'r'
+j%1$-F0$2$X	c	unknown format conversion: 'F'
+%1$-3%%(+11aI%%<rks	b	format specifier '%a' is not compatible with the given flag(s): (
+%1$.3Tx@r2%<nQ	s,F,I,c	illegal format precision: 3
+Hs1		
+sw	f,T	extra format arguments: used 0, provided 2
+k%		unknown format conversion: '%'
+%2$.1%% .1B%2$4.3tI%,0Dh%1e(%( y		illegal format precision: 1
+%( 11r%% ,Ns	C,z,s,F	unknown format conversion: 'r'
+%0Ycx.50nh	s,F,f	unknown format conversion: 'Y'
+.%.1Ys%+,4.3na%%E	b,c,N	unknown format conversion: 'Y'
+ %+.3o	f,D,T,I	illegal format precision: 3
+#jg%0.2S3$IL!	f,c	format specifier '%s' is not compatible with the given flag(s): 0
+0$s%+.1j	s,C,c,T	unknown format conversion: 'j'
+%3$5.4j%7E%2$<.2BY.0.5		unknown format conversion: 'j'
+1.0Tq0	l	extra format arguments: used 0, provided 1
+2c.2HH	D	extra format arguments: used 0, provided 1
+0%2$wG%<-tS%3$(dpa	d	unknown format conversion: 'w'
+! %Dp%pA	Z,Z	unknown format conversion: 'D'
+Z	F,I,F	extra format arguments: used 0, provided 3
+%0$yG	c,i,n,l	Illegal format argument index = 0
+x%%2$,(o2%%%-(Z	l,C,i	unknown format conversion: 'Z'
+%<-2TSp3$0%(#gcEc	C,F	format specifier '%g' is not compatible with the given flag(s): #
+%2$6d%3$-8.0teuH-0	f	illegal format precision: 0
+LTn	n,C,D,F	extra format arguments: used 0, provided 4
+.0	d,s	extra format arguments: used 0, provided 2
+%-,2.5gIQ	d	
+%(Z%(<MA%,,S%  .3tE%#010t%sw	b	unknown format conversion: 'Z'
+\na%L!I	c	unknown format conversion: 'L'
+Q	D	extra format arguments: used 0, provided 1
+%# 2eYur.5L	l	illegal format conversion: 'java.lang.Long' cannot be formatted using '%e'
+.c%e%2$(9G% 2y(F	z,i	unknown format conversion: 'y'
+<0%ThF	I,s,d,Z	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%h'
+%	i,c,f,Z	unknown format conversion: '%'
+.0aB	d,F,N	extra format arguments: used 0, provided 3
+R	N	extra format arguments: used 0, provided 1
+l@ao{%%j	T,Z,S	extra format arguments: used 0, provided 3
+%B%3$8Iy{	I	unknown format conversion: 'I'
+o%2$,,.3T{%%-<4.4DQn	T,C,z,I	duplicate format flags: ,
+%(5.5B%3$(-4I%+y	c,F,i1114112	format specifier '%b' is not compatible with the given flag(s): (
+\u00e9y%.0TI1H%,A%1$k%	s,D,c	illegal format precision: 0
+%,-Tr%S%,+.4Y	i	format specifier '%r' is not compatible with the given flag(s): ,
+%(-TI%3$<.0T	Z,C,I	format specifier '%I' is not compatible with the given flag(s): (
+a		
+%3$(.4M9	I	unknown format conversion: 'M'
+99999999999%#4Hx	C,D	format specifier '%h' is not compatible with the given flag(s): #
+q%<.3M1$%2$,(.1G%#2tNY%e	I,z	unknown format conversion: 'M'
+o%<#.2kkh%,,y+j	T	unknown format conversion: 'k'
+ + 0$.#F		
+M%2$--Ee\n%q	T	duplicate format flags: -
+XN	Z,D	extra format arguments: used 0, provided 2
+%+r	n,z,D	unknown format conversion: 'r'
+C% -ej{eZ	I,d,S	missing format width: %- e
+g	z,s	extra format arguments: used 0, provided 2
+xZ1$	N	extra format arguments: used 0, provided 1
+0%,.0D%1$.5c		unknown format conversion: 'D'
+ae	D,b,b,f	extra format arguments: used 0, provided 4
+%(3.2NBc.5HY2	D	unknown format conversion: 'N'
+h10b%3$+06a	b	missing argument for format specifier '%+03$6a'
+u%12.2gyR HD	c	illegal format conversion: 'java.lang.Character' cannot be formatted using '%g'
+Xb xR%k	D	unknown format conversion: 'k'
+I%+ tw%(,l%Yrc%12B		unknown format conversion: 'tw'
+%(+3L%	S,d,S,f	unknown format conversion: 'L'
+h0%	s,D,S	unknown format conversion: '%'
++	f,i,s	extra format arguments: used 0, provided 3
+%#2tf	D,S	unknown format conversion: 'tf'
+\u00e9	z,s,I,D	extra format arguments: used 0, provided 4
+!%1$.0D%.5zh.5T,	s,f,S,D	unknown format conversion: 'D'
+%	F,n,b	unknown format conversion: '%'
+B%,Tw	N	unknown format conversion: 'tw'
+%<%#w	F,D,z	illegal format flags: <
+j	Z,z	extra format arguments: used 0, provided 2
+%2$r%<6Ypp	F,Z	unknown format conversion: 'r'
+#%,#7.1H!b2x2$	Z,Z	format specifier '%h' is not compatible with the given flag(s): #
+G%%3$Tz#d3$%1$F	n	unknown format conversion: 'F'
+%<.5n99999999999%3$++l %-a 	d	illegal format precision: 5
+F%2$XL% 8.5z-(	d,s,z	unknown format conversion: 'z'
+r2999999999991$Ha%1$1q	T	unknown format conversion: 'q'
+%z	C,D	unknown format conversion: 'z'
+!9f%0#jjN%-#2zL	s,F,f	unknown format conversion: 'j'
+r		
+p%(z! x		unknown format conversion: 'z'
+ox1%2$(+Th+R	T,s	format specifier '%h' is not compatible with the given flag(s): +(
+sd%2$+#Fx		unknown format conversion: 'F'
+% <tf%3$4L%<6Z%(Hc.2H-	F,N	unknown format conversion: 'tf'
+%10Mtx	I,T	unknown format conversion: 'M'
+%<YF5Fq		unknown format conversion: 'Y'
+2	i,Z	extra format arguments: used 0, provided 2
+ Ex@a	N,C	extra format arguments: used 0, provided 2
+%3$N%-%3$<+6TE B%9bL	N	unknown format conversion: 'N'
+-%X%1$##12tqd	n,N	duplicate format flags: #
+#cS,%2$<q3$%C		unknown format conversion: 'q'
+w%(+jT-E%++j0x	i1114112	unknown format conversion: 'j'
+j%-11.2RNL	c,z,f,z	unknown format conversion: 'R'
+qT,d	s	extra format arguments: used 0, provided 1
+9	c,f	extra format arguments: used 0, provided 2
+%B	s,C	extra format arguments: used 1, provided 2
+%3$ #LZQ0zxw.2	b	unknown format conversion: 'L'
+%1$0cXe%<,M	l,b	format specifier '%c' is not compatible with the given flag(s): 0
+99999999999%wr D%		unknown format conversion: 'w'
+%3$01jaC	n,l	unknown format conversion: 'j'
+l%3$p%cN%3$-7s  	z,c	unknown format conversion: 'p'
+Bp%<7gxg%#c\n	c,z,T	format specifier '%c' is not compatible with the given flag(s): #
+q1$Qu\n%1$s<	I	
+<%#9s%+8C.2Ik	f,f	format specifier '%c' is not compatible with the given flag(s): +
+bH<%2$(,8fh%2$k!Z	N,S,I,n	unknown format conversion: 'k'
+5TC%(10ta	D,c,s	format specifier '%a' is not compatible with the given flag(s): (
+%3$%jq99999999999lR	c,s	extra format arguments: used 0, provided 2
+%2$ s%2$-#.0oAtZ 	f,C	format specifier '%s' is not compatible with the given flag(s):  
+Qr%	I	unknown format conversion: '%'
+@%4A\n	d	
+.5GY%10oacoR	s,f	extra format arguments: used 1, provided 2
+%011H%T% f9xa	D,F,n	format specifier '%h' is not compatible with the given flag(s): 0
+%hs-1$CB%-(H	s,Z,Z	missing format width: %-(H
+c\u00e9%3$-Q+A	d,I	unknown format conversion: 'Q'
+%s%d{	d,l,b	extra format arguments: used 2, provided 3
+3$yo%1$+-.5Ehs	s,T,N	missing format width: %-+1$.5E
+%3$ TkH9		format specifier '%k' is not compatible with the given flag(s):  
++\na-d@2$	C,b	extra format arguments: used 0, provided 2
+%+tB%(#b	Z,d	format specifier '%B' is not compatible with the given flag(s): +
+-%		unknown format conversion: '%'
+g%<(TG%3$#o	F	unknown format conversion: 'tG'
+xbM0so3$(		
+0l%-F%,b%3$#0BQR	S,C	unknown format conversion: 'F'
+Ze	b,F	extra format arguments: used 0, provided 2
+10C.5p1$%g %	i	unknown format conversion: '%'
+M%1$(+Te10H	T	format specifier '%e' is not compatible with the given flag(s): +(
+%,7.1tg9@kp-\u00e9	z,Z,Z	illegal format precision: 1
+x	I,I	extra format arguments: used 0, provided 2
+%<GH%2$.3nh#%		illegal format precision: 3
+{LHL%2$<.0Y	z,b,d,b	unknown format conversion: 'Y'
+%.0GB-zIL%tr	N,l	illegal format conversion: 'java.time.Instant' cannot be formatted using '%g'
+%,(10.3Tyu	z,l,F,d	illegal format precision: 3
+Xr%R	z,f,I	unknown format conversion: 'R'
+%xQ%( Y	n,T	unknown format conversion: 'Y'
+%0RsD%QxZg		unknown format conversion: 'R'
+%%<f10c0	n,d,D,n	extra format arguments: used 0, provided 4
+cp-		
+{\u00e9+%Z2$	Z,z,F,i-2147483648	unknown format conversion: 'Z'
+Xf+c%<Q%C%((tz	l	unknown format conversion: 'Q'
+l.-.%	I,b,i	unknown format conversion: '%'
+99999999999% 0j\u00e9A% y%<,j	d,s	unknown format conversion: 'j'
+xT 		
+qr		
+%%c	F	extra format arguments: used 0, provided 1
+0.2un		
+%%,.0k.5%9r%D%	s,z,Z,b	unknown format conversion: 'r'
+Y.0		
+(	s	extra format arguments: used 0, provided 1
+g%%X		
++	D,N,Z	extra format arguments: used 0, provided 3
+%1$<tA	i-2147483648,f,d,F	missing argument for format specifier '%<tA'
+.2%Ge,Z%3g	N,S,b,f	illegal format conversion: 'java.time.Instant' cannot be formatted using '%g'
+%-tz%j%fh	b	missing format width: %-tz
+%#(.5tF	b,Z	illegal format precision: 5
+1<	z	extra format arguments: used 0, provided 1
+.%.4TNSs	l,F	illegal format precision: 4
+a%3$,,1.5tnA%2$8.1a .0z<		duplicate format flags: ,
+%0<o%.1Lp	b	missing format width: %0<o
+%	b,b	unknown format conversion: '%'
+p%0+Fa	Z,s,S,s	unknown format conversion: 'F'
+%.0p		unknown format conversion: 'p'
+dpY\n5%,Q.o	l,T,Z,s	unknown format conversion: 'Q'
+@Xu		
++%,Z	F,s,l	unknown format conversion: 'Z'
+%1$-M	i,l,I,T	unknown format conversion: 'M'
+%2$.5o\u00e9%3$h%1$,<1.5Yeq%1$ (I	c,z,D,c	illegal format precision: 5
+sF% h	S,F,n	format specifier '%h' is not compatible with the given flag(s):  
+%1kNNM10	D,T	unknown format conversion: 'k'
+u	C,S	extra format arguments: used 0, provided 2
+Sa% 12txs	b,s,l,i	unknown format conversion: 'tx'
+%%3$-(b%1$,#.5j	i-1,z,S	unknown format conversion: 'j'
+%,#5F	b	unknown format conversion: 'F'
+X.	z,l	extra format arguments: used 0, provided 2
+SE	s,I,Z,d	extra format arguments: used 0, provided 4
+G%1$<eha	z,l,d	missing argument for format specifier '%<e'
+w		
+10$<c	d	extra format arguments: used 0, provided 1
+%3$#h%I%--12a		format specifier '%h' is not compatible with the given flag(s): #
+%010%0$%Tg	d,z,s	illegal format flags: 0
+o	Z,i,f	extra format arguments: used 0, provided 3
+{%9gHGDh% x	d	missing argument for format specifier '% x'
+at		
+%2$#11Y%D%TF9a%L	S,z,D,i	unknown format conversion: 'Y'
+%-,TDqxCIx	i,F,b,Z	format specifier '%D' is not compatible with the given flag(s): ,
+k%(+z,(	c,z,n	unknown format conversion: 'z'
+!(%3$5.3ay%1$##Y	n	duplicate format flags: #
+3$%#(tkNkE10	b,D,z	format specifier '%k' is not compatible with the given flag(s): #(
+Q%,-12.2Az% 11wTL!	D	format specifier '%a' is not compatible with the given flag(s): ,
+%3$,tA0TAo.0	I,s,n,i	format specifier '%A' is not compatible with the given flag(s): ,
+b{F	N,c	extra format arguments: used 0, provided 2
+e%1$(%%3.3f	F,N,N	illegal format flags: (
+B#%2$4.2xh.2ch	s,l,f,T	illegal format precision: 2
+Ik99999999999+		
+!M %4j%	z,D	unknown format conversion: 'j'
+..2,%p%,0.1R	T,T,d,b	unknown format conversion: 'p'
+%3$0,10y#Q%+Au%1$#5y%1$-Q	f,T,I,D	unknown format conversion: 'y'
+zG%,7tz	I,z,T	format specifier '%z' is not compatible with the given flag(s): ,
+a	T	extra format arguments: used 0, provided 1
+e0$%#11o%<+8c%3$,-.4b	D,D,b,d	format specifier '%c' is not compatible with the given flag(s): +
+.H	N	extra format arguments: used 0, provided 1
+3$c	b,F,n,s	extra format arguments: used 0, provided 4
+%tj%<.5x	s,T	illegal format precision: 5
+B	F	extra format arguments: used 0, provided 1
+X%+,8.3M0$		unknown format conversion: 'M'
+%1$,.1pRSM%( 3Rs.5G	d,s,n,C	unknown format conversion: 'p'
+0%1$#2C99999999999Xzz%2$5.3to-	i	format specifier '%c' is not compatible with the given flag(s): #
+%,3M(	T,l,c,Z	unknown format conversion: 'M'
+ (%+4Y%9bH%3$nt		unknown format conversion: 'Y'
+%<0Tn	l,Z	unknown format conversion: 'tn'
+aa%ht	b,N	extra format arguments: used 1, provided 2
+%Xd%+.0d%.3tt%2$<.1D2	d	illegal format precision: 0
+Iq0@99999999999%1$(#Y	F,n	unknown format conversion: 'Y'
+uMx2$	f,l,N,N	extra format arguments: used 0, provided 4
+n%c	b,l	extra format arguments: used 1, provided 2
+MRX 	i1114111,f	extra format arguments: used 0, provided 2
+GzTh		
+F99999999999\u00e9Q%+ D	l,z	unknown format conversion: 'D'
+c1$(Q%3$0<ZH	i1114111	unknown format conversion: 'Z'
+%1$5cZa%3$.2H		missing argument for format specifier '%1$5c'
+zh.2%1$ts		missing argument for format specifier '%1$ts'
+% 12.1tnua9N\n%G%0-9Y	I,D,f,S	illegal format precision: 1
+%RM 	I,C,d	unknown format conversion: 'R'
+%(X%0!d-%2$-7.5d	C,N,f,i	unknown format conversion: '0'
+.5Qol%%(5Gax	z,f,N,F	extra format arguments: used 0, provided 4
+At{	z,D	extra format arguments: used 0, provided 2
+%3$0#6.3o%1$#<AT	s,Z,s	illegal format precision: 3
+E	F,C,S	extra format arguments: used 0, provided 3
+%-.0H		missing format width: %-.0H
+1.0T		
+x		
+51$ qsa	Z,d,s	extra format arguments: used 0, provided 3
+%3$<-.1b0$	l	missing format width: %-<.1b
+r%2$6cf,		missing argument for format specifier '%2$6c'
+%0$%z5	l,I	Illegal format argument index = 0
+%,.2tY	l	illegal format precision: 2
+Rd%S%0.1Qf		unknown format conversion: 'Q'
+0Y		
+%% .1o%Byw	T,l,c,T	extra format arguments: used 1, provided 4
+%2$.3kA		unknown format conversion: 'k'
+%e	l,s,i-1,d	illegal format conversion: 'java.lang.Long' cannot be formatted using '%e'
+%((.5y%0jN-C	s,F,i55296,F	duplicate format flags: (
+% <2I%ggfukpa		unknown format conversion: 'I'
+%a%0<3td%3$-.0LF%	C,D	format specifier '%d' is not compatible with the given flag(s): 0
+%<BN0H%+,.1Ea	I	format specifier '%e' is not compatible with the given flag(s): ,
+{%+dT%<12.5TR	b	illegal format precision: 5
+%2.2%3$0(r+MH	I,N,l,i1114111	illegal format precision: 2
+,01kz	b,s,I,l	extra format arguments: used 0, provided 4
+e%%<%H	s,l,T	extra format arguments: used 1, provided 3
+%2$<rf%1$ 3Ts%+(X%-(%b@d	s,i-1,i,Z	unknown format conversion: 'r'
+%%06.2FG	N	extra format arguments: used 0, provided 1
+%+TFd c		format specifier '%F' is not compatible with the given flag(s): +
+kD0$99999999999%-jA%(#tC	d,i55296,d,D	unknown format conversion: 'j'
+.0yyXg	n,l,l	extra format arguments: used 0, provided 3
+X%1$11e% #h%(,g	d,d,n,Z	format specifier '%h' is not compatible with the given flag(s): #
+0Z2%3$((1tb	I,z	duplicate format flags: (
+ %2$7A%(%#	c,f,F,f	illegal format flags: (
+h%0tt%+.4or%Y%++1j1$	I	unknown format conversion: 'tt'
+x\u00e9	I	extra format arguments: used 0, provided 1
+% 12.5tcs%#,.2TQ	d	illegal format precision: 5
+sNut		
+%0+H%1$ 5dtj%.2a	Z,i,C,n	format specifier '%h' is not compatible with the given flag(s): +0
+2%-+.2lH	l	%l is not a valid format specifier; use %d to format integral types as a decimal integer, and %f, %g or %e to format floating point types (depending on your formatting needs)
+z	C,I	extra format arguments: used 0, provided 2
+Ts(dZ@% +lR	i,n	%l is not a valid format specifier; use %d to format integral types as a decimal integer, and %f, %g or %e to format floating point types (depending on your formatting needs)
+C		
+Sr5(GH%0tH%1$(,t%	d,C	format specifier '%H' is not compatible with the given flag(s): 0
+%3$#XC%,ZcZN	z,f	unknown format conversion: 'Z'
+,%+(%D.2%-(Sk	Z,F,d	illegal format flags: +(
+%,tX\u00e9CQy%#+.4qE	l,f	unknown format conversion: 'tX'
+Il@2		
+w1$	N,z,z	extra format arguments: used 0, provided 3
+c		
+s\u00e9p%	l,f,T	unknown format conversion: '%'
+%2$,7G	f,Z,f	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%g'
+9%<(1z	C	unknown format conversion: 'z'
+Sfr	C	extra format arguments: used 0, provided 1
+%4I!	s,T,n	unknown format conversion: 'I'
+yyEL	Z,s,b,l	extra format arguments: used 0, provided 4
+B,%+Q%(a%3$#dua%1$(Z		unknown format conversion: 'Q'
+.2r%I0.95x	z,I,i,s	unknown format conversion: 'I'
+Gt	l,l	extra format arguments: used 0, provided 2
+.cX	l,Z	extra format arguments: used 0, provided 2
+.Z	n,D,i,l	extra format arguments: used 0, provided 4
+ .%.5E%##te	z	duplicate format flags: #
+D2 	l	extra format arguments: used 0, provided 1
+XET%<r%(#Y	n,D,Z	unknown format conversion: 'r'
+w%010.5x%10Xe<M	f,d	illegal format precision: 5
+2$%<<eq%<+1TE.0d10	f,F,f	duplicate format flags: <
+H,X#c%	l,f,C,n	unknown format conversion: '%'
+BMh! 	i1114112,D,I,Z	extra format arguments: used 0, provided 4
+%1$,10TG		unknown format conversion: 'tG'
+I%(5Fo		unknown format conversion: 'F'
+dg%#,X		format specifier '%x' is not compatible with the given flag(s): ,
+BM0%%(TM.0%		unknown format conversion: '%'
+%2$llz	F,D,n,T	%l is not a valid format specifier; use %d to format integral types as a decimal integer, and %f, %g or %e to format floating point types (depending on your formatting needs)
+L%-.3tH<	d,l	illegal format precision: 3
+%1$(te0$	S	format specifier '%e' is not compatible with the given flag(s): (
+kD 	N,s,c	extra format arguments: used 0, provided 3
+,%2$0.5p%2$,+.1e9	f	unknown format conversion: 'p'
+%(1p.5	l	unknown format conversion: 'p'
+.0%,jX%,0.3xp%3$+o	I,T,S,l	unknown format conversion: 'j'
+%1$,9Ne\u00e9\u00e9%1$%Srz	z	unknown format conversion: 'N'
+N1%cx%0 tDa	z	format specifier '%D' is not compatible with the given flag(s):  0
+u5,H	b,z,D,s	extra format arguments: used 0, provided 4
+a%2Hx%1$%%1$ +.2p		unknown format conversion: 'p'
+%- .1tlle1$%	f,b,f,C	illegal format precision: 1
+%b%0<BHA%11S	Z,d,N,z	format specifier '%b' is not compatible with the given flag(s): 0
+e%3$,.5w#0		unknown format conversion: 'w'
+p	d,C	extra format arguments: used 0, provided 2
+%<5.2tb%<htd0,	S,l,i,i-1	illegal format precision: 2
++M%1$.3N!%F		unknown format conversion: 'N'
+!%2$D%-10L,TS.5	C,l,s,D	unknown format conversion: 'D'
+caH+x		
+za%++Th%	Z	duplicate format flags: +
+%X(Sj%#tn	N,l,n,l	unknown format conversion: 'tn'
+%.5%.5z(	i,C,C	illegal format precision: 5
+d%fhT<		missing argument for format specifier '%f'
+yH	C,D,S,b	extra format arguments: used 0, provided 4
+-g0$fqI	b,S	extra format arguments: used 0, provided 2
+ a+e % %h	i	illegal format flags:  
+%g%0-5qkg2$%<{	I	unknown format conversion: 'q'
+!	d,d,z	extra format arguments: used 0, provided 3
+b%2$+t%L.0gxG	T	unknown format conversion: 't%'
+g%G	c,s,N	illegal format conversion: 'java.lang.Character' cannot be formatted using '%g'
+Y%+-Tl%<-w00	s,f,f,I	format specifier '%l' is not compatible with the given flag(s): +
+F(F	F,S,N,D	extra format arguments: used 0, provided 4
+% 5e%2$+,.0R1$D	c,C	unknown format conversion: 'R'
+-%.3X		illegal format precision: 3
+%,.4fD	F,z,C,D	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%f'
+%taHAzb%3$-<tj9		missing format width: %-<tj
+l10% .1a2%,3.5L%3$.3E	d,I	unknown format conversion: 'L'
+e	z,T	extra format arguments: used 0, provided 2
+au%.1%2u%	N,S	illegal format precision: 1
+b	f	extra format arguments: used 0, provided 1
+3$qI%j.2%9Ia		unknown format conversion: 'j'
+<\nuw,Bs3$	f,s	extra format arguments: used 0, provided 2
+2y,2@l%11R%<-7d		unknown format conversion: 'R'
+%.2E%1$2C%GTA		missing argument for format specifier '%.2E'
+B% HAq%Ta%2$0(.1FH	T,s,F	format specifier '%h' is not compatible with the given flag(s):  
+%(-n w	b,z,i,I	illegal format flags: -(
+G%2$(ys3$		unknown format conversion: 'y'
+2	F,l,S	extra format arguments: used 0, provided 3
+%+01a.c%<-2.1S	C	illegal format conversion: 'java.util.GregorianCalendar' cannot be formatted using '%a'
+%<7A	S,N,n	missing argument for format specifier '%<7A'
+Msey99999999999-Ie	l,l,i	extra format arguments: used 0, provided 3
+LG%	N,l,C,f	unknown format conversion: '%'
+T%2$GNt %2$<,12e%3$<.3A5	i	format specifier '%e' is not compatible with the given flag(s): ,
+%2$<%-%#y.2s%3$+Mf	C,s,Z	illegal format flags: <
+e%.4D% (2TH%<N%x	f,l,C,n	unknown format conversion: 'D'
+ 1$FH%, 2z!%3$(.0D	T,i	unknown format conversion: 'z'
+%-+tR.@2kgf\u00e9	d,C	format specifier '%R' is not compatible with the given flag(s): +
+#%f		missing argument for format specifier '%f'
+B%2$<Tz%-.0s	Z	missing format width: %-.0s
+%%,07TA		
+HdG.Rp%<(xb	d,S,f	missing argument for format specifier '%(<x'
+H%TfN%2$B		unknown format conversion: 'tf'
+10%(.3w#qsYT	i	unknown format conversion: 'w'
+1		
+t	T,c	extra format arguments: used 0, provided 2
+s<5	c,Z,b	extra format arguments: used 0, provided 3
+%1$r{1$.5%(-r	d,l,b	unknown format conversion: 'r'
+bc\u00e9ns#%2$+c	b,N,l,d	format specifier '%c' is not compatible with the given flag(s): +
+Xsq	I,s,d,c	extra format arguments: used 0, provided 4
+MN.2%%		
+sD	Z	extra format arguments: used 0, provided 1
+s	S,I	extra format arguments: used 0, provided 2
+%4tw	z,l,c,S	unknown format conversion: 'tw'
+n		
+%z%10H+%3TR	C,c,I,T	unknown format conversion: 'z'
+.Ls%R%2$Y	F,d	unknown format conversion: 'R'
+5u	T	extra format arguments: used 0, provided 1
+%e%#o	s,l,I	illegal format conversion: 'java.lang.Short' cannot be formatted using '%e'
++LHp0$	F,i,n	extra format arguments: used 0, provided 3
+%0\u00e90EQ	I	unknown format conversion: '0'
+L%+12nH10%  tC		illegal format width: 12
+oN9(0	c	extra format arguments: used 0, provided 1
+b%c%1$002Nt\n	F,b,n,n	duplicate format flags: 0
+%3$Bs%1$-(e%E	D	missing format width: %-(1$e
+%%011IfC	l	extra format arguments: used 0, provided 1
+.5fa\u00e9f#%%<x	z,c	extra format arguments: used 0, provided 2
+x\u00e9	F,C,N	extra format arguments: used 0, provided 3
+o%+(	S	unknown format conversion: '+'
+R%3$d%1$b	i	missing argument for format specifier '%3$d'
+BwEh%4B%3$.4Lj		unknown format conversion: 'L'
+%8ncZ%DIjqH		illegal format width: 8
+r%(5.5FuzGE		unknown format conversion: 'F'
+-%#9Df99999999999sdR.		unknown format conversion: 'D'
+10%6d		missing argument for format specifier '%6d'
+Fd%2$,5z	Z,z,l	unknown format conversion: 'z'
+xI%,+12p9e!	F,Z	unknown format conversion: 'p'
+9c		
+j%<THDaG%3.4Tb-		illegal format precision: 4
+cs%%2$07tHx	S,c	extra format arguments: used 0, provided 2
+0%%# 11TI%3$--teF	S,n,z	duplicate format flags: -
+%-.0rs	s,l,T,s	unknown format conversion: 'r'
+2%  z%1$0,n	b	duplicate format flags:  
+1<w+		
+f%%<q%- bSZ%z		missing format width: %- b
+gcX	c,S,f	extra format arguments: used 0, provided 3
+%7zL	N,d,f,n	unknown format conversion: 'z'
+%<#Zw		unknown format conversion: 'Z'
+a,LT%1$tq0n%+#1d	b,d	unknown format conversion: 'tq'
+.-%,%h	d,n,c,f	illegal format flags: ,
+xF		
+t%(.2T%ssx%%.0tA	d,T	illegal format precision: 2
+%<(.1Dpy%-0.4z3$	z,F,d,l	unknown format conversion: 'D'
+,.5		
+%2$.4r%3$8T% -of	d,n,S,D	unknown format conversion: 'r'
+n!%,11.2a		format specifier '%a' is not compatible with the given flag(s): ,
+%#,n0$S%10.4tEB	F,d,l	illegal format flags: #,
+<B%#N%#.3p	d,d,N,C	unknown format conversion: 'N'
+9RZAd	s,Z	extra format arguments: used 0, provided 2
+C.02$%#rs	T,I,Z	unknown format conversion: 'r'
+z%1$(9.1l%E		%l is not a valid format specifier; use %d to format integral types as a decimal integer, and %f, %g or %e to format floating point types (depending on your formatting needs)
+Da99999999999C%0%	z,d,d	illegal format flags: 0
+%I%3$.5jqE.0z	n,D,b,d	unknown format conversion: 'I'
+%%11y%1$-In\u00e9Rs	s,f	unknown format conversion: 'I'
+3$z%( By%% 11q	l	format specifier '%b' is not compatible with the given flag(s):  (
+D%1$h2$ C	s,F,C	extra format arguments: used 1, provided 3
+%1$+Q	I,s,s,F	unknown format conversion: 'Q'
+%.3c%1$11Gb	z,T	illegal format precision: 3
+%-B10%#12tLNXr0		missing format width: %-B
+%1$<#kHH	n	unknown format conversion: 'k'
+eqg	N,D,C	extra format arguments: used 0, provided 3
+nk	Z	extra format arguments: used 0, provided 1
+1$%p<%9q		unknown format conversion: 'p'
+ 	S,Z,N,D	extra format arguments: used 0, provided 4
+MB.HE%	F	unknown format conversion: '%'
+L%% D.<%1$07.3jQ	I,C	unknown format conversion: 'j'
+l%4S%#.0n	S,z,I	illegal format precision: 0
+99999999999s%.0y%1$# 5d	i	unknown format conversion: 'y'
+%-8e0$zu%7z<	C,s,n,F	unknown format conversion: 'z'
+M%s0 		missing argument for format specifier '%s'
+%#(.2s(	F,f,N,c	format specifier '%s' is not compatible with the given flag(s): (
+%3$#-12xy.0		missing argument for format specifier '%-#3$12x'
+DHx{lG		
+%2$+<teA9ky1$@#	N	format specifier '%e' is not compatible with the given flag(s): +
+%3$,#10T	z	unknown format conversion: 'T'
+%q0%2$<<7X%0I		unknown format conversion: 'q'
+Xq\u00e9%3$x%c 	d,d,Z,Z	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%x'
+de0	C,i65,Z,i	extra format arguments: used 0, provided 4
+%x+%1$F	l,D,D,d	unknown format conversion: 'F'
+%3$<q	b,b	unknown format conversion: 'q'
+Csls	b	extra format arguments: used 0, provided 1
+1$10%- .1H%yR%3$,.3d		missing format width: %- .1H
+\u00e9ayD1	N,T,F	extra format arguments: used 0, provided 3
+.0%h(%%%+j%<#10T%2$q5	f	unknown format conversion: 'j'
+Ca%3$+1Q%3$-+td%0(.5Ca99999999999	b,N,n	unknown format conversion: 'Q'
+100k%Q%%zM	Z,N,i	unknown format conversion: 'Q'
+uE+		
+g.%,6Flsb	Z,C,b,T	unknown format conversion: 'F'
+o%4e%3$.4X%c%-7.0Y	F	illegal format precision: 4
+%3$ 2Z 3$3$	S	unknown format conversion: 'Z'
+.E0$1r%2$(.1TQ	f,b,i	illegal format precision: 1
+\nY	I,c,S,f	extra format arguments: used 0, provided 4
+p,E	f,Z,f,I	extra format arguments: used 0, provided 4
+ex	C,C,F,N	extra format arguments: used 0, provided 4
+b	N,f,d,i	extra format arguments: used 0, provided 4
+%3$.5wp%1$0-Ykq1$!	n,c,d	unknown format conversion: 'w'
+%2$-0x9%#t%	c	missing format width: %-02$x
+% .4b@N	n,i,i	format specifier '%b' is not compatible with the given flag(s):  
+2%99999999999e1eN		illegal format width: -2147483648
+ Cz%2$+.4b%h%	Z,T,N,l	format specifier '%b' is not compatible with the given flag(s): +
+%3$ -h2$C0%+ Cca	D	missing format width: %- 3$h
+%4tN%11d	s,l,F,C	illegal format conversion: 'java.lang.Short' cannot be formatted using '%N'
+%<-A3$.0%S% 		missing format width: %-<A
+CuT%1$.1Hg%3$-Y%,+5.1B,	S,f	unknown format conversion: 'Y'
+rkT%Q2%-pMA	T,i	unknown format conversion: 'Q'
+g%+Bn%z.0	D,D	format specifier '%b' is not compatible with the given flag(s): +
+G		
+%1$12tCo		missing argument for format specifier '%1$12tC'
+%#Yx cYs		unknown format conversion: 'Y'
+N		
+q	n	extra format arguments: used 0, provided 1
+d	c,f,c	extra format arguments: used 0, provided 3
+%@%\u00e9	C	unknown format conversion: '@'
+2%((FI	N	duplicate format flags: (
+%tQl	s,l,i0	illegal format conversion: 'java.lang.Short' cannot be formatted using '%Q'
+q%1$01.1f%11Z%C0Q	Z	unknown format conversion: 'Z'
+%c-%+(tA%E	S,n,s	format specifier '%A' is not compatible with the given flag(s): +(
++%Sx%+(f	d	missing argument for format specifier '%+(f'
+%	f,l,d,f	unknown format conversion: '%'
+.2999999999995.5uw	l,N,F,T	extra format arguments: used 0, provided 4
+D.2I%3$.3l%x	i,l,F,l	%l is not a valid format specifier; use %d to format integral types as a decimal integer, and %f, %g or %e to format floating point types (depending on your formatting needs)
+F0-		
+#dNQx%	N,T,N	unknown format conversion: '%'
+2$\nXz	i-1,f,c	extra format arguments: used 0, provided 3
+,.2%-,.0Gt!H%1$<12.1E	T	missing format width: %-,.0G
+pc\n@2$F	S,f	extra format arguments: used 0, provided 2
+D%Mc	n	unknown format conversion: 'M'
+I%,E,%+(12Fxu%1$#Y	N,N,F	format specifier '%e' is not compatible with the given flag(s): ,
+%%- 4.2E%,,12D.#	C,n	duplicate format flags: ,
+% 3Lxf%.4c	C,c,l	unknown format conversion: 'L'
++upL0H	c	extra format arguments: used 0, provided 1
+%,tCcB.5%1$Tj@D	i-1	format specifier '%C' is not compatible with the given flag(s): ,
+%%+dL.5t	l	extra format arguments: used 0, provided 1
+5Q0$%3$#Y<%0+X.0B	i1114112,C	unknown format conversion: 'Y'
+I% (12.1g	I,F,I	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%g'
+Ia	C,D	extra format arguments: used 0, provided 2
+%3$<-Yd#%.1NL%09	s	unknown format conversion: 'Y'
+1%3$ +.0A%2$ t%Y\nx	l,N,S,d	illegal format flags: ^+ 
+%0$y%%1$ Z	F,f,F,i	Illegal format argument index = 0
+%	i,c,c	unknown format conversion: '%'
+a%1EE%2$-NcB%,,6.0GA	z,S,S,F	unknown format conversion: 'N'
+u@%-r%,6.3T%2$ 11S(%n	b	unknown format conversion: 'r'
+hCrec,		
+%z5		unknown format conversion: 'z'
+x%<5Tq99999999999%.0%@e.2		unknown format conversion: 'tq'
+\u00e9f0		
+T!%#.5tgdB%0y	b,C	illegal format precision: 5
+%2$+ R!%2$#Tc%%<N99999999999% R1	z,T	unknown format conversion: 'R'
+<10	N,Z,n	extra format arguments: used 0, provided 3
+%, 5.5e	d	format specifier '%e' is not compatible with the given flag(s): ,
+%1$012tT%3$-c	D,C	format specifier '%T' is not compatible with the given flag(s): 0
+%< 12tRk%tS.2599%3$I	n,F	format specifier '%R' is not compatible with the given flag(s):  
+%,Rk%<.4yH0F	i,i,z	unknown format conversion: 'R'
+%-.2trh+%0TS	i1114112,l,C,i-1	illegal format precision: 2
+%jjf	c,n,s,Z	unknown format conversion: 'j'
+%4l		%l is not a valid format specifier; use %d to format integral types as a decimal integer, and %f, %g or %e to format floating point types (depending on your formatting needs)
+b%2$+wS<1$	I,i-2147483648	unknown format conversion: 'w'
+%7tH{103$Y	d,b,z,C	illegal format conversion: 'java.lang.Double' cannot be formatted using '%H'
+<H%,9.2TQ99999999999%--.4tp	T	illegal format precision: 2
+!2	T,Z	extra format arguments: used 0, provided 2
+zE	s	extra format arguments: used 0, provided 1
+.0		
+--F%0t% e	F	unknown format conversion: 't%'
+L%IAt	N,T,C,T	unknown format conversion: 'I'
+%+txM3$Ia	l,I,S,I	unknown format conversion: 'tx'
+Hhe%8.5B.NY9	C	
+Hwr2$Eu	I,D	extra format arguments: used 0, provided 2
+wz+%3$+ 1Dd	n	unknown format conversion: 'D'
+.2%0 d3$% w%<DS%<+5Zd		missing format width: % 0d
+%t%,#M%3$6.4C	C,n,Z,T	unknown format conversion: 't%'
+M%<ty%kn	Z,N,S	unknown format conversion: 'k'
+aS0$	z,n,T	extra format arguments: used 0, provided 3
+2$% 10.0H,I	s,N,n,c	format specifier '%h' is not compatible with the given flag(s):  
+#	N,F	extra format arguments: used 0, provided 2
+%7l%%2$#7.4ZM@Y%1$f	S,T,N	%l is not a valid format specifier; use %d to format integral types as a decimal integer, and %f, %g or %e to format floating point types (depending on your formatting needs)
+M5YH5x%1$ 3n	z,C,S	illegal format width: 3
+%,11okT%3$T%q	F,c	format specifier '%o' is not compatible with the given flag(s): ,
+0$kf1%Y%2$ 8.5XN 	d,z	unknown format conversion: 'Y'
+j%1$.2bY	T,b,s,n	extra format arguments: used 1, provided 4
+f%+#c13$E<		format specifier '%c' is not compatible with the given flag(s): #+
+0$	F,d,C	extra format arguments: used 0, provided 3
+%(R% #.4g1$FE{	N	unknown format conversion: 'R'
+\u00e9	C,S,T	extra format arguments: used 0, provided 3
+A%<2.3F%3$(Qur	S	unknown format conversion: 'F'
+Ld-,2 M%2$10a	F,b	illegal format conversion: 'java.lang.Byte' cannot be formatted using '%a'
+x%3$b%B%##tR	T	duplicate format flags: #
+%1$0.4Nz% 4g.0%1$<0TM%%%2$012.3q	n,D,C,l	unknown format conversion: 'N'
+tq% SN	i,D,b,l	format specifier '%s' is not compatible with the given flag(s):  
+l%3$+<w	F,S	unknown format conversion: 'w'
+s%#Ts	z,C,s	format specifier '%s' is not compatible with the given flag(s): #
+%fT%--f%#L%1$#-10Tqez	b,C	duplicate format flags: -
+%+-9Tc%wz!I		format specifier '%c' is not compatible with the given flag(s): +
+Ncr+%y-		unknown format conversion: 'y'
+ep%.1zrx I%08k	Z,s,f,S	unknown format conversion: 'z'
+%fa999999999990%<k		unknown format conversion: 'k'
+\u00e9%9Tq+b%		unknown format conversion: 'tq'
+Qj0$%011q\u00e910@%1$+-y	l,C,I,n	unknown format conversion: 'q'
+X	l,l,C	extra format arguments: used 0, provided 3
+%q-Sue%	d,F	unknown format conversion: 'q'
+T%(.1b,%2$10q	I,z,N	format specifier '%b' is not compatible with the given flag(s): (
+TgC%00f%.3g% x%+(D.0		duplicate format flags: 0
+@%x	Z,f	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%x'
+d%3$e		missing argument for format specifier '%3$e'
+lE10%3.3aCa		missing argument for format specifier '%3.3a'
+ 5EuFSnu	S,I,F	extra format arguments: used 0, provided 3
+Hw<%##pI%1$011o	l,I	duplicate format flags: #
+9%0%1$I%<p.5%<(6.4tn	c,d,S,l	illegal format flags: 0
+%,#q%2$tX%#wE	n,l,T	unknown format conversion: 'q'
+xY.2%3$	z,N,s	unknown format conversion: '3'
+%.3D	s,i,d	unknown format conversion: 'D'
+%y%%1$ -5.5z	b	unknown format conversion: 'y'
+@a3$-%,5.1zd	d,l,I,i	unknown format conversion: 'z'
+t	F,Z,f,N	extra format arguments: used 0, provided 4
+g%+F10cxT%2$ I\u00e9	S,N,f	unknown format conversion: 'F'
+5B%%-tI%ga10	I,D,f	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%g'
+T%1$9%%110.5.5	b,I	unknown format conversion: '1'
+hC%<<fc.0Bc1$		duplicate format flags: <
+,M@L10	f,l,z,F	extra format arguments: used 0, provided 4
+C%2$ 6T	n,s	unknown format conversion: 'T'
+%dZY%,<fHg0g	F,f,l	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%d'
+%s0%fC10	f,C	illegal format conversion: 'java.util.GregorianCalendar' cannot be formatted using '%f'
+%-1w%C		unknown format conversion: 'w'
+.52$B!xu	C,d,N	extra format arguments: used 0, provided 3
+%2$-D0$0tE		unknown format conversion: 'D'
+%#1q9e	N,D,D,F	unknown format conversion: 'q'
+Q	i	extra format arguments: used 0, provided 1
+10QS@0bj	c,F,C	extra format arguments: used 0, provided 3
+%10.4Aaa#n%	N,I	unknown format conversion: '%'
+%0#.4tSf	z,F,n,D	illegal format precision: 4
+<1$x9c%<tRd		missing argument for format specifier '%<tR'
+2$a%Z	d	unknown format conversion: 'Z'
+x%1$TNB	N,S	extra format arguments: used 1, provided 2
+%#+.2Bcno	T,d,i65	format specifier '%b' is not compatible with the given flag(s): #
+%,.5THH%#,3Hb	n,z,N,S	illegal format precision: 5
+%jQbk	b,N,i1114112	unknown format conversion: 'j'
+C	C,F,F,S	extra format arguments: used 0, provided 4
+%1$+,2cj% e%xBM	I,F,D	format specifier '%c' is not compatible with the given flag(s): +,
+\n	C,s	extra format arguments: used 0, provided 2
+z		
+%(H-ss	f,I,z,z	format specifier '%h' is not compatible with the given flag(s): (
+t<	s,S	extra format arguments: used 0, provided 2
+a%5.2TI	S,s,S,F	illegal format precision: 2
+r%2$#.4ta	S,T,n,F	illegal format precision: 4
+,tk\u00e9C	b	extra format arguments: used 0, provided 1
+d.2<F<%2$08TtQ%.1t%	s,n,z	unknown format conversion: 'tt'
+.%(.5tt%0o-	C,l,S	illegal format precision: 5
+R	N,s,c,D	extra format arguments: used 0, provided 4
+%1$0CX<@%	n	format specifier '%c' is not compatible with the given flag(s): 0
+%%010tlu%<.5g%1$(0.5S	i	format specifier '%s' is not compatible with the given flag(s): 0(
+<X%1$<+1ptDq	N,i1114111	unknown format conversion: 'p'
+.5cbr9B% I	D,d,N,l	unknown format conversion: 'I'
+@s%Q		unknown format conversion: 'Q'
+T%%1$< 3b,%Td		missing argument for format specifier '%TD'
+kY1$	Z,i	extra format arguments: used 0, provided 2
+t%	C,S,i,d	unknown format conversion: '%'
+gb	l,f,l,Z	extra format arguments: used 0, provided 4
+%0Td1r%2$,sD0	d,c,I	format specifier '%d' is not compatible with the given flag(s): 0
+.2%!3$lh	f	unknown format conversion: '!'
+F%%3$0(7l-c	I	extra format arguments: used 0, provided 1
+tcHw.2	S,f,T	extra format arguments: used 0, provided 3
+%,tl	S,C,T	format specifier '%l' is not compatible with the given flag(s): ,
+%0<5y%<.1A0$%#8byE	f,i	unknown format conversion: 'y'
+%#,9Dba%+(.2pc%3$twc	l,I,D	unknown format conversion: 'D'
+c%1$4gIC(Hx		missing argument for format specifier '%1$4g'
+u%# 2R		unknown format conversion: 'R'
+M%0(11t%S%99999999999	C,l,D	unknown format conversion: 't%'
+\n#%1$0f5y	T,N,n,N	missing format width: %01$f
+fn%3$(8M		unknown format conversion: 'M'
+%#2Tx	i,D	unknown format conversion: 'tx'
+%h% #5Tteka%#+11.1bc	D,Z	unknown format conversion: 'tt'
+ %,8k90DFw<	z	unknown format conversion: 'k'
+b.5+%-11tD3$.2	N,c	illegal format conversion: 'java.time.Instant' cannot be formatted using '%m'
+%@q%	b,Z	unknown format conversion: '@'
+1$dq.	z	extra format arguments: used 0, provided 1
+g	d,T	extra format arguments: used 0, provided 2
+%<cy%#-3.5T%	l,C,d,T	illegal format precision: 5
+I%,0RM	S,i	unknown format conversion: 'R'
+%b%(10HY5%y\nSH	f,f	format specifier '%h' is not compatible with the given flag(s): (
+L\nS	C	extra format arguments: used 0, provided 1
+{		
+(%M#%	z,S	unknown format conversion: 'M'
+% 0Ts%#4l		format specifier '%s' is not compatible with the given flag(s):  0
+%3$#n%2$+.4DfX	d,c,Z	illegal format flags: #
+%3$+tC\u00e9(%-(10.4c{%++.5b(h		format specifier '%C' is not compatible with the given flag(s): +
+TfB%XA	C,d,D	illegal format conversion: 'java.util.GregorianCalendar' cannot be formatted using '%x'
+3$%-.3M%,+.1n.21$	T,I,b,D	unknown format conversion: 'M'
+\naM.	i	extra format arguments: used 0, provided 1
+%2$ #pjk0$2%.5Q	n	unknown format conversion: 'p'
+% #3e+gd9C%2$	N,l	unknown format conversion: '2'
+0j%%<.5R%dH	d,z,C	illegal format conversion: 'java.lang.Double' cannot be formatted using '%d'
+B%3$0Tsy!%1$+ X	N,T,N,d	format specifier '%s' is not compatible with the given flag(s): 0
+#%3$,%Meg%7t	D,n,f,f	illegal format flags: ,
+%-.0gRcpTo% .1TD	Z,z	missing format width: %-.0g
+z99999999999s3$%N%3$+6Th(	D,b,b,s	unknown format conversion: 'N'
+@%G0	l,C	illegal format conversion: 'java.lang.Long' cannot be formatted using '%g'
+,	N,n,n,z	extra format arguments: used 0, provided 4
+qd %##11Tp	Z,z,D	duplicate format flags: #
+5	S,S,d	extra format arguments: used 0, provided 3
+j2	S	extra format arguments: used 0, provided 1
+E%	c,C,S,c	unknown format conversion: '%'
+N%+ Q	D,z	unknown format conversion: 'Q'
+%2$<.2L%1$+6.4XN 9q	N,i-2147483648,f	unknown format conversion: 'L'
+seQ10	Z,b,l	extra format arguments: used 0, provided 3
+.0%%%(%M	n	illegal format flags: (
+%M %%% IjM	T,T,f,i	unknown format conversion: 'M'
+99999999999% (7y%LN%os	b,F,I	unknown format conversion: 'y'
+999999999992$%011b%Yq%%3$b		format specifier '%b' is not compatible with the given flag(s): 0
+a%	i0	unknown format conversion: '%'
+%3$-0F910%jsp	F	unknown format conversion: 'F'
+%#.2w	c,D,T,l	unknown format conversion: 'w'
+%11o%2$,(.4GD	i,N	illegal format conversion: 'java.time.Instant' cannot be formatted using '%g'
+%,10.0Tj%1$<.1E0$		illegal format precision: 0
+2%(k		unknown format conversion: 'k'
+c%3$,4H\u00e9%1$0A+%%F		format specifier '%h' is not compatible with the given flag(s): ,
+%+Tj<%1$,(10.2Lccjd	T,n,N,s	format specifier '%j' is not compatible with the given flag(s): +
+TN%	F,c	unknown format conversion: '%'
+xG1.za%3$011j%.3f	F,T,S	unknown format conversion: 'j'
+Z		
+%#(hkS10%3$+RjH%#5.2e	C,c,f,s	format specifier '%h' is not compatible with the given flag(s): #
+%.1c	l	illegal format precision: 1
+n%qg%2$#3FR	D	unknown format conversion: 'q'
+%+,t%+s	n,D	unknown format conversion: 't%'
+Q.5%3C	F,F,Z,F	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%c'
+10-	i,F	extra format arguments: used 0, provided 2
+T1$nd%	F,d,T	unknown format conversion: '%'
+NTS	c,l,C	extra format arguments: used 0, provided 3
+%<10h	Z,S,f,N	missing argument for format specifier '%<10h'
+u	F,T,C,S	extra format arguments: used 0, provided 4
+%%#4x%D\nl		unknown format conversion: 'D'
+agns0$	I	extra format arguments: used 0, provided 1
+B2	C	extra format arguments: used 0, provided 1
+%\n%N%2$,-tp%%%10	n,l,T,n	unknown format conversion: '\n'
+I2%,(6L%3Nakyo		unknown format conversion: 'L'
+R.52y	b	extra format arguments: used 0, provided 1
+%3$+TDLI	b,C,T,f	format specifier '%D' is not compatible with the given flag(s): +
+{%%3$6.4dr		
+N%0+.3tY%2$+.3N\u00e9	c	illegal format precision: 3
+%1$.2M.5#%2$#0g%3$1R2up		unknown format conversion: 'M'
+l%9r 	C	unknown format conversion: 'r'
+%3$,Y%#0N-99999999999	n	unknown format conversion: 'Y'
+%1$(4x2%t%2$x10dZ%2$,#5TZ	l	unknown format conversion: 't%'
+%1$+10nMb,%1$tg%#-5.0qSj	Z	illegal format width: 10
+%1$ .1g.5%XH	f,i1114111,l,T	illegal format conversion: 'java.lang.Float' cannot be formatted using '%x'
+3$aGx		
+h	Z	extra format arguments: used 0, provided 1
+3$ghYT.w1$	i,I,l,D	extra format arguments: used 0, provided 4
+SgNY%1$,3c0be	I,b,c,l	format specifier '%c' is not compatible with the given flag(s): ,
+(%2SL%0-T%\nD	T,n,c	unknown format conversion: 't%'
+3$+%3$+b		format specifier '%b' is not compatible with the given flag(s): +
+-T%2	d,Z,N,I	unknown format conversion: '2'
+n%# 9y	S	unknown format conversion: 'y'
+cu-H	T,c,l	extra format arguments: used 0, provided 3
+%0,1bZ%S%04.2b%q	D	format specifier '%b' is not compatible with the given flag(s): 0,
+%-<2s\u00e9r5N3$Q	T	missing argument for format specifier '%-<2s'
+XQk%raX	S,c,c	unknown format conversion: 'r'
+\nsF%, 5c	s,N	format specifier '%c' is not compatible with the given flag(s):  ,
+,		
+y%w%(#e%- 4s%7pyE	c,C,i	unknown format conversion: 'w'
+%--8nc(%3$#e<%q	F,C	duplicate format flags: -
+\u00e9%9T%<	d	unknown format conversion: 't%'
+3$%, 12Eq-+oa		format specifier '%e' is not compatible with the given flag(s): ,
+Q%.2w	C,l	unknown format conversion: 'w'
+a	N,z,Z,b	extra format arguments: used 0, provided 4
+%1$<-L0$qf	c,l	unknown format conversion: 'L'
+%1$+#.4S99999999999Q0	Z	format specifier '%s' is not compatible with the given flag(s): +
+1$		
+%<(3S({h	z,F	format specifier '%s' is not compatible with the given flag(s): (
+%T2n	b	unknown format conversion: 'T'
+x#%r%,.0r10M	z,I	unknown format conversion: 'r'
+r\n%2$1M<Ck<	z,d,b,z	unknown format conversion: 'M'
+IF1-+3$F9		
+ef#%< 3nc%tnT	C,c,T,f	illegal format width: 3
+%#Ml%(+jFN	l,C,c	unknown format conversion: 'M'
+<.2{k.510s#	b,z	extra format arguments: used 0, provided 2
+.0	D,l,i,d	extra format arguments: used 0, provided 4
+%2$(+TC.2	S	format specifier '%C' is not compatible with the given flag(s): +(
+%(#H	c	format specifier '%h' is not compatible with the given flag(s): #
+%tzzw	d	illegal format conversion: 'java.lang.Double' cannot be formatted using '%z'
+999999999992$5	f,f,d,n	extra format arguments: used 0, provided 4
+B		
+2IH%2$-02.0M	d,f	unknown format conversion: 'M'
+%1$D0f%BQ%	c,f	unknown format conversion: 'D'
+S	b,s,c	extra format arguments: used 0, provided 3
+%9.3tl%##3G	Z,i65	illegal format precision: 3
+IkC,aDkc	s	extra format arguments: used 0, provided 1
+%9.2tc%2$12j% -%	i,n,T,Z	illegal format precision: 2
+z.su+kng	S,c,C,l	extra format arguments: used 0, provided 4
+\u00e9%3$+-tbNj	T,n	format specifier '%b' is not compatible with the given flag(s): +
+%2bsH cA%,<8.0j%	C	unknown format conversion: 'j'
+99999999999axE	c,T,Z,C	extra format arguments: used 0, provided 4
+I1$		
++	z	extra format arguments: used 0, provided 1
+n		
+{e%1$5H-,	z	
+oB%tCa	l	
+%+ B%w@.599999999999	I,F,z	format specifier '%b' is not compatible with the given flag(s): + 
+xX	N,d,F,N	extra format arguments: used 0, provided 4
+G%<+kM.2%,(T%3$(,T%	C,c,S,n	unknown format conversion: 'k'
+sbp	Z,I	extra format arguments: used 0, provided 2
+B	i,F	extra format arguments: used 0, provided 2
+L 	l	extra format arguments: used 0, provided 1
+%+.3F9.5%	f,i,z	unknown format conversion: 'F'
+B,%1$#tHd	F,f	format specifier '%H' is not compatible with the given flag(s): #
+%-#TF	f	format specifier '%F' is not compatible with the given flag(s): #
+99999999999	C,i1114112,T,N	extra format arguments: used 0, provided 4
+zIu%Mf%2g		unknown format conversion: 'M'
+%-#1.0t3$z@%j99999999999!	N,s	unknown format conversion: '\u0000'
+rn		
+@%TI%3$10sn	C,N,n,N	extra format arguments: used 3, provided 4
+%1$, a	S,d	format specifier '%a' is not compatible with the given flag(s): ,
+0AI.2b	F	extra format arguments: used 0, provided 1
+Rs.	b,n,T,z	extra format arguments: used 0, provided 4
+%+.2yb%Q%2$( 1.5Yl2.	z,D,N	unknown format conversion: 'y'
+%1$((9tBc1$1$TF	b,b	duplicate format flags: (
+2cgr%2$#1.3xaA{	C	illegal format precision: 3
+c	C,n,T	extra format arguments: used 0, provided 3
+jtq<#x%3$S		missing argument for format specifier '%3$S'
+TM%( r10<%	z,f,s,s	unknown format conversion: 'r'
+%2$.4F%2$n	n,z,I,D	unknown format conversion: 'F'
+C bLc%st	D	
+h%##1Z%+3.3TRf!%1$-tg%h%3$#0d	C,S,d	duplicate format flags: #
+a.599999999999F%H%	D,N,N	unknown format conversion: '%'
+%1$3%Q%<9TfYF0$	I	unknown format conversion: 'tf'
+@	C,I	extra format arguments: used 0, provided 2
+!-w.00$	N,n,D,I	extra format arguments: used 0, provided 4
+ xl#Qc	T,n,b	extra format arguments: used 0, provided 3
+a%(R99999999999%0-11n%3$#+BBA	F,l	unknown format conversion: 'R'
+c<%3$ .2M%2qY	s	unknown format conversion: 'M'
+%0$G%3$,.4Le		Illegal format argument index = 0
+1a	n,N,b	extra format arguments: used 0, provided 3
+k#kA%3$<.3b	l,s,S,F	missing argument for format specifier '%<.3b'
+w%3$-tpoh	s,Z,c	missing format width: %-3$tp
+!%0H	i	format specifier '%h' is not compatible with the given flag(s): 0
+H%3$,-.1A	I	missing format width: %-,3$.1A
+X	l,T,Z	extra format arguments: used 0, provided 3
+C1Cl%h0%1$C1		missing argument for format specifier '%h'
+0,	T	extra format arguments: used 0, provided 1
+%,Y%(,A		unknown format conversion: 'Y'
+2Nr9%To	N,C,F	unknown format conversion: 'to'
+nge10+G%.2l	D	%l is not a valid format specifier; use %d to format integral types as a decimal integer, and %f, %g or %e to format floating point types (depending on your formatting needs)
+\u00e9e3$%-#1.4%	b,i65	illegal format precision: 4
+2%,7h2$!L%BQ		format specifier '%h' is not compatible with the given flag(s): ,
+99999999999	b,Z	extra format arguments: used 0, provided 2
+% 2.1j% 0k%		unknown format conversion: 'j'
+.5\u00e9%-ot	s	missing format width: %-o
+%3$, A%2$-.2B% <6f%(8.5E{	d,I	format specifier '%a' is not compatible with the given flag(s): ,
+%z(	l	unknown format conversion: 'z'
+t%2$ tA%#0t%1$-tr		format specifier '%A' is not compatible with the given flag(s):  
+%dY%2$tTgA9	I,S,Z,f	illegal format conversion: 'java.lang.String' cannot be formatted using '%T'
+{(hY%,+8R	c	unknown format conversion: 'R'
+Z%1$08.3TtH0$M10	l,S	illegal format precision: 3
+MrGr{%2$ Te	z,d,Z,d	format specifier '%e' is not compatible with the given flag(s):  
+I%Ytp		unknown format conversion: 'Y'
+5\u00e9	Z,c,T,S	extra format arguments: used 0, provided 4
+%-Asrx%(.0xeMH		missing format width: %-A
+9kT%#+.2EHHT	c,T,f,b	illegal format conversion: 'java.lang.Character' cannot be formatted using '%e'
+B%2$F0%((4T%.1Tx	C	unknown format conversion: 'F'
+Z%#h.0%-(7%E		format specifier '%h' is not compatible with the given flag(s): #
+.0k%5.0o%-toHH	c	illegal format precision: 0
+w	i,C,N	extra format arguments: used 0, provided 3
+#j%+12.3cx	d,n,N	illegal format precision: 3
+a99999999999oL\nw%(9.2c	l,D,b	illegal format precision: 2
+t	D,s,f,l	extra format arguments: used 0, provided 4
+@		
+%1$+(M0$%	Z	unknown format conversion: 'M'
+%nNq	b	extra format arguments: used 0, provided 1
+{%(,th2rty	D	format specifier '%h' is not compatible with the given flag(s): ,(
+999999999999c%5.0oa1$%.5t@		illegal format precision: 0
+s%10ykc%++Z0$%-(9.5TH	f,i,Z	unknown format conversion: 'y'
+%%<tl2$	D,l	extra format arguments: used 0, provided 2
+j0$c%2$ .3nj%1$(.5Tb		illegal format precision: 3
+x	n,b,Z	extra format arguments: used 0, provided 3
+fx%y	i0,n,C,F	unknown format conversion: 'y'
+cn.2%6qol	I	unknown format conversion: 'q'
+e%20		unknown format conversion: '2'
+x3$%1$,#6Tzb%NZ\u00e9	S	format specifier '%z' is not compatible with the given flag(s): #,
+%# eGA		missing argument for format specifier '%# e'
+a	l,l,i	extra format arguments: used 0, provided 3
+x%3TkH-1j3$2	S	illegal format conversion: 'java.lang.String' cannot be formatted using '%k'
+%+03Ts3$%1$rt5	F,c,I,f	format specifier '%s' is not compatible with the given flag(s): +0
+99999999999\u00e9+	I,f,D,T	extra format arguments: used 0, provided 4
+%%3$0-.5g%tf	b	unknown format conversion: 'tf'
+yh.2%1$6g%+y	f,S	unknown format conversion: 'y'
+<Hz%	T,C,l	unknown format conversion: '%'
+%%#10G%<+1dFe%2$5tD	c,l,l	missing argument for format specifier '%+<1d'
+\nnT{%(T+5L	Z	unknown format conversion: '\u0000'
++j		
+x	n,T,s,D	extra format arguments: used 0, provided 4
+c0-D	i,S,f	extra format arguments: used 0, provided 3
+H%0E%1$(-AY9c+	D	missing format width: %0E
+%.0y%#-12nZ%c	i,S	unknown format conversion: 'y'
+fL o	b,D,n	extra format arguments: used 0, provided 3
+-%#.4t%N0		illegal format precision: 4
+z	F,T,N	extra format arguments: used 0, provided 3
+!pX2	N,F,i,l	extra format arguments: used 0, provided 4
+10u%<X%<-TL	D,b,D,F	missing format width: %-<TL
+2%#7.4H@q kwb	I,S,C	format specifier '%h' is not compatible with the given flag(s): #
+c	S,s,d	extra format arguments: used 0, provided 3
+%	I,F,c,I	unknown format conversion: '%'
+D%{HcH	b	unknown format conversion: '{'
+#%0+qI%+99999999999	f,c	unknown format conversion: 'q'
+G@+H-9%{	n,D,C,N	unknown format conversion: '{'
+h0HS%--x%#TH	i	duplicate format flags: -
+%(10NC	l,N,T	unknown format conversion: 'N'
+%Yb		unknown format conversion: 'Y'
+%+<TR0$Y	s,i1114111	format specifier '%R' is not compatible with the given flag(s): +
+%(9qFn0 sC%N	n	unknown format conversion: 'q'
+dX%,k99999999999sfR%2$(c		unknown format conversion: 'k'
+C%M.3$u%#(6fl	i	unknown format conversion: 'M'
+t	i0	extra format arguments: used 0, provided 1
+bQ#3$%2A	N,F,I	illegal format conversion: 'java.time.Instant' cannot be formatted using '%a'
+%-0.5z% 0o%%3$%Y%(7Q	l,n,S,b	unknown format conversion: 'z'
+%M{l2%A	N,D,N,I	unknown format conversion: 'M'
+y	l	extra format arguments: used 0, provided 1
+e%2$9.1M2$ %+<12LM	i-2147483648,f,N	unknown format conversion: 'M'
+ e%%F#w	N,s,D,C	extra format arguments: used 0, provided 4
+hE.2%2$ReH	b	unknown format conversion: 'R'
+%D	N	unknown format conversion: 'D'
+x	b,S,d,D	extra format arguments: used 0, provided 4
+%+02.5r{	b,s	unknown format conversion: 'r'
+Lu	n,z	extra format arguments: used 0, provided 2
+YLE	d,D,n	extra format arguments: used 0, provided 3
+#%2$#3Tp3$%0-h	l,s,c	format specifier '%p' is not compatible with the given flag(s): #
+e	I,S,C	extra format arguments: used 0, provided 3
+0	N,i	extra format arguments: used 0, provided 2
+<.z% 0.1R%+,11.1le%<-Cj	T,l,F,f	unknown format conversion: 'R'
+#	f	extra format arguments: used 0, provided 1
+w	F,F	extra format arguments: used 0, provided 2
+%	D,Z,F,z	unknown format conversion: '%'
+HZAx%2$tf%C%n	I,z,i,D	unknown format conversion: 'tf'
+QR% 0n%, 4t	F,T,c	illegal format flags:  0
+!%+9%( 2.1Td	F,f,n,D	illegal format flags: +
+%%2cjjA% -Cc	z	format specifier '%c' is not compatible with the given flag(s):  
+%	n	unknown format conversion: '%'
+%1$.3k@%x0	F,Z,Z,Z	unknown format conversion: 'k'
+B	d	extra format arguments: used 0, provided 1
+%3$,e	i,d,z,T	format specifier '%e' is not compatible with the given flag(s): ,
+%0ql%%1$-8l		unknown format conversion: 'q'
+u%#Xxc%-l.%,f	f	%l is not a valid format specifier; use %d to format integral types as a decimal integer, and %f, %g or %e to format floating point types (depending on your formatting needs)
+.2GqZ 0$j	T	extra format arguments: used 0, provided 1
+t%Ne0lX% 	I,f,S	unknown format conversion: 'N'
+F+%#11G	f,i	format specifier '%g' is not compatible with the given flag(s): #
+%Nl	D,b	unknown format conversion: 'N'
+gH%2$1B	s,Z	
+E	Z,f,S	extra format arguments: used 0, provided 3
+<%1$2r	z,l,Z,f	unknown format conversion: 'r'
+kBM%1$.4tN	S,S,S,l	illegal format precision: 4
+12b%5d%+11nTqa	n,b,l,N	illegal format width: 11
+%4w%#12BY%2$+(.1th%3$0F	z,I	unknown format conversion: 'w'
+dHXZ+blZ	T,C,b,C	extra format arguments: used 0, provided 4
+uj{	c,s	extra format arguments: used 0, provided 2
+-H%1$.2D%.1Tx.%3$011.0H.5		unknown format conversion: 'D'
+onl	b	extra format arguments: used 0, provided 1
+fM		
+k	S,d,f,b	extra format arguments: used 0, provided 4
+D% .2d%-10.1Rz\u00e9%3$0N	i,D,S,N	illegal format precision: 2
+bBoF-H3$	z,s,F	extra format arguments: used 0, provided 3
+TZ	D,D	extra format arguments: used 0, provided 2
+r%-9e0%	f,S,T,N	unknown format conversion: '%'
+,.0Iq%0H	s	format specifier '%h' is not compatible with the given flag(s): 0
+ .2		
+SR		
+99999999999u2$dq0s	b,T	extra format arguments: used 0, provided 2
+oQ.0\n	C,n	extra format arguments: used 0, provided 2
+,%#5F	c,z,I	unknown format conversion: 'F'
+n!f	b,C	extra format arguments: used 0, provided 2
+co	b,D,f,b	extra format arguments: used 0, provided 4
+y%2$< f %.2tL	n	illegal format precision: 2
+ %1$<Tww	n,Z,b,D	unknown format conversion: 'tw'
+ s.0		
+!fH%2$9tk	b,d	illegal format conversion: 'java.lang.Double' cannot be formatted using '%k'
+Xa%3$+ou%1$1TI0	s,N,i,D	format specifier '%o' is not compatible with the given flag(s): +
+lb		
++Q+l%The0%7.0D	z,l,I	unknown format conversion: 'D'
+%2$th\u00e90% d2r%,012.0oM	f,Z,D	illegal format precision: 0
+auxRHHC%2$d	I	missing argument for format specifier '%2$d'
+.5x	b	extra format arguments: used 0, provided 1
+Arc	z,i,c	extra format arguments: used 0, provided 3
+%a		missing argument for format specifier '%a'
+cTMj	Z	extra format arguments: used 0, provided 1
+%1$j%.5y%D% <9.0Tq+z.010	z,z	unknown format conversion: 'j'
+%3$.0s2$n%,tw%.4h#	N,b	unknown format conversion: 'tw'
+%8.1TlNr	s,F,F	illegal format precision: 1
+we%(ND	s,s,T	unknown format conversion: 'N'
+%0 .4TREb%%s	s	illegal format precision: 4
+%10z	l,S,i,l	unknown format conversion: 'z'
+s%zq#	i,C,D,d	unknown format conversion: 'z'
+o	z,D,z	extra format arguments: used 0, provided 3
+NT	b,F	extra format arguments: used 0, provided 2
+\nT%R	D,f,b	unknown format conversion: 'R'
+@%1$X	S	illegal format conversion: 'java.lang.String' cannot be formatted using '%x'
+1Gx .2z+\u00e9	d,C,l,z	extra format arguments: used 0, provided 4
+%1$(z#10n%2$12f	b,N,C,f	unknown format conversion: 'z'
+%3$0DCQ\u00e9%.1Q%G%-#.0S%		unknown format conversion: 'D'
+XQ0$\n	N,Z,N,D	extra format arguments: used 0, provided 4
+ Y%2$(+b%#7Y0$		format specifier '%b' is not compatible with the given flag(s): +(
+o	b,z,d,c	extra format arguments: used 0, provided 4
+ hC%1t %%	Z,l,N	unknown format conversion: '\u0000'
+c%%%FI%	b,d,i,c	unknown format conversion: 'F'
+D%2$,12.1TQN	i,N	illegal format precision: 1
+%#.0E5		missing argument for format specifier '%#.0E'
+%l3$		%l is not a valid format specifier; use %d to format integral types as a decimal integer, and %f, %g or %e to format floating point types (depending on your formatting needs)
+n		
+e\n%# 6.1Zz c%.1rZ	b,S,i	unknown format conversion: 'Z'
+zy	I,D	extra format arguments: used 0, provided 2
+.%	D,c,c	unknown format conversion: '%'
+%11g.2e%Y	l	unknown format conversion: 'Y'
+0@%#<.1A	d,F,z,S	missing argument for format specifier '%#<.1A'
+@99999999999	T,d,T	extra format arguments: used 0, provided 3
+x		
+10Fe x%-+3b%+p	b,i55296	format specifier '%b' is not compatible with the given flag(s): +
+fj	f,N,f	extra format arguments: used 0, provided 3
+d	d,N,F	extra format arguments: used 0, provided 3
+da%6.4f%3$.0tLtB	T,d,c	illegal format precision: 0
+jzx	n	extra format arguments: used 0, provided 1
+s 	i55296	extra format arguments: used 0, provided 1
+xe	z,T,s,F	extra format arguments: used 0, provided 4
+kf%-4E	I,s,d	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%e'
+0$%ty%#E	I,b,l,f	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%y'
+r%2h %TFl	f,N	illegal format conversion: 'java.time.Instant' cannot be formatted using '%F'
+%-9BQ	l,F	extra format arguments: used 1, provided 2
+E	D,f,l,F	extra format arguments: used 0, provided 4
+%#+E		missing argument for format specifier '%#+E'
+%# .0hMc%3$+.0w		format specifier '%h' is not compatible with the given flag(s): #
+y\u00e9%5D0$%.3Ex	s	unknown format conversion: 'D'
+%%999999999990%@%0	S,c	unknown format conversion: '@'
+z%.2RL%1$+#11IAk\u00e9	d,f,b	unknown format conversion: 'R'
+x	C,n,D	extra format arguments: used 0, provided 3
+BHg	s,i,D	extra format arguments: used 0, provided 3
+1k	C,d,d	extra format arguments: used 0, provided 3
+%3$< R!%3$#.0d\u00e9.5	n,i65,S	unknown format conversion: 'R'
++%%+6.5R %002H%	n,d,F	duplicate format flags: 0
+cS\u00e9<{	N,l,S	extra format arguments: used 0, provided 3
+(%1$8x#%G9u!	s,I,N	illegal format conversion: 'java.lang.Short' cannot be formatted using '%g'
+,b%00a0$sq	c,b,n,l	duplicate format flags: 0
+X%2$((zssa%,0H	s	duplicate format flags: (
+%8ToMa%3$DQ	F,I,D,l	unknown format conversion: 'to'
+,lF%+NgG	F,Z,I	unknown format conversion: 'N'
+%3$9Xj %<he\u00e9({	n	missing argument for format specifier '%3$9X'
+%3$,0.5tD%09Cwp%3$s%< gSS	d,S,C,f	illegal format precision: 5
+.5%2$f%2$C		missing argument for format specifier '%2$f'
+%3$-.0Nz%10HZE.0	Z,D,d,f	unknown format conversion: 'N'
+%1$n%08wMR%3$-<L99999999999.0	l,S,T	unknown format conversion: 'w'
+%0G0E%1$y 	b,d	missing format width: %0G
+%1bQ%3dZ	S,c	illegal format conversion: 'java.lang.Character' cannot be formatted using '%d'
+L	D,s,F,z	extra format arguments: used 0, provided 4
+9.0%e	S,I,T,i	illegal format conversion: 'java.lang.String' cannot be formatted using '%e'
+9F<%2$(tcG%3$#(8.1aY	l,d,s	format specifier '%c' is not compatible with the given flag(s): (
+d@%3$3j%<.4TY{0		unknown format conversion: 'j'
+5%%1$ (3.1s%2$C	T	missing argument for format specifier '%2$C'
+%3$5T%#k	S	unknown format conversion: 't%'
+a%0010TS	c	duplicate format flags: 0
+sZ%3$5I		unknown format conversion: 'I'
+p+	F	extra format arguments: used 0, provided 1
+%%+.5B1$%o	I,I,b	extra format arguments: used 1, provided 3
+2q	s,z,C,c	extra format arguments: used 0, provided 4
+{5%11C	z,c,d,i	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%c'
+\n10	C,s,D,c	extra format arguments: used 0, provided 4
+E1{@		
+Hn%8tj	f	illegal format conversion: 'java.lang.Float' cannot be formatted using '%j'
+X<b	z,C	extra format arguments: used 0, provided 2
+D+#%d2	T	illegal format conversion: 'java.util.Date' cannot be formatted using '%d'
+X		
+c	d	extra format arguments: used 0, provided 1
+%-Rh		unknown format conversion: 'R'
+#s%0(kBS!		unknown format conversion: 'k'
++@%<#10cdp%3$+,9n((	Z,D	format specifier '%c' is not compatible with the given flag(s): #
+5	c,c,f	extra format arguments: used 0, provided 3
+%0,.2w%c%p%%% -11E%y		unknown format conversion: 'w'
+kw	i,i	extra format arguments: used 0, provided 2
+(s%(Xr%Ya0$	z,n,I	unknown format conversion: 'Y'
+St	D,D,Z,b	extra format arguments: used 0, provided 4
+q	N,s,s,c	extra format arguments: used 0, provided 4
+%-.5qS%3$.5k%M		unknown format conversion: 'q'
+cAp%1$ZlG@	f,s,n,z	unknown format conversion: 'Z'
+.5%<+sH.2%2$<p		format specifier '%s' is not compatible with the given flag(s): +
+3$%z	i0,b,S	unknown format conversion: 'z'
+xqgu	f,l	extra format arguments: used 0, provided 2
+#%.0e%+EAr	F,b,i	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%e'
+%#Tx	d,F,l,D	unknown format conversion: 'tx'
+z!a{%<Ttx	D,S	unknown format conversion: 'tt'
+cTbD%(.3wo%1$3Tao	i0,I	unknown format conversion: 'w'
+a	s,b,T,i	extra format arguments: used 0, provided 4
+%2$<1IaB ID	c,c,D	unknown format conversion: 'I'
+9H0$rG	D,c,C,S	extra format arguments: used 0, provided 4
+.0	d,C	extra format arguments: used 0, provided 2
+%0s%2$0tF%%.0%		format specifier '%s' is not compatible with the given flag(s): 0
+ q%.5hf%2$d%0 r	D	unknown format conversion: 'r'
+%TycX1<	n,I,T,T	extra format arguments: used 1, provided 4
+a	n,f,C,T	extra format arguments: used 0, provided 4
+%1$.2xD	s,c,C,N	illegal format precision: 2
+%# D%1$-.0F3${	T,b,F,D	unknown format conversion: 'D'
+H%10Q.0R	d	unknown format conversion: 'Q'
+%9TH	b,s,F,D	illegal format conversion: 'java.lang.Byte' cannot be formatted using '%H'
+1$		
+%% ke%#tp99999999999zc	S,Z	format specifier '%p' is not compatible with the given flag(s): #
+%,6%	f,N,i,Z	illegal format flags: ,
+R	s,D	extra format arguments: used 0, provided 2
+%3$+(8Z	n,N,i55296,s	unknown format conversion: 'Z'
+%1$09ks	F,N,d	unknown format conversion: 'k'
+%IZ-0F%09tL100	b,T,I,i-1	unknown format conversion: 'I'
+S	i1114112,l,I,l	extra format arguments: used 0, provided 4
+%4Tf%7.4TL	C,f	unknown format conversion: 'tf'
+%3$+(XI3$%%dN	d,c	missing argument for format specifier '%+(3$X'
+ c	I	extra format arguments: used 0, provided 1
+xse% Te%	b	format specifier '%e' is not compatible with the given flag(s):  
+-G		
+.5%1.2tc	F,I	illegal format precision: 2
+L%3$+eo%Gbe@%<2tF		missing argument for format specifier '%+3$e'
+C	s,c	extra format arguments: used 0, provided 2
+Bu10	b,T,l	extra format arguments: used 0, provided 3
+C	F,Z,C,z	extra format arguments: used 0, provided 4
+A%1$0,tg!qpb.2	C	unknown format conversion: 'tg'
+%1$8je	c,F,l	unknown format conversion: 'j'
+HcDXs%1$-5s	S,l,S,l	extra format arguments: used 1, provided 4
+xLLx999999999990T#		
+%0w(-299999999999c	N	unknown format conversion: 'w'
+\n%2$-CAl	C	missing format width: %-2$C
+fl	Z,Z,N,s	extra format arguments: used 0, provided 4
+%k.2sq0%1$	F	unknown format conversion: 'k'
+,a-%g%0,d		missing format width: %0,d
+eX	c,C,S,b	extra format arguments: used 0, provided 4
+gD!wHe	Z,n,d,c	extra format arguments: used 0, provided 4
+%<ttY%# Th%2$YX%2$q%F!		unknown format conversion: 'tt'
+%3$Tn		unknown format conversion: 'tn'
+-%-12Br%,.5Tg0#		illegal format precision: 5
+L1	f,d,D	extra format arguments: used 0, provided 3
+d		
+os%,Ah		format specifier '%a' is not compatible with the given flag(s): ,
+B% ,h%7zhI.5%, 8.4to		format specifier '%h' is not compatible with the given flag(s):  ,
+YgA%%A{2$		
+%3$ S.Ds		format specifier '%s' is not compatible with the given flag(s):  
+%X-+M%-11F	f,z,i,D	unknown format conversion: 'F'
+YoH%3$9I%3$0+.5L%+<8.3N-%10N		unknown format conversion: 'I'
+10.0%3.4tN	l,I,D,C	illegal format precision: 4
+%Moze{ 		unknown format conversion: 'M'
+u%%.1B%h5	N,f,C	extra format arguments: used 1, provided 3
+%0 10Q%0$%1$ Th0$Y%2$9ttF	z,z,d,T	unknown format conversion: 'Q'
+QE	f,I,b	extra format arguments: used 0, provided 3
+C	S,b,C	extra format arguments: used 0, provided 3
+%8B%##<	Z,b	unknown format conversion: '#'
+.0Y29a,	C	extra format arguments: used 0, provided 1
+y	f	extra format arguments: used 0, provided 1
+%T%2$	b	unknown format conversion: 't%'
+N@%!%%1$a\n	S,Z,l	unknown format conversion: '!'
+RosYX.0	N,F,s,S	extra format arguments: used 0, provided 4
+ %A +%1$(p	Z	unknown format conversion: 'p'
+%%,1.5MD		
+s\nZ.0B	f,N,S	extra format arguments: used 0, provided 3
+%q%2$<+7s		unknown format conversion: 'q'
+2k3$akk	l	extra format arguments: used 0, provided 1
+D\u00e9!		
+%3$0Th%		format specifier '%h' is not compatible with the given flag(s): 0
+%0<N#E		unknown format conversion: 'N'
+%3$n%-HuI%2$10.1r		missing format width: %-H
+F%3$,0B	D,N,F,D	format specifier '%b' is not compatible with the given flag(s): 0,
+xnMNQ	N,F,N,S	extra format arguments: used 0, provided 4
+t%	N	unknown format conversion: '%'
+yLN%3$(+rNe	l,b	unknown format conversion: 'r'
++Fs@% .3a% 0lo	C,D,F,l	%l is not a valid format specifier; use %d to format integral types as a decimal integer, and %f, %g or %e to format floating point types (depending on your formatting needs)
+%99999999999 x	l	unknown format conversion: '9'
+S\n	s	extra format arguments: used 0, provided 1
+hf,n0g{A	I,I,D,T	extra format arguments: used 0, provided 4
+%0.3E#Z	S	missing format width: %0.3E
+s{x%1$ <12g3$	I,D	missing argument for format specifier '% <12g'
+5@%2jra%+.3Tg9%10B	T,D,I	unknown format conversion: 'j'
+%( FT%#S{99999999999rfq		unknown format conversion: 'F'
+f2$2$%3$Mn%1$+(s	F,s,l	unknown format conversion: 'M'
+C%,tQ%3$.0df	S,d,D,F	format specifier '%Q' is not compatible with the given flag(s): ,
+0$	F,l	extra format arguments: used 0, provided 2
+y%99999999999		unknown format conversion: '9'
+eh%2$(<fs1	f,D,l,I	missing argument for format specifier '%(<f'
+x%9Y		unknown format conversion: 'Y'
+e%2$0gX5	n,F,d,C	missing format width: %02$g
+s.0H%0.0tDC%(01.4q%	z,C,C	illegal format precision: 0
+B		
+dTX%2$-4t .c2$	s,c,n,C	unknown format conversion: '\u0000'
+b	s	extra format arguments: used 0, provided 1
+\u00e9	b,d	extra format arguments: used 0, provided 2
+xxX%11tF%1$#lx#	c	%l is not a valid format specifier; use %d to format integral types as a decimal integer, and %f, %g or %e to format floating point types (depending on your formatting needs)
+A3$5sr%+c	z,s	format specifier '%c' is not compatible with the given flag(s): +
+\nIl%2$03e99999999999	D,N,s	illegal format conversion: 'java.time.Instant' cannot be formatted using '%e'
+p	n,c	extra format arguments: used 0, provided 2
+-%1$11.0l%-Z <c	i,c	%l is not a valid format specifier; use %d to format integral types as a decimal integer, and %f, %g or %e to format floating point types (depending on your formatting needs)
+a		
+%0tB\u00e9%		format specifier '%B' is not compatible with the given flag(s): 0
+%		unknown format conversion: '%'
+%		unknown format conversion: '%'
+%H	f	
+H%nl%  .0RuIq%10Tr	b,c,z,T	duplicate format flags:  
+dx%@.	I	unknown format conversion: '@'
+%%.4TH0$S%1$  2l	n,S	duplicate format flags:  
+h0		
+.%<D10B-		unknown format conversion: 'D'
+yeh	b,T,i-1	extra format arguments: used 0, provided 3
+gM-	S,z	extra format arguments: used 0, provided 2
+we%1$0E		missing format width: %01$E
+a%TM@ %f	Z,S,i-1,b	illegal format conversion: 'java.lang.String' cannot be formatted using '%f'
+t	n	extra format arguments: used 0, provided 1
+QQ <%1$# .4n1	N,S,b,c	illegal format precision: 4
+g2$%0#7LX%1$++z		unknown format conversion: 'L'
+R0+	I,n,f	extra format arguments: used 0, provided 3
+H%2$(,d	z,S	illegal format conversion: 'java.lang.String' cannot be formatted using '%d'
+Z(.5%10d	T,n,i	illegal format conversion: 'java.util.Date' cannot be formatted using '%d'
+%2$#.4XX%3$Rzssn		illegal format precision: 4
+Y	f	extra format arguments: used 0, provided 1
+G%2$(-1sc%0.5I%%,Z%2zT		format specifier '%s' is not compatible with the given flag(s): (
+B2	C,I	extra format arguments: used 0, provided 2
+Bx2$		
+Mj	Z	extra format arguments: used 0, provided 1
+%2$0#.3TB%ta+1% .5tA!%2$(-p	c,z	illegal format precision: 3
+l.	l,i,l,C	extra format arguments: used 0, provided 4
+H10+2$	Z	extra format arguments: used 0, provided 1
+%-Ceb	z,S,I	missing format width: %-C
+%<tc%-.5BI	z	missing format width: %-.5B
+5	i,S,F,z	extra format arguments: used 0, provided 4
+%0#D0%1$-TNG	i1114111	unknown format conversion: 'D'
+%2$010bjrXT%3t\n%-.3l	D	format specifier '%b' is not compatible with the given flag(s): 0
+5% +.3th9+%,-RS0	D,s,i	illegal format precision: 3
+%((.2k%11MsH.A@	b,F	duplicate format flags: (
+a%3$2.1tR.2fM	i,b,Z,l	illegal format precision: 1
+Z%3$ -tTY#!x5,	z,f,d,f	format specifier '%T' is not compatible with the given flag(s):  
+yd\u00e9Gy #Z	N	extra format arguments: used 0, provided 1
+%(0F%-0.1R oqwR	T,T,I,d	unknown format conversion: 'F'
+gEfc	l	extra format arguments: used 0, provided 1
+\u00e9	N,D,C,D	extra format arguments: used 0, provided 4
+Q		
+c%IL0$M%1$+t%	D,C,S,c	unknown format conversion: 'I'
+%2$<.4j	F,d,f,i65	unknown format conversion: 'j'
+e	z	extra format arguments: used 0, provided 1
+X%((.1o%+ ES%1$A%\u00e9	i,f	duplicate format flags: (
+as\u00e9x	C,S,I	extra format arguments: used 0, provided 3
+%10s@ur3$%(g	c,F,N	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%g'
+{21$s0g(%3$ 7.1h	c	format specifier '%h' is not compatible with the given flag(s):  
+999999999999edx%#MXc	T,c,z,T	unknown format conversion: 'M'
+r%,kgb%02.1TR.5	D	unknown format conversion: 'k'
+10Nkr	F,T,d,N	extra format arguments: used 0, provided 4
+%2$-p%2$+<3e!.50	n,S,d	unknown format conversion: 'p'
+%7TA9%011R3$M	s	unknown format conversion: 'R'
+k	C,Z	extra format arguments: used 0, provided 2
+d%0-.5E%1$ TH+\u00e9	T,D,i1114111	missing format width: %-0.5E
+e	f,i-2147483648,d,i65	extra format arguments: used 0, provided 4
+%3$Fghf1	s,f	unknown format conversion: 'F'
+9 		
+t	i65,T,T,D	extra format arguments: used 0, provided 4
+.2f% (12Bns	F,i	format specifier '%b' is not compatible with the given flag(s):  (
+xjh%<8ts	C,d,c	missing argument for format specifier '%<8ts'
+FwA 	f,N,b	extra format arguments: used 0, provided 3
+ %<-du		missing format width: %-<d
+Cx		
+%#n%(,11Qs		illegal format flags: #
+Y%2$#j	n,b,F,C	unknown format conversion: 'j'
+Y%3$-Thpn	S	missing format width: %-3$TH
+T%3$ZLn	Z,l,F,I	unknown format conversion: 'Z'
+%gd	c	illegal format conversion: 'java.lang.Character' cannot be formatted using '%g'
+Q10%#3.4q.5S	C	unknown format conversion: 'q'
+%%-,9l	l,F	extra format arguments: used 0, provided 2
+x	d,C,T,i	extra format arguments: used 0, provided 4
+at%2$<-.2a@	s	missing format width: %-<.2a
+Y,w	z,C,I,T	extra format arguments: used 0, provided 4
+%r%0Hx,		unknown format conversion: 'r'
+ 		
+%0Tr%3$<y0%2$+k%2$1.5txq	S,I,c	format specifier '%r' is not compatible with the given flag(s): 0
+px%%++My	d,n,d,s	extra format arguments: used 0, provided 4
+pe		
+.5%+0Q%3$9.1L	I	unknown format conversion: 'Q'
+u%	d	unknown format conversion: '%'
+R	f,n,N,z	extra format arguments: used 0, provided 4
+{s%#Tc%.5GoL%S	l,c,N	format specifier '%c' is not compatible with the given flag(s): #
+Lc		
+gpGqC%2$-3.1Te%12TT2	S,n	illegal format precision: 1
+g	i,z,N,Z	extra format arguments: used 0, provided 4
+e		
+-L2#%2$,,C	n	duplicate format flags: ,
+h,	n,D	extra format arguments: used 0, provided 2
+%3$03p	S,b	unknown format conversion: 'p'
+%0<fc	c,T,z,n	missing format width: %0<f
+I%%+,R+%-Thf%9z0		missing format width: %-TH
+h%2$n%Hn%<The	z	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%h'
+Ek10	i1114111,C,N	extra format arguments: used 0, provided 3
+%1$RA,	T	unknown format conversion: 'R'
+c%(4rZoo	D,s,T,I	unknown format conversion: 'r'
+j	S,s	extra format arguments: used 0, provided 2
+10%MfB%%2$#,G		unknown format conversion: 'M'
+u%2$L%	f,S,I,D	unknown format conversion: 'L'
+kx	T	extra format arguments: used 0, provided 1
+2$gh.s		
+2S%	i,f,S	unknown format conversion: '%'
+qjF%1$-2E	s	illegal format conversion: 'java.lang.Short' cannot be formatted using '%e'
+0l.2	T,C,i,S	extra format arguments: used 0, provided 4
+<% o	N,D	illegal format conversion: 'java.time.Instant' cannot be formatted using '%o'
+r<0${EBsX		
+Md%% .5d		
+1 M%+ 3.3T	N,n	unknown format conversion: 'T'
+l0%<0fDHZS%,2h	s,i-1,D	missing format width: %0<f
+Sa	N	extra format arguments: used 0, provided 1
+pzaw		
+%<(tH%3L%-<1.5TA%3$+4C%3$N- \u00e9	c,C	format specifier '%H' is not compatible with the given flag(s): (
++S2$	z	extra format arguments: used 0, provided 1
+A<	F,f,n	extra format arguments: used 0, provided 3
+%g%%h\n%1$-+NHI		unknown format conversion: 'N'
+qa-.2		
+e%QN00hc	b,S	unknown format conversion: 'Q'
+  #!1$%1$#8L	n,I	unknown format conversion: 'L'
+%%##11M%.2Dgubhe	S	unknown format conversion: 'D'
+Q%0+.1t\u00e9Abe.5		unknown format conversion: '\u0000'
+a.0	l,z,T,c	extra format arguments: used 0, provided 4
+%1$,,7z%Sjoo	N,c,S,f	duplicate format flags: ,
+%3$n%3$-rdf5%,+g-%+ 6E	F,c,I	unknown format conversion: 'r'
+5	C	extra format arguments: used 0, provided 1
+10	D	extra format arguments: used 0, provided 1
+%1$--L%#.2TRX%.0%R0$s	S,F,S	duplicate format flags: -
+EYC%%,MB	i	extra format arguments: used 0, provided 1
+,%1$-7ZFr %S	C,D,l,z	unknown format conversion: 'Z'
+.0%+F	c,D,c,b	unknown format conversion: 'F'
+jNBc.y	c,Z,c,D	extra format arguments: used 0, provided 4
+FC-%  s%M		duplicate format flags:  
+1%1$# c\u00e9HH%#.5p%	n	format specifier '%c' is not compatible with the given flag(s): # 
+Z	Z,f	extra format arguments: used 0, provided 2
+Ce%,,dQh%n	d,N,n,I	duplicate format flags: ,
+%0#8z%1$1y%2$,.0Z%,+C%1q	b,C,i	unknown format conversion: 'z'
+,QI	n	extra format arguments: used 0, provided 1
+u	b	extra format arguments: used 0, provided 1
+##%( 11RNo1$DS		unknown format conversion: 'R'
+e%%.3C#%1$d	N	illegal format conversion: 'java.time.Instant' cannot be formatted using '%d'
+kD(-%F%	S	unknown format conversion: 'F'
+0$999999999992$FT	c,i	extra format arguments: used 0, provided 2
+(	S,c	extra format arguments: used 0, provided 2
+%1$,6.4EeT%-9N\u00e9	n,S,N	format specifier '%e' is not compatible with the given flag(s): ,
+.0F%%+0I1$x\u00e9	b,z	extra format arguments: used 0, provided 2
+Cfw% c	Z,c,c,T	format specifier '%c' is not compatible with the given flag(s):  
+%- NY3$h	i,l	unknown format conversion: 'N'
+,sct	C	extra format arguments: used 0, provided 1
+Q		
+g10Sje(	b,b,Z,s	extra format arguments: used 0, provided 4
+%-,N%%teA%<(2Tb	Z,d	unknown format conversion: 'N'
+n-h+		
+%03$%c	I,n,c	extra format arguments: used 0, provided 3
+f%	I,T,D,F	unknown format conversion: '%'
+k9		
+%%	i-2147483648,b,F,d	extra format arguments: used 0, provided 4
+k		
+.2%(5x-rb%ze 	f,I	unknown format conversion: 'z'
+s	T,z	extra format arguments: used 0, provided 2
+S		
+%,tL%0z%#r	i0	format specifier '%L' is not compatible with the given flag(s): ,
+,	s,C	extra format arguments: used 0, provided 2
+%<<.5tnLLs.0	b,T	duplicate format flags: <
+1$M%%tG%%3$#<tXkc		
+%2$0TbL%%.3e	C,d	format specifier '%b' is not compatible with the given flag(s): 0
+la%3$# TSaS.99999999999	i,I	format specifier '%S' is not compatible with the given flag(s): # 
+%-.4Tg@%5.5oz	f,s,i	illegal format precision: 4
+ ,	S,T,T	extra format arguments: used 0, provided 3
+Fg%3$+.1eMeHe!	i,s,Z	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%e'
+%+(z%o%2$(z%Lk	d,T	unknown format conversion: 'z'
+-x@	f,Z,S,D	extra format arguments: used 0, provided 4
+D%cH%1$0 G10e1$R	I,l	missing format width: % 01$G
+%.1E2$.2<%es%10N	i,N,I,Z	unknown format conversion: 'N'
+R%3$,(1.1gX!1%t	T,d,i,C	unknown format conversion: 't'
+k	d,I,D	extra format arguments: used 0, provided 3
+Mq{.2	S,D	extra format arguments: used 0, provided 2
+Z% .3f{e%<,5l.0	c,d,l	%l is not a valid format specifier; use %d to format integral types as a decimal integer, and %f, %g or %e to format floating point types (depending on your formatting needs)
+,%+.0k%+-ysLa		unknown format conversion: 'k'
+k%8L%3$0n%-.5r%3$-<F%(,.3g	C,F,z	unknown format conversion: 'L'
+%H%%1$#+TxF	I,T,b	extra format arguments: used 1, provided 3
+d@0$%,<g#x	b	missing argument for format specifier '%,<g'
+\n0$\u00e9%<x	D	missing argument for format specifier '%<x'
+%2xx%3$ H.5-2% #.0Y{	f,i,l,n	format specifier '%h' is not compatible with the given flag(s):  
+eGn%g%Z	S,S,N	unknown format conversion: 'Z'
+%,%,.4tesr0$T	z	illegal format flags: ,
+pYZz	z	extra format arguments: used 0, provided 1
+o-.	I,i,s	extra format arguments: used 0, provided 3
+\n.0+RH1N	l,d	extra format arguments: used 0, provided 2
+%%+#.4be	d	extra format arguments: used 0, provided 1
+%\u00e9Xq-	l,i,c	unknown format conversion: '\u00e9'
+@s	I	extra format arguments: used 0, provided 1
+,99999999999 	I,D,n	extra format arguments: used 0, provided 3
+%ea%1$#s	s,I,d	illegal format conversion: 'java.lang.Short' cannot be formatted using '%e'
+1$z%%Q.5-		
+s%!		unknown format conversion: '!'
+\u00e9%22% 11Dj{	s,N	extra format arguments: used 0, provided 2
+%z%Y%#0.0Q<	N,N	unknown format conversion: 'z'
+I		
+M\nH %.4d@0$1$	S,n,c,f	illegal format precision: 4
+%5.3%%(e2$	c	illegal format precision: 3
+E.0(0$%-<6t	C,i65,C	unknown format conversion: 't'
+p.0%<4Z1s%8.2TD%+.0tD%	C,b,f,C	unknown format conversion: 'Z'
+%%<010TFS	f	extra format arguments: used 0, provided 1
+g<k%(s#0-s	N,c,D	format specifier '%s' is not compatible with the given flag(s): (
+e		
+tH%<012D0	T,l	unknown format conversion: 'D'
+%3$(3w.2Q9k	b,l,b	unknown format conversion: 'w'
+1099999999999%2$(<2gE%+ l	S,d,l,T	%l is not a valid format specifier; use %d to format integral types as a decimal integer, and %f, %g or %e to format floating point types (depending on your formatting needs)
+%++6Ht+	F,N,f,f	duplicate format flags: +
+oM	Z,Z,C	extra format arguments: used 0, provided 3
+ysL%N% +thM	Z,F,i	unknown format conversion: 'N'
+wT.599999999999z		
+%1$ ,TN	i0	format specifier '%N' is not compatible with the given flag(s):  ,
+%(<F%tS%2$##.3Tk-x		unknown format conversion: 'F'
+k#0e%3$#6L	F,n	unknown format conversion: 'L'
+NN%1$<Ha	N,n	missing argument for format specifier '%<H'
+%1$(-11e-9c1a	c,s,F,S	illegal format conversion: 'java.lang.Character' cannot be formatted using '%e'
+L CA%.0T+.0%	F,z,T	unknown format conversion: '\u0000'
+%<(9QS@Z	i,I	unknown format conversion: 'Q'
+.2y		
+x%B  	z,c,s,l	extra format arguments: used 1, provided 4
+Z%<Bx%0jL0YS	I,d,F	unknown format conversion: 'j'
+Gx	d,I	extra format arguments: used 0, provided 2
+%<xssy%2$c%1$#7g%2$H	s,N	format specifier '%g' is not compatible with the given flag(s): #
+\u00e9M3$+l.5%2$#-8TCw	c,I,I	format specifier '%C' is not compatible with the given flag(s): #
+e	C	extra format arguments: used 0, provided 1
+%(02EH+0%%3.2thH	z	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%e'
+.0Mb%3$#-5tZ	z,f,s,T	format specifier '%Z' is not compatible with the given flag(s): #
+F%,.5q2	S,C	unknown format conversion: 'q'
+C%(#S.2F		format specifier '%s' is not compatible with the given flag(s): (
+z	T,f	extra format arguments: used 0, provided 2
+z	N,l,b	extra format arguments: used 0, provided 3
+%2$x% +B%2$t%-%3$ ,sq<	d,F,d	format specifier '%b' is not compatible with the given flag(s): + 
+10!0@g%3$(1.2tT	D,s	illegal format precision: 2
+j%%		
+%<11s	l	missing argument for format specifier '%<11s'
+%c x=%tZ x=%B	C,I	illegal format conversion: 'java.util.GregorianCalendar' cannot be formatted using '%c'
+ x=%C%2$+%	F,c,l	illegal format flags: +
+ x=% .2h x=%.3Tp x=%2$9d%1$(s	i,I,b	format specifier '%h' is not compatible with the given flag(s):  
+ x=%4.0A%f x=%s	f,d	missing argument for format specifier '%s'
+ x=%.1tT%1$,.3Tm x=%1$.3e	C,d	illegal format precision: 1
+ x=%014b x=%,(S%f x=%.0B	z	format specifier '%b' is not compatible with the given flag(s): 0
+%#7tz%4$ G x=%3$12G	D,N,f,n	format specifier '%z' is not compatible with the given flag(s): #
+ x=%f x=%#19G	c	format specifier '%g' is not compatible with the given flag(s): #
+%b%<c	l,b	illegal format conversion: 'java.lang.Long' cannot be formatted using '%c'
+%.3C		illegal format precision: 3
+ x=%.0TF	I	illegal format precision: 0
+ x=%3$.2s x=%h	n	missing argument for format specifier '%3$.2s'
+ x=%.2e	I,f,T	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%e'
+ x=%3$17d%f%,f		missing argument for format specifier '%3$17d'
+%1$E%2$8s x=%4$5.2tM%<e	b,z	illegal format precision: 2
+ x=%Ty x=%3o	S,l	illegal format conversion: 'java.lang.String' cannot be formatted using '%y'
+%f%#<.1b x=%E x=%13.1n	c,S	format specifier '%b' is not compatible with the given flag(s): #
+% ,20TA	s	format specifier '%A' is not compatible with the given flag(s):  ,
+%,s	s,z	format specifier '%s' is not compatible with the given flag(s): ,
+ x=%3$6s%f		missing argument for format specifier '%3$6s'
+%(.1g	i	illegal format conversion: 'java.lang.Integer' cannot be formatted using '%g'
+%11x x=%G%E	i1114111,T,I	illegal format conversion: 'java.util.Date' cannot be formatted using '%g'
+ x=%4$ B%<s	n	format specifier '%b' is not compatible with the given flag(s):  
+%s x=%20tz		missing argument for format specifier '%s'
+ x=%19C	l,S,I	illegal format conversion: 'java.lang.Long' cannot be formatted using '%c'
+ x=%,e x=%#5E% c x=%16.0C	N,f	format specifier '%e' is not compatible with the given flag(s): ,
+ x=%2c%.1h%+.1tr x=%-e	d,D,C	illegal format precision: 1
+ x=%Te%1$(c	D,I,z,C	format specifier '%c' is not compatible with the given flag(s): (
+%19.1tb x=%1$3tc x=%tB	S,F,c	illegal format precision: 1
+%2$c x=%s x=%#A	C	missing argument for format specifier '%2$c'
+ x=%13o		missing argument for format specifier '%13o'
+ x=%f x=%,-6%%3$7C%5.2b	S,c,d,F	illegal format flags: -,
+%#c x=%s%.2e%s	s,l	format specifier '%c' is not compatible with the given flag(s): #
+%<8.0tL%<,f x=%-b	d,Z	illegal format precision: 0
+%.3G	d,T,I,I	extra format arguments: used 1, provided 4
+ x=%c x=%3$.2e x=%Tp	N,d,C	illegal format conversion: 'java.time.Instant' cannot be formatted using '%c'
+ x=%-s%+10.0d x=%#9f%11s	i0,n,n,l	missing format width: %-s
+%tM%1$(8.3B x=%C x=%0s	s,N	format specifier '%b' is not compatible with the given flag(s): (
+ x=%1$10f%1$(TM	D,n,b	format specifier '%M' is not compatible with the given flag(s): (
+%Tj x=%C	C,s,f,l	extra format arguments: used 2, provided 4
+%0tI		format specifier '%I' is not compatible with the given flag(s): 0
+ x=%0c x=%1$(17.2f%16tR		format specifier '%c' is not compatible with the given flag(s): 0
+%-.0h%#7X x=%e	b,b,d,s	missing format width: %-.0h
+%h x=%<<.1E	b,l	duplicate format flags: <
+%2$#5f	C,S	illegal format conversion: 'java.lang.String' cannot be formatted using '%f'
+%<14s	I,Z,i-2147483648	missing argument for format specifier '%<14s'
+ x=%d%3.2s x=%.3TT%b		illegal format precision: 3
+ x=%03e%0C x=%4$0%%s	F	format specifier '%c' is not compatible with the given flag(s): 0
+ x=%5b x=%1$f%1$9A	i65,S,f	illegal format conversion: 'java.lang.Integer' cannot be formatted using '%f'
+%b x=%a%(6.3d x=%2$<e	z	illegal format precision: 3
+ x=%.0b x=%f	d	missing argument for format specifier '%f'
+ x=%tC x=%,6tr%s x=% 0H	i	format specifier '%r' is not compatible with the given flag(s): ,
+ x=%e	D,I,c	extra format arguments: used 1, provided 3
+%4.3o		illegal format precision: 3
+%4$s x=% % x=%f	Z	illegal format flags:  
+ x=%G x=%s%3$18.3s	S,S	illegal format conversion: 'java.lang.String' cannot be formatted using '%g'
+%+.0s	s,s,l,z	format specifier '%s' is not compatible with the given flag(s): +
+%,(d x=%f%g	Z,n	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%d'
+ x=%+d%11TD	D,F,b	illegal format conversion: 'java.math.BigDecimal' cannot be formatted using '%d'
+%b% d x=%,.0f%0d	i,S	missing format width: %0d
+%0c	z,s,l,F	format specifier '%c' is not compatible with the given flag(s): 0
+ x=%%	b,D	extra format arguments: used 0, provided 2
+%3$<17H x=%1$C%-h		missing format width: %-h
+%s%f	Z	missing argument for format specifier '%f'
+% b x=%,6a%4$o%<f	d,D,d,F	format specifier '%b' is not compatible with the given flag(s):  
+ x=%.2d%<n%0b x=%.0E	d,Z	illegal format precision: 2
+ x=%3$.1a% s x=%1e x=%-4.1b	b,l,T	format specifier '%s' is not compatible with the given flag(s):  
+ x=%1$b	N,i,T,l	extra format arguments: used 1, provided 4
+%0B x=%1$20s x=%G	b,Z,s	format specifier '%b' is not compatible with the given flag(s): 0
+ x=%(d x=%s	N,s,i-2147483648,S	illegal format conversion: 'java.time.Instant' cannot be formatted using '%d'
+ x=%<.0n x=%s%1$c	T,s,D,N	illegal format precision: 0
+%,e x=%4$,s x=%e x=%tA	S	format specifier '%e' is not compatible with the given flag(s): ,
+ x=%4$S%3f x=%#.3o	b,S,b,Z	illegal format precision: 3
+ x=% e		missing argument for format specifier '% e'
+ x=%4$f%2$.1TC	F,N,n	illegal format precision: 1
+%7.2c		illegal format precision: 2
+ x=%18th	C,i,f,z	extra format arguments: used 1, provided 4
+%s x=%H x=%<d	F,N,I	illegal format conversion: 'java.time.Instant' cannot be formatted using '%d'
+%-o	D,s,c,I	missing format width: %-o
+%o	T	illegal format conversion: 'java.util.Date' cannot be formatted using '%o'
+%8e%1$<d%+A%1$+20.2f		missing argument for format specifier '%8e'
+%-c x=%(x	s,c,c,l	missing format width: %-c
+ x=%2s	I,z,F,d	extra format arguments: used 1, provided 4
+%<f x=%19b	T,i,z	missing argument for format specifier '%<f'
+%,.3G x=% .2% x=%d x=%.2Ta	I,N,D,T	illegal format precision: 2
+ x=%.1s%o x=%4s	b	missing argument for format specifier '%o'
+%2$#f x=%tN		missing argument for format specifier '%#2$f'
+%4$B%s	z	missing argument for format specifier '%4$B'
+ x=%0.0o x=%15a x=%#7.1b x=%.2B		missing format width: %0.0o
+ x=%6f x=%tN% e	c,z,S,T	illegal format conversion: 'java.lang.Character' cannot be formatted using '%f'
+%f%15X%1$s%tm		missing argument for format specifier '%f'
+%11.3E%tj	T,n,i1114112,d	illegal format conversion: 'java.util.Date' cannot be formatted using '%e'
+%,3.2d x=%18x%d	l,S,D	illegal format precision: 2
+ x=%16.2d%1$s	T,b,F	illegal format precision: 2
+%-<20.0a%+s x=%1$ n	Z	format specifier '%s' is not compatible with the given flag(s): +
+ x=%4$#s%+20.2x x=%+<.3th x=%1$ #s	F,d,S	illegal format precision: 2
+%x	d,n	illegal format conversion: 'java.lang.Double' cannot be formatted using '%x'
+%<TA	F,l,l	missing argument for format specifier '%<TA'
+%4$-,f x=%2$0f%e	s,l	missing format width: %-,4$f
+ x=%,,17.1d	c,c,F	duplicate format flags: ,
+%11a x=%2$+tc%2$,6b	b,n	format specifier '%c' is not compatible with the given flag(s): +
+%-2.1tm x=%,5B	S	illegal format precision: 1
+%4$#.0d x=%Th x=%s x=%,s	d	illegal format precision: 0
+%o x=%tR x=%e	b,b	illegal format conversion: 'java.lang.Byte' cannot be formatted using '%R'
+%14s	N,T	extra format arguments: used 1, provided 2
+ x=%3.2s x=%18A x=%.3tY	C,d,d	illegal format precision: 3
+%+10TZ x=%10e	z,I,z	format specifier '%Z' is not compatible with the given flag(s): +
+ x=%,16e x=%-.2d		format specifier '%e' is not compatible with the given flag(s): ,
+ x=%#<X%2$<d x=%h	f	missing argument for format specifier '%#<X'
+ x=%.2c	s,N	illegal format precision: 2
+ x=%d	s,d,I	extra format arguments: used 1, provided 3
+%-.2f%d x=%.0s	z,s,l,D	missing format width: %-.2f
+ x=%A%16B	s	illegal format conversion: 'java.lang.Short' cannot be formatted using '%a'
+ x=%-1d% 3f		missing argument for format specifier '%-1d'
+ x=%<.1f x=%17tT x=% 20.1f%3$+d	Z,C,s	missing argument for format specifier '%<.1f'
+ x=%#15d%-7.1C		format specifier '%d' is not compatible with the given flag(s): #
+ x=%#5E%3s	c,S	illegal format conversion: 'java.lang.Character' cannot be formatted using '%e'
+%B%#% x=%4G x=%<13C	Z,b	illegal format flags: #
+%x x=%4h%16b%TY	T,s,c,D	illegal format conversion: 'java.util.Date' cannot be formatted using '%x'
+%<6%%15C	b,z,N	illegal format flags: <
+%19E	S,C,S,l	illegal format conversion: 'java.lang.String' cannot be formatted using '%e'
+%.3f x=%3$ -.0G%.3s		missing format width: %- 3$.0G
+ x=%-.1s	n	missing format width: %-.1s
+ x=%.1s%18B x=%,td	z	format specifier '%d' is not compatible with the given flag(s): ,
+%2$3c%h x=%4$x	D,D,l	illegal format conversion: 'java.math.BigDecimal' cannot be formatted using '%c'
+%<9.2f%d	n,I,d,s	missing argument for format specifier '%<9.2f'
+ x=%#14Tc%17.1e%(.0f%12.3S	l,i1114112	format specifier '%c' is not compatible with the given flag(s): #
+%.1g	f,I,f,b	extra format arguments: used 1, provided 4
+%1A%14x%1$6b x=%b	n,l,C,F	extra format arguments: used 3, provided 4
+ x=%.2d	l,F	illegal format precision: 2
+%.0A		missing argument for format specifier '%.0A'
+%tS x=%tj	F,f,d,T	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%S'
+%f%-10s x=%.0TZ	D,d,i	illegal format precision: 0
+%.2G%s	I	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%g'
+%.1f x=% n%.0A		illegal format flags:  
+ x=%(h	d,f	format specifier '%h' is not compatible with the given flag(s): (
+%4$-a	I	missing format width: %-4$a
+ x=%8TI x=%11B	i,z,l,S	illegal format conversion: 'java.lang.Integer' cannot be formatted using '%I'
+%7.0G	s,C,N,S	illegal format conversion: 'java.lang.Short' cannot be formatted using '%g'
+%(b x=%04B x=%d	D,C,z,b	format specifier '%b' is not compatible with the given flag(s): (
+ x=%4$,d	D,l	missing argument for format specifier '%,4$d'
+ x=%4$-s%x x=%1$#s	Z,f,S	missing format width: %-4$s
+%1$.0s x=%8s	n,f,n,f	extra format arguments: used 1, provided 4
+ x=%2$,(s x=%.0e	n,s	format specifier '%s' is not compatible with the given flag(s): ,(
+%0f x=%4$-%%#16b	C	missing format width: %0f
+ x=%o% 13.0tA%1$TZ%S	f,l,D	illegal format precision: 0
+%2$2A%3d x=%7tN x=%3$ S	i1114111,i,n,S	format specifier '%s' is not compatible with the given flag(s):  
+%<G	i,f,F,c	missing argument for format specifier '%<G'
+ x=%+02x%9f x=%#c x=%,2d	C,T	format specifier '%c' is not compatible with the given flag(s): #
+%20d%.0f%G	I,I,i	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%f'
+%.3s x=%-f	n,N,s	missing format width: %-f
+ x=%,.3%%<g	b,S	illegal format precision: 3
+%#15d%o	F,F	format specifier '%d' is not compatible with the given flag(s): #
+%13S x=%#s	c,i,F,F	format specifier '%s' is not compatible with the given flag(s): #
+%<14E x=%#TM%0h	C,f	format specifier '%M' is not compatible with the given flag(s): #
+ x=%-b%#18s x=%<G	N,d	missing format width: %-b
+ x=%.2G x=% tA	C,f,i,T	format specifier '%A' is not compatible with the given flag(s):  
+ x=%X%.0B x=%14.2f%<n	i,S	illegal format flags: <
+%3A x=%#n%+1.0X	S,d,I	illegal format flags: #
+ x=%TD%06C	d,Z	format specifier '%c' is not compatible with the given flag(s): 0
+ x=%18g		missing argument for format specifier '%18g'
+ x=%-n%0tb%4$17d		illegal format flags: -
+%.3X	b,n,b	illegal format precision: 3
+%5E x=%c x=%0s		format specifier '%s' is not compatible with the given flag(s): 0
+%#S x=%,0h	z	format specifier '%h' is not compatible with the given flag(s): 0,
+%4$ B%11.1e%0(d x=%3$.2o	S,d,b,n	format specifier '%b' is not compatible with the given flag(s):  
+ x=%.1c		illegal format precision: 1
+%.1TM%2$<.0Th%#h x=%#.2X	d,N	illegal format precision: 1
+%%%o	T,N,f,S	illegal format conversion: 'java.util.Date' cannot be formatted using '%o'
+%0.2C x=%2s x=%1f	c,S	illegal format precision: 2
+ x=%b x=%12f	S	missing argument for format specifier '%12f'
+%b	d,I,i,i-1	extra format arguments: used 1, provided 4
+%S x=%f	f,c	illegal format conversion: 'java.lang.Character' cannot be formatted using '%f'
+ x=%,18a x=%3$# 13A%3$<n	z	format specifier '%a' is not compatible with the given flag(s): ,
+%+0.2G		missing format width: %+0.2G
+ x=%+tb x=%16H	z	format specifier '%b' is not compatible with the given flag(s): +
+%E x=%9o%,E%2$,.0a	N,f,f,d	format specifier '%e' is not compatible with the given flag(s): ,
+%4$-6s%16tm x=%s%3$3.3d	l,N,F,b	illegal format precision: 3
+%<.0E x=%,B x=%<11H x=%3d	i,n	format specifier '%b' is not compatible with the given flag(s): ,
+%-s x=%4.0S x=%13f	T	missing format width: %-s
+ x=%s x=%TN x=%13e x=%o	l	missing argument for format specifier '%TN'
+%(7e		missing argument for format specifier '%(7e'
+ x=%+A x=%<X%f	I,S	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%a'
+%#%	D,T,Z	illegal format flags: #
+ x=%,c x=%%%(10d%c	C,b	format specifier '%c' is not compatible with the given flag(s): ,
+ x=%3$.3a x=%+17E x=%(s%.0Tj		format specifier '%s' is not compatible with the given flag(s): (
+ x=%7tH x=%-tF%6.0s	i,n,I,b	missing format width: %-tF
+%h	d	
+%o%c x=%d	D,F,I,S	illegal format conversion: 'java.math.BigDecimal' cannot be formatted using '%o'
+ x=%2$C	c,f,z	illegal format conversion: 'java.lang.Float' cannot be formatted using '%c'
+%s x=%2$ 16% x=%<d%6n	f	illegal format flags:  
+%(+1G	b	illegal format conversion: 'java.lang.Byte' cannot be formatted using '%g'
+ x=%a	N,D	illegal format conversion: 'java.time.Instant' cannot be formatted using '%a'
+ x=%d x=%<tY%#S x=%,tY	C	format specifier '%Y' is not compatible with the given flag(s): ,
+ x=%-d	C	missing format width: %-d
+ x=%15e	d,s,N,d	extra format arguments: used 1, provided 4
+ x=%13TT	b,T,b,N	illegal format conversion: 'java.lang.Byte' cannot be formatted using '%T'
+%(9.1s%-,d	D,C,n	format specifier '%s' is not compatible with the given flag(s): (
+ x=%0.1%		illegal format precision: 1
+ x=%+(C x=%tA x=%17E		format specifier '%c' is not compatible with the given flag(s): +(
+ x=%s x=%Tk x=%2$,.2f	F	missing argument for format specifier '%TK'
+ x=%,E%%	F,d,Z,n	format specifier '%e' is not compatible with the given flag(s): ,
+%1$7B x=%.0C x=%+9s		illegal format precision: 0
+ x=%d%ty%<Ts	N	illegal format conversion: 'java.time.Instant' cannot be formatted using '%d'
+ x=%17f x=%,5.2TD%%%0%	l,z	illegal format precision: 2
+ x=%12s%#d%-TB x=%#S		format specifier '%d' is not compatible with the given flag(s): #
+ x=%<.1H		missing argument for format specifier '%<.1H'
+% 16G%.1% x=% C x=%6f	i,D,I,T	illegal format precision: 1
+ x=%(TA	S,s	format specifier '%A' is not compatible with the given flag(s): (
+%f	n,n	extra format arguments: used 1, provided 2
+ x=%.0s%b x=%4$12A x=%2$6A	T,C,s	missing argument for format specifier '%4$12A'
+ x=%x		missing argument for format specifier '%x'
+%#<4f%1$X x=%(.1h	s,z	format specifier '%h' is not compatible with the given flag(s): (
+ x=%-11d	S,C,F	illegal format conversion: 'java.lang.String' cannot be formatted using '%d'
+ x=%+.1X x=%,X x=%4$,1d x=%+TT	f,z	illegal format precision: 1
+%,.2a%S	s,b	format specifier '%a' is not compatible with the given flag(s): ,
+ x=%H%e%2$.1e	S,Z,l,F	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%e'
+ x=%tF%3$.2C%#.0A		illegal format precision: 2
+ x=%.1%%s x=%+<g%-G	d,i,c	illegal format precision: 1
+%3$18s	Z	missing argument for format specifier '%3$18s'
+%4$.1d	c,d,d	illegal format precision: 1
+%G x=%e%f%<3TB	c,F,i55296,S	illegal format conversion: 'java.lang.Character' cannot be formatted using '%g'
+%f%+17.1%	T,s,f	illegal format precision: 1
+%0.2TR	b,z	illegal format precision: 2
+%,5E x=%7c	d,d	format specifier '%e' is not compatible with the given flag(s): ,
+ x=%2$13a x=%4$,tA%7s%.3tB	i,z,c	format specifier '%A' is not compatible with the given flag(s): ,
+ x=%TR%2$+tD x=%tc	n,N,d	format specifier '%D' is not compatible with the given flag(s): +
+ x=%14.0f x=%1$+h x=%a	D,s	format specifier '%h' is not compatible with the given flag(s): +
+ x=%00TB%G		duplicate format flags: 0
+%H	I	
+% s%+ .3d x=%.2s	F	format specifier '%s' is not compatible with the given flag(s):  
+%G x=%01g		missing argument for format specifier '%G'
+%(13d%.3C%+.2Tm x=%d	n,s,F	illegal format precision: 3
+%0x	i,s,c,d	missing format width: %0x
+ x=%d x=%#.2TI	I	illegal format precision: 2
+%2$1TQ x=%4.3A%<.0Tz%G	n,l	illegal format precision: 0
+%-tQ x=%12.1C%<s	z,s	missing format width: %-tQ
+%.1f x=%3$7H	S	illegal format conversion: 'java.lang.String' cannot be formatted using '%f'
+ x=%S	N,b,b,n	extra format arguments: used 1, provided 4
+%<.0f x=%#d	c,F	format specifier '%d' is not compatible with the given flag(s): #
+ x=%C	b,D,T	extra format arguments: used 1, provided 3
+ x=%6.1s	S	
+ x=%2$8.1s%16tj%3$ d	z,C,i	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%j'
+ x=%a%13f%7X	c,D,f	illegal format conversion: 'java.lang.Character' cannot be formatted using '%a'
+ x=%(C%<d x=%4d%.3x	l,s,Z	format specifier '%c' is not compatible with the given flag(s): (
+ x=%19Te%(#2s%3$Tz%-X	C,F,T	format specifier '%s' is not compatible with the given flag(s): (
+%8H%2$<.0X% 1b	I	illegal format precision: 0
+ x=%3$.3td%3$11S	l,f,n	illegal format precision: 3
+ x=%<+1d x=%f x=%-12.0h	l	missing argument for format specifier '%+<1d'
+%,12.1d	D,S,c,n	illegal format precision: 1
+ x=%.2s x=%Tl	T,I,I,z	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%l'
+ x=% s%4$f	f	format specifier '%s' is not compatible with the given flag(s):  
+%,8TC%11G x=%f	d,f	format specifier '%C' is not compatible with the given flag(s): ,
+%3$.3tl x=%o x=%3$#e	d	illegal format precision: 3
+ x=%<13s	T,b	missing argument for format specifier '%<13s'
+ x=%(3H%10s x=%A%B	c,d,n,F	format specifier '%h' is not compatible with the given flag(s): (
+ x=%X	f,I,l	illegal format conversion: 'java.lang.Float' cannot be formatted using '%x'
+ x=%1$+TM%1f	N	format specifier '%M' is not compatible with the given flag(s): +
+%0n x=%B x=%f x=%3$<13.3f	T,I,F	illegal format flags: 0
+%,12a x=%# 17o	F,z,s	format specifier '%a' is not compatible with the given flag(s): ,
+%,B%c%14.1X		format specifier '%b' is not compatible with the given flag(s): ,
+ x=%+d%.1tN	F,d,d	illegal format precision: 1
+%4$-15s%0+s%s	z	format specifier '%s' is not compatible with the given flag(s): +0
+ x=%4$x x=%TT x=%.0f	C	missing argument for format specifier '%4$x'
+%1$8S%s x=%1$C	b,S	extra format arguments: used 1, provided 2
+ x=%,18.3tQ%0.3TL%11te	D,C,f,S	illegal format precision: 3
+%n x=%d%e	D,f,i	illegal format conversion: 'java.math.BigDecimal' cannot be formatted using '%d'
+% 1H% 12a	i-1,l	format specifier '%h' is not compatible with the given flag(s):  
+%3$8a%15.1tF%A%+h	l,n,Z	illegal format precision: 1
+%+12Te%+s%,s	C,N	format specifier '%e' is not compatible with the given flag(s): +
+%%	z,n,d	extra format arguments: used 0, provided 3
+%-3.1g%0d%tR	n	missing format width: %0d
+%.2e x=%+10A x=%10tM	c,b	illegal format conversion: 'java.lang.Character' cannot be formatted using '%e'
+%1$,13ta%15f%#s	C,f,Z	format specifier '%a' is not compatible with the given flag(s): ,
+ x=%<s x=%%	d,T,S,b	missing argument for format specifier '%<s'
+ x=%#19%%3.2B%0.1e%#o	s,C,n	illegal format flags: #
+%<C%H		missing argument for format specifier '%<C'
+%1H		missing argument for format specifier '%1H'
+%(E x=%,E x=%012.1Tc%,C	c,f	format specifier '%e' is not compatible with the given flag(s): ,
+ x=%s x=%7TD	z,b	illegal format conversion: 'java.lang.Byte' cannot be formatted using '%D'
+%17f	z,s,N,c	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%f'
+%9.3TT	F,N,d	illegal format precision: 3
+ x=%+s%4$0.2%% G	c,Z,T	format specifier '%s' is not compatible with the given flag(s): +
+%,C x=%1d%(A x=%1$.3n	f,z,Z	format specifier '%c' is not compatible with the given flag(s): ,
+%017C x=%2$<a%H%4$17f	b,Z	format specifier '%c' is not compatible with the given flag(s): 0
+ x=%.3n%+H x=%-10s%#.2Tp	N,i1114111	illegal format precision: 3
+%11.3f x=%+#.2%	Z	illegal format precision: 2
+ x=%.3B	i1114112,Z	extra format arguments: used 1, provided 2
+ x=% d%1$,.2s	l,l,F,l	format specifier '%s' is not compatible with the given flag(s): ,
+ x=%-.2h x=%C%H x=%s	T,n	missing format width: %-.2h
+%0<n%c%2$(c x=%s		illegal format flags: 0<
+%s	i,l,Z,I	extra format arguments: used 1, provided 4
+ x=%010Ta%s	I	format specifier '%a' is not compatible with the given flag(s): 0
+ x=%e		missing argument for format specifier '%e'
+%o%.3d	N	illegal format precision: 3
+%0n	c,s,S	illegal format flags: 0
+%-5TF x=%S x=% 8o	S,T	illegal format conversion: 'java.lang.String' cannot be formatted using '%F'
+%7G%,.2e x=%3$s%#20.1TZ	n,b,S	format specifier '%e' is not compatible with the given flag(s): ,
+% S%s	f,T	format specifier '%s' is not compatible with the given flag(s):  
+ x=%+.1d%E%S	s,s,C	illegal format precision: 1
+%TM		missing argument for format specifier '%TM'
+%4$#tc x=%+.2o x=%th		format specifier '%c' is not compatible with the given flag(s): #
+ x=%-s%02H x=%.0S x=%+15.0tM		missing format width: %-s
+ x=%+#1%%1$s x=%-19.0X	i,l	illegal format flags: #+
+ x=%(s		format specifier '%s' is not compatible with the given flag(s): (
+ x=%2$.2a%B x=%,+X	T,I,N	format specifier '%x' is not compatible with the given flag(s): ,
+%-4E	T,N	illegal format conversion: 'java.util.Date' cannot be formatted using '%e'
+ x=%20A%2B%1$17tr x=%o	S,d,b	illegal format conversion: 'java.lang.String' cannot be formatted using '%a'
+%3X x=%<f x=%.3e	S,l,i,I	illegal format conversion: 'java.lang.String' cannot be formatted using '%x'
+%4$15f x=%18d x=%H x=%d	N,Z	missing argument for format specifier '%4$15f'
+%a%15b x=%1d%0S	b,f,Z	format specifier '%s' is not compatible with the given flag(s): 0
+ x=%17s%Ts		missing argument for format specifier '%17s'
+%3$12.2d x=%d x=%X		illegal format precision: 2
+%1$#2G% s%<7n	C,s,z,n	format specifier '%g' is not compatible with the given flag(s): #
+ x=%(s	b	format specifier '%s' is not compatible with the given flag(s): (
+%<1f x=%4$2E%<5.3Ta x=%f	s,i-1,d,f	illegal format precision: 3
+ x=% .1f	i	illegal format conversion: 'java.lang.Integer' cannot be formatted using '%f'
+ x=%3$ d%.0C%0<E	d,D,z,N	illegal format precision: 0
+ x=%-.2a x=%2$h x=%c	D,F	missing format width: %-.2a
+%4.0A%2$13.1h	I	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%a'
+%tS x=%.1n	f,i,I	illegal format precision: 1
+ x=%-d	S,C,c,Z	missing format width: %-d
+%.1E%2$TH x=%f%1$s	S	illegal format conversion: 'java.lang.String' cannot be formatted using '%e'
+ x=%c x=%1.0tl	n,D,F	illegal format precision: 0
+ x=%#12o x=%4$14f%2$% x=%7tB	f,D,f,i	illegal format conversion: 'java.lang.Float' cannot be formatted using '%o'
+%2$,tS%#.2B%2.2c	S,n,S,l	format specifier '%S' is not compatible with the given flag(s): ,
+ x=%4$ 13G%0Tm%+12A x=%3$.2X	N,d,c	format specifier '%m' is not compatible with the given flag(s): 0
+%X%12s	c,b,c	illegal format conversion: 'java.lang.Character' cannot be formatted using '%x'
+ x=%E x=%<d	S,F,S,c	illegal format conversion: 'java.lang.String' cannot be formatted using '%e'
+ x=%2$#s		missing argument for format specifier '%#2$s'
+ x=%.2g%(.3E		missing argument for format specifier '%.2g'
+ x=%+f x=%.3X x=%n%(6.3A		illegal format precision: 3
+%.2%	i,c,D,N	illegal format precision: 2
+ x=%10B%tD x=%18.3d%2$(B	I,T,f	illegal format precision: 3
+ x=% 12s x=%,d%(tY	i,I,N	format specifier '%s' is not compatible with the given flag(s):  
+ x=%3$5.1s	Z,S,C,l	extra format arguments: used 3, provided 4
+ x=%+10S%<f	i,N,z	format specifier '%s' is not compatible with the given flag(s): +
+%#C	d,s	format specifier '%c' is not compatible with the given flag(s): #
+ x=%d	C,l,C,n	illegal format conversion: 'java.util.GregorianCalendar' cannot be formatted using '%d'
+ x=%10s x=%(.0c	Z	illegal format precision: 0
+ x=%(19TA x=%#0A x=%2$(H%14TY		format specifier '%A' is not compatible with the given flag(s): (
+%,.2d x=%#7E	c,S,I,I	illegal format precision: 2
+%4$s%,.0f x=%3$.1%	c	illegal format precision: 1
+%2H		missing argument for format specifier '%2H'
+%3$0013a x=%0B%2$( 9A%A		duplicate format flags: 0
+ x=%19x x=%.2G%g		missing argument for format specifier '%19x'
+%ts x=%+.3C%1$,s	Z,b	illegal format precision: 3
+ x=%3$12tr%,d%tR	b,D,z	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%r'
+%8s%H%%%1$17ty		missing argument for format specifier '%8s'
+%012B%.2tH x=%4$019.2tS	I,b,c	format specifier '%b' is not compatible with the given flag(s): 0
+%-E%TD%11s%X	c	missing format width: %-E
+% .3f	D	
+ x=%(o x=%G	F,z,f	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%o'
+ x=%.1f x=% 9B x=%#+c	T,z,z	format specifier '%b' is not compatible with the given flag(s):  
+%0ty x=%, .1f%4$010.3d x=%TS		format specifier '%y' is not compatible with the given flag(s): 0
+ x=%12B%,.1x%4$(e	N,S,N,C	illegal format precision: 1
+ x=%-n		illegal format flags: -
+%a x=%n%2$1s	z,c,f	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%a'
+ x=%0f	s,T,D,N	missing format width: %0f
+ x=%3$#S x=%#TA x=%(B	T	format specifier '%A' is not compatible with the given flag(s): #
+%s%<H	n,l,N	extra format arguments: used 1, provided 3
+%Tl%.1X%(Tb	c,b,l	illegal format precision: 1
+%+8a	b,f,s,D	illegal format conversion: 'java.lang.Byte' cannot be formatted using '%a'
+%+s x=%.3S	i,d,z	format specifier '%s' is not compatible with the given flag(s): +
+%4$s%TD x=%11h		missing argument for format specifier '%4$s'
+%4$16s%7.2%	S,Z	illegal format precision: 2
+ x=%-e%-1c x=%.1ts	c,Z	missing format width: %-e
+%.3g%1$-.3d x=%<11g		missing format width: %-1$.3d
+%-,6H x=%19h%,3E%(.0B	C,d,s	format specifier '%h' is not compatible with the given flag(s): ,
+%07E x=%s%4.2%	f,C	illegal format precision: 2
+ x=%4.2s x=%< tT		format specifier '%T' is not compatible with the given flag(s):  
+%h x=%#H	f,i,T,T	format specifier '%h' is not compatible with the given flag(s): #
+%<<3.1H%h x=%d	f,s	duplicate format flags: <
+%-.1d%.1C%<H x=%0f	s,C,N,s	missing format width: %-.1d
+%#d	N,n	format specifier '%d' is not compatible with the given flag(s): #
+%5h%d x=%16.0d		illegal format precision: 0
+ x=%3$+.2C x=%00.1c	i,c	illegal format precision: 2
+ x=%6g	s	illegal format conversion: 'java.lang.Short' cannot be formatted using '%g'
+ x=%2$1c	l	missing argument for format specifier '%2$1c'
+ x=%f x=%9% x=%(H	S,s,s	format specifier '%h' is not compatible with the given flag(s): (
+ x=%(A	I,i	format specifier '%a' is not compatible with the given flag(s): (
+%.3Tk x=%n		illegal format precision: 3
+%4Tk	Z,F,f,I	extra format arguments: used 1, provided 4
+%-.3e%9X%<.0A%A	b	missing format width: %-.3e
+%7X	T,Z	illegal format conversion: 'java.util.Date' cannot be formatted using '%x'
+%4$#-% x=%h%<d	c,T	illegal format flags: -#
+%<14c x=%f x=%x		missing argument for format specifier '%<14c'
+%1$0f%.2c	N,l	missing format width: %01$f
+%f	d,S,b	extra format arguments: used 1, provided 3
+%a%1$%%3$x x=%15B	z	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%a'
+ x=%.2x x=%<20C	T,b	illegal format precision: 2
+ x=%g x=%S% 4s	D,C,D,n	format specifier '%s' is not compatible with the given flag(s):  
+%H x=%<16h%3h%b	F,f,N	
+%0c	Z	format specifier '%c' is not compatible with the given flag(s): 0
+ x=%13.3tz x=%-X x=%,h%0tL		illegal format precision: 3
+%(18% x=%a	c,C,Z	illegal format flags: (
+ x=%0.3X	Z,c,n,i	missing format width: %0.3X
+%4g%13b	S,Z,N,s	illegal format conversion: 'java.lang.String' cannot be formatted using '%g'
+%<15.0d%Ts		illegal format precision: 0
+ x=%.1d	l,Z	illegal format precision: 1
+ x=%TT		missing argument for format specifier '%TT'
+ x=%.2C%-X%-e%.2d		illegal format precision: 2
+%,s x=%8.1A	n	format specifier '%s' is not compatible with the given flag(s): ,
+%(c x=%18.0tc x=%4$TI		format specifier '%c' is not compatible with the given flag(s): (
+%3$s x=%x%3$n%0S	N	format specifier '%s' is not compatible with the given flag(s): 0
+ x=%2$-7% x=%-3.3s x=%(3.1%		illegal format precision: 1
+ x=%S x=%(4o x=%X	l	missing argument for format specifier '%(4o'
+%.3tS	T	illegal format precision: 3
+ x=%1$0tl%17g%7h x=% 4s		format specifier '%l' is not compatible with the given flag(s): 0
+%-s%4$(-G%Tb	b,C,C,N	missing format width: %-s
+%<9H x=%#.2Tk x=%.3e	d	illegal format precision: 2
+ x=%.1x%-s		illegal format precision: 1
+ x=%+16G%-15o	D,Z	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%o'
+ x=%,20TT x=%#E%2s%<s		format specifier '%T' is not compatible with the given flag(s): ,
+ x=% 1n x=%#s%S x=%1$ 17.0f	n,T,S,d	illegal format width: 1
+%<o	z	missing argument for format specifier '%<o'
+ x=%,.2H x=%c x=%s x=%4$G	n,f,F,I	format specifier '%h' is not compatible with the given flag(s): ,
+%<s		missing argument for format specifier '%<s'
+%1$h x=%s x=%s x=%18f	C,z	missing argument for format specifier '%18f'
+%.3A	i,i	illegal format conversion: 'java.lang.Integer' cannot be formatted using '%a'
+ x=%14.3E x=%4$0h%4$7.0X x=%4h	b,s,f	format specifier '%h' is not compatible with the given flag(s): 0
+%1h%H x=%X x=%14a		missing argument for format specifier '%1h'
+ x=%+7e%(.2f x=%4$B	d,d,f	missing argument for format specifier '%4$B'
+ x=%o%G x=%tC%b		missing argument for format specifier '%o'
+ x=%S x=%B x=%.1f		missing argument for format specifier '%S'
+ x=%4$.3E x=%13%%<X		missing argument for format specifier '%4$.3E'
+%-TB%B x=%(h	T	missing format width: %-TB
+ x=%3$Td	Z,Z,s	illegal format conversion: 'java.lang.Short' cannot be formatted using '%d'
+%1$0s%-13g%6.0C x=%.0E	c,T,C	format specifier '%s' is not compatible with the given flag(s): 0
+ x=%4$(13s x=%3$ TT%<g x=%Tr	N,T,D,d	format specifier '%s' is not compatible with the given flag(s): (
+%- 1.3H	b,C,l,D	format specifier '%h' is not compatible with the given flag(s):  
+%,d	Z,D,n	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%d'
+ x=%o x=%10E x=%,15.1d		illegal format precision: 1
+%+18.3TM x=%.0Ts	Z,s,b,z	illegal format precision: 3
+%1$-.0A	s	missing format width: %-1$.0A
+ x=%.1TZ%--a	D,s,z,S	illegal format precision: 1
+ x=%s x=%.1tk%9h	F	illegal format precision: 1
+% .1Te x=%4$A x=%g	l,C	illegal format precision: 1
+ x=%,B x=%d x=%3f	Z,s,n,D	format specifier '%b' is not compatible with the given flag(s): ,
+%S%20A	d	missing argument for format specifier '%20A'
+ x=%(0a x=%6Tk x=% 11o	S	missing format width: %0(a
+ x=%d		missing argument for format specifier '%d'
+%.3n	b,i,s	illegal format precision: 3
+ x=%(3g	i1114111,N,f	illegal format conversion: 'java.lang.Integer' cannot be formatted using '%g'
+%20s		missing argument for format specifier '%20s'
+%TR x=%0x x=%-.3d%20s	n,Z,s	missing format width: %0x
+ x=%(.3X x=%s		illegal format precision: 3
+%,tI x=%7G	c	format specifier '%I' is not compatible with the given flag(s): ,
+ x=%s%+d	l,I,D,D	extra format arguments: used 2, provided 4
+ x=%.2a x=%,.2f		missing argument for format specifier '%.2a'
+ x=%<tb%.1tk	f,s,D	illegal format precision: 1
+%1$+s%1$<c	D	format specifier '%s' is not compatible with the given flag(s): +
+%,8.3d	F,d	illegal format precision: 3
+ x=%20tl x=%-12G%<h x=%n	S	illegal format conversion: 'java.lang.String' cannot be formatted using '%l'
+%, A x=%17%%h	l,l,z	format specifier '%a' is not compatible with the given flag(s): ,
+ x=%(Ty x=%,s x=%-.3X	l,c,d	format specifier '%y' is not compatible with the given flag(s): (
+%H%3$.0tC x=% 1%	S	illegal format precision: 0
+ x=%-5.1s%0.3f%2$2E	d,S	missing format width: %0.3f
+% .3A x=%1$x%8C%(tC	Z,Z,I,c	format specifier '%C' is not compatible with the given flag(s): (
+ x=%,c		format specifier '%c' is not compatible with the given flag(s): ,
+ x=%+s x=%(.2b	I	format specifier '%s' is not compatible with the given flag(s): +
+ x=%0.3d x=%8f%016f x=%TC	C,D,C,N	missing format width: %0.3d
+%19Tm x=%x%  10A x=%<14s	i,T	duplicate format flags:  
+ x=%.0s	S	
+%0g	D	missing format width: %0g
+%-X%1$+% x=%14f%,5d		missing format width: %-X
+ x=%17.0f x=%+d	f,s,S,Z	extra format arguments: used 2, provided 4
+%b x=%%%<18.3s	N	
+%(,f%,.2ta x=% n	f,C	illegal format precision: 2
+%2$<B	D,T,C,C	missing argument for format specifier '%<B'
+ x=%s x=%c%c	F	missing argument for format specifier '%c'
+ x=%+2.0o x=%d x=%9.1E		illegal format precision: 0
+%1tp%15n%1$d x=%g	D,f,N,I	illegal format width: 15
+ x=%1$S x=%f%x	b	illegal format conversion: 'java.lang.Byte' cannot be formatted using '%f'
+%2$14.3E x=%d x=%,.2A%+.1n	T	format specifier '%a' is not compatible with the given flag(s): ,
+%1$h%3$C%< h	T	format specifier '%h' is not compatible with the given flag(s):  
+ x=%.3e x=%#f	S,D,i,f	illegal format conversion: 'java.lang.String' cannot be formatted using '%e'
+%+e x=%+tH	T,n,n,s	format specifier '%H' is not compatible with the given flag(s): +
+ x=%1$.1s x=%+f		missing argument for format specifier '%1$.1s'
+ x=%#19f x=%1s%,f	N,i,l,d	illegal format conversion: 'java.time.Instant' cannot be formatted using '%f'
+ x=%1H	b	
+%.1e%h%f%(s	f,c,D	format specifier '%s' is not compatible with the given flag(s): (
+%<5tr%2$.1s	S,D,f,T	missing argument for format specifier '%<5tr'
+%tz%B%1$.3C	l,z,N,l	illegal format precision: 3
+ x=%1X x=%<f%H		missing argument for format specifier '%1X'
+ x=%3$(12Ts x=%<d	S,Z	format specifier '%s' is not compatible with the given flag(s): (
+%5H%7x	i,F	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%x'
+ x=%3$d%s x=%+ .0o	F	illegal format flags: + 
+%C	S,l	illegal format conversion: 'java.lang.String' cannot be formatted using '%c'
+%d	F,F	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%d'
+ x=% 4C x=%.2tM x=%0A	S,s	format specifier '%c' is not compatible with the given flag(s):  
+ x=%<o x=%0f	l,F,l	missing format width: %0f
+%3x	s,D,d,C	extra format arguments: used 1, provided 4
+% g x=%3$(5f x=%.3n		illegal format precision: 3
+ x=%<14.2d	N,N,c,T	illegal format precision: 2
+%3$,e x=%-11.0TD x=%4$s	Z	format specifier '%e' is not compatible with the given flag(s): ,
+ x=%x x=%(.1d%,G%0+13s	l,l,T,s	illegal format precision: 1
+ x=%0d%19d%B	I	missing format width: %0d
+ x=%3$c x=%(<f%4$S		missing argument for format specifier '%3$c'
+%TL	Z,S	extra format arguments: used 1, provided 2
+ x=%h x=%1$X%8s	f,C	illegal format conversion: 'java.lang.Float' cannot be formatted using '%x'
+%,5e%7G x=%#e%11a	d	format specifier '%e' is not compatible with the given flag(s): ,
+ x=%13X x=%.3s%.0Te x=%X	D,N,D	illegal format precision: 0
+%-12c x=%S% d%.1e	z,n,z,d	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%c'
+%4$17.2s	I,F	missing argument for format specifier '%4$17.2s'
+ x=%14C%10.2tB	T	illegal format precision: 2
+%+<16X%1$8f%+15Tl	f	format specifier '%l' is not compatible with the given flag(s): +
+ x=%2$X%18c	Z,I	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%c'
+% 17d%16C x=%<10te x=%B	d,s,z	illegal format conversion: 'java.lang.Double' cannot be formatted using '%d'
+%2$.1d x=%02e x=%d x=%G	Z	illegal format precision: 1
+%x%15H x=%G	Z	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%x'
+%6d	Z,f	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%d'
+ x=%1$%%8s		missing argument for format specifier '%8s'
+%G%19S	n,n,S	extra format arguments: used 2, provided 3
+ x=%d%4$+b%#.2E x=%9B		format specifier '%b' is not compatible with the given flag(s): +
+ x=%X%H x=%9B x=%#A	c,c,f,f	illegal format conversion: 'java.lang.Character' cannot be formatted using '%x'
+ x=%2$a%20Ty x=%#6b		format specifier '%b' is not compatible with the given flag(s): #
+ x=%15h	d,f,z	extra format arguments: used 1, provided 3
+ x=%g	i	illegal format conversion: 'java.lang.Integer' cannot be formatted using '%g'
+%3$tY x=%d%B%s	T,i	missing argument for format specifier '%3$tY'
+%C%<12TI	f,C,T	illegal format conversion: 'java.lang.Float' cannot be formatted using '%c'
+%.0s x=%1c	d,s,I	extra format arguments: used 2, provided 3
+ x=%-14G	i1114111,s,i,N	illegal format conversion: 'java.lang.Integer' cannot be formatted using '%g'
+ x=%f	n,i1114112,Z	extra format arguments: used 1, provided 3
+ x=%.2a x=%(g%s	c	illegal format conversion: 'java.lang.Character' cannot be formatted using '%a'
+%.3d x=%s x=%e	N,i	illegal format precision: 3
+%B x=%f x=%<g		missing argument for format specifier '%B'
+ x=%7.0s x=%S x=%6tN%4$<s	S,i	missing argument for format specifier '%6tN'
+%1$C	F,f	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%c'
+ x=%+.0% x=%.1tr x=%4$.2G%.1s	i,N	illegal format precision: 0
+ x=%<.2o x=%s%.3G%TY	f,C,b	illegal format precision: 2
+ x=%2.3c x=%18C x=%, s x=%+9.2n		illegal format precision: 3
+ x=%4$<012s x=%(11s%.2Th%#2H	i,f	format specifier '%s' is not compatible with the given flag(s): 0
+ x=%g	f,s	extra format arguments: used 1, provided 2
+%2$tr	i,I,z	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%r'
+%9tl%d%4$15c		missing argument for format specifier '%9tl'
+%17.0%	D,C	illegal format precision: 0
+ x=%c%+d%18.1A x=%,19H	N	format specifier '%h' is not compatible with the given flag(s): ,
+%+.1g x=%4$0o x=%3$f x=%.1f		missing format width: %04$o
+ x=%G	Z,D,c,c	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%g'
+ x=%4$,tm		format specifier '%m' is not compatible with the given flag(s): ,
+%14s		missing argument for format specifier '%14s'
+%+#11tb%(.1%		format specifier '%b' is not compatible with the given flag(s): #+
+%,.1tk x=%#.2d		illegal format precision: 1
+% <s x=%b%14x	D,z,Z	format specifier '%s' is not compatible with the given flag(s):  
+ x=%tD x=%.3tB	d,f,D,Z	illegal format precision: 3
+ x=% 18S x=%2$0 o		format specifier '%s' is not compatible with the given flag(s):  
+%1$11h%s x=%,E x=%s	T,c	format specifier '%e' is not compatible with the given flag(s): ,
+%,8s	I,c,c	format specifier '%s' is not compatible with the given flag(s): ,
+%.3b x=%(19TR x=%20g%%	n,s	format specifier '%R' is not compatible with the given flag(s): (
+ x=%2$Tk%14TB x=%.0s	c	missing argument for format specifier '%2$TK'
+%1$9Tm x=%-G%(d	S	missing format width: %-G
+ x=%TZ	S,c	illegal format conversion: 'java.lang.String' cannot be formatted using '%Z'
+%16ta%(.3f		missing argument for format specifier '%16ta'
+ x=%c x=%s%4$d	n	missing argument for format specifier '%s'
+%x x=%-.0tr%-H		illegal format precision: 0
+ x=%H	i	
+%.1e%3$11s%,.3E	b,s,S,l	format specifier '%e' is not compatible with the given flag(s): ,
+%f x=%d x=%3$-.2f	F	missing format width: %-3$.2f
+ x=%16H	c,f	extra format arguments: used 1, provided 2
+ x=% s%2$% x=%12.0d%4$x	c,I	format specifier '%s' is not compatible with the given flag(s):  
+%(d%.2o%4$(g x=%.3s	i,z,C,c	illegal format precision: 2
+%.3f%,+.1tA x=%#19B%11TD	D,l,i	illegal format precision: 1
+%<G	b	missing argument for format specifier '%<G'
+ x=%<s%2$s x=%1.0C	f,z,S,b	illegal format precision: 0
+%3$11.0f%0h	Z,d,i,I	format specifier '%h' is not compatible with the given flag(s): 0
+ x=%016.0g%(s x=% <.3x	Z,s	format specifier '%s' is not compatible with the given flag(s): (
+%TF x=%B%.2b	s,Z,c,Z	illegal format conversion: 'java.lang.Short' cannot be formatted using '%F'
+ x=%.1f x=%Td x=%#2n	T,s	illegal format width: 2
+%3$+.1d	D	illegal format precision: 1
+ x=%11tY		missing argument for format specifier '%11tY'
+%TL%2$<,10X x=%2$ts	C,n,s,n	format specifier '%x' is not compatible with the given flag(s): ,
+%g x=%12c%13d%3te	I,c,C,c	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%g'
+%.3d x=%,.0s%Tr x=%x	D,T,S	illegal format precision: 3
+ x=%2$ S x=%B x=%1$-S	f	format specifier '%s' is not compatible with the given flag(s):  
+%1$0TM%+4.0s x=%1$10b x=%x		format specifier '%M' is not compatible with the given flag(s): 0
+%#.1x x=%f	F	illegal format precision: 1
+%-s		missing format width: %-s
+%,4s x=%+.3X x=%2$ ,12s	F,D,n	format specifier '%s' is not compatible with the given flag(s): ,
+ x=%C x=%,6tN x=%#20TC	Z	format specifier '%N' is not compatible with the given flag(s): ,
+%1$B	Z,Z,f	extra format arguments: used 1, provided 3
+%s		missing argument for format specifier '%s'
+ x=%.0f%<tN		missing argument for format specifier '%.0f'
+%.2e%(d	T	illegal format conversion: 'java.util.Date' cannot be formatted using '%e'
+ x=%+1TT	f	format specifier '%T' is not compatible with the given flag(s): +
+%-C%18td%.3c x=%-s	S,I,i0,N	missing format width: %-C
+ x=%(.2tN	Z,d	illegal format precision: 2
+%tm	i1114112,i	illegal format conversion: 'java.lang.Integer' cannot be formatted using '%m'
+ x=%n%2$0G x=%1$4.3A%n	Z	missing format width: %02$G
+ x=%TI x=%f%((8tR		duplicate format flags: (
+ x=%01%	F,F,n	illegal format flags: 0
+ x=%(f x=%1$g%.2b	c	illegal format conversion: 'java.lang.Character' cannot be formatted using '%f'
+%1$ 10d x=%s x=%tS	s,F,n,Z	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%S'
+%4$19d	i55296	missing argument for format specifier '%4$19d'
+ x=%d%a	l,C,F,T	illegal format conversion: 'java.util.GregorianCalendar' cannot be formatted using '%a'
+ x=%#g x=%3$+d%TF x=%20f	s,c,N,l	format specifier '%g' is not compatible with the given flag(s): #
+ x=% b%0c	C	format specifier '%b' is not compatible with the given flag(s):  
+ x=%.3e% d%12b%20E	i	illegal format conversion: 'java.lang.Integer' cannot be formatted using '%e'
+%(.0c%+5X%3$b		illegal format precision: 0
+ x=%015n x=%+.0f	i,C,l,z	illegal format width: 15
+%10d%<+17d%<10E		missing argument for format specifier '%10d'
+%3$o%f		missing argument for format specifier '%3$o'
+%-18x%1$(tZ%s x=%H	z	format specifier '%Z' is not compatible with the given flag(s): (
+%a%-5.3n% b x=%11Tb	z,c,i	illegal format precision: 3
+%1$2.1f	D,c,s,d	extra format arguments: used 1, provided 4
+%(15g%1$f		missing argument for format specifier '%(15g'
+%.0tD		illegal format precision: 0
+ x=%<X x=%5TL x=%<+H		format specifier '%h' is not compatible with the given flag(s): +
+ x=%0.3te%20h%<8.3td	z	illegal format precision: 3
+ x=%7G%a	z,i	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%g'
+%<f%4$16.1f x=%x		missing argument for format specifier '%<f'
+%4$(9b%(.1E x=%f	s,l	format specifier '%b' is not compatible with the given flag(s): (
+ x=%19.3s	z,d,I	extra format arguments: used 1, provided 3
+%<14X%2$s x=%n	z,I,n	missing argument for format specifier '%<14X'
+%,#15e	s,z	format specifier '%e' is not compatible with the given flag(s): ,
+% .1C x=%#13s x=%(s		illegal format precision: 1
+%13tj x=%.3c%-s%#3s		illegal format precision: 3
+%.2tC%H	N,l,F,b	illegal format precision: 2
+ x=% 7.2n x=% d	c,n	illegal format precision: 2
+%(.0te%4$.0g x=%4$.2d%-#.1d	c	illegal format precision: 0
+%.3S%g x=%.2s	Z	missing argument for format specifier '%g'
+%17.2tB%10g		illegal format precision: 2
+%-17.2C x=%,.1f x=%S%(+s	n,s,b	illegal format precision: 2
+%3$c%C%4$c x=%2E	d,c,C,l	illegal format conversion: 'java.util.GregorianCalendar' cannot be formatted using '%c'
+%4$+s		format specifier '%s' is not compatible with the given flag(s): +
+%1$o%TQ	T	illegal format conversion: 'java.util.Date' cannot be formatted using '%o'
+%+f%S	z,S,c	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%f'
+ x=%B x=%%	I,d,S	extra format arguments: used 1, provided 3
+%h%#tN%#.1s%+G	b,d,s,T	format specifier '%N' is not compatible with the given flag(s): #
+ x=%+0.2A%+s%8.2S% f	Z,s,C	missing format width: %+0.2A
+%B%B%(19TD x=%b		format specifier '%D' is not compatible with the given flag(s): (
+ x=%TN%7b%x	T,i,Z	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%x'
+ x=%3$17.2f	c,z,Z,S	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%f'
+ x=%f%1$%%2$ s x=%.0G	b	format specifier '%s' is not compatible with the given flag(s):  
+ x=%3$.3b x=%4x x=%#f	T	missing argument for format specifier '%3$.3b'
+%n	c,c,n,Z	extra format arguments: used 0, provided 4
+ x=%  h%1$(.1g x=%-.1TQ	f,Z,I	duplicate format flags:  
+%17s		missing argument for format specifier '%17s'
+ x=%f%<18B x=%-Ty x=%19s	I,d,z,s	missing format width: %-TY
+ x=%011Tl	n,C,S,z	format specifier '%l' is not compatible with the given flag(s): 0
+%.0g%-f	D,f,S	missing format width: %-f
+%f%G x=%3$10B	l,S	illegal format conversion: 'java.lang.Long' cannot be formatted using '%f'
+%#B	l	format specifier '%b' is not compatible with the given flag(s): #
+%2$-5.0A x=%10f%4$#15s	f,C,i	illegal format conversion: 'java.util.GregorianCalendar' cannot be formatted using '%a'
+ x=%0TM	D,C,T,f	format specifier '%M' is not compatible with the given flag(s): 0
+%.0H x=%3$019d	T	missing argument for format specifier '%03$19d'
+%#s x=%s x=%,o	n,F	format specifier '%o' is not compatible with the given flag(s): ,
+ x=%4$17B		missing argument for format specifier '%4$17B'
+ x=%15S%4Ty%.1TH%-.3Tr	f	illegal format precision: 1
+%+s%<10C x=%(x x=%.1S	Z,n,b,i	format specifier '%s' is not compatible with the given flag(s): +
+ x=%a		missing argument for format specifier '%a'
+% -f%3$-.3h		missing format width: %- f
+ x=%#18d%(.2S	I,i,c	format specifier '%d' is not compatible with the given flag(s): #
+ x=%.0e x=%f%<#4c x=%h	d,c,S	format specifier '%c' is not compatible with the given flag(s): #
+%.0s%20Tm% .3Tk x=%(.1Ta	b,s,l	illegal format precision: 3
+%4$<9f%b	I,b,S	missing argument for format specifier '%<9f'
+ x=%C x=%0C x=%#TR x=%4$-o	l,f	format specifier '%c' is not compatible with the given flag(s): 0
+%a%4$g x=%.0n	f,b,l	illegal format precision: 0
+ x=%e%a		missing argument for format specifier '%e'
+ x=%,16f x=%2$0Tb	z,l,D,Z	format specifier '%b' is not compatible with the given flag(s): 0
+ x=%1$+tp%4$20G%S x=%#11B	S,D,C,b	format specifier '%p' is not compatible with the given flag(s): +
+ x=%,d% 3s	z,d	format specifier '%s' is not compatible with the given flag(s):  
+%s x=%20f x=%3.2H x=%2$ 19%	s,f,b	illegal format flags:  
+ x=%.0n	D,i	illegal format precision: 0
+ x=%-+18Tj	c,b	format specifier '%j' is not compatible with the given flag(s): +
+%-.2tB		illegal format precision: 2
+% 1Tc%s	N	format specifier '%c' is not compatible with the given flag(s):  
+ x=%d	f,n,N	illegal format conversion: 'java.lang.Float' cannot be formatted using '%d'
+ x=%c	S,S,T,c	illegal format conversion: 'java.lang.String' cannot be formatted using '%c'
+%.1n%s%<19.0o%n	F,I,f,C	illegal format precision: 1
+ x=%<0S x=%.0H	l,T,b,C	format specifier '%s' is not compatible with the given flag(s): 0
+ x=%.1n x=%d x=%x%4$-12s	i,i	illegal format precision: 1
+%o x=%13.3d		illegal format precision: 3
+%H x=%.3X x=%-f	n,S	illegal format precision: 3
+ x=%1$B%,3S	C	format specifier '%s' is not compatible with the given flag(s): ,
+%4$#C x=%7A x=%-20S x=%tB	i,l,c	format specifier '%c' is not compatible with the given flag(s): #
+%d x=%G%3$.2f	c	illegal format conversion: 'java.lang.Character' cannot be formatted using '%d'
+%X%17e	T	illegal format conversion: 'java.util.Date' cannot be formatted using '%x'
+ x=%0.3c		illegal format precision: 3
+ x=%tr x=%.1ta%Tp		illegal format precision: 1
+ x=%#B x=% TZ	z	format specifier '%b' is not compatible with the given flag(s): #
+%4$b x=%.1e	S,i,S	missing argument for format specifier '%4$b'
+ x=%Tc	C,b	extra format arguments: used 1, provided 2
+%.3H%f%-18c x=%d	d	missing argument for format specifier '%f'
+%.3a x=%1$s		missing argument for format specifier '%.3a'
+ x=%7f	S,F,D,S	illegal format conversion: 'java.lang.String' cannot be formatted using '%f'
+%<0.1% x=%<tM x=%a	s,S	illegal format precision: 1
+%3TT x=%#tN x=%20x	N,f,c,D	format specifier '%N' is not compatible with the given flag(s): #
+%(b x=%4G	I,I,c,i	format specifier '%b' is not compatible with the given flag(s): (
+%4$g	I	missing argument for format specifier '%4$g'
+ x=%4$s	l,N,F,i	
+ x=%0d%-6.2tr x=%3$<17a	I,f	missing format width: %0d
+ x=%19d x=%ts x=%<8.2f x=% 11n	C	illegal format width: 11
+ x=%3H%4$ A%0f	s,C,F,I	missing format width: %0f
+%TF	i	illegal format conversion: 'java.lang.Integer' cannot be formatted using '%F'
+%<o%X	z,Z,I,b	missing argument for format specifier '%<o'
+%+C%2$019e%tA%18o	b,Z,f	format specifier '%c' is not compatible with the given flag(s): +
+%(x%11Tl	N,F	illegal format conversion: 'java.time.Instant' cannot be formatted using '%x'
+ x=% .0g x=%4$011X x=%4$TB	D	missing argument for format specifier '%04$11X'
+ x=%x x=%(s x=%14%%(6s	I,C,n	format specifier '%s' is not compatible with the given flag(s): (
+%8f%(20.0g%17.3B x=%16tT	b,N	illegal format conversion: 'java.lang.Byte' cannot be formatted using '%f'
+ x=%+f	l,i1114111	illegal format conversion: 'java.lang.Long' cannot be formatted using '%f'
+ x=%s x=%-7X		missing argument for format specifier '%s'
+%<-S%f	d,c,S	missing format width: %-<S
+ x=%d%4.0tI x=%.0b		illegal format precision: 0
+%a x=%6B	C,s,n,c	illegal format conversion: 'java.util.GregorianCalendar' cannot be formatted using '%a'
+ x=%4$1Tb	N	missing argument for format specifier '%4$1TB'
+%4$Tc%(C x=%6f	T,n,C	format specifier '%c' is not compatible with the given flag(s): (
+ x=%TB x=% .0tr x=%.2A	D,D,D,C	illegal format precision: 0
+ x=%7S	f,c,d,S	extra format arguments: used 1, provided 4
+ x=%#.2B	i,D,s,n	format specifier '%b' is not compatible with the given flag(s): #
+%3$19.1tQ%-Ts%1$0Tz		illegal format precision: 1
+ x=%s x=%13.0tA%g x=%4$B	l,F,c	illegal format precision: 0
+%s%s x=%.0b	I	missing argument for format specifier '%s'
+ x=%(b%-15H x=%1$#.2S		format specifier '%b' is not compatible with the given flag(s): (
+ x=%G	z	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%g'
+ x=%16Tr%g%0.3d%8.0d		missing format width: %0.3d
+ x=%(G%6X	i	illegal format conversion: 'java.lang.Integer' cannot be formatted using '%g'
+%n%<H	T,d,D,F	missing argument for format specifier '%<H'
+ x=%+.2d	D	illegal format precision: 2
+%<.3d%n x=%Th	T,F,C	illegal format precision: 3
+%s x=%3$15a	l,C	missing argument for format specifier '%3$15a'
+%1$,11.0b x=%9C%B	S,c,D	format specifier '%b' is not compatible with the given flag(s): ,
+ x=%.3h x=%1$0Tk x=%f	i,Z,F	format specifier '%k' is not compatible with the given flag(s): 0
+%8d	b,f	extra format arguments: used 1, provided 2
+ x=% tc%+.3c	i0	format specifier '%c' is not compatible with the given flag(s):  
+%3$.0s	C	missing argument for format specifier '%3$.0s'
+%<11.3a%4C x=%d%.1C		illegal format precision: 1
+ x=%+1B%s%C%-14c		format specifier '%b' is not compatible with the given flag(s): +
+ x=%.1s%#g x=%f	S,c	format specifier '%g' is not compatible with the given flag(s): #
+ x=%.0x x=%f	n,i,Z	illegal format precision: 0
+ x=%3$.1g	Z	missing argument for format specifier '%3$.1g'
+ x=%17d x=%Tz	I,n,D	extra format arguments: used 2, provided 3
+ x=%(9c		format specifier '%c' is not compatible with the given flag(s): (
+ x=%Tp x=%5.0s x=%TC	d,b	illegal format conversion: 'java.lang.Double' cannot be formatted using '%p'
+%2$g x=% f%A	z,T,s	illegal format conversion: 'java.util.Date' cannot be formatted using '%g'
+ x=%,tS%s%.3f%n	f,d,n,I	format specifier '%S' is not compatible with the given flag(s): ,
+ x=%.1d	S	illegal format precision: 1
+%1$C%4S%(tr	N,C,Z	format specifier '%r' is not compatible with the given flag(s): (
+%-,5.1tR x=%-f%#020a		illegal format precision: 1
+ x=%,c%B x=%x	c	format specifier '%c' is not compatible with the given flag(s): ,
+%-b%,s		missing format width: %-b
+ x=%.1e%C x=%.2X		illegal format precision: 2
+ x=%4$-d x=%E	c,T,f	missing format width: %-4$d
+ x=%4$18s%(.3E x=% 15E	b,T,C	missing argument for format specifier '%4$18s'
+ x=%0%%#G	N,n,I	illegal format flags: 0
+%a		missing argument for format specifier '%a'
+ x=%o x=%3$19X x=%<f%d	Z	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%o'
+ x=%2$d x=%f%+e	l,I,f,d	illegal format conversion: 'java.lang.Long' cannot be formatted using '%f'
+ x=% 19tI%017f%-.3H x=%h	N,F	format specifier '%I' is not compatible with the given flag(s):  
+%(18TN%2H%,5Tc	C,n	format specifier '%N' is not compatible with the given flag(s): (
+%G x=% x x=%Tz%#.3G	n,C,T	format specifier '%g' is not compatible with the given flag(s): #
+ x=%.0s%-8s	Z,d,s,z	extra format arguments: used 2, provided 4
+%<.2c x=%#13G	D,d,T,N	illegal format precision: 2
+ x=%3$ s%,-s%1$Tk x=%1$17.2E	n,d,N	format specifier '%s' is not compatible with the given flag(s):  
+ x=%5s x=%#s	D	missing argument for format specifier '%#s'
+ x=%.1S%tH	S	missing argument for format specifier '%tH'
+ x=%2$ .0f x=%TR	T,f,f	extra format arguments: used 2, provided 3
+%0f%2$d%+H x=%,tb		missing format width: %0f
+%2$H	n	missing argument for format specifier '%2$H'
+%H	z,D,n	extra format arguments: used 1, provided 3
+%.3c	d	illegal format precision: 3
+ x=%.1te		illegal format precision: 1
+%(16s x=%.1s%e	n	format specifier '%s' is not compatible with the given flag(s): (
+ x=%7.1A%5d%#tR x=%< Td	N	format specifier '%R' is not compatible with the given flag(s): #
+%,x x=%#0X x=%d	d,z,s	format specifier '%x' is not compatible with the given flag(s): ,
+%020d x=%.0S x=%g		missing argument for format specifier '%020d'
+%15s	F,I	extra format arguments: used 1, provided 2
+ x=%d x=%1$-9h%f	f,I	illegal format conversion: 'java.lang.Float' cannot be formatted using '%d'
+%1$a%4$s%(11.1b%-g	N	format specifier '%b' is not compatible with the given flag(s): (
+%A x=%+e x=%6s x=%+1s	c	format specifier '%s' is not compatible with the given flag(s): +
+ x=%9.0h	z,s,l	extra format arguments: used 1, provided 3
+%17S x=%4$f		missing argument for format specifier '%17S'
+%.2ty x=%-13%	F,z,n,D	illegal format precision: 2
+ x=%17s%% x=%<20.2tm x=%<tI	F,I,N,F	illegal format precision: 2
+%1$ Tr%Te		format specifier '%r' is not compatible with the given flag(s):  
+ x=%(4tR	i	format specifier '%R' is not compatible with the given flag(s): (
+%.3f	Z,l	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%f'
+ x=%tb%2G%(19TT	Z,n	format specifier '%T' is not compatible with the given flag(s): (
+ x=%19E	I,D,T,c	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%e'
+ x=%.1f%4$.3f x=%(Tj		format specifier '%j' is not compatible with the given flag(s): (
+ x=%-.3TQ	z,n,f	illegal format precision: 3
+ x=%+.0a%h	d	missing argument for format specifier '%h'
+ x=%8.3X%(4.1h%3$te x=%(8G	S,C,f,n	illegal format precision: 3
+%4$E x=%3$(f x=%+-11.2tT x=%4$--18f	s,D	illegal format precision: 2
+ x=%1ta	T,I,c	extra format arguments: used 1, provided 3
+% 9s		format specifier '%s' is not compatible with the given flag(s):  
+%4$15H%3$tD x=%1s	n	missing argument for format specifier '%4$15H'
+ x=%#2tm x=%f	d,l	format specifier '%m' is not compatible with the given flag(s): #
+ x=%2$ (1n x=%E	f,f,C	illegal format width: 1
+ x=%#7f		missing argument for format specifier '%#7f'
+ x=%% x=%TF%5s	b,z	illegal format conversion: 'java.lang.Byte' cannot be formatted using '%F'
+ x=%2$,TZ		format specifier '%Z' is not compatible with the given flag(s): ,
+ x=%2$,(n	n,F,d,D	illegal format flags: ,(
+ x=%4$+E x=%-.1C x=%(s x=%+G	T,S,Z,C	illegal format precision: 1
+%c%h x=%o	f,l,Z,C	illegal format conversion: 'java.lang.Float' cannot be formatted using '%c'
+%b x=%c x=%,d	S	missing argument for format specifier '%c'
+%#g	S,T,F,F	format specifier '%g' is not compatible with the given flag(s): #
+ x=%4$0X	b	missing format width: %04$X
+ x=%+f x=%4$-.2s	z,S,N,Z	missing format width: %-4$.2s
+%f x=% 7% x=%3$(.0f	N,S,Z,d	illegal format flags:  
+ x=%d x=%(8.2n		illegal format precision: 2
+ x=%+s x=%c x=%s	N,Z,d	format specifier '%s' is not compatible with the given flag(s): +
+%#s x=%-.0o%G	F	missing format width: %-.0o
+%0e x=%0s%#.0%%(tQ	Z	missing format width: %0e
+%,20S%g%A x=%6TN	s,l,F	format specifier '%s' is not compatible with the given flag(s): ,
+ x=%(3td%18e	c,N,z	format specifier '%d' is not compatible with the given flag(s): (
+ x=%0.1s x=%2$.1te%E%,20.3tL	f	format specifier '%s' is not compatible with the given flag(s): 0
+ x=%s	z,d,Z	extra format arguments: used 1, provided 3
+ x=%#5d	z,N,f,C	format specifier '%d' is not compatible with the given flag(s): #
+ x=%3$2.3x%20.3b%+(4.3d	Z,T,d	illegal format precision: 3
+ x=%#.0d x=%016h x=%,.3s x=%19b	z,f,c	illegal format precision: 0
+%d x=%3f x=%.3c x=%1$-e	n,N,l,S	illegal format precision: 3
+%10E	N,c,S	illegal format conversion: 'java.time.Instant' cannot be formatted using '%e'
+%10S%-TT x=%4$e	b,c,d	missing format width: %-TT
+ x=%4$.2g%s	Z,n	missing argument for format specifier '%4$.2g'
+ x=%014.1S	F,n	format specifier '%s' is not compatible with the given flag(s): 0
+ x=%5g x=%TZ%<11b	N,l,c	illegal format conversion: 'java.time.Instant' cannot be formatted using '%g'
+ x=%1.3s x=%<H x=%4$15d%3$A	d,C	missing argument for format specifier '%4$15d'
+ x=%<12.1C x=%15.0h	l,b,b,N	illegal format precision: 1
+%3.2A	D,d	illegal format conversion: 'java.math.BigDecimal' cannot be formatted using '%a'
+ x=%# .1h	F	format specifier '%h' is not compatible with the given flag(s): #
+ x=%.1tZ	l,F,n	illegal format precision: 1
+%#s%(f%,c	d,C	format specifier '%c' is not compatible with the given flag(s): ,
+% 3X	I,f	extra format arguments: used 1, provided 2
+ x=%-11s		missing argument for format specifier '%-11s'
+ x=%.0B x=%d		missing argument for format specifier '%.0B'
+%S%s	C	missing argument for format specifier '%s'
+%g	T	illegal format conversion: 'java.util.Date' cannot be formatted using '%g'
+ x=%.3d x=%20X	i	illegal format precision: 3
+% 2Tl%3tF x=%C	b,z	format specifier '%l' is not compatible with the given flag(s):  
+ x=%0#E x=%TQ%0Tz	n,c	missing format width: %#0E
+ x=%e x=%2$(18.3x	l,b,D,c	illegal format precision: 3
+ x=%<10s%.0e	S,F,b	missing argument for format specifier '%<10s'
+ x=%C%(5B x=%E		format specifier '%b' is not compatible with the given flag(s): (
+%2$12E% b x=%E%E	T,I	format specifier '%b' is not compatible with the given flag(s):  
+ x=%1$d x=%15d%.1G	I,d,N,n	extra format arguments: used 2, provided 4
+ x=%17s x=%1$.3ty%h%14o	I,S,b,F	illegal format precision: 3
+%8.0n	I	illegal format precision: 0
+ x=%H x=%7e x=%-10A	n	missing argument for format specifier '%7e'
+%#20d%Tc x=%+.2c	c	format specifier '%d' is not compatible with the given flag(s): #
+%(0A%3$tA x=%-4f%.1c	i	missing format width: %0(A
+%,2s x=%3$13g x=%1$ G%.3n		format specifier '%s' is not compatible with the given flag(s): ,
+ x=%2$s%#h		format specifier '%h' is not compatible with the given flag(s): #
+%(4o x=%X%,(f	d	illegal format conversion: 'java.lang.Double' cannot be formatted using '%o'
+%X	s,S,f,N	extra format arguments: used 1, provided 4
+%.1h%(17.0E x=%20s%.3f	d,f	missing argument for format specifier '%20s'
+%2$<TM x=% ty x=%-.3A	i-2147483648,b,n	format specifier '%y' is not compatible with the given flag(s):  
+%,1E x=%f x=%H x=%16.1Ts	Z,s,z	format specifier '%e' is not compatible with the given flag(s): ,
+%f	f,i,i,F	extra format arguments: used 1, provided 4
+ x=%S%,.0S%1$g%,17c	l,d,l	format specifier '%s' is not compatible with the given flag(s): ,
+ x=%<e x=%16f%17S%2b	S,n	missing argument for format specifier '%<e'
+ x=%17TN	Z,c,f,F	extra format arguments: used 1, provided 4
+ x=%4$-Ty%,12x		missing format width: %-4$TY
+%+13tR	S,T	format specifier '%R' is not compatible with the given flag(s): +
+ x=%-,14C x=%g x=%.3Tc	b,s,T,C	format specifier '%c' is not compatible with the given flag(s): ,
+ x=%8.2o x=%<(18TA%17h	n	illegal format precision: 2
+ x=%tr%+6G%+-.3s	s	missing format width: %-+.3s
+%B%0.0TQ%(2TQ	T	illegal format precision: 0
+ x=%+f%.2H x=%15C x=%10.3TN		illegal format precision: 3
+%-.3C	s	illegal format precision: 3
+ x=%+<TB x=%(h x=%C		format specifier '%B' is not compatible with the given flag(s): +
+%2$Ty	c	missing argument for format specifier '%2$TY'
+%e%G%3$ X% x	i,b,i	illegal format conversion: 'java.lang.Integer' cannot be formatted using '%e'
+%1$15d%4$tl%3.0%		illegal format precision: 0
+ x=%1$.0s x=%4$5tZ		missing argument for format specifier '%1$.0s'
+ x=%#19.1% x=% .3g x=%3$#6C%n	l,F	illegal format precision: 1
+%tc x=%.1d	T,n,I	illegal format precision: 1
+ x=%0Td x=%(f	z,l	format specifier '%d' is not compatible with the given flag(s): 0
+ x=%d		missing argument for format specifier '%d'
+%4$ x%s%g x=%,X		format specifier '%x' is not compatible with the given flag(s): ,
+% 13E x=%Tm		missing argument for format specifier '% 13E'
+% s	l,b,T,d	format specifier '%s' is not compatible with the given flag(s):  
+%A x=%%%s		missing argument for format specifier '%A'
+%s	b,d,d,d	extra format arguments: used 1, provided 4
+%#20.0f%2.2H x=%Ta x=%E	F,s,n,Z	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%f'
+ x=%.3f%(A%#s%.1tS		format specifier '%a' is not compatible with the given flag(s): (
+%e% <1TS x=%8s%+.3a		format specifier '%S' is not compatible with the given flag(s):  
+ x=%G x=%0.1G x=%H% d	T,i	missing format width: %0.1G
+ x=%<c x=%n%.1s%f	f,n	missing argument for format specifier '%<c'
+%13f x=%d x=%,s	b,C,N,I	format specifier '%s' is not compatible with the given flag(s): ,
+%9h	c,T,T,D	extra format arguments: used 1, provided 4
+ x=%S%3$.2f%+f	i	missing argument for format specifier '%3$.2f'
+% <7s x=%c x=%013n	i-2147483648	format specifier '%s' is not compatible with the given flag(s):  
+%2$s x=%-2S%8s x=%4$,H	N,n	format specifier '%h' is not compatible with the given flag(s): ,
+ x=%0E x=%A%<%%2$(.0h	i-2147483648,i1114111,s	missing format width: %0E
+%,s%1$11s x=%s%2H	F	format specifier '%s' is not compatible with the given flag(s): ,
+ x=%3.3H x=%2$13.0b	F,S	
+%+TS	S	format specifier '%S' is not compatible with the given flag(s): +
+ x=%16.2f%d	b,F	illegal format conversion: 'java.lang.Byte' cannot be formatted using '%f'
+ x=%18g x=%5h%+20%	Z	illegal format flags: +
+%S	c,l,D,S	extra format arguments: used 1, provided 4
+ x=%h	Z	
+ x=%10%%5Td	F,i1114111	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%d'
+ x=% 12.3n x=%2$s x=%G% #B	Z,D	illegal format precision: 3
+ x=%(.0f%17.1s	Z,s,d	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%f'
+ x=%0%%+%%TQ%s		illegal format flags: 0
+ x=%(B%.2S	d,b	format specifier '%b' is not compatible with the given flag(s): (
+ x=%.1H%,-x	s	missing format width: %-,x
+%-G%+9x	D,s	missing format width: %-G
+%1$f	s,d,s	illegal format conversion: 'java.lang.Short' cannot be formatted using '%f'
+%Tp x=%7s%0.0s x=%.1c	C,s	format specifier '%s' is not compatible with the given flag(s): 0
+%,tC%.3d	d	format specifier '%C' is not compatible with the given flag(s): ,
+ x=%2$s%s x=%2$(3s	Z,d	format specifier '%s' is not compatible with the given flag(s): (
+%n	D,Z,c,n	extra format arguments: used 0, provided 4
+ x=%<(.1f	f	missing argument for format specifier '%(<.1f'
+%<.1h x=%.1C%e x=%h	z,l,C,i	illegal format precision: 1
+%4f%,d	I,D	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%f'
+%f	b,s	illegal format conversion: 'java.lang.Byte' cannot be formatted using '%f'
+ x=%H x=%e	z,T,I	illegal format conversion: 'java.util.Date' cannot be formatted using '%e'
+ x=%.3tr%#11s x=%4$(E x=%0A	i,d,D	illegal format precision: 3
+ x=%4$9% x=%, b	b,S	format specifier '%b' is not compatible with the given flag(s):  ,
+ x=%#s x=%#16.1e		missing argument for format specifier '%#s'
+ x=%2a%2$+f	d,T	illegal format conversion: 'java.util.Date' cannot be formatted using '%f'
+ x=%,.2s%2$-f		format specifier '%s' is not compatible with the given flag(s): ,
+%,20s x=%f%-s%o	D,N,b	format specifier '%s' is not compatible with the given flag(s): ,
+ x=%(s	N,f,l	format specifier '%s' is not compatible with the given flag(s): (
+ x=% f x=%4S%d	s,S	illegal format conversion: 'java.lang.Short' cannot be formatted using '%f'
+ x=%0f% B%d	l,D	missing format width: %0f
+ x=%-12tc		missing argument for format specifier '%-12tc'
+%A%16TD x=%3$-.2x x=%s	Z,d,z	missing format width: %-3$.2x
+ x=%.0e%.0d x=%(<7d	z,f,S	illegal format precision: 0
+%-s%.2c		missing format width: %-s
+ x=%,a%+-.1h	Z,F,Z	format specifier '%a' is not compatible with the given flag(s): ,
+%2$e%#n x=%3$ 18tY%10A	I,Z,s,l	illegal format flags: #
+ x=%#n%s x=%12tH	T	illegal format flags: #
+ x=%s%.1tQ%1o x=%12%		illegal format precision: 1
+%3g%7e x=%3$te x=%18G	d,z	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%e'
+ x=%<4n%o	i,b,I	illegal format width: 4
+%.1A x=% C%+s x=%#3.3s	n,C	format specifier '%c' is not compatible with the given flag(s):  
+%(.1f x=%0b	f	format specifier '%b' is not compatible with the given flag(s): 0
+ x=%<11.1f%8f%4$-E	z,l,z,F	missing format width: %-4$E
+%e x=%,X	d,S,n	format specifier '%x' is not compatible with the given flag(s): ,
+ x=%12a%,11c%##8d x=%tR	Z,f	format specifier '%c' is not compatible with the given flag(s): ,
+ x=%12.0Td%2H	c	illegal format precision: 0
+%2$H%19E		missing argument for format specifier '%2$H'
+%0.2e x=%Tz		missing format width: %0.2e
+%4$.0tT		illegal format precision: 0
+%<.0TM x=%.0TY%2$c x=%X	z,s	illegal format precision: 0
+%%%4$a x=%Tp		missing argument for format specifier '%4$a'
+ x=%14.3s x=%+.1%	N,l,C	illegal format precision: 1
+ x=%G x=%<11o%TT	S,F,n	illegal format conversion: 'java.lang.String' cannot be formatted using '%g'
+ x=%C	T,C	illegal format conversion: 'java.util.Date' cannot be formatted using '%c'
+%.0d%-10n%1h	n,d	illegal format precision: 0
+%-2.2f%5g x=%1$5f	C,l,z	illegal format conversion: 'java.util.GregorianCalendar' cannot be formatted using '%f'
+%3$(tp%c x=%1$11b x=%+11X	n,D	format specifier '%p' is not compatible with the given flag(s): (
+%4$0tS	I	format specifier '%S' is not compatible with the given flag(s): 0
+ x=%(13e%  c	f,S,I	duplicate format flags:  
+ x=%s%n x=%4%	i,l	extra format arguments: used 1, provided 2
+%4$<8b%tD x=%% x=% %		illegal format flags:  
+%-.1G x=%2f	d	missing format width: %-.1G
+%(c x=%-#6.0h x=%d	c,z,F,D	format specifier '%c' is not compatible with the given flag(s): (
+ x=%20H x=%-14d	z,D	illegal format conversion: 'java.math.BigDecimal' cannot be formatted using '%d'
+ x=%2x x=%12b%#18%	F,l,n	illegal format flags: #
+%8tz	c	illegal format conversion: 'java.lang.Character' cannot be formatted using '%z'
+%G		missing argument for format specifier '%G'
+ x=%(#h%1$s%020g	Z,i	format specifier '%h' is not compatible with the given flag(s): #
+ x=%3f x=%12G	f,Z	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%g'
+%b%4$#,n x=%.0f x=%0s	N,C,D	illegal format flags: #,
+ x=%.3e%+8f	F,s,c	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%e'
+ x=%,3.0H%B		format specifier '%h' is not compatible with the given flag(s): ,
+ x=%G		missing argument for format specifier '%G'
+ x=%3$<10s%+f	b,s,l	missing argument for format specifier '%<10s'
+ x=%1$TF x=%.2x%4$E	Z,n,z,b	illegal format precision: 2
+%5s%(.0TA%0b	b,b,N	illegal format precision: 0
+ x=%s%3$s x=%2$0.3o%8h	I,T,s,F	missing format width: %02$.3o
+%-11.1X x=%C	T,I,l,T	illegal format precision: 1
+ x=%f	f	
+%<d%C%20C x=% 19.3a	b,z,Z,l	missing argument for format specifier '%<d'
+ x=%4$.2a		missing argument for format specifier '%4$.2a'
+%H x=%,.1E%4$ .0s%#f	N,Z	format specifier '%e' is not compatible with the given flag(s): ,
+%s	l,b,s,s	extra format arguments: used 1, provided 4
+ x=%<8g x=%4s% Th x=%s	S,C	format specifier '%h' is not compatible with the given flag(s):  
+ x=%TZ%,12H	D,I,S,n	format specifier '%h' is not compatible with the given flag(s): ,
+ x=%3$(3.0s x=%3$TN%h%#tM	s	format specifier '%s' is not compatible with the given flag(s): (
+ x=%(.1E		missing argument for format specifier '%(.1E'
+%x	Z,S,i	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%x'
+ x=%4$+14n%.1f x=%+.3c	b	illegal format width: 14
+ x=%-B%<4o	n,s	missing format width: %-B
+%(c	l	format specifier '%c' is not compatible with the given flag(s): (
+%.0d	S,d,Z,z	illegal format precision: 0
+%4H	d,N,f,T	extra format arguments: used 1, provided 4
+ x=%4Th	d,s,I	illegal format conversion: 'java.lang.Double' cannot be formatted using '%h'
+%s%1$0f	s,Z,d	missing format width: %01$f
+ x=%#H x=%19A%#A% d		format specifier '%h' is not compatible with the given flag(s): #
+%0f	I,b,b,d	missing format width: %0f
+ x=%.2E x=%%%a%<o		missing argument for format specifier '%.2E'
+%0#10s%S%+s x=%4$4Th		format specifier '%s' is not compatible with the given flag(s): 0
+ x=%5f x=%+X	c,N,N,f	illegal format conversion: 'java.lang.Character' cannot be formatted using '%f'
+%,.1s		format specifier '%s' is not compatible with the given flag(s): ,
+ x=%18s%.0f		missing argument for format specifier '%18s'
+%3$2%	c	extra format arguments: used 0, provided 1
+ x=%.1h	z,F	extra format arguments: used 1, provided 2
+ x=%9.2x%14.2b%-a x=%B		illegal format precision: 2
+ x=%te%2$4.0f%S x=%0td	f	format specifier '%d' is not compatible with the given flag(s): 0
+%+tA x=%#o	z	format specifier '%A' is not compatible with the given flag(s): +
+ x=%17E x=%3$-tB%10G%%		missing format width: %-3$tB
+%12s x=%1$s%(13G	f,F,S,b	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%g'
+ x=%c%12TH x=%1n% 3%	l,F,F	illegal format width: 1
+%(tM	S,F,b	format specifier '%M' is not compatible with the given flag(s): (
+%<12.1s x=%.1h x=%1s%s	c,n,c	missing argument for format specifier '%<12.1s'
+%.0d	l,S	illegal format precision: 0
+%c%+s%#.1s	z,z,d,n	format specifier '%s' is not compatible with the given flag(s): +
+%-3s%d	S,C,N,l	illegal format conversion: 'java.util.GregorianCalendar' cannot be formatted using '%d'
+%.1s%3$H x=%.3A	z	missing argument for format specifier '%3$H'
+ x=% X x=%0d	b,l	missing format width: %0d
+ x=%-(.2e%#.3d x=%-E x=%3$14a		missing format width: %-(.2e
+%tm	l	
+%1$-18.3s	Z,s,C	extra format arguments: used 1, provided 3
+%n x=%B%s	D,i,S,d	extra format arguments: used 2, provided 4
+%d x=%9d		missing argument for format specifier '%d'
+ x=%<s	b,l	missing argument for format specifier '%<s'
+ x=%-E%14g	N,N,n	missing format width: %-E
+ x=%-Td x=%X	d	missing format width: %-TD
+ x=%X		missing argument for format specifier '%X'
+%3$A x=%(.1f%3$ .0s x=%Tb	c,f,i,s	format specifier '%s' is not compatible with the given flag(s):  
+%4$<12.3s%13f x=%.1S x=%+B	b,b,b	format specifier '%b' is not compatible with the given flag(s): +
+ x=%14d%x x=%15s%<+H		format specifier '%h' is not compatible with the given flag(s): +
+ x=% 15o%+(18s%9tH x=%0%	f,i55296,l	format specifier '%s' is not compatible with the given flag(s): +(
+%#s x=%3$+.0G x=%<tA%,(h	f	format specifier '%h' is not compatible with the given flag(s): ,(
+ x=%8H%19.0o	I,b,f	illegal format precision: 0
+ x=%,s%f x=%S x=%10s	b,n	format specifier '%s' is not compatible with the given flag(s): ,
+%4$d	F,l,n,C	illegal format conversion: 'java.util.GregorianCalendar' cannot be formatted using '%d'
+ x=%d	d	illegal format conversion: 'java.lang.Double' cannot be formatted using '%d'
+%9f%#.0tS x=%<.2S x=%3$.2a		illegal format precision: 0
+ x=%+s%(s x=%1$H%2$17X	S,S,s	format specifier '%s' is not compatible with the given flag(s): +
+%c	c	
+%#0s x=% d x=%G	F,Z,Z,C	format specifier '%s' is not compatible with the given flag(s): 0
+ x=%13f%4$x%(14TD	F,D,F	format specifier '%D' is not compatible with the given flag(s): (
+%06G%2$c%B%02d	d,N,c,S	illegal format conversion: 'java.time.Instant' cannot be formatted using '%c'
+%+(d x=%4Tc%1$o x=%C	l	missing argument for format specifier '%4TC'
+ x=% 7s%8f%s		format specifier '%s' is not compatible with the given flag(s):  
+ x=%0f x=%h x=%3$,17.0%%15.0tb	T,F,N	missing format width: %0f
+%,14s		format specifier '%s' is not compatible with the given flag(s): ,
+%1$e x=%06.1n x=%4$,15f x=%(8g	b,l	illegal format precision: 1
+%<Tm%3$.2A	l	missing argument for format specifier '%<TM'
+%17C%1$7Td x=%1$+2.2S	s,T,T	format specifier '%s' is not compatible with the given flag(s): +
+%0a x=%3$6s	Z	missing format width: %0a
+%S	s,z,D	extra format arguments: used 1, provided 3
+ x=% -H x=%2f%+11S		missing format width: %- H
+%010g x=%tk%c%4$20o	z,i,f	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%g'
+%#c x=%tB%.1f x=%s	D,S	format specifier '%c' is not compatible with the given flag(s): #
+ x=%#.1C x=%.1TA		illegal format precision: 1
+%18c	c,z,F,z	extra format arguments: used 1, provided 4
+ x=%<a x=%1$13A	l	missing argument for format specifier '%<a'
+ x=%15.3s	I	
+ x=%+x x=%2o x=%n%1$,(d	l	format specifier '%x' is not compatible with the given flag(s): +
+%4$14TL	Z	missing argument for format specifier '%4$14TL'
+ x=%1$#.2tb	d,c,N	illegal format precision: 2
+%5S%o%.2TI	C,d,b,N	illegal format precision: 2
+%X		missing argument for format specifier '%X'
+%c	n,I,N,S	extra format arguments: used 1, provided 4
+%s x=%G x=%<c% 15b		format specifier '%b' is not compatible with the given flag(s):  
+%(19s	d	format specifier '%s' is not compatible with the given flag(s): (
+ x=%5s x=% G x=%tC		missing argument for format specifier '%5s'
+ x=%c		missing argument for format specifier '%c'
+ x=%n%o		missing argument for format specifier '%o'
+%++1f x=%A	D,S,C	duplicate format flags: +
+ x=%0b%3$.2x	b	format specifier '%b' is not compatible with the given flag(s): 0
+%s x=%6.2s x=% A x=%3$e	C,I,c,f	illegal format conversion: 'java.lang.Character' cannot be formatted using '%a'
+%18.1E x=%(E%.0G	f,z	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%e'
+ x=% s x=%5d	T,c,S	format specifier '%s' is not compatible with the given flag(s):  
+ x=%2$#H%2$7x	T	format specifier '%h' is not compatible with the given flag(s): #
+ x=%TS x=%x	F,F,F,I	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%S'
+%5.0B%C	l,i	
+ x=%10f	i,i	illegal format conversion: 'java.lang.Integer' cannot be formatted using '%f'
+ x=%-,H%2$G x=%.0h x=%d	l,T,Z,l	missing format width: %-,H
+ x=%17.0s		missing argument for format specifier '%17.0s'
+%B%S	Z,l	
+ x=%2$.3s%g%15B	z,l,n,Z	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%g'
+ x=%S x=%3h%+tz%1$S	d,D,z,S	format specifier '%z' is not compatible with the given flag(s): +
+% b%1$%	f,l	format specifier '%b' is not compatible with the given flag(s):  
+%14s	C,d	extra format arguments: used 1, provided 2
+ x=%-.3ta	C,c,z,T	illegal format precision: 3
+ x=%S x=%c x=%+17g x=%(6c	N,f,Z,Z	format specifier '%c' is not compatible with the given flag(s): (
+%7B%<.0d%0.2G	d,l	illegal format precision: 0
+ x=%s%TT x=%1$11A		missing argument for format specifier '%s'
+%2$f x=%(6f	I,d,D	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%f'
+%(5B%g	C,z,S,f	format specifier '%b' is not compatible with the given flag(s): (
+%d	b,c,C	extra format arguments: used 1, provided 3
+ x=%d	n	
+%2x%<Td%B	n,F,C	extra format arguments: used 2, provided 3
+ x=%E	n,s	extra format arguments: used 1, provided 2
+%f x=%#5.1d x=%2$11G%19f	d,I,N	illegal format precision: 1
+ x=%d%4e%4.3S	D,D,S	illegal format conversion: 'java.math.BigDecimal' cannot be formatted using '%d'
+%d%(s		format specifier '%s' is not compatible with the given flag(s): (
+%4$6n%19.1G	Z,n,F,Z	illegal format width: 6
+%2$a x=%1$(.2b%,15f x=%f	S,d,D	format specifier '%b' is not compatible with the given flag(s): (
+%3$ Ta%.1e		format specifier '%a' is not compatible with the given flag(s):  
+ x=%17.0s x=%h%3$12e x=%g		missing argument for format specifier '%17.0s'
+ x=% G%16Tk%-14e%1e		missing argument for format specifier '% G'
+% .2o x=% 9H	C,C	illegal format precision: 2
+%16C	d,l	illegal format conversion: 'java.lang.Double' cannot be formatted using '%c'
+ x=%20TZ%,tI x=%f	F,l,D,Z	format specifier '%I' is not compatible with the given flag(s): ,
+%3$(.2s%s	d,b	format specifier '%s' is not compatible with the given flag(s): (
+ x=%4$c x=%#.3g	s,F,d,f	format specifier '%g' is not compatible with the given flag(s): #
+%3$,.0s%tk%c	I,C,b	format specifier '%s' is not compatible with the given flag(s): ,
+ x=%1$0f%(4G		missing format width: %01$f
+%C%.0C x=%S	s	illegal format precision: 0
+ x=%#C x=%2$13C%1$X%3$-5s		format specifier '%c' is not compatible with the given flag(s): #
+ x=%a x=%X x=%,10.3C	f	illegal format precision: 3
+%3$tp%3$d x=%X%1$-<d		missing format width: %-<d
+ x=%2$c	C	missing argument for format specifier '%2$c'
+ x=%1$.0tb x=%+a%TS x=%1$f	d	illegal format precision: 0
+%5A	n	
+ x=%d x=%8f x=%-.0X		missing format width: %-.0X
+ x=%2$,a		format specifier '%a' is not compatible with the given flag(s): ,
+ x=%,S	T,F	format specifier '%s' is not compatible with the given flag(s): ,
+ x=%d%h%o x=%+.2tr	i	illegal format precision: 2
+%11h x=%B	Z	missing argument for format specifier '%B'
+%#Tj x=%x%c	n,n	format specifier '%j' is not compatible with the given flag(s): #
+%20h%s	I,z,S	extra format arguments: used 2, provided 3
+%f%0,18H	I	format specifier '%h' is not compatible with the given flag(s): 0,
+ x=%.2d%-f x=%-d x=% f	I,I	illegal format precision: 2
+ x=%-.2s%o	S,s,z,b	missing format width: %-.2s
+ x=%2$ <15d x=%o%-.1TM	f	illegal format precision: 1
+%12s%b		missing argument for format specifier '%12s'
+ x=%(8d	d,F	illegal format conversion: 'java.lang.Double' cannot be formatted using '%d'
+ x=%.1b%<15x x=%0.1f		missing format width: %0.1f
+%1$d x=%s x=%s%0tS	n,F,I,C	format specifier '%S' is not compatible with the given flag(s): 0
+%14.1g%d x=%0n%s	C	illegal format flags: 0
+ x=%-19.1A x=%1$0s		format specifier '%s' is not compatible with the given flag(s): 0
+%,s%<20Tp		format specifier '%s' is not compatible with the given flag(s): ,
+ x=%2$ B%,.3S x=%d x=%7.0s	I,I,F,b	format specifier '%b' is not compatible with the given flag(s):  
+%9g%x x=%4$.2b		missing argument for format specifier '%9g'
+%te	Z,I	extra format arguments: used 1, provided 2
+ x=%f x=%11%%Ty x=%2$.3Tb	f,N	illegal format precision: 3
+% s%4$+.1n x=%d	T	format specifier '%s' is not compatible with the given flag(s):  
+%0.2TQ x=%10Tl	c,d,N	illegal format precision: 2
+%#C x=%18.3S x=%1$4.0Tz	n,N	format specifier '%c' is not compatible with the given flag(s): #
+%#e	i,S,F,s	illegal format conversion: 'java.lang.Integer' cannot be formatted using '%e'
+ x=%2$+1.1s%,2d%7a	b,z	format specifier '%s' is not compatible with the given flag(s): +
+%(Tz x=%,19TB		format specifier '%z' is not compatible with the given flag(s): (
+%-f	d	missing format width: %-f
+%Th%.2TY x=%3$,15ty x=%#g	l,F,Z	illegal format precision: 2
+ x=%18f%11.0A%,d%.3g		missing argument for format specifier '%18f'
+%1b x=%(e%H	i,d,c	
+%+f%#13.3d	Z,N	illegal format precision: 3
+%5f		missing argument for format specifier '%5f'
+%d%x x=%1$10Tb%.3d	s,N	illegal format precision: 3
+ x=%1$o x=%1$e	i,D,I	illegal format conversion: 'java.lang.Integer' cannot be formatted using '%e'
+%,9C	s,I	format specifier '%c' is not compatible with the given flag(s): ,
+%2$-.2a%19.0TN%x%10f	Z,I,S,f	missing format width: %-2$.2a
+%tF%.3C x=%+20S x=%,s	i,c,C	illegal format precision: 3
+%12s	z,T	extra format arguments: used 1, provided 2
+ x=%TC%0s x=%<d	c,n,I,C	format specifier '%s' is not compatible with the given flag(s): 0
+ x=%,11tm%-12.3a x=%-19f	f,c	format specifier '%m' is not compatible with the given flag(s): ,
+ x=%8tM	S,l,I,S	illegal format conversion: 'java.lang.String' cannot be formatted using '%M'
+ x=%01G x=%7.0n	C	illegal format precision: 0
+%E%.3%		illegal format precision: 3
+ x=%c%.1G x=%.0s	i,l,d	illegal format conversion: 'java.lang.Long' cannot be formatted using '%g'
+ x=%(.3g	Z,l,i-2147483648	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%g'
+%9.3n%+s%14c%4$9f		illegal format precision: 3
+ x=%0E x=% 19a%.1C	F,f,z,c	missing format width: %0E
+ x=%17c	f,C,f,n	illegal format conversion: 'java.lang.Float' cannot be formatted using '%c'
+ x=%d x=%2$0s%1s%+f	z,S,i1114112,S	format specifier '%s' is not compatible with the given flag(s): 0
+ x=%x x=%0a%.3o	T,l	missing format width: %0a
+%f x=%#H%5TR x=%Tk	F,i,i,d	format specifier '%h' is not compatible with the given flag(s): #
+ x=%a%G%2$9G x=%d	s	illegal format conversion: 'java.lang.Short' cannot be formatted using '%a'
+ x=%0th%-c	N,C,z,N	format specifier '%h' is not compatible with the given flag(s): 0
+%12x%4$,2.1b	z,s,s	format specifier '%b' is not compatible with the given flag(s): ,
+%4$6s%1.3s	D	missing argument for format specifier '%4$6s'
+%4$.3G%c%.2e		missing argument for format specifier '%4$.3G'
+%-.3o%1$17s%.0C	Z,b,S,b	missing format width: %-.3o
+%0TF x=%s%.2s	I,N,I,b	format specifier '%F' is not compatible with the given flag(s): 0
+ x=%e%x x=%s x=%.1tH	D	illegal format precision: 1
+%8.3tj	l,D	illegal format precision: 3
+%13n%a%7c x=%.3s		illegal format width: 13
+%(11s	T,N,f,b	format specifier '%s' is not compatible with the given flag(s): (
+ x=%14%%.0f	N,c,l	illegal format conversion: 'java.time.Instant' cannot be formatted using '%f'
+ x=%12.2s% 7.2E		missing argument for format specifier '%12.2s'
+ x=%(s	N,D,n	format specifier '%s' is not compatible with the given flag(s): (
+ x=% TL x=%11.0n x=%3$x%0.3g		format specifier '%L' is not compatible with the given flag(s):  
+%e% 12a%tY		missing argument for format specifier '%e'
+ x=%-d%b%e%7.1E	Z	missing format width: %-d
+%-f	s,i,D	missing format width: %-f
+%(.1x%.0C%s%3$ 11H	i,c,I,l	illegal format precision: 1
+%1f	s,f,c	illegal format conversion: 'java.lang.Short' cannot be formatted using '%f'
+ x=%4$.0e x=%Tp x=%6C%.1TL		illegal format precision: 1
+%12S%7s	T,S	
+ x=%15f%o x=%0.3B	d	format specifier '%b' is not compatible with the given flag(s): 0
+%07.3S x=%f x=%TL x=%13G	i1114112,S,N	format specifier '%s' is not compatible with the given flag(s): 0
+%+G x=%9A	C,F,D,Z	illegal format conversion: 'java.util.GregorianCalendar' cannot be formatted using '%g'
+%% x=%4tS x=%,d		missing argument for format specifier '%4tS'
+ x=%#.3C	D	illegal format precision: 3
+ x=%.0b x=%+e x=%,17S x=%4$n	n	format specifier '%s' is not compatible with the given flag(s): ,
+%n		
+% Tm x=%X x=%s	i-1,I	format specifier '%m' is not compatible with the given flag(s):  
+%02s x=%.2tL x=%.2S	l	format specifier '%s' is not compatible with the given flag(s): 0
+ x=%o x=%<6.0TL x=%1$A%0C		illegal format precision: 0
+%ta%.2d	S,f	illegal format precision: 2
+ x=%ts	I,D	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%s'
+%14S%2$+g x=%8d%G	S,T,T,I	illegal format conversion: 'java.util.Date' cannot be formatted using '%g'
+ x=%10s	c,b,C,T	extra format arguments: used 1, provided 4
+%10f x=%+b x=%1$5A	c	format specifier '%b' is not compatible with the given flag(s): +
+%19S%20s	c,d,d,b	extra format arguments: used 2, provided 4
+%2$tk x=%.0d%a x=%9s		illegal format precision: 0
+%s%f	b	missing argument for format specifier '%f'
+ x=%3$<5f		missing argument for format specifier '%<5f'
+%15d x=%-,S		missing format width: %-,S
+%16c		missing argument for format specifier '%16c'
+%1$0d x=%2$15f%.3G		missing format width: %01$d
+ x=%.0f%.1s x=%+15x	S,d	illegal format conversion: 'java.lang.String' cannot be formatted using '%f'
+ x=%2$,G x=%2$.2%%.2X%3$((.1H		illegal format precision: 2
+%d x=%20a x=%1.3%	n,s,f,l	illegal format precision: 3
+%x%9.3X%1$ X x=%0c	d,D,C	illegal format precision: 3
+ x=%e	Z,n	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%e'
+ x=%x x=%#b x=%(12.0Te	d,n,D	format specifier '%b' is not compatible with the given flag(s): #
+%<B	N,S,D	missing argument for format specifier '%<B'
+%0th	d,Z,b	format specifier '%h' is not compatible with the given flag(s): 0
+%3$Tl x=%15.0f%4$G	d,S,T,d	
+ x=%,c%0f x=%<B	i,S	format specifier '%c' is not compatible with the given flag(s): ,
+%d x=%#13c	b	format specifier '%c' is not compatible with the given flag(s): #
+ x=%TL	F,s,b	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%L'
+ x=%1.0f x=%d%H	D,I,f,T	extra format arguments: used 3, provided 4
+ x=%.0TN%0d	b,z,N,i	illegal format precision: 0
+ x=%-0H%010c	l	missing format width: %-0H
+%20f x=%10f x=%19g	f,T,s,l	illegal format conversion: 'java.util.Date' cannot be formatted using '%f'
+ x=%.0s x=%10d		missing argument for format specifier '%.0s'
+%s x=%<20g x=%d%f	T,i,I,b	illegal format conversion: 'java.util.Date' cannot be formatted using '%g'
+ x=%.2ty x=%s%b	Z,d	illegal format precision: 2
+%Ta%3$#11d	s,n	format specifier '%d' is not compatible with the given flag(s): #
+ x=%1$n		
+ x=%E%(b	f	format specifier '%b' is not compatible with the given flag(s): (
+ x=%.2g x=% S%15b	z,I,z,c	format specifier '%s' is not compatible with the given flag(s):  
+ x=%1$H x=% .1Tk	n	illegal format precision: 1
+ x=%C	N	illegal format conversion: 'java.time.Instant' cannot be formatted using '%c'
+%g	S,f,N,s	illegal format conversion: 'java.lang.String' cannot be formatted using '%g'
+%tA%4Td%,8d%1$14c	s,i1114112	illegal format conversion: 'java.lang.Short' cannot be formatted using '%A'
+%2$C x=%-e%+H	C,D,n,Z	missing format width: %-e
+ x=%4$15X% S x=%g	I,c	format specifier '%s' is not compatible with the given flag(s):  
+ x=%019s x=%#16f	f,n,l	format specifier '%s' is not compatible with the given flag(s): 0
+ x=%0.0x%d		missing format width: %0.0x
+%4$14a x=%2$Tl x=%tM x=%0d	n,D	missing format width: %0d
+%d	f,c,c	illegal format conversion: 'java.lang.Float' cannot be formatted using '%d'
+ x=%tT%9.1d x=%3$14tZ	Z,d,D	illegal format precision: 1
+%s x=%-,n x=%2$B x=%3$6.1d	S,s,T	illegal format flags: -,
+ x=%2$-20B		missing argument for format specifier '%-2$20B'
+%3$h x=%17d%1$8.0A		missing argument for format specifier '%3$h'
+ x=%1$+17tC x=%-s x=%B%<,tQ		format specifier '%C' is not compatible with the given flag(s): +
+ x=% o x=%.3tj%,.3f	C,d	illegal format precision: 3
+ x=%<f%4$(x x=%h	C,c,s,I	missing argument for format specifier '%<f'
+ x=%tb x=%2d x=%a	i,D	illegal format conversion: 'java.lang.Integer' cannot be formatted using '%b'
+%3$0.0f	l,F,Z,n	missing format width: %03$.0f
+ x=%f	l,C	illegal format conversion: 'java.lang.Long' cannot be formatted using '%f'
+%d%3$-3.2o		illegal format precision: 2
+ x=%8TM%2$8.3d		illegal format precision: 3
+ x=%<4f	b,D	missing argument for format specifier '%<4f'
+ x=%4$h x=%4$(G%(.2d%x	d,D,s	illegal format precision: 2
+%<c x=%-9.1X%B	T,i	illegal format precision: 1
+ x=%x x=%-tl	I	missing format width: %-tl
+%-.3o%+13d x=%3$+E		missing format width: %-.3o
+%-.3X x=%18tQ	f,b	missing format width: %-.3X
+%<.2d x=%X	c,S	illegal format precision: 2
+ x=%5d%B%.2d x=%0x	l,z	illegal format precision: 2
+ x=%14f x=%.3x%E	i,T,I,l	illegal format precision: 3
+ x=%-tD x=%#TC	z,I	missing format width: %-tD
+ x=%TM%(d		missing argument for format specifier '%TM'
+ x=%3.1f x=%14o%%	F,T	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%f'
+ x=%ty x=%16d%17g		missing argument for format specifier '%ty'
+ x=%b x=%s x=%0-d% +s		missing format width: %-0d
+ x=%9tR x=%tI x=%f x=%-tb	C,F,c	missing format width: %-tb
+%.1Te%0tQ x=%10d	Z,I	illegal format precision: 1
+ x=%,.2x%19s x=%,9% x=%18.3b	S,I	illegal format precision: 2
+%3$17.3tB x=%-3.2tD%.0G x=%,19x	l,n,N,n	illegal format precision: 3
+ x=%.0tk x=%+S%-x	T,Z,z,I	illegal format precision: 0
+ x=% o%#g	S,l,n	format specifier '%g' is not compatible with the given flag(s): #
+ x=%.2S x=%<.2s	i-1,s,D,d	extra format arguments: used 1, provided 4
+%5.2C%2$e	N	illegal format precision: 2
+%4$,4Tp x=%<% x=%B x=%-11f	i,D	format specifier '%p' is not compatible with the given flag(s): ,
+ x=%4$,tr x=%+TC	F,c,c,n	format specifier '%r' is not compatible with the given flag(s): ,
+%.1s%H	I,Z,C	extra format arguments: used 2, provided 3
+%H x=%016tM	I	format specifier '%M' is not compatible with the given flag(s): 0
+%.0Tm%Tc%-H x=% 9X	F	illegal format precision: 0
+%3$c%th	c,Z	missing argument for format specifier '%3$c'
+ x=%.1X	I	illegal format precision: 1
+ x=%X x=% Tp x=%G	C,f	format specifier '%p' is not compatible with the given flag(s):  
+ x=%3$<.1C x=%<h	D,S	illegal format precision: 1
+%,6s%-n%.1X x=%.0S	D,F	format specifier '%s' is not compatible with the given flag(s): ,
+ x=%2$10f%15f	Z,N,c,S	illegal format conversion: 'java.time.Instant' cannot be formatted using '%f'
+%2$.1E	n,n,C,z	extra format arguments: used 2, provided 4
+ x=%-18H x=%ts%(1f x=%s	i,F	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%s'
+ x=%Ta%+a%E x=%3tc	l,c,z	illegal format conversion: 'java.lang.Character' cannot be formatted using '%a'
+%.0A%16.0H x=%#6G		format specifier '%g' is not compatible with the given flag(s): #
+ x=%(%		illegal format flags: (
+%.3x%Ty		illegal format precision: 3
+%<2g	C,z,n	missing argument for format specifier '%<2g'
+ x=%.2d%+0B x=%n%4$TB	C,d	illegal format precision: 2
+%H%tR%+b	s	format specifier '%b' is not compatible with the given flag(s): +
+ x=%0.0s	f,z,T,f	format specifier '%s' is not compatible with the given flag(s): 0
+ x=%,,16G x=%-7E%(%	D,n,s	duplicate format flags: ,
+%.0b	d,I	extra format arguments: used 1, provided 2
+%1$+1.0TC x=%+10.3b x=%(16tR	z,s	illegal format precision: 0
+%c x=%<.0%%014.2% x=%X		illegal format precision: 0
+%0+.2f%4$+.1e%0.0o x=%#A	z,s,D,C	missing format width: %+0.2f
+ x=%2$.2% x=%11G%11tF		illegal format precision: 2
+% 4X x=%1$04H%-6H x=%4$B		format specifier '%h' is not compatible with the given flag(s): 0
+%s x=%16A	f,T	illegal format conversion: 'java.util.Date' cannot be formatted using '%a'
+ x=%#a x=% 19s%c	T,b,s,T	format specifier '%s' is not compatible with the given flag(s):  
+ x=%,8B%(td x=%H	N,T,C,N	format specifier '%b' is not compatible with the given flag(s): ,
+%-#H x=%(s x=%,s%1$018.3E	b,z,D,I	format specifier '%h' is not compatible with the given flag(s): #
+ x=%S x=%e		missing argument for format specifier '%S'
+% a%+.3TD%4$G x=%2$x	S,f	illegal format precision: 3
+ x=%13.1e%s%3$ x	F	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%e'
+ x=%3x%+12G x=%08s	c,c	format specifier '%s' is not compatible with the given flag(s): 0
+%1$-A x=%b	l,n	missing format width: %-1$A
+ x=%s%.2s x=%-d x=%4d	d,D,c,z	missing format width: %-d
+%%%,f x=%C	l	illegal format conversion: 'java.lang.Long' cannot be formatted using '%f'
+ x=%2$#,6.0E x=%1$+f		format specifier '%e' is not compatible with the given flag(s): ,
+%-.1tC x=%<s% 7th x=%((s	Z,S,l	illegal format precision: 1
+%+TI x=%S%-.0d x=%(3H		format specifier '%I' is not compatible with the given flag(s): +
+ x=%2$-TY x=%02e%#g	S	missing format width: %-2$TY
+ x=% 11tz%.1Tk x=%.3E		format specifier '%z' is not compatible with the given flag(s):  
+ x=%#014n%0f x=%d	s,i,i,T	illegal format width: 14
+%d		missing argument for format specifier '%d'
+ x=%X%0tm	c,Z	format specifier '%m' is not compatible with the given flag(s): 0
+%#f% s	C,z,n	format specifier '%s' is not compatible with the given flag(s):  
+%9A	F,b	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%a'
+%<9s%14.3H x=%B x=% <.0ty	S,n,c,f	illegal format precision: 0
+ x=%#C%13.1H x=%3$<.2A x=%X	s,z,F,I	format specifier '%c' is not compatible with the given flag(s): #
+ x=%B x=%0d	T,T	missing format width: %0d
+%h		missing argument for format specifier '%h'
+ x=%(x	N,C,C	illegal format conversion: 'java.time.Instant' cannot be formatted using '%x'
+ x=%% x=%,h x=%x	d,s,i	format specifier '%h' is not compatible with the given flag(s): ,
+ x=%e%Tm	f	missing argument for format specifier '%TM'
+%A%.0A x=%b	b,Z,C,c	illegal format conversion: 'java.lang.Byte' cannot be formatted using '%a'
+%<e	b,C	missing argument for format specifier '%<e'
+%17a x=% tF%1Ty%#a	z	format specifier '%F' is not compatible with the given flag(s):  
+ x=%d%19a	i	missing argument for format specifier '%19a'
+%x%17s x=%12S%2d		missing argument for format specifier '%x'
+%.1f x=%6.1H	d,C,i-2147483648,l	extra format arguments: used 2, provided 4
+%-tp x=%.3d%13s x=%0A		missing format width: %-tp
+ x=%.3%%0f x=%<11g%19.0Th	F,F,N	illegal format precision: 3
+%0tR x=%f x=%14tA	S,s,b,S	format specifier '%R' is not compatible with the given flag(s): 0
+ x=%s%3$#s x=%.1s	i65,F,s,I	format specifier '%s' is not compatible with the given flag(s): #
+ x=%18x x=%s	D	illegal format conversion: 'java.math.BigDecimal' cannot be formatted using '%x'
+ x=%1$G% 0d x=%<.1%%s	D,n	missing format width: % 0d
+ x=%e x=%011E%#S	d	missing argument for format specifier '%011E'
+%%	s,I	extra format arguments: used 0, provided 2
+%4X	I	
+ x=%,6d%,tF	D,b	format specifier '%F' is not compatible with the given flag(s): ,
+ x=%(e%2h x=%(9c	d,l,I,f	format specifier '%c' is not compatible with the given flag(s): (
+%3$s%tI	I	missing argument for format specifier '%3$s'
+ x=%(.0a	f,c,n	format specifier '%a' is not compatible with the given flag(s): (
+%7.2b%-0.0H%4$6.0d%1$X		missing format width: %-0.0H
+ x=%n x=%-6s x=%.3f x=%s	i,s,S,b	illegal format conversion: 'java.lang.Short' cannot be formatted using '%f'
+ x=%13.0s x=%a%19Tj	F,F,i,b	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%a'
+ x=%#10tH	s,b,F,b	format specifier '%H' is not compatible with the given flag(s): #
+ x=%TC%2$#d x=%#.3E		format specifier '%d' is not compatible with the given flag(s): #
+%20A	S,n,I,b	illegal format conversion: 'java.lang.String' cannot be formatted using '%a'
+ x=%TS%14E x=%4$<s%1s	C,I,f	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%e'
+ x=%tj%-Tr x=%.1f	c,l,n	missing format width: %-TR
+%f	D,l	extra format arguments: used 1, provided 2
+%.1o x=%-f%TQ x=%-9n	z,f	illegal format precision: 1
+ x=%4$-18f x=%#12.1TY		illegal format precision: 1
+%6Tp x=%- .3s		missing format width: %- .3s
+ x=%#e%3$.0c x=%2$4o	T,C,I	illegal format precision: 0
+%f x=%1$#d%4$3tD%-17s	d	format specifier '%d' is not compatible with the given flag(s): #
+%<tQ x=%#2d x=%1$A	D	format specifier '%d' is not compatible with the given flag(s): #
+ x=%a x=% b x=%3$.0n	c,s	format specifier '%b' is not compatible with the given flag(s):  
+%4$+19.2d x=%#Ta		illegal format precision: 2
+ x=%.1c		illegal format precision: 1
+ x=%3$10d x=%4$B		missing argument for format specifier '%3$10d'
+%1$0f	n,T	missing format width: %01$f
+%1$+14.1TT% 8.3e	b,c	illegal format precision: 1
+%3$X x=%tc x=%8s	D,d,N,f	illegal format conversion: 'java.time.Instant' cannot be formatted using '%x'
+ x=%16% x=% o x=%2$8G x=%-tL	f,f,b,Z	missing format width: %-tL
+%H%15tC x=%.3b		missing argument for format specifier '%H'
+ x=%#d%TH%A x=%18E	N,S	format specifier '%d' is not compatible with the given flag(s): #
+%19c%15e x=%#tD		format specifier '%D' is not compatible with the given flag(s): #
+ x=%(s x=%1$+20f	c,D,Z,Z	format specifier '%s' is not compatible with the given flag(s): (
+ x=%c	T,F,D,z	illegal format conversion: 'java.util.Date' cannot be formatted using '%c'
+ x=%1tA x=%.1E%a x=% s	Z,z	format specifier '%s' is not compatible with the given flag(s):  
+%(18A%17Tb	d,D,I,s	format specifier '%a' is not compatible with the given flag(s): (
+ x=%.1% x=%E	d,C	illegal format precision: 1
+ x=%4$g	S,S,F	missing argument for format specifier '%4$g'
+%,+.2C%,TS%018Ta	D	illegal format precision: 2
+ x=%a%15n x=%#11C	c	illegal format width: 15
+ x=%+% x=%,4s%a%2TL	S,l,c	illegal format flags: +
+%3$#d%-f x=%2$s	T	format specifier '%d' is not compatible with the given flag(s): #
+ x=% 6.2tY x=%E x=%1$13G	b,l,f,I	illegal format precision: 2
+%+S%-8.3h x=%e	F,D	format specifier '%s' is not compatible with the given flag(s): +
+ x=%15.3S x=%.1H	l,N	
+ x=%,.0TR x=%1$A x=%2$e	S	illegal format precision: 0
+%4$+s x=%019s		format specifier '%s' is not compatible with the given flag(s): +
+ x=%d%.1d%TC	I,N	illegal format precision: 1
+ x=%(d%16o	N	illegal format conversion: 'java.time.Instant' cannot be formatted using '%d'
+%-.1tB x=%12B%x x=%08.2B	f,D,f,S	illegal format precision: 1
+ x=%-.1%%1$<,f x=%+.0Tc	n,D,c	illegal format precision: 1
+% .2o x=%3$,d x=%+17d	d,I,c,N	illegal format precision: 2
+%1$s	I,D,D,l	extra format arguments: used 1, provided 4
+%6f x=%Ta	N	illegal format conversion: 'java.time.Instant' cannot be formatted using '%f'
+%s	d,T	extra format arguments: used 1, provided 2
+ x=%tD	D,n	illegal format conversion: 'java.math.BigDecimal' cannot be formatted using '%D'
+ x=%4b% tp x=%0f	l,I,Z,D	format specifier '%p' is not compatible with the given flag(s):  
+%#f	Z,l,F,S	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%f'
+ x=%.3s%9.2e	T,N	illegal format conversion: 'java.time.Instant' cannot be formatted using '%e'
+ x=%#s x=%1G		missing argument for format specifier '%#s'
+ x=%<f	T,s,F	missing argument for format specifier '%<f'
+ x=%3x	b	
+%o%TC x=%#12E%4$11e	f,l	illegal format conversion: 'java.lang.Float' cannot be formatted using '%o'
+%,14Tl%2$x x=%<-tz	T,b	format specifier '%l' is not compatible with the given flag(s): ,
+ x=%2$3A x=%1$+.2f%c%+%		illegal format flags: +
+%s x=%tk x=% e	N,z,d,l	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%k'
+ x=%s	D,z,c	extra format arguments: used 1, provided 3
+%a%10.2TT		illegal format precision: 2
+ x=%g%s	S,F	illegal format conversion: 'java.lang.String' cannot be formatted using '%g'
+%14a%3$ 3o		missing argument for format specifier '%14a'
+ x=%4$.2TS%2$<14Tl x=%a	z,N,f,i-1	illegal format precision: 2
+ x=% <1B		format specifier '%b' is not compatible with the given flag(s):  
+ x=%tM x=%x x=%+17S%-7a	b,n	format specifier '%s' is not compatible with the given flag(s): +
+ x=%0d	S,C,i,b	missing format width: %0d
+ x=%-3a%(16A%1$a%<4TT	n,Z	format specifier '%a' is not compatible with the given flag(s): (
+%c%3$f x=%018d	n,l,d	
+ x=%c%d	I,i,T	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%c'
+%1$11o x=%,6x x=%+16S		format specifier '%x' is not compatible with the given flag(s): ,
+ x=%18.3e%H		missing argument for format specifier '%18.3e'
+%1.3d	i,z,D,S	illegal format precision: 3
+%1$,14s	N	format specifier '%s' is not compatible with the given flag(s): ,
+ x=%.2A%3$+8tD	c,l,d	format specifier '%D' is not compatible with the given flag(s): +
+ x=%(e% X x=%3$Tk x=%d	C	illegal format conversion: 'java.util.GregorianCalendar' cannot be formatted using '%e'
+%<012.3n	Z,S,l	illegal format precision: 3
+ x=%B x=%(.1S	I	format specifier '%s' is not compatible with the given flag(s): (
+%.2h%6A	N,c,b,Z	illegal format conversion: 'java.lang.Character' cannot be formatted using '%a'
+%2B x=%( 17b	T,C	format specifier '%b' is not compatible with the given flag(s):  (
+%015x x=%Tz x=%f x=%1$-13b	D,z,l,F	illegal format conversion: 'java.math.BigDecimal' cannot be formatted using '%x'
+ x=%3$d		missing argument for format specifier '%3$d'
+%% x=%3$18n	z	illegal format width: 18
+ x=%.2G%.3a	Z,I	illegal format conversion: 'java.time.ZonedDateTime' cannot be formatted using '%g'
+% E x=%s	z,D,F,b	illegal format conversion: 'java.lang.Boolean' cannot be formatted using '%e'
+ x=%3$-014d x=%-.3f%a	n	illegal format flags: -0
+ x=%3$10f x=%G%-E	s,c,n	missing format width: %-E
+%.1o x=%.2X		illegal format precision: 1
+%3$+20e x=%17d x=%d%2$-TT		missing format width: %-2$TT
+%h x=%f x=%4$<.3te	l,c,F	illegal format precision: 3
+ x=%E%-s		missing format width: %-s
+ x=%,d	f	illegal format conversion: 'java.lang.Float' cannot be formatted using '%d'
+ x=%s x=%19tj	s	missing argument for format specifier '%19tj'
+%%%G	F	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%g'
+%H	D,I,d	extra format arguments: used 1, provided 3
+ x=%+X%6f x=%s	n	missing argument for format specifier '%6f'
+ x=%2$.3A%1$th	T,F,d,z	illegal format conversion: 'com.google.errorprone.bugpatterns.formatstring.FormatStringValidation$2' cannot be formatted using '%a'
+ x=%11.3H x=%10s x=%2$16n	d,d,T,T	illegal format width: 16
+ x=%s	i-1,c	extra format arguments: used 1, provided 2
+%3$A	n,S,T,I	illegal format conversion: 'java.util.Date' cannot be formatted using '%a'
+ x=%1$9.2tF%3$7f x=%d%<H	b,z	illegal format precision: 2
+%9x%#S x=%d	d,l,I,d	illegal format conversion: 'java.lang.Double' cannot be formatted using '%x'
+ x=%.0d%.2B x=%2$6B	z,n,c	illegal format precision: 0
+ x=%1$-9X	b,C,n	extra format arguments: used 1, provided 3
+%#f	N	illegal format conversion: 'java.time.Instant' cannot be formatted using '%f'
+%H x=%-#12.3%	Z,n	illegal format precision: 3
+ x=%3.3S		missing argument for format specifier '%3.3S'
+%17s	Z,z,D	extra format arguments: used 1, provided 3
+ x=%13.0s x=% 1d		missing argument for format specifier '%13.0s'
+%<tT	N,D	missing argument for format specifier '%<tT'
+%s%e%+B	n,i	format specifier '%b' is not compatible with the given flag(s): +
+ x=%(,f%14tQ x=%g%e	C,d,C,C	illegal format conversion: 'java.util.GregorianCalendar' cannot be formatted using '%f'
+ x=%E%<s	b,F,C	illegal format conversion: 'java.lang.Byte' cannot be formatted using '%e'
+%S%s x=%1$-s x=%4$ a	F,l,i-2147483648,Z	missing format width: %-1$s
+%TH x=%1$,#.3H%+10TR%#f		format specifier '%h' is not compatible with the given flag(s): #
+%16S x=%H		missing argument for format specifier '%16S'
+ x=%ty x=%.2x%1$A x=%S	l,N	illegal format precision: 2
+ x=%+S	z,D,b,l	format specifier '%s' is not compatible with the given flag(s): +
+ x=%d%3$.2g x=%<.1tR	T,S	illegal format precision: 1
+ x=%n%3$<C%-.2Tz	c,D,T	illegal format precision: 2
+%.3Tr	i-1,n,z	illegal format precision: 3
+ x=%<X	Z,i	missing argument for format specifier '%<X'
+ x=%<b x=%12G	i,D	missing argument for format specifier '%<b'
+ x=%tp x=%(2s	s	format specifier '%s' is not compatible with the given flag(s): (
+% h x=%#20.2d	n	format specifier '%h' is not compatible with the given flag(s):  
+%s x=%5d x=%-tZ	l	missing format width: %-tZ
+ x=%,C%+17B%2$3f% H	z,I	format specifier '%c' is not compatible with the given flag(s): ,
+%3$<h x=%.3g	d	missing argument for format specifier '%<h'
+ x=%<S%tB x=%.1C x=%2$14o		illegal format precision: 1
+ x=%020f%1$,.3ta	s	illegal format precision: 3
+%19s%.1x%3$ 16d	b,l	illegal format precision: 1
+ x=%G	I,l	illegal format conversion: 'java.math.BigInteger' cannot be formatted using '%g'
+%3$6H%18f	f	missing argument for format specifier '%3$6H'
+ x=%x x=%,C	b,Z,N	format specifier '%c' is not compatible with the given flag(s): ,
+ x=%d x=%,,3.3h x=%H	c,S	duplicate format flags: ,
+ x=%19n%+11TZ x=%04d x=%-tR	i	illegal format width: 19
+%s x=%TI		missing argument for format specifier '%s'
+%h%h x=%B%<.1c	c,T,D	illegal format precision: 1
+%, 6s x=%f	D,n	format specifier '%s' is not compatible with the given flag(s):  ,
+%e x=%16s%s	T,d,S	illegal format conversion: 'java.util.Date' cannot be formatted using '%e'
+%0H x=%#.1o	l,s	format specifier '%h' is not compatible with the given flag(s): 0
+ x=%3$( TZ x=%014s x=%,% x=%8A	Z,T,N,C	format specifier '%Z' is not compatible with the given flag(s):  (
+ x=%((.1f	n	duplicate format flags: (
+ x=%#.1H%tH%7a x=%X		format specifier '%h' is not compatible with the given flag(s): #
+ x=% s		format specifier '%s' is not compatible with the given flag(s):  
+%S x=%13n%7E	l,n,b	illegal format width: 13
+%d x=%0A x=%<3.1tk x=%-.3d	F,n,C	missing format width: %0A
+ x=% 4.2tB%017o%1$f%n	c	illegal format precision: 2
+%-18n x=%B%A%05.2TY	D,T,b,T	illegal format width: 18
+%G	n,I,F,d	extra format arguments: used 1, provided 4
+%.3ts x=%Tm%19.0b x=%TA	z	illegal format precision: 3
+% 16h x=%3$(+9Tm%4$s%#9g		format specifier '%h' is not compatible with the given flag(s):  
+ x=%3$c%#B x=%+17.2tr	N,f	format specifier '%b' is not compatible with the given flag(s): #
+%TF%,10A x=%TD%.2E	f,T,F,d	format specifier '%a' is not compatible with the given flag(s): ,
+ x=%#19.0d		illegal format precision: 0

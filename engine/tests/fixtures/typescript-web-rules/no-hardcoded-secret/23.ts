@@ -1,0 +1,1 @@
+const config = { passwordMinLength: "12345678" };

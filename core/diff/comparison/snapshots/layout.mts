@@ -11,7 +11,7 @@ import {
 } from '../../git/patches/project-moves.mts';
 import { readChangedLines } from '../../git/patches/changed-lines.mts';
 import { readMovedPackages } from '../moved-names/packages/read-moved-packages.mts';
-import { readRemovesTests } from '../../git/patches/test-removal.mts';
+import { readTestRemoval } from '../../git/patches/test-removal.mts';
 import {
   withTemporaryWorktree,
   withNamedTemporaryWorktree,
@@ -58,6 +58,7 @@ export function readSnapshotLayout(
   const baseProjectRelativePath = resolveBaseProjectPath({ ...range, changes });
   const projectRange = { ...range, baseProjectRelativePath };
   const moves = readProjectMoves({ ...projectRange, changes });
+  const { testsRemoved, removedTestTargets } = readTestRemoval(projectRange);
   return {
     baseProjectRelativePath,
     moves: { ...moves, ...readMovedPackages(moves, projectRange) },
@@ -66,7 +67,10 @@ export function readSnapshotLayout(
       changedLines: readChangedLines({ ...projectRange, inferredMoves: moves.inferred }),
       isStrictRule,
       mustMeetOnEditedLines,
-      testsRemoved: readRemovesTests(projectRange),
+      testsRemoved,
+      removedTestTargets:
+        removedTestTargets &&
+        new Set([...removedTestTargets].map((target) => moves.files.get(target) ?? target)),
     },
   };
 }

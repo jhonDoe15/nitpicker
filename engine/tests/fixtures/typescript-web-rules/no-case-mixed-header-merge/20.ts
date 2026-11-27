@@ -1,0 +1,1 @@
+const res = await ky(url, { headers: { Accept: "x", ...(init?.headers as Record<string, string>) } });

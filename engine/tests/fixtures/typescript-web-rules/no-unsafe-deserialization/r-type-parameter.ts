@@ -1,0 +1,1 @@
+import vm from 'vm'; function f<run>() { const { runInNewContext: run } = vm; run(x); }

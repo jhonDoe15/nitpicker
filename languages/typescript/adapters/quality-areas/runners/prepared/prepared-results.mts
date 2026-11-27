@@ -64,11 +64,7 @@ function isTestReport(value: unknown): value is TestReport {
 }
 
 function readPrepared(options: QualityAreaOptions, directory: string, file: string): unknown {
-  const base = path.resolve(options.liveProjectRoot, directory);
-  const filePath = path.resolve(base, file);
-  if (!filePath.startsWith(`${base}${path.sep}`)) {
-    throw new Error(`${TEST_RESULTS_VARIABLE}: ${file} is outside ${directory}`);
-  }
+  const filePath = path.resolve(options.liveProjectRoot, directory, file);
   const roots = { from: options.liveProjectRoot, to: options.projectRoot };
   try {
     const parsed: unknown = JSON.parse(readFileSync(filePath, 'utf8'));

@@ -34,16 +34,22 @@ function valueType(
   return KEYED.has(name ?? '') && args?.length === 2 ? args[1] : undefined;
 }
 
+function initializedValueType(
+  declared: TSESTree.VariableDeclarator['init'],
+): TSESTree.TypeNode | undefined {
+  const init = declared === null ? undefined : unwrapped(declared);
+  return init?.type === AST_NODE_TYPES.NewExpression &&
+    init.callee.type === AST_NODE_TYPES.Identifier
+    ? valueType(init.callee.name, init.typeArguments?.params)
+    : undefined;
+}
+
 function declaredValueType(declarator: TSESTree.VariableDeclarator): TSESTree.TypeNode | undefined {
   const annotation = declarator.id.typeAnnotation?.typeAnnotation;
   if (annotation?.type === AST_NODE_TYPES.TSTypeReference) {
     return valueType(typeName(annotation), annotation.typeArguments?.params);
   }
-  const init = declarator.init === null ? undefined : unwrapped(declarator.init);
-  return init?.type === AST_NODE_TYPES.NewExpression &&
-    init.callee.type === AST_NODE_TYPES.Identifier
-    ? valueType(init.callee.name, init.typeArguments?.params)
-    : undefined;
+  return initializedValueType(declarator.init);
 }
 
 export function collectionValuedTarget(

@@ -49,6 +49,7 @@ describe('spotbugsEnginePlan', () => {
         path.join(root, `src/main/java/p/${name}.java`),
       ),
       classpath: ['/build/other/classes'],
+      classes: [module.outputDirectory],
       processorPath: ['/lib/a.jar'],
       javaHome: '/jdk',
     });
@@ -95,17 +96,18 @@ describe('spotbugsEnginePlan', () => {
         path.join(root, `src/main/java/p/${name}.java`),
       ),
       classpath: [],
+      classes: [module.outputDirectory],
       processorPath: [],
       javaHome: '/jdk',
       ...fields,
     });
 
     expect(declared('org.projectlombok:lombok:1.18.36')).toStrictEqual(
-      planned({ processors: 'lombok' }),
+      planned({ processors: 'lombok', lombokVersion: '1.18.36' }),
     );
     expect(
-      declared('org.projectlombok:lombok:1.18.36', 'org.mapstruct:mapstruct-processor:1.6.3'),
-    ).toStrictEqual(planned({ processors: 'lombok' }));
+      declared('org.projectlombok:lombok:1.18.30', 'org.mapstruct:mapstruct-processor:1.6.3'),
+    ).toStrictEqual(planned({ processors: 'lombok', lombokVersion: '1.18.30' }));
     expect(declared('com.google.auto.service:auto-service:1.1.1')).toStrictEqual(
       planned({ processors: 'none' }),
     );
@@ -125,6 +127,7 @@ describe('spotbugsEnginePlan', () => {
         path.join(root, `src/main/java/p/${name}.java`),
       ),
       classpath: [],
+      classes: [module.outputDirectory],
       processorPath: [],
       javaHome: '/jdk',
     });

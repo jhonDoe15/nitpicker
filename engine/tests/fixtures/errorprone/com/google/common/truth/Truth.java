@@ -7,7 +7,23 @@ public final class Truth {
     return null;
   }
 
+  public static ThrowableSubject assertThat(Throwable actual) {
+    return null;
+  }
+
   public static MapSubject assertThat(Map<?, ?> actual) {
+    return null;
+  }
+
+  public static FloatSubject assertThat(Float actual) {
+    return null;
+  }
+
+  public static DoubleSubject assertThat(Double actual) {
+    return null;
+  }
+
+  public static StandardSubjectBuilder assertWithMessage(String messageToPrepend) {
     return null;
   }
 

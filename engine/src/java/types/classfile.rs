@@ -1,4 +1,5 @@
 //! A minimal class-file reader: name, supertypes, fields and method descriptors. Nothing else is read.
+use super::annotation_values::{Element, KEPT, Kept, modified_utf8};
 use super::model::{ClassInfo, Detail, Field, Hidden, Method, OBJECT, Type, flag};
 use super::typemarks::{self, Mark};
 
@@ -55,6 +56,8 @@ struct Signature<'a> {
     at: usize,
     /// The first bound of each type parameter read last, type arguments kept.
     written_bounds: Vec<Type>,
+    /// Bounded wildcards keep their kind, for the supertypes kept in `ClassInfo::bounded_supers`.
+    bounded: bool,
 }
 
 impl<'a> Signature<'a> {
@@ -79,9 +82,10 @@ impl<'a> Signature<'a> {
                     self.at += 1;
                     arguments.push(Type::Wildcard);
                 }
-                b'+' | b'-' => {
+                tag @ (b'+' | b'-') => {
                     self.at += 1;
-                    arguments.push(self.kind()?);
+                    let bound = self.kind()?;
+                    arguments.push(if self.bounded { Type::Bounded(tag == b'-', Box::new(bound)) } else { bound });
                 }
                 _ => arguments.push(self.kind()?),
             }
@@ -206,6 +210,8 @@ struct Attributes<'a> {
     held: Vec<u16>,
     /// Constant names listed by `@IncompatibleModifiers`.
     incompatible: Vec<&'a [u8]>,
+    /// Constant names listed by `@RequiredModifiers`: those of `value`, then those of `modifier`.
+    required: [Vec<&'a [u8]>; 2],
     /// Positions of the type parameters with `@ImmutableTypeParameter`.
     strict: Vec<u8>,
     annotations: Vec<&'a [u8]>,
@@ -224,11 +230,19 @@ struct Attributes<'a> {
     type_marks: Vec<Mark>,
     /// `@org.mockito.Mock` without an explicit `answer`.
     mock: bool,
+    /// The annotations of `annotation_values::KEPT`, with their element values.
+    kept: Vec<Kept>,
 }
 
 fn starter(descriptor: &[u8]) -> bool {
     let named = descriptor.strip_prefix(b"L").and_then(|rest| rest.strip_suffix(b";"));
     named.is_some_and(|named| super::model::STARTERS.iter().any(|known| known.len() == named.len() && known.bytes().zip(named).all(|(a, b)| a == *b || a == b'.' && *b == b'/')))
+}
+
+/// Whether an annotation descriptor names one of `annotation_values::KEPT`.
+fn kept_kind(descriptor: &[u8]) -> bool {
+    let named = descriptor.strip_prefix(b"L").and_then(|rest| rest.strip_suffix(b";"));
+    named.is_some_and(|named| KEPT.iter().any(|known| known.len() == named.len() && known.bytes().zip(named).all(|(a, b)| a == *b || a == b'.' && *b == b'/')))
 }
 
 fn skip_element(reader: &mut Reader) -> Option<()> {
@@ -243,6 +257,47 @@ fn skip_element(reader: &mut Reader) -> Option<()> {
         }
         _ => reader.skip(2),
     }
+}
+
+/// Reads one element value whole.
+fn element_value<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<Element> {
+    let text = |index: u16| utf8(index).and_then(modified_utf8);
+    Some(match reader.u1()? {
+        b's' => text(reader.u2()?).map_or(Element::Other, Element::Text),
+        b'c' => utf8(reader.u2()?).and_then(annotation_name).map_or(Element::Other, Element::Class),
+        b'e' => {
+            let kind = utf8(reader.u2()?).and_then(annotation_name);
+            let name = text(reader.u2()?);
+            match (kind, name) {
+                (Some(kind), Some(name)) => Element::Enum(kind, name),
+                _ => Element::Other,
+            }
+        }
+        b'[' => {
+            let mut values = Vec::new();
+            for _ in 0..reader.u2()? {
+                values.push(element_value(reader, utf8)?);
+            }
+            Element::Array(values)
+        }
+        b'@' => kept_annotation(reader, utf8).map_or(Element::Other, |kept| Element::Annotation(Box::new(kept))),
+        _ => {
+            reader.skip(2)?;
+            Element::Other
+        }
+    })
+}
+
+/// Reads one annotation with its element values.
+fn kept_annotation<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<Kept> {
+    let name = utf8(reader.u2()?).and_then(annotation_name);
+    let mut elements = Vec::new();
+    for _ in 0..reader.u2()? {
+        let key = utf8(reader.u2()?).and_then(modified_utf8);
+        let value = element_value(reader, utf8)?;
+        elements.extend(key.map(|key| (key, value)));
+    }
+    name.map(|name| Kept { name, elements })
 }
 
 /// Reads one element value and adds the constant names of the enum values in it.
@@ -418,6 +473,16 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                         enum_names(reader, utf8, &mut found.incompatible)?;
                     }
                 }
+                if kind == b"Lcom/google/errorprone/annotations/RequiredModifiers;" {
+                    reader.at = begin + 2;
+                    for _ in 0..reader.u2()? {
+                        match utf8(reader.u2()?) {
+                            Some(b"value") => enum_names(reader, utf8, &mut found.required[0])?,
+                            Some(b"modifier") => enum_names(reader, utf8, &mut found.required[1])?,
+                            _ => skip_element(reader)?,
+                        }
+                    }
+                }
                 if annotation_name(kind).is_some_and(|name| super::guards::GUARDED_BY.contains(&name.as_str())) {
                     reader.at = begin + 2;
                     for _ in 0..reader.u2()? {
@@ -448,6 +513,10 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                         skip_element(reader)?;
                     }
                     found.mock = !answered;
+                }
+                if kept_kind(kind) {
+                    reader.at = begin;
+                    found.kept.extend(kept_annotation(reader, utf8));
                 }
                 if kind == b"Lcom/google/errorprone/annotations/DoNotMock;" {
                     found.do_not_mock = Some(text);
@@ -546,7 +615,7 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                 reader.skip(2)?;
                 let descriptor = utf8(reader.u2()?)?;
                 let text = attributes(reader, utf8)?.signature.unwrap_or(descriptor);
-                listed.push(Signature { text, at: 0, written_bounds: Vec::new() }.kind()?);
+                listed.push(Signature { text, at: 0, written_bounds: Vec::new(), bounded: false }.kind()?);
             }
             found.components = Some(listed);
         }
@@ -711,7 +780,7 @@ fn mark_method(method: &mut Method, marks: &[Mark], (descriptor, written): (&[u8
 fn drop_enclosing_instance(method: &mut Method, signature: Option<&[u8]>) {
     let count = method.parameters.len();
     method.parameters.remove(0);
-    let generic = signature.and_then(|text| Signature { text, at: 0, written_bounds: Vec::new() }.method()).filter(|(_, listed, _)| listed.len() + 1 == count);
+    let generic = signature.and_then(|text| Signature { text, at: 0, written_bounds: Vec::new(), bounded: false }.method()).filter(|(_, listed, _)| listed.len() + 1 == count);
     match generic {
         Some((type_parameters, listed, _)) => {
             method.generic_parameters = listed;
@@ -814,7 +883,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == 0 {
             let fixed = constant.filter(|_| flags & ACC_STATIC != 0).map(|_| Vec::new());
             let constant = constant.and_then(|index| match pool.get(index as usize)? {
-                Constant::Text(text) => Some(String::from_utf8_lossy(utf8(*text)?).into_owned()),
+                Constant::Text(text) => modified_utf8(utf8(*text)?),
                 Constant::Int(value) if descriptor == b"Z" => Some((*value != 0).to_string()),
                 _ => None,
             });
@@ -823,8 +892,8 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 Constant::Wide(value) => Some(*value),
                 _ => None,
             });
-            let kind = Signature { text: descriptor, at: 0, written_bounds: Vec::new() }.kind()?;
-            let generic = signature.and_then(|text| Signature { text, at: 0, written_bounds: Vec::new() }.kind()).unwrap_or_else(|| kind.clone());
+            let kind = Signature { text: descriptor, at: 0, written_bounds: Vec::new(), bounded: false }.kind()?;
+            let generic = signature.and_then(|text| Signature { text, at: 0, written_bounds: Vec::new(), bounded: false }.kind()).unwrap_or_else(|| kind.clone());
             field_marks.push((fields.len(), marks, descriptor));
             let mut annotations: Vec<String> = found.annotations.iter().filter_map(|kind| annotation_name(kind)).collect();
             if found.optional.is_some_and(|index| matches!(pool.get(index as usize), Some(Constant::Int(value)) if *value != 0)) {
@@ -854,11 +923,11 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
             hidden.push(Hidden { name: String::from_utf8_lossy(method_name).into_owned(), descriptor: String::from_utf8_lossy(descriptor).into_owned(), is_static: flags & ACC_STATIC != 0, is_method: true, before: methods.len() });
         }
         if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == 0 && method_name != b"<clinit>" {
-            let (_, parameters, returns) = Signature { text: descriptor, at: 0, written_bounds: Vec::new() }.method()?;
+            let (_, parameters, returns) = Signature { text: descriptor, at: 0, written_bounds: Vec::new(), bounded: false }.method()?;
             let mut throws: Vec<Type> = found.exceptions.iter().filter_map(|class| class_name(*class)).map(|name| Type::class(&name)).collect();
             let generic = signature
                 .and_then(|text| {
-                    let mut reader = Signature { text, at: 0, written_bounds: Vec::new() };
+                    let mut reader = Signature { text, at: 0, written_bounds: Vec::new(), bounded: false };
                     let read = reader.method()?;
                     let listed = reader.throws();
                     if listed.len() == throws.len() {
@@ -870,7 +939,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
             let (type_parameters, generic_parameters, generic_returns) =
                 generic.unwrap_or_else(|| (Vec::new(), parameters.clone(), returns.clone()));
             let parameters_count = parameters.len();
-            let written = signature.filter(|text| Signature { text, at: 0, written_bounds: Vec::new() }.method().is_some_and(|(_, listed, _)| listed.len() == parameters_count));
+            let written = signature.filter(|text| Signature { text, at: 0, written_bounds: Vec::new(), bounded: false }.method().is_some_and(|(_, listed, _)| listed.len() == parameters_count));
             if method_name == b"<init>" {
                 constructors.push((methods.len(), descriptor, signature));
             }
@@ -902,6 +971,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                         .collect(),
                     marked: String::new(),
                     nullable_types: Vec::new(),
+                    kept: std::mem::take(&mut found.kept),
                 },
                 shown: show_parameters(written.unwrap_or(descriptor), flags & ACC_VARARGS != 0).unwrap_or_default(),
                 nullable_parameters: {
@@ -961,12 +1031,20 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     let mut type_parameters = Vec::new();
     let mut written_bounds = Vec::new();
     let mut generic_supers = Vec::new();
+    let mut bounded_supers = Vec::new();
     if let Some(text) = signature {
-        let mut signature = Signature { text, at: 0, written_bounds: Vec::new() };
+        let mut signature = Signature { text, at: 0, written_bounds: Vec::new(), bounded: false };
         type_parameters = signature.type_parameters().unwrap_or_default();
         written_bounds = std::mem::take(&mut signature.written_bounds);
+        let supers = signature.at;
         while let Some(kind) = signature.kind() {
             generic_supers.push(kind);
+        }
+        if text[supers..].iter().any(|byte| matches!(byte, b'+' | b'-')) {
+            let mut again = Signature { text, at: supers, written_bounds: Vec::new(), bounded: true };
+            while let Some(kind) = again.kind() {
+                bounded_supers.push(kind);
+            }
         }
     } else {
         generic_supers.extend(superclass.iter().chain(&interfaces).map(|name| Type::class(name)));
@@ -978,6 +1056,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         superclass,
         interfaces,
         generic_supers,
+        bounded_supers,
         type_parameters,
         written_bounds,
         fields,
@@ -993,6 +1072,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         setter_like,
         null_nicknames,
         incompatible: found.incompatible.iter().map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
+        required: found.required.iter().flatten().map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
         class_annotations: found.annotations.iter().filter_map(|kind| annotation_name(kind)).collect(),
         outer_instance: Some(own_inner),
         hidden,
@@ -1002,11 +1082,11 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
 
 /// The erased type a field descriptor stands for.
 pub fn descriptor_type(descriptor: &str) -> Option<Type> {
-    Signature { text: descriptor.as_bytes(), at: 0, written_bounds: Vec::new() }.kind()
+    Signature { text: descriptor.as_bytes(), at: 0, written_bounds: Vec::new(), bounded: false }.kind()
 }
 
 /// The parameter types and the return type a method descriptor stands for.
 pub fn descriptor_method(descriptor: &str) -> Option<(Vec<Type>, Type)> {
-    let (_, parameters, returns) = Signature { text: descriptor.as_bytes(), at: 0, written_bounds: Vec::new() }.method()?;
+    let (_, parameters, returns) = Signature { text: descriptor.as_bytes(), at: 0, written_bounds: Vec::new(), bounded: false }.method()?;
     Some((parameters, returns))
 }

@@ -26,7 +26,11 @@ import { errorProneJava, isNoFittingJdk, skipWithoutJdk } from './maven-jdk.mts'
 import { toolHeapFlags, toolSlots } from '../parallel/slots/tool-slots.mts';
 import { analyzesGenerated, generatedRoots } from '../generated/generated-roots.mts';
 import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mts';
-import { errorProneOnEngine, javaHomeOf } from '../../builds/errorprone/errorprone-engine.mts';
+import {
+  argumentFilesToCompile,
+  errorProneOnEngine,
+  javaHomeOf,
+} from '../../builds/errorprone/errorprone-engine.mts';
 import { ENGINE_REPORT } from '../../builds/errorprone/engine-diagnostics.mts';
 
 type ErrorProneContext = {
@@ -43,6 +47,7 @@ type ArgumentSet = CompileSet & {
   readonly processors: readonly string[];
   readonly flags: readonly string[];
   readonly skipRoots: readonly string[] | undefined;
+  readonly processorOutput: string;
 };
 
 const ERROR_PRONE = 'errorprone';
@@ -131,7 +136,7 @@ function lookupLines({ classpath: sourcePath, compiled = [], own, modular }: Com
 }
 
 function writeArguments(work: string, set: ArgumentSet): string[] {
-  const { name, sources, own, processors, compiler, test, flags, skipRoots } = set;
+  const { name, sources, own, processors, compiler, test, flags, skipRoots, processorOutput } = set;
   if (sources.length === 0) {
     return [];
   }
@@ -152,6 +157,7 @@ function writeArguments(work: string, set: ArgumentSet): string[] {
     ...(skipRoots === undefined
       ? []
       : ['--skip-generated', ...skipRoots.map((root) => `--generated-root=${root}`)]),
+    `--processor-output=${processorOutput}`,
     ...(test ? ['--test-only'] : []),
     '--sources',
     ...sources,
@@ -180,45 +186,50 @@ export function runnerFlags(
     : pool;
 }
 
-function analyze(
-  {
-    module,
-    reportDir,
-    tools,
-    classpaths,
-    configs,
-    spawn,
-    timeoutMs,
-    environment,
-  }: ErrorProneContext,
+function argumentFilesOf(
+  { module, reportDir, tools, classpaths, configs }: ErrorProneContext,
+  compiler: CompilerSettings,
   modular: Modular,
-): void {
-  const report = path.join(reportDir, 'errorprone.json');
+): string[] {
   const work = path.join(reportDir, ERROR_PRONE);
   rmSync(work, { recursive: true, force: true });
-  rmSync(path.join(reportDir, ENGINE_REPORT), { force: true });
-  const compiler = compilerOf(module.compiler);
   const declaredFlags = textsOf(fieldOf(fieldOf(configs, ERROR_PRONE), 'arguments'));
   const files = { main: javaFiles(module.sourceRoots), test: javaFiles(module.testSourceRoots) };
-  const argumentFiles = compileSets({ module, classpaths, files }, compiler, modular).flatMap(
-    (set) =>
-      writeArguments(work, {
-        ...set,
-        processors: [
-          ...resolvedTool(tools, ERROR_PRONE),
-          ...processorPath(set.classpath, compiler, tools),
-        ],
-        flags: declaredFlags,
-        skipRoots: analyzesGenerated(configs) ? undefined : generatedRoots(module, set.roots),
-      }),
+  return compileSets({ module, classpaths, files }, compiler, modular).flatMap((set) =>
+    writeArguments(work, {
+      ...set,
+      processors: [
+        ...resolvedTool(tools, ERROR_PRONE),
+        ...processorPath(set.classpath, compiler, tools),
+      ],
+      flags: declaredFlags,
+      skipRoots: analyzesGenerated(configs) ? undefined : generatedRoots(module, set.roots),
+      processorOutput: path.join(
+        path.dirname(module.outputDirectory),
+        set.test ? 'generated-test-sources/test-annotations' : 'generated-sources/annotations',
+      ),
+    }),
   );
+}
+
+function analyze(context: ErrorProneContext, modular: Modular): void {
+  const { module, reportDir, spawn, timeoutMs, environment } = context;
+  const report = path.join(reportDir, 'errorprone.json');
+  const compiler = compilerOf(module.compiler);
+  const argumentFiles = argumentFilesOf(context, compiler, modular);
+  rmSync(path.join(reportDir, ENGINE_REPORT), { force: true });
   if (argumentFiles.length === 0) {
     writeFileSync(report, '[]\n');
     return;
   }
   const java = errorProneJava({ preview: usesPreview(compiler), spawn, environment });
   errorProneOnEngine({ reportDir, argumentFiles, javaHome: javaHomeOf(java) }, environment);
-  runReport({ module, spawn, timeoutMs }, java, { report, argumentFiles });
+  const compiled = argumentFilesToCompile(argumentFiles);
+  if (compiled.length === 0) {
+    writeFileSync(report, '[]\n');
+    return;
+  }
+  runReport({ module, spawn, timeoutMs }, java, { report, argumentFiles: compiled });
 }
 
 function runReport(

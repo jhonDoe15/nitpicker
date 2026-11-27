@@ -60,6 +60,26 @@ tester.run('no-unchecked-positional-element', rule, {
     script(
       'const f = (tree) => { const types = tree.children.map(({ children: [type] }) => type); return types.map((type) => type); };',
     ),
+    script('const f = ({ children: [first] }) => first?.();'),
+    script('const f = (tree) => { const [first] = load().items; return first.length; };'),
+    script('const f = ({ ...rest }) => rest;'),
+    script('const f = (tree) => { const [a, b] = tree[key]; return keyOf(a, b); };'),
+    script('const f = (tree) => { use(...tree.children.map(({ children: [type] }) => type)); };'),
+    script(
+      'const f = (tree) => { const types = tree.children.map(({ children: [type] }) => type); return types.length; };',
+    ),
+    script(
+      'const f = (tree) => { const types = tree.children.map(({ children: [type] }) => type); return use(types.length); };',
+    ),
+    script(
+      'const f = (tree) => { const types = tree.children.map(({ children: [type] }) => type); return types.reduce((type) => keyOf(type)); };',
+    ),
+    script(
+      'const f = (tree) => { const types = tree.children.map(({ children: [type] }) => type); return types.map(({ name }) => keyOf(name)); };',
+    ),
+    script(
+      'const f = (tree) => tree.children.map(({ children: [type] }) => { const copy = type; return copy; });',
+    ),
   ],
   invalid: [
     invalid('const f = (tree) => { const [first] = tree.items; return first.length; };'),
@@ -85,6 +105,7 @@ tester.run('no-unchecked-positional-element', rule, {
     invalid('const f = (tree) => tree.children.map(({ children: [type] }) => keyOf(type));'),
     invalid('const f = (tree) => tree.children.map(([, second]) => keyOf(second));'),
     invalid('const f = (tree) => tree.nodes.children.forEach(([, second]) => second.visit());'),
+    invalid('const f = (tree, { skip }) => { const [first] = tree.items; return first.length; };'),
     {
       ...script('const f = ({ children: [first] }) => keyOf(first);', '/repo/lib/signature.cjs'),
       errors: [{ messageId: 'uncheckedElement' as const }],

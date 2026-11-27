@@ -1,0 +1,1 @@
+it('x', () => { orders.forEach(register); expect(registry.size).toBe(2); });

@@ -18,6 +18,7 @@ import { PAGE_IDS as UNTYPED_PAGE_IDS } from '../shared/reference/pages.mts';
 import { REFERENCE_DATA_DIRECTORY as UNTYPED_DATA_DIRECTORY } from '../shared/reference/store.mts';
 import { PACKAGE_ROOT as untypedPackageRoot } from './tooling/tool-resolution.mts';
 
+const GIT_LISTING_BYTES = 256 * 1024 * 1024;
 const root: string = untypedPackageRoot;
 const PAGE_IDS: readonly string[] = UNTYPED_PAGE_IDS;
 const REFERENCE_DATA_DIRECTORY: string = UNTYPED_DATA_DIRECTORY;
@@ -81,6 +82,7 @@ function checkoutCopy(): string {
       cwd: root,
       encoding: 'utf8',
       env: HERMETIC_GIT,
+      maxBuffer: GIT_LISTING_BYTES,
       timeout: 30_000,
     },
   )

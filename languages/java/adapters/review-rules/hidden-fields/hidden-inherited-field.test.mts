@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PROJECT, useTempProjects } from '../test-support/temp-projects.mts';
+import { parseSource } from '../max-value-sums/source/source-file.mts';
+import { kindAt, lineAt, openerAt, partnerAt, textAt } from './own-regions.mts';
 import {
   HIDDEN_INHERITED_FIELD_RULE,
   readHiddenInheritedFieldFindings,
@@ -61,6 +63,7 @@ const LEFT_OUT: { title: string; files: Record<string, string> }[] = [
   @Tag(label = "x")
   String name(String label) { return label; }
   int other(Child c) { return c.size + size(); }
+  boolean over(int by, int limit) { return by > limit; }
 }`,
     },
   },
@@ -280,5 +283,49 @@ class Child<V extends Comparable<V>> extends a.Base<V> {
     expect(readHiddenInheritedFieldFindings(root, { projects: [PROJECT], kotlin: true })).toEqual(
       [],
     );
+  });
+
+  it('reports array, varargs and grouped lambda parameters, and skips nested and anonymous bodies', () => {
+    const found = lines({
+      Base: BASE,
+      Child: `class Child extends Base {
+  int total() { return size + count + label.length(); }
+  int first(int[] size) { return size[0]; }
+  String joined(String... label) { return label[0]; }
+  void each(java.util.Map<String, Integer> m) { m.forEach((label, count) -> System.out.println(label + count)); }
+  Object as() { int[] made = new int[3]; return (Base) (Object) this; }
+  Runnable task() { return new Runnable() { public void run() { int size = 1; System.out.println(size); } }; }
+  record Pair(int size, int count) {}
+  ;
+}`,
+    });
+    expect(found).toEqual([
+      ['src/main/java/shop/Child.java', 4, 'size'],
+      ['src/main/java/shop/Child.java', 5, 'label'],
+      ['src/main/java/shop/Child.java', 6, 'label'],
+      ['src/main/java/shop/Child.java', 6, 'count'],
+    ]);
+  });
+
+  it('passes over a nested type without a body', () => {
+    const found = lines({
+      Base: BASE,
+      Child: `class Child extends Base {
+  int grow(int by) { int size = by; return size + this.size; }
+  class Broken;
+}`,
+    });
+    expect(found).toEqual([['src/main/java/shop/Child.java', 3, 'size']]);
+  });
+
+  it('reads nothing past either end of the tokens', () => {
+    const source = parseSource('class A {}', { file: 'A.java', kotlin: false });
+    const outside = [-1, source.tokens.length];
+
+    expect(outside.map((index) => textAt(source, index))).toEqual(['', '']);
+    expect(outside.map((index) => kindAt(source, index))).toEqual(['', '']);
+    expect(outside.map((index) => lineAt(source, index, 9))).toEqual([9, 9]);
+    expect(outside.map((index) => partnerAt(source, index))).toEqual([-1, -1]);
+    expect(outside.map((index) => openerAt(source, index))).toEqual([-1, -1]);
   });
 });

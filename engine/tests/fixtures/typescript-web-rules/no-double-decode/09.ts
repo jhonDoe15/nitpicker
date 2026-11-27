@@ -1,0 +1,1 @@
+const value = decodeURIComponent(router.asPath);

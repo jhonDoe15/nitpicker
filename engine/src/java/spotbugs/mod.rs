@@ -1,29 +1,51 @@
 //! SpotBugs bug patterns rebuilt for the engine from the documented meaning of each pattern and from what
 //! SpotBugs 4.9.8 reports on test code: same pattern name, line and message, read from source instead of class files.
+mod assign;
 mod attributes;
+mod calendars;
 mod calls;
+mod casts;
+mod circuit;
+mod catches;
 mod classes;
+mod concurrent;
+mod crypto;
+mod compare;
 mod constructors;
+mod cookies;
 mod dead;
+mod dumb;
 mod equality;
 mod expose;
 mod fields;
 mod handlers;
 mod held;
+mod idioms;
+mod floats;
 mod flow;
 mod folds;
 mod known;
+mod locals;
 mod lombok;
 mod methods;
 mod mutable;
 mod names;
+mod naming;
 mod nulls;
 mod order;
+mod sequence;
+mod resources;
+mod returns;
 mod serial;
 pub mod place;
 mod observed;
 mod statements;
 mod stores;
+mod tail;
+mod taint;
+mod threads;
+mod tls;
+mod values;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver, TYPE_DECLARATIONS};
@@ -44,8 +66,7 @@ pub struct Context<'a> {
     pub classes: HashMap<String, Node<'a>>,
     /// Findings that hang on what the whole run stores in a field.
     waiting: RefCell<Vec<known::Waiting>>,
-    /// Every value the file stores in a field, worked out once.
-    pub stores: RefCell<Option<std::rc::Rc<observed::Stores<'a>>>>,
+    pub memo: observed::Memo<'a>,
     /// Classes whose `Class` object the project's code names anywhere.
     pub literals: &'a HashSet<String>,
     pub volatiles: &'a HashSet<(String, String)>,
@@ -55,19 +76,17 @@ pub struct Context<'a> {
     out: RefCell<Vec<Finding>>,
     /// The names the compiler makes up for lambdas and anonymous classes, worked out once.
     compiled: std::cell::OnceCell<crate::java::javac::Names<'a>>,
-    /// How many stores the file makes into each field, worked out once.
-    pub store_counts: std::cell::OnceCell<HashMap<(String, String), usize>>,
+    /// The values the file stores into each field, `None` for a value no one can follow, worked out once.
+    pub field_stores: std::cell::OnceCell<HashMap<(String, String), Vec<Option<Node<'a>>>>>,
     /// SE_BAD_FIELD findings that wait for the classes the whole run knows.
     pub serial: RefCell<Vec<serial::Pending>>,
 }
 
 impl<'a> Context<'a> {
-    /// The context of a file, with its class, enum, record and interface declarations and the bodies of its
-    /// anonymous classes.
+    /// The context of a file, with its type declarations and the bodies of its anonymous classes.
     pub fn of(resolver: &'a Resolver<'a>, project: &'a JavaProject, elsewhere: &'a nulls::Elsewhere, selected: Option<Vec<String>>) -> (Self, Vec<Node<'a>>) {
         let file = resolver.file;
-        let mut line_starts = vec![0];
-        line_starts.extend(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1));
+        let line_starts = std::iter::once(0).chain(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1)).collect();
         let mut declared = Vec::new();
         walk(file.tree.root_node(), |node| {
             let unnamed = matches!(node.kind(), "object_creation_expression" | "enum_constant") && children(node).iter().any(|part| part.kind() == "class_body");
@@ -76,7 +95,6 @@ impl<'a> Context<'a> {
             }
         });
         let classes = declared.iter().filter_map(|node| Some((resolver.scope.names.get(&node.id())?.clone(), *node))).collect();
-        let out = RefCell::new(Vec::new());
         let context = Context {
             resolver,
             project,
@@ -84,15 +102,15 @@ impl<'a> Context<'a> {
             file,
             classes,
             waiting: RefCell::new(Vec::new()),
-            stores: RefCell::new(None),
+            memo: observed::Memo::default(),
             literals: &project.literals,
             volatiles: &project.volatiles,
             numbers: &project.numbers,
             line_starts,
             selected,
-            out,
+            out: RefCell::new(Vec::new()),
             compiled: std::cell::OnceCell::new(),
-            store_counts: std::cell::OnceCell::new(),
+            field_stores: std::cell::OnceCell::new(),
             serial: RefCell::new(Vec::new()),
         };
         (context, declared)
@@ -134,6 +152,10 @@ impl<'a> Context<'a> {
     /// A finding as `report_listed` makes it, kept back for the caller to decide its priority later.
     pub fn finding_listed(&self, pattern: &'static str, at: Node, line: usize, message: String, place: String, arguments: Vec<String>) -> Option<Finding> {
         self.finding(pattern, at, line, message).map(|finding| Finding { symbol: Some(place), arguments: Some(arguments), ..finding })
+    }
+    /// Adds a finding made with `finding_listed`.
+    pub fn push(&self, finding: Finding) {
+        self.out.borrow_mut().push(finding);
     }
     fn finding(&self, pattern: &'static str, at: Node, line: usize, message: String) -> Option<Finding> {
         if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == pattern)) || self.suppressed(pattern, at) {
@@ -218,6 +240,18 @@ const DETECTORS: &[Detector] = &[
     methods::method_patterns as Detector,
     attributes::should_be_static as Detector,
     dead::dead_stores as Detector,
+    locals::locals as Detector,
+    casts::casts as Detector,
+    threads::threads as Detector,
+    concurrent::concurrent as Detector,
+    idioms::idioms as Detector,
+    naming::naming as Detector,
+    sequence::sequence as Detector,
+    dumb::dumb as Detector,
+    tail::tail as Detector,
+    assign::assignments as Detector,
+    calendars::calendars as Detector,
+    circuit::circuits as Detector,
 ];
 
 #[derive(Default)]
@@ -226,6 +260,10 @@ pub struct SpotBugs {
     elsewhere: nulls::Elsewhere,
     serial: serial::Serial,
     attributes: attributes::Attributes,
+    taint: taint::Derived,
+    effects: returns::Effects,
+    floats: floats::Floats,
+    crypto: crypto::summary::Fields,
 }
 
 impl FileRule for SpotBugs {
@@ -248,7 +286,19 @@ impl FileRule for SpotBugs {
                 detector(&context, *node);
             }
         }
+        compare::ref_comparisons(&context);
+        if context.wants(returns::PATTERNS) {
+            returns::returns(&context, &self.effects);
+        }
+        catches::catches(&context);
+        resources::resources(&context);
+        values::values(&context, &declared);
         nulls::null_dereference(&context, &declared);
+        taint::injections(&context, &declared, &self.taint);
+        floats::floats(&context, &declared, &self.floats);
+        crypto::crypto(&context, &declared, &self.crypto);
+        tls::tls(&context, &declared);
+        cookies::cookies(&context, &declared);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
         if context.wants(attributes::PATTERNS) {
             let names = self.attributes.names(&project.index, &project.sources);
@@ -263,7 +313,11 @@ impl FileRule for SpotBugs {
         if let Some(project) = project.downcast_ref::<JavaProject>() {
             self.known.settle(&project.index, out);
             self.serial.settle(project, out);
-            self.attributes.settle(&project.index, || self.known.visits(&project.index), out);
+            self.attributes.settle(&project.index, &project.literals, || self.known.visits(&project.index), out);
+            self.taint.settle(project, &self.elsewhere, out);
+            self.effects.settle(project, out);
+            self.floats.settle(out);
+            self.crypto.settle(out);
         }
     }
 }

@@ -55,6 +55,23 @@ impl Fix {
     pub fn changes_imports(&self) -> bool {
         self.imports
     }
+    /// The whole text with the fix applied; `None` when edits overlap or fall outside the text.
+    pub fn applied(&self, text: &str) -> Option<String> {
+        let mut edits: Vec<&(usize, usize, String)> = self.edits.iter().collect();
+        edits.sort_by_key(|edit| (edit.0, edit.1));
+        let mut result = String::new();
+        let mut at = 0;
+        for (start, end, replacement) in edits {
+            if *start < at || *end > text.len() || !text.is_char_boundary(*start) || !text.is_char_boundary(*end) {
+                return None;
+            }
+            result.push_str(&text[at..*start]);
+            result.push_str(replacement);
+            at = *end;
+        }
+        result.push_str(&text[at..]);
+        Some(result)
+    }
     /// What Error Prone shows for the fix: the trimmed first changed line, `None` when the fix changes no text.
     pub fn shown(&self, text: &str) -> Option<String> {
         let mut edits: Vec<&(usize, usize, String)> = self.edits.iter().collect();

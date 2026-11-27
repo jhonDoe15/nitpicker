@@ -332,6 +332,36 @@ fn constructor_fix(context: &Context, unused: &[&Candidate]) -> Option<Fix> {
     Some(fix)
 }
 
+/// Whether a call's erased parameters stand for a method's. A constructor of an inner class takes the enclosing
+/// instance first.
+fn called(declared: &[Type], inner: bool, given: &[Type]) -> bool {
+    let same = |at: usize| given[at..].iter().zip(declared).all(|(left, right)| left.erased().name() == right.erased().name());
+    match given.len().checked_sub(declared.len()) {
+        Some(0) => same(0),
+        Some(1) => inner && same(1),
+        _ => false,
+    }
+}
+
+/// Calls in the code Lombok wrote into the file's classes: Error Prone sees them as uses.
+fn written_calls(context: &Context, found: &mut [Candidate]) {
+    let mut classes: Vec<&String> = context.resolver.scope.names.values().collect();
+    classes.sort();
+    classes.dedup();
+    for class in classes {
+        let Some(compiled) = super::compiled::class(context, class) else { continue };
+        for call in super::compiled::written_methods(context, compiled).into_iter().flat_map(|method| &method.calls) {
+            let Some((parameters, _)) = crate::java::types::classfile::descriptor_method(&call.descriptor) else { continue };
+            let Some(owner) = context.project.binaries.get(&call.owner) else { continue };
+            let outer = context.project.compiled.get(&call.owner).and_then(|class| class.nested).is_some_and(|access| access & crate::java::types::compiled::ACC_STATIC == 0);
+            let inner = call.name == "<init>" && outer;
+            let declared = context.resolver.index.methods(owner, &call.name).into_iter().find(|(_, method)| called(&method.parameters, inner, &parameters));
+            let Some((declaring, method)) = declared else { continue };
+            mark(found, &declaring.name, &call.name, &method.parameters);
+        }
+    }
+}
+
 fn report(context: &Context, at: usize, message: &str, fixes: &[Fix]) {
     context.report_always(NAME, at, &format!("{message}{}", sentence(&context.file.text, fixes)));
 }
@@ -342,6 +372,7 @@ pub fn unused_method(context: &Context, root: Node) {
     }
     let Some(mut found) = candidates(context, root).filter(|found| !found.is_empty()) else { return };
     usages(context, root, &mut found);
+    written_calls(context, &mut found);
     let mut constructed: Vec<String> = Vec::new();
     for candidate in found.iter().filter(|candidate| !candidate.used) {
         let at = candidate.node.child_by_field_name("name").map_or(candidate.node.start_byte(), |name| name.start_byte());

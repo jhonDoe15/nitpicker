@@ -1,0 +1,1 @@
+async function send(init) { return axios.post(url, body, { headers: { "Content-Type": "application/json", ...init.headers } }); }

@@ -1,0 +1,1 @@
+import { NextResponse } from 'next/server'; export function GET() { try { run(); } catch { later(() => NextResponse.json({ error: "x" })); } }

@@ -5,6 +5,7 @@ import {
   stringValue,
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
+import { textOf } from '../../../../../../shared/values/readers.mts';
 import { nameOf } from '../typed/node-views.mts';
 import { outermostOf } from '../typed/syntax-views.mts';
 
@@ -41,9 +42,10 @@ function memberOf(identifier: TSESTree.Node): string | undefined {
 }
 
 function bindingMembers(context: SourceContext, id: TSESTree.Identifier): Members {
-  const references = (findVariable(context, id, id.name)?.references ?? []).filter(
-    (reference) => reference.identifier !== id,
-  );
+  const references = [findVariable(context, id, id.name)]
+    .filter((variable) => variable !== undefined)
+    .flatMap((variable) => variable.references)
+    .filter((reference) => reference.identifier !== id);
   const names = references.map((reference) => memberOf(reference.identifier));
   return names.every((name) => name !== undefined) ? new Set(names) : undefined;
 }
@@ -82,7 +84,7 @@ function importMembers(context: SourceContext, node: TSESTree.ImportDeclaration)
   );
   const sets = values.map((specifier) =>
     specifier.type === AST_NODE_TYPES.ImportSpecifier
-      ? new Set([nameOf(specifier.imported) ?? ''])
+      ? new Set([textOf(nameOf(specifier.imported))])
       : bindingMembers(context, specifier.local),
   );
   return sets.every((set) => set !== undefined)
@@ -90,21 +92,23 @@ function importMembers(context: SourceContext, node: TSESTree.ImportDeclaration)
     : undefined;
 }
 
-type Found = {
-  readonly node: TSESTree.Node;
-  readonly name: string | undefined;
-  readonly members: Members;
-};
-
 function report(
   context: Readonly<TSESLint.RuleContext<'wholePackage', []>>,
-  { node, name, members }: Found,
+  node: TSESTree.Node,
+  name: string | undefined,
+  members: () => Members,
 ): void {
-  const table = MEMBER_PACKAGES.get(name ?? '');
-  const [only] = members ?? [];
-  const replacement = members?.size === 1 && only !== undefined ? table?.get(only) : undefined;
-  if (replacement !== undefined && name !== undefined && only !== undefined) {
-    context.report({ node, messageId: 'wholePackage', data: { name, member: only, replacement } });
+  const table = MEMBER_PACKAGES.get(textOf(name));
+  if (table === undefined || name === undefined) {
+    return;
+  }
+  const found = members();
+  const candidates = found?.size === 1 ? [...found] : [];
+  for (const member of candidates) {
+    const replacement = table.get(member);
+    if (replacement !== undefined) {
+      context.report({ node, messageId: 'wholePackage', data: { name, member, replacement } });
+    }
   }
 }
 
@@ -125,29 +129,15 @@ export const rule: TSESLint.RuleModule<'wholePackage'> = {
     return {
       CallExpression(node) {
         if (isRequire(context, node.callee) && node.arguments.length === 1) {
-          const name = stringValue(node.arguments[0]);
-          report(context, {
-            node,
-            name,
-            members: MEMBER_PACKAGES.has(name ?? '') ? loadedMembers(context, node) : undefined,
-          });
+          report(context, node, stringValue(node.arguments[0]), () => loadedMembers(context, node));
         }
       },
       ImportExpression(node) {
-        const name = stringValue(node.source);
-        report(context, {
-          node,
-          name,
-          members: MEMBER_PACKAGES.has(name ?? '') ? loadedMembers(context, node) : undefined,
-        });
+        report(context, node, stringValue(node.source), () => loadedMembers(context, node));
       },
       ImportDeclaration(node) {
         const name = node.importKind === 'type' ? undefined : node.source.value;
-        report(context, {
-          node,
-          name,
-          members: MEMBER_PACKAGES.has(name ?? '') ? importMembers(context, node) : undefined,
-        });
+        report(context, node, name, () => importMembers(context, node));
       },
     };
   },

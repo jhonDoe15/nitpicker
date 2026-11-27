@@ -1,0 +1,1 @@
+if (path.join(root, "x") === file.fsPath) {}

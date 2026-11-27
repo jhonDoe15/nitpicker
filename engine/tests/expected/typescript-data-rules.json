@@ -1,0 +1,1649 @@
+[
+ [
+  "no-eager-relation/17.ts",
+  "nitpicker/no-eager-relation",
+  3,
+  44,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  3,
+  49
+ ],
+ [
+  "no-eager-relation/18.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  18,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  29
+ ],
+ [
+  "no-eager-relation/19.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  101,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  121
+ ],
+ [
+  "no-eager-relation/20.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  45,
+  "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  64
+ ],
+ [
+  "no-eager-relation/21.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  48,
+  "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  66
+ ],
+ [
+  "no-eager-relation/22.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  54,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  65
+ ],
+ [
+  "no-eager-relation/23.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  67,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  78
+ ],
+ [
+  "no-eager-relation/24.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  66,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  77
+ ],
+ [
+  "no-eager-relation/25.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  49,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  60
+ ],
+ [
+  "no-eager-relation/26.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  48,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  59
+ ],
+ [
+  "no-eager-relation/27.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  41,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  52
+ ],
+ [
+  "no-eager-relation/28.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  18,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  29
+ ],
+ [
+  "no-eager-relation/29.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  16,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  27
+ ],
+ [
+  "no-eager-relation/30.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  44,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  55
+ ],
+ [
+  "no-eager-relation/31.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  101,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  112
+ ],
+ [
+  "no-eager-relation/32.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  62,
+  "eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs.",
+  2,
+  73
+ ],
+ [
+  "no-eager-relation/33.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  44,
+  "eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs.",
+  2,
+  55
+ ],
+ [
+  "no-eager-relation/34.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  98,
+  "eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs.",
+  2,
+  109
+ ],
+ [
+  "no-eager-relation/35.ts",
+  "nitpicker/no-eager-relation",
+  3,
+  114,
+  "eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs.",
+  3,
+  125
+ ],
+ [
+  "no-eager-relation/36.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  105,
+  "eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs.",
+  2,
+  110
+ ],
+ [
+  "no-eager-relation/37.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  105,
+  "eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs.",
+  2,
+  110
+ ],
+ [
+  "no-eager-relation/38.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  45,
+  "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  64
+ ],
+ [
+  "no-eager-relation/39.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  45,
+  "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  89
+ ],
+ [
+  "no-eager-relation/40.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  49,
+  "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  68
+ ],
+ [
+  "no-eager-relation/41.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  34,
+  "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  53
+ ],
+ [
+  "no-eager-relation/42.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  24,
+  "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  43
+ ],
+ [
+  "no-eager-relation/43.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  32,
+  "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  51
+ ],
+ [
+  "no-many-to-many-cascade-remove/11.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  39,
+  "A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default).",
+  2,
+  67
+ ],
+ [
+  "no-many-to-many-cascade-remove/12.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  3,
+  39,
+  "A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default).",
+  3,
+  56
+ ],
+ [
+  "no-many-to-many-cascade-remove/13.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  47,
+  "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.",
+  2,
+  80
+ ],
+ [
+  "no-many-to-many-cascade-remove/14.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  41,
+  "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.",
+  2,
+  65
+ ],
+ [
+  "no-many-to-many-cascade-remove/15.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  41,
+  "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.",
+  2,
+  68
+ ],
+ [
+  "no-many-to-many-cascade-remove/16.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  39,
+  "A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default).",
+  2,
+  52
+ ],
+ [
+  "no-many-to-many-cascade-remove/17.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  55,
+  "A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default).",
+  2,
+  84
+ ],
+ [
+  "no-many-to-many-cascade-remove/18.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  39,
+  "A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default).",
+  2,
+  63
+ ],
+ [
+  "no-many-to-many-cascade-remove/19.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  92,
+  "A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default).",
+  2,
+  105
+ ],
+ [
+  "no-many-to-many-cascade-remove/20.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  47,
+  "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.",
+  2,
+  69
+ ],
+ [
+  "no-many-to-many-cascade-remove/21.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  48,
+  "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.",
+  2,
+  90
+ ],
+ [
+  "no-many-to-many-cascade-remove/22.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  47,
+  "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.",
+  2,
+  66
+ ],
+ [
+  "no-many-to-many-cascade-remove/23.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  88,
+  "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.",
+  2,
+  110
+ ],
+ [
+  "no-many-to-many-cascade-remove/24.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  95,
+  "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.",
+  2,
+  102
+ ],
+ [
+  "no-orm-query-logging/024.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  105
+ ],
+ [
+  "no-orm-query-logging/025.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  106
+ ],
+ [
+  "no-orm-query-logging/026.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  119
+ ],
+ [
+  "no-orm-query-logging/027.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  68,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  114
+ ],
+ [
+  "no-orm-query-logging/028.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  99
+ ],
+ [
+  "no-orm-query-logging/029.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  115
+ ],
+ [
+  "no-orm-query-logging/030.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  95,
+  "`logQueryParameters` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  119
+ ],
+ [
+  "no-orm-query-logging/031.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  58,
+  "`new Sequelize(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  97
+ ],
+ [
+  "no-orm-query-logging/032.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  58,
+  "`new Sequelize(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  96
+ ],
+ [
+  "no-orm-query-logging/033.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  58,
+  "`new Sequelize(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  119
+ ],
+ [
+  "no-orm-query-logging/034.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  71,
+  "`SequelizeModule.forRoot(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  135
+ ],
+ [
+  "no-orm-query-logging/035.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  100,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  111
+ ],
+ [
+  "no-orm-query-logging/036.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  100,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  132
+ ],
+ [
+  "no-orm-query-logging/037.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  72,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  83
+ ],
+ [
+  "no-orm-query-logging/038.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  89,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  112
+ ],
+ [
+  "no-orm-query-logging/039.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  89,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  130
+ ],
+ [
+  "no-orm-query-logging/040.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  111,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  138
+ ],
+ [
+  "no-orm-query-logging/041.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  88,
+  "`logger` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  100
+ ],
+ [
+  "no-orm-query-logging/042.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  104,
+  "`logger` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  131
+ ],
+ [
+  "no-orm-query-logging/043.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  113
+ ],
+ [
+  "no-orm-query-logging/044.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  70,
+  "`new Sequelize(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  97
+ ],
+ [
+  "no-orm-query-logging/045.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  121,
+  "`SequelizeModule.forRootAsync(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  167
+ ],
+ [
+  "no-orm-query-logging/046.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  89,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  114
+ ],
+ [
+  "no-orm-query-logging/047.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  38,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  73
+ ],
+ [
+  "no-orm-query-logging/048.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  129
+ ],
+ [
+  "no-orm-query-logging/049.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  110
+ ],
+ [
+  "no-orm-query-logging/050.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  117
+ ],
+ [
+  "no-orm-query-logging/051.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  131
+ ],
+ [
+  "no-orm-query-logging/052.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  108,
+  "`logQueryParameters` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  132
+ ],
+ [
+  "no-orm-query-logging/053.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  99,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  112
+ ],
+ [
+  "no-orm-query-logging/054.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  109,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  122
+ ],
+ [
+  "no-orm-query-logging/055.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  118
+ ],
+ [
+  "no-orm-query-logging/056.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  58,
+  "`new Sequelize(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  92
+ ],
+ [
+  "no-orm-query-logging/057.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  58,
+  "`new Sequelize(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  96
+ ],
+ [
+  "no-orm-query-logging/058.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  135,
+  "`SequelizeModule.forRootAsync(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  158
+ ],
+ [
+  "no-orm-query-logging/059.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  110,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  121
+ ],
+ [
+  "no-orm-query-logging/060.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  110,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  142
+ ],
+ [
+  "no-orm-query-logging/061.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  110,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  139
+ ],
+ [
+  "no-orm-query-logging/062.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  115,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  146
+ ],
+ [
+  "no-orm-query-logging/063.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  89,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  138
+ ],
+ [
+  "no-orm-query-logging/064.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  89,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  146
+ ],
+ [
+  "no-orm-query-logging/065.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  111,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  133
+ ],
+ [
+  "no-orm-query-logging/066.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  103,
+  "`logger` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  130
+ ],
+ [
+  "no-orm-query-logging/067.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  127
+ ],
+ [
+  "no-orm-query-logging/068.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  126
+ ],
+ [
+  "no-orm-query-logging/069.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  120
+ ],
+ [
+  "no-orm-query-logging/070.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  120
+ ],
+ [
+  "no-orm-query-logging/071.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  112
+ ],
+ [
+  "no-orm-query-logging/072.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  101,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  114
+ ],
+ [
+  "no-orm-query-logging/073.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  92,
+  "`logQueryParameters` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  141
+ ],
+ [
+  "no-orm-query-logging/074.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  74,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  87
+ ],
+ [
+  "no-orm-query-logging/075.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  50,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  63
+ ],
+ [
+  "no-orm-query-logging/076.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  114
+ ],
+ [
+  "no-orm-query-logging/077.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  101
+ ],
+ [
+  "no-orm-query-logging/078.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  115
+ ],
+ [
+  "no-orm-query-logging/079.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  121
+ ],
+ [
+  "no-orm-query-logging/080.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  144
+ ],
+ [
+  "no-orm-query-logging/081.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  79,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  136
+ ],
+ [
+  "no-orm-query-logging/082.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  165,
+  "`SequelizeModule.forRootAsync(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  181
+ ],
+ [
+  "no-orm-query-logging/083.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  110,
+  "`debug` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  142
+ ],
+ [
+  "no-orm-query-logging/084.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  89,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  116
+ ],
+ [
+  "no-orm-query-logging/085.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  89,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  110
+ ],
+ [
+  "no-orm-query-logging/086.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  89,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  124
+ ],
+ [
+  "no-orm-query-logging/087.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  98,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  112
+ ],
+ [
+  "no-orm-query-logging/088.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  95,
+  "`log` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  109
+ ],
+ [
+  "no-orm-query-logging/089.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  103,
+  "`logger` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  140
+ ],
+ [
+  "no-orm-query-logging/090.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  88,
+  "`logger` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  123
+ ],
+ [
+  "no-orm-schema-sync/09.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  71,
+  "`SequelizeModule.forRoot(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  161
+ ],
+ [
+  "no-orm-schema-sync/10.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  71,
+  "`SequelizeModule.forRoot(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  135
+ ],
+ [
+  "no-orm-schema-sync/23.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  92,
+  "`synchronize: true` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  109
+ ],
+ [
+  "no-orm-schema-sync/24.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  74,
+  "`synchronize: true` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  91
+ ],
+ [
+  "no-orm-schema-sync/25.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  133,
+  "`synchronize: process.env.NODE_ENV !== \"production\"` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  183
+ ],
+ [
+  "no-orm-schema-sync/26.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  101,
+  "`synchronize: SYNC` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  118
+ ],
+ [
+  "no-orm-schema-sync/26.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  120,
+  "`dropSchema: !isProduction` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  145
+ ],
+ [
+  "no-orm-schema-sync/27.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  80,
+  "`synchronize: process.env.DB_SYNC` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  112
+ ],
+ [
+  "no-orm-schema-sync/28.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  87,
+  "`dataSource.synchronize()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  111
+ ],
+ [
+  "no-orm-schema-sync/29.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  87,
+  "`dataSource.dropDatabase()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  112
+ ],
+ [
+  "no-orm-schema-sync/30.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  87,
+  "`sequelize.sync()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  118
+ ],
+ [
+  "no-orm-schema-sync/31.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  87,
+  "`sequelize.sync()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  118
+ ],
+ [
+  "no-orm-schema-sync/32.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  113,
+  "`db.sync()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  122
+ ],
+ [
+  "no-orm-schema-sync/33.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  103,
+  "`db.sync()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  127
+ ],
+ [
+  "no-orm-schema-sync/34.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  95,
+  "`User.sync()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  106
+ ],
+ [
+  "no-orm-schema-sync/35.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  147,
+  "`synchronize: Boolean(config.get(\"DB_SYNC\"))` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  190
+ ],
+ [
+  "no-orm-schema-sync/36.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  155,
+  "`synchronize: true` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  172
+ ],
+ [
+  "no-orm-schema-sync/37.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  110,
+  "`dataSource.synchronize()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  134
+ ],
+ [
+  "no-orm-schema-sync/38.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  42,
+  "`app.sequelize.sync()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  62
+ ],
+ [
+  "no-orm-schema-sync/39.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  119,
+  "`User.sync()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  130
+ ],
+ [
+  "no-orm-schema-sync/40.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  71,
+  "`SequelizeModule.forRoot(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  141
+ ],
+ [
+  "no-orm-schema-sync/40.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  118,
+  "`autoLoadModels: true` without `synchronize: false` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  138
+ ],
+ [
+  "no-orm-schema-sync/41.ts",
+  "nitpicker/no-orm-query-logging",
+  1,
+  71,
+  "`SequelizeModule.forRoot(...)` without `logging: false` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  1,
+  160
+ ],
+ [
+  "no-orm-schema-sync/41.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  140,
+  "`synchronize: true` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  157
+ ],
+ [
+  "no-orm-schema-sync/42.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  92,
+  "`orm.schema.updateSchema()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  117
+ ],
+ [
+  "no-orm-schema-sync/43.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  92,
+  "`orm.getSchemaGenerator().createSchema()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  131
+ ],
+ [
+  "no-orm-schema-sync/44.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  92,
+  "`orm.schema.refreshDatabase()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  120
+ ],
+ [
+  "no-orm-schema-sync/45.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  92,
+  "`orm.schema.ensureDatabase()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  135
+ ],
+ [
+  "no-orm-schema-sync/46.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  115,
+  "`dataSource.synchronize()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  143
+ ],
+ [
+  "no-orm-schema-sync/47.ts",
+  "nitpicker/no-orm-schema-sync",
+  1,
+  78,
+  "`Sequelize.sync()` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  1,
+  109
+ ],
+ [
+  "no-orm-schema-sync/r-var-in-catch.ts",
+  "nitpicker/no-orm-query-logging",
+  2,
+  69,
+  "`logging` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.",
+  2,
+  79
+ ],
+ [
+  "no-orm-schema-sync/r-var-in-catch.ts",
+  "nitpicker/no-orm-schema-sync",
+  4,
+  90,
+  "`dropSchema: q` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.",
+  4,
+  103
+ ],
+ [
+  "no-unbounded-query-array/25.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  122,
+  "ids goes into the in list as one bound parameter per element: an empty array renders in (), a syntax error, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and send the whole array as one parameter (sql`id = any(${ids}::uuid[])`), or split it with the project's chunking helper. An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  125
+ ],
+ [
+  "no-unbounded-query-array/26.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  119,
+  "dto.ownerIds goes into the in list as one bound parameter per element: an empty array renders in (), a syntax error, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and send the whole array as one parameter (sql`id = any(${ids}::uuid[])`), or split it with the project's chunking helper. An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  131
+ ],
+ [
+  "no-unbounded-query-array/27.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  133,
+  "ids goes into the in list as one bound parameter per element: an empty array renders in (), a syntax error, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and send the whole array as one parameter (sql`id = any(${ids}::uuid[])`), or split it with the project's chunking helper. An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  136
+ ],
+ [
+  "no-unbounded-query-array/28.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  101,
+  "this array is inserted as one multi-row statement that spends a bound parameter on every column of every row: an empty array fails, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and insert in chunks with the project's chunking helper (for (const rows of chunk(items, 1000))). An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  139
+ ],
+ [
+  "no-unbounded-query-array/29.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  107,
+  "rows is inserted as one multi-row statement that spends a bound parameter on every column of every row: an empty array fails, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and insert in chunks with the project's chunking helper (for (const rows of chunk(items, 1000))). An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  111
+ ],
+ [
+  "no-unbounded-query-array/30.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  82,
+  "ids goes into the in list as one bound parameter per element: an empty array renders in (), a syntax error, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and send the whole array as one parameter (sql`id = any(${ids}::uuid[])`), or split it with the project's chunking helper. An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  85
+ ],
+ [
+  "no-unbounded-query-array/31.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  77,
+  "users.map((user) => user.row) is inserted as one multi-row statement that spends a bound parameter on every column of every row: an empty array fails, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and insert in chunks with the project's chunking helper (for (const rows of chunk(items, 1000))). An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  106
+ ],
+ [
+  "no-unbounded-query-array/32.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  96,
+  "ids goes into the in list as one bound parameter per element: an empty array renders in (), a syntax error, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and send the whole array as one parameter (sql`id = any(${ids}::uuid[])`), or split it with the project's chunking helper. An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  99
+ ],
+ [
+  "no-unbounded-query-array/33.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  95,
+  "rows is inserted as one multi-row statement that spends a bound parameter on every column of every row: an empty array fails, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and insert in chunks with the project's chunking helper (for (const rows of chunk(items, 1000))). An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  99
+ ],
+ [
+  "no-unbounded-query-array/34.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  125,
+  "ids goes into the in list as one bound parameter per element: an empty array renders in (), a syntax error, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and send the whole array as one parameter (sql`id = any(${ids}::uuid[])`), or split it with the project's chunking helper. An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  128
+ ],
+ [
+  "no-unbounded-query-array/35.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  113,
+  "rows is inserted as one multi-row statement that spends a bound parameter on every column of every row: an empty array fails, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and insert in chunks with the project's chunking helper (for (const rows of chunk(items, 1000))). An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  117
+ ],
+ [
+  "no-unbounded-query-array/r-parenthesized-annotation.ts",
+  "nitpicker/no-unbounded-query-array",
+  4,
+  35,
+  "rows is inserted as one multi-row statement that spends a bound parameter on every column of every row: an empty array fails, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and insert in chunks with the project's chunking helper (for (const rows of chunk(items, 1000))). An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  4,
+  39
+ ],
+ [
+  "no-unbounded-query-array/r-parenthesized-annotation.ts",
+  "nitpicker/no-unbounded-query-array",
+  5,
+  35,
+  "more is inserted as one multi-row statement that spends a bound parameter on every column of every row: an empty array fails, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and insert in chunks with the project's chunking helper (for (const rows of chunk(items, 1000))). An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  5,
+  39
+ ],
+ [
+  "no-unbounded-query-array/r-parenthesized-annotation.ts",
+  "nitpicker/no-unbounded-query-array",
+  6,
+  36,
+  "other is inserted as one multi-row statement that spends a bound parameter on every column of every row: an empty array fails, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and insert in chunks with the project's chunking helper (for (const rows of chunk(items, 1000))). An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  6,
+  41
+ ],
+ [
+  "no-unordered-query/41.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  99,
+  "limit(20) picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  104
+ ],
+ [
+  "no-unordered-query/42.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  132,
+  "limit(1) picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  137
+ ],
+ [
+  "no-unordered-query/43.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  201,
+  "offset(40) picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  207
+ ],
+ [
+  "no-unordered-query/44.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  93,
+  "limit(20) picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  98
+ ],
+ [
+  "no-unordered-query/45.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  60,
+  "limit(5) picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  65
+ ],
+ [
+  "no-unordered-query/46.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  113,
+  "skip(20) picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  117
+ ],
+ [
+  "no-unordered-query/47.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  121,
+  "limit(10) picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  126
+ ],
+ [
+  "no-unordered-query/48.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  78,
+  "take: 10 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  86
+ ],
+ [
+  "no-unordered-query/49.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  60,
+  "cursor: { id: after } picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  81
+ ],
+ [
+  "no-unordered-query/50.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  94,
+  "take: 5 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  101
+ ],
+ [
+  "no-unordered-query/51.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  52,
+  "limit: 10 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  61
+ ],
+ [
+  "no-unordered-query/51.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  80,
+  "limit: 3 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  88
+ ],
+ [
+  "no-unordered-query/52.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  111,
+  "skip: 20 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  119
+ ],
+ [
+  "no-unordered-query/53.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  103,
+  "limit: 10 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  112
+ ],
+ [
+  "no-unordered-query/54.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  67,
+  "LIMIT 20 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  119
+ ],
+ [
+  "no-unordered-query/55.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  39,
+  "LIMIT $1 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  70
+ ],
+ [
+  "no-unordered-query/56.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  22,
+  "OFFSET 10 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  80
+ ],
+ [
+  "no-unordered-query/57.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  64,
+  "json_agg(...) builds a list with no ORDER BY, so its elements come back in whatever order the database reads them, and a test that compares the whole list can fail at random. Order inside the aggregate (json_agg(t ORDER BY t.name), eb.fn.jsonAgg('t').orderBy('t.name')) or give jsonArrayFrom a subquery with orderBy. An exception fits only a nested list that is a set, whose callers never depend on its order; add the path to \"exceptions\" with that reason.",
+  1,
+  96
+ ],
+ [
+  "no-unordered-query/58.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  39,
+  "array_agg(...) builds a list with no ORDER BY, so its elements come back in whatever order the database reads them, and a test that compares the whole list can fail at random. Order inside the aggregate (json_agg(t ORDER BY t.name), eb.fn.jsonAgg('t').orderBy('t.name')) or give jsonArrayFrom a subquery with orderBy. An exception fits only a nested list that is a set, whose callers never depend on its order; add the path to \"exceptions\" with that reason.",
+  1,
+  113
+ ],
+ [
+  "no-unordered-query/59.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  70,
+  "jsonAgg(\"album\") builds a list with no ORDER BY, so its elements come back in whatever order the database reads them, and a test that compares the whole list can fail at random. Order inside the aggregate (json_agg(t ORDER BY t.name), eb.fn.jsonAgg('t').orderBy('t.name')) or give jsonArrayFrom a subquery with orderBy. An exception fits only a nested list that is a set, whose callers never depend on its order; add the path to \"exceptions\" with that reason.",
+  1,
+  77
+ ],
+ [
+  "no-unordered-query/60.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  70,
+  "agg(\"array_agg\", [\"tag.value\"]) builds a list with no ORDER BY, so its elements come back in whatever order the database reads them, and a test that compares the whole list can fail at random. Order inside the aggregate (json_agg(t ORDER BY t.name), eb.fn.jsonAgg('t').orderBy('t.name')) or give jsonArrayFrom a subquery with orderBy. An exception fits only a nested list that is a set, whose callers never depend on its order; add the path to \"exceptions\" with that reason.",
+  1,
+  73
+ ],
+ [
+  "no-unordered-query/61.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  120,
+  "jsonArrayFrom(...) builds a list with no ORDER BY, so its elements come back in whatever order the database reads them, and a test that compares the whole list can fail at random. Order inside the aggregate (json_agg(t ORDER BY t.name), eb.fn.jsonAgg('t').orderBy('t.name')) or give jsonArrayFrom a subquery with orderBy. An exception fits only a nested list that is a set, whose callers never depend on its order; add the path to \"exceptions\" with that reason.",
+  1,
+  208
+ ],
+ [
+  "no-unpaged-listing/13.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  50,
+  "An object-store listing returns one page (1000 keys) and the rest is ignored. Use the paginator (`paginateListObjectsV2`), or loop on `NextContinuationToken` and `IsTruncated`. An existence check passes `MaxKeys: 1`.",
+  1,
+  94
+ ],
+ [
+  "no-unpaged-listing/14.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  41,
+  "An object-store listing returns one page (1000 keys) and the rest is ignored. Use the paginator (`paginateListObjectsV2`), or loop on `NextContinuationToken` and `IsTruncated`. An existence check passes `MaxKeys: 1`.",
+  1,
+  75
+ ],
+ [
+  "no-unpaged-listing/15.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  17,
+  "An object-store listing returns one page (1000 keys) and the rest is ignored. Use the paginator (`paginateListObjectsV2`), or loop on `NextContinuationToken` and `IsTruncated`. An existence check passes `MaxKeys: 1`.",
+  1,
+  45
+ ],
+ [
+  "no-unpaged-listing/16.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  38,
+  "An object-store listing returns one page (1000 keys) and the rest is ignored. Use the paginator (`paginateListObjectsV2`), or loop on `NextContinuationToken` and `IsTruncated`. An existence check passes `MaxKeys: 1`.",
+  1,
+  66
+ ],
+ [
+  "no-unpaged-listing/17.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  67,
+  "An object-store listing returns one page (1000 keys) and the rest is ignored. Use the paginator (`paginateListObjectsV2`), or loop on `NextContinuationToken` and `IsTruncated`. An existence check passes `MaxKeys: 1`.",
+  1,
+  98
+ ],
+ [
+  "no-unpaged-listing/18.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  7,
+  "RediSearch `FT.SEARCH` returns 10 documents by default, so the rest is ignored. Pass `LIMIT: { from: 0, size: n }` and loop on the offset until a page comes back short.",
+  1,
+  35
+ ],
+ [
+  "no-unpaged-listing/19.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  7,
+  "RediSearch `FT.SEARCH` returns 10 documents by default, so the rest is ignored. Pass `LIMIT: { from: 0, size: n }` and loop on the offset until a page comes back short.",
+  1,
+  57
+ ]
+]

@@ -1,0 +1,1 @@
+export const a = (to: string) => console.warn(`<div> inside ${to} is invalid`);

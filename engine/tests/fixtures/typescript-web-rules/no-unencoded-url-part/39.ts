@@ -1,0 +1,1 @@
+const link = `https://example.test/releases/tag/${gitTag}`;

@@ -1,7 +1,12 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { calledMember, memberName } from '../../collections/costly-forms/repeated-runs.mts';
 import type { SourceCode } from '../../typed/node-views.mts';
-import { calleeNameOf, isFunction, unwrapped } from '../../typed/syntax-views.mts';
+import {
+  calleeNameOf,
+  isFunction,
+  unwrapped,
+  type FunctionNode,
+} from '../../typed/syntax-views.mts';
 import { filteredOneSide } from './filtered-lists.mts';
 import { isPlainPath } from '../support/plain-paths.mts';
 import { countedLoop, indexedLists } from './positional-reads.mts';
@@ -10,26 +15,33 @@ type Pairing = { readonly node: TSESTree.Node; readonly filtered: TSESTree.Node 
 
 const PAIRING_STEPS = new Set(['every', 'flatMap', 'forEach', 'map', 'some']);
 
+type PairingStep = {
+  readonly member: TSESTree.MemberExpression;
+  readonly callback: FunctionNode;
+};
+
+function pairingStep(call: TSESTree.CallExpression): PairingStep | undefined {
+  const member = calledMember(call);
+  const [callback] = call.arguments;
+  return member !== undefined &&
+    PAIRING_STEPS.has(memberName(member) ?? '') &&
+    callback !== undefined &&
+    isFunction(callback)
+    ? { member, callback }
+    : undefined;
+}
+
 function callbackPairing(
   sourceCode: SourceCode,
   call: TSESTree.CallExpression,
 ): Pairing | undefined {
-  const member = calledMember(call);
-  const [callback] = call.arguments;
-  if (
-    member === undefined ||
-    !PAIRING_STEPS.has(memberName(member) ?? '') ||
-    callback === undefined ||
-    !isFunction(callback)
-  ) {
+  const step = pairingStep(call);
+  const index = step?.callback.params[1];
+  if (step === undefined || index?.type !== AST_NODE_TYPES.Identifier) {
     return undefined;
   }
-  const index = callback.params[1];
-  if (index?.type !== AST_NODE_TYPES.Identifier) {
-    return undefined;
-  }
-  const receiver = unwrapped(member.object);
-  for (const other of indexedLists(sourceCode, index.name, callback)) {
+  const receiver = unwrapped(step.member.object);
+  for (const other of indexedLists(sourceCode, index.name, step.callback)) {
     const filtered = filteredOneSide(sourceCode, receiver, other);
     if (filtered !== undefined && sourceCode.getText(other) !== sourceCode.getText(receiver)) {
       return { node: call, filtered };

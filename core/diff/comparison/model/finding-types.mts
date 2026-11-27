@@ -77,7 +77,10 @@ export type MatchedCode = {
   readonly mustMeetOnEditedLines?: ((rule: string, finding: TrackedFinding) => boolean) | undefined;
 };
 
-export type TouchedCode = MatchedCode & { readonly testsRemoved: boolean };
+export type TouchedCode = MatchedCode & {
+  readonly testsRemoved: boolean;
+  readonly removedTestTargets?: ReadonlySet<string> | undefined;
+};
 
 export type Advice = {
   readonly allowedForm?: string;

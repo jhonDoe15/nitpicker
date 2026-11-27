@@ -1,0 +1,1 @@
+const location = res.headers.location; const next = new URL(location);

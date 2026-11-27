@@ -41,25 +41,3 @@ pub fn field_of<'a>(context: &'a Context, expression: Node) -> Option<(&'a crate
         _ => None,
     }
 }
-
-/// Error Prone's `sameVariable` on two names or field accesses.
-pub fn same_variable(context: &Context, first: Node, second: Node) -> bool {
-    let plain = |node: Node| matches!(node.kind(), "identifier" | "field_access");
-    if !plain(first) || !plain(second) {
-        return false;
-    }
-    match (first.kind(), second.kind()) {
-        ("identifier", "identifier") => context.text(first) == context.text(second),
-        ("field_access", "field_access") => {
-            let name = |node: Node| node.child_by_field_name("field").map(|part| context.text(part));
-            let objects = (first.child_by_field_name("object"), second.child_by_field_name("object"));
-            name(first) == name(second) && matches!(objects, (Some(a), Some(b)) if same_variable(context, a, b) || (a.kind() == "this" && b.kind() == "this"))
-        }
-        _ => {
-            let (plain_name, access) = if first.kind() == "identifier" { (first, second) } else { (second, first) };
-            let this = access.child_by_field_name("object").is_some_and(|object| object.kind() == "this");
-            let same = access.child_by_field_name("field").is_some_and(|part| context.text(part) == context.text(plain_name));
-            this && same && context.resolver.binding(plain_name, context.text(plain_name)).is_some_and(|binding| matches!(binding, Binding::Field(..)))
-        }
-    }
-}

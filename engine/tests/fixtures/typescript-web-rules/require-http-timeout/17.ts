@@ -1,0 +1,1 @@
+import https from "node:https"; export const get = (url) => https.get(url, { timeout: 5000 }, (res) => res.resume());

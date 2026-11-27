@@ -1,0 +1,1 @@
+logger.info(nextToken, pageToken, continuationToken, cancellationToken);

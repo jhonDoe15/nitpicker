@@ -1,0 +1,1 @@
+function F(props) { return <a href={props.href}>x</a>; }

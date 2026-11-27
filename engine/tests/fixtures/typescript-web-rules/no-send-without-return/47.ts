@@ -1,0 +1,1 @@
+function f(req, response) { if (!ok) { response.json({}); } return save(); }

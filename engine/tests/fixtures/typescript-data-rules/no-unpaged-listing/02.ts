@@ -1,0 +1,1 @@
+async function all() { let token; do { const r = await client.send(new ListObjectsV2Command({ Bucket, ContinuationToken: token })); token = r.NextContinuationToken; } while (token); }

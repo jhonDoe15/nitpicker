@@ -15,6 +15,9 @@ tester.run('no-cache-after-guard-fallback', rule, {
     `${HEADER}export function typeOf(node) { if (!inProgress.add(node)) return "unknown"; const found = combine(node); cache.set(node, found); return found; }\nfunction combine(node) { return node.kind; }`,
     `${HEADER}export function typeOf(node, partial = { hit: false }) { if (!inProgress.add(node)) { partial.hit = true; return "unknown"; } const found = node.args.map((arg) => typeOf(arg, partial)); if (!partial.hit) cache.set(node, found); return found; }`,
     `${HEADER}export function typeOf(node) { cache.set(node, "pending"); if (!inProgress.add(node)) return "unknown"; return node.args.map(typeOf); }`,
+    `${HEADER}export function typeOf(node) { const seen = inProgress.has(node); cache.set(node, seen); return node.args.map(typeOf); }`,
+    `${HEADER}export function typeOf(node) { if (node.ok) { inProgress.add(node); } cache.set(node, 1); return node.args.map(typeOf); }`,
+    `${HEADER}export function typeOf(node) { if (!inProgress.add(node)) { log(node); } cache.set(node, 1); return node.args.map(typeOf); }`,
   ],
   invalid: [
     invalid(

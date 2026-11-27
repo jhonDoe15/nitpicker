@@ -1,0 +1,1 @@
+import { Pool, Client } from "pg"; export const pool = (config) => new Pool(config);

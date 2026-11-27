@@ -1,0 +1,1 @@
+export const a = (m: string) => `${m}</span>`;

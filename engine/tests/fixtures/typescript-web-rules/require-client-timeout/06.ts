@@ -1,0 +1,1 @@
+import { S3Client } from "@aws-sdk/client-s3"; import { base } from "./aws.js"; export const s3 = new S3Client({ ...base, region: "eu-west-1" });

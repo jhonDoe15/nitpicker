@@ -1,0 +1,1 @@
+const secret = ("abc123def456" as string);

@@ -1,0 +1,1 @@
+if (path.dirname(file) === path.dirname(other)) {}

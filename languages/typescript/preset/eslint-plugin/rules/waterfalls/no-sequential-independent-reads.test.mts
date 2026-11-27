@@ -59,6 +59,22 @@ typescriptRuleTester().run('no-sequential-independent-reads', rule, {
       options: [{ orms: [], opensTransactions: false }],
     },
     valid('async function f(a, b) { const one = await load(a); const two = await load(b); }'),
+    valid('async function f(a, b) { const one = await fetch(); const two = await fetch(); }'),
+    valid(
+      'async function f() { const a = await prisma.user.findMany(), b = await prisma.order.findMany(); const c = await prisma.team.findMany(); }',
+    ),
+    valid(
+      'async function f(a, b) { const one = await fetch(a, {}, 1); const two = await fetch(b, {}, 1); }',
+    ),
+    valid(
+      'async function f(a, b, o) { const one = await fetch(a, { ...o }); const two = await fetch(b, { ...o }); }',
+    ),
+    valid(
+      'async function f(a, b, k) { const one = await fetch(a, { [k]: 1 }); const two = await fetch(b, { [k]: 1 }); }',
+    ),
+    valid(
+      'async function f(a, b) { const one = await fetch(a, { "method": "GET" }); const two = await fetch(b, { "method": "GET" }); }',
+    ),
     valid(
       'async function f(tx, id) { const a = await tx.select().from(users); const b = await tx.select().from(orders); }',
     ),
@@ -89,6 +105,21 @@ typescriptRuleTester().run('no-sequential-independent-reads', rule, {
       'async function f(a, b) { const one = await fetch(a); const two = await fetch(b, { method: "GET", headers: { x: "1" } }); }',
       'one, two',
     ),
+    invalid(
+      'async function f(a, b, h) { const one = await fetch(a, { headers: h }); const two = await fetch(b, { headers: h }); }',
+      'one, two',
+    ),
+    invalid(
+      'async function f() { const { a } = await prisma.user.findFirst(); const { b } = await prisma.order.findFirst(); }',
+      '{ a }, { b }',
+    ),
+    invalid(
+      'async function f(db, k) { const a = await db.select()[k]().from(users); const b = await db.select().from(orders); }',
+    ),
+    {
+      code: 'async function f(a, b) { const one = await fetch(a); const two = await fetch(b); }',
+      errors: [{ messageId: 'sequential' as const, data: { count: '2', names: 'one, two' } }],
+    },
     invalid(
       'class R { async page(where) { const total = await this.repository.count({ where }); const rows = await this.repository.find({ where }); return { total, rows }; } }',
       'total, rows',

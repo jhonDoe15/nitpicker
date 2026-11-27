@@ -1,0 +1,1 @@
+function f(req, res) { if (!ok) { res.status(400).json({}); } return; }

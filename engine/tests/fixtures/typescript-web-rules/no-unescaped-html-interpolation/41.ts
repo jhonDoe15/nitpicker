@@ -1,0 +1,1 @@
+export const a = (u: { name: string }) => `<td>${u.name}</td>`;

@@ -1,0 +1,1 @@
+export const a = (n: string) => { const pattern = `%${escapeLike(n)}%`; return db.where("name", "like", pattern); };

@@ -15,6 +15,11 @@ const SHARED_FIELDS = new Set([
   'type',
 ]);
 
+function isLoopLocal(sourceCode: SourceCode, node: TSESTree.Identifier, repeat: Repeat): boolean {
+  const definition = variableNamed(sourceCode, node)?.defs[0];
+  return definition !== undefined && contains(repeat.node, definition.name);
+}
+
 function sharedField(
   sourceCode: SourceCode,
   node: TSESTree.Node,
@@ -28,11 +33,9 @@ function sharedField(
     return undefined;
   }
   const name = memberName(node);
-  const definition = variableNamed(sourceCode, node.object)?.defs[0];
   return name !== undefined &&
     SHARED_FIELDS.has(name) &&
-    definition !== undefined &&
-    contains(repeat.node, definition.name)
+    isLoopLocal(sourceCode, node.object, repeat)
     ? name
     : undefined;
 }

@@ -1,0 +1,1 @@
+const value = headers.get('Content-Type');

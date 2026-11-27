@@ -45,8 +45,8 @@ function writeListing(directory: string, top: string): string {
 }
 
 const listingFor = memoized((key: string): string => {
-  const [directory = '', top = ''] = key.split('\0');
-  return writeListing(directory, top);
+  const separator = key.indexOf('\0');
+  return writeListing(key.slice(0, separator), key.slice(separator + 1));
 });
 
 export function testSourcesFact(root: string): Record<string, string> {

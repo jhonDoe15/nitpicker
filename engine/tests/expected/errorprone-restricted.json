@@ -1,0 +1,14 @@
+[
+["ruse/Uses.java", "RestrictedApi", 7, 5, "[RestrictedApi] gate 1!"],
+["ruse/Uses.java", "RestrictedApi", 8, 14, "[RestrictedApi] compiled é reason"],
+["ruse/Uses.java", "RestrictedApi", 9, 14, "[RestrictedApi] compiled é reason"],
+["ruse/Uses.java", "RestrictedApi", 10, 15, "[RestrictedApi] door"],
+["ruse/Uses.java", "RestrictedApi", 11, 15, "[RestrictedApi] tests only"],
+["ruse/Uses.java", "RestrictedApi", 12, 18, "[RestrictedApi] compiled é reason"],
+["ruse/Uses.java", "RestrictedApi", 13, 5, "[RestrictedApi] gate 1!"],
+["ruse/Uses.java", "RestrictedApi", 25, 5, "[RestrictedApi] gate 1!"],
+["ruse/Uses.java", "RestrictedApi", 26, 14, "[RestrictedApi] compiled é reason"],
+["ruse/Uses.java", "RestrictedApi", 35, 19, "[RestrictedApi] gate 1!"],
+["ruse/Uses.java", "RestrictedApi", 39, 11, "[RestrictedApi] gate 1!"],
+["ruse/lookahead/Ahead.java", "_HandBack", 1, 1, "RestrictedApi"]
+]

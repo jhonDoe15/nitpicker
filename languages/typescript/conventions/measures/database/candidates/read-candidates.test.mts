@@ -32,6 +32,7 @@ const READS = [
   "const rows = await db.from\u200B('users');",
   'const rows = await userRepository.\u200Bfind({});',
   "const rows = await db.table\u0085('users');",
+  'const rows = await userRepository ?.find({});',
 ];
 
 const NO_READS = [
@@ -39,6 +40,8 @@ const NO_READS = [
   "import a from 'a';\nconst items = Array.from(list);\nconst found = items.find((item) => item.id === id);",
   'const found = items.find((item) => item.id === id);\nconst total = list.count(1);',
   "import { connect } from 'react-redux';\nconst label = t('copied from the clipboard');",
+  'find({});',
+  'const found = $.find({});',
 ];
 
 describe('mayReadTables', () => {

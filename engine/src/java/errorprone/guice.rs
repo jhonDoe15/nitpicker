@@ -1,7 +1,7 @@
 //! Guice and JSR 330 checks: GuiceAssistedInjectScoping, GuiceAssistedParameters, GuiceInjectOnFinalField,
-//! InjectMoreThanOneScopeAnnotationOnClass, InjectOnMemberAndConstructor and IncompatibleModifiers.
+//! InjectMoreThanOneScopeAnnotationOnClass, InjectOnMemberAndConstructor, IncompatibleModifiers and RequiredModifiers.
 use super::Context;
-use super::fix_helpers::remove_modifiers;
+use super::fix_helpers::{add_modifiers, remove_modifiers};
 use super::fixes::Fix;
 use super::nodes::{class_position, name_position};
 use super::shape::{is_class, suppressed_any};
@@ -239,7 +239,7 @@ pub fn incompatible_modifiers(context: &Context, annotation: Node) {
             listed.push(name);
         }
     }
-    let present: Vec<String> = children(holder).into_iter().map(|part| part.kind().to_uppercase().replace('-', "_")).collect();
+    let present = present_modifiers(holder, declaration);
     let incompatible: Vec<&str> = listed.into_iter().filter(|name| present.iter().any(|known| known == name)).collect();
     if incompatible.is_empty() {
         return;
@@ -251,4 +251,40 @@ pub fn incompatible_modifiers(context: &Context, annotation: Node) {
     let words: Vec<&str> = words.iter().map(String::as_str).collect();
     let fix = remove_modifiers(Fix::new(), declaration, &words);
     context.report_fixed("IncompatibleModifiers", annotation, annotation.start_byte(), &message, &[fix]);
+}
+
+/// The modifiers javac's tree holds for a declaration, as constant names: an enum constant is public, static and final.
+fn present_modifiers(holder: Node, declaration: Node) -> Vec<String> {
+    let mut present: Vec<String> = children(holder).into_iter().map(|part| part.kind().to_uppercase().replace('-', "_")).collect();
+    if declaration.kind() == "enum_constant" {
+        present.extend(["PUBLIC", "STATIC", "FINAL"].map(String::from));
+    }
+    present
+}
+
+pub fn required_modifiers(context: &Context, annotation: Node) {
+    if !matches!(annotation.kind(), "marker_annotation" | "annotation") {
+        return;
+    }
+    let Some(holder) = parent(annotation).filter(|up| up.kind() == "modifiers") else { return };
+    let Some(declaration) = parent(holder) else { return };
+    let written = annotation.child_by_field_name("name").map(|name| context.text(name)).unwrap_or_default();
+    let Some(full) = context.resolver.class_name(declaration, written) else { return };
+    let Some(info) = context.resolver.index.get(&full).filter(|info| !info.required.is_empty()) else { return };
+    let present = present_modifiers(holder, declaration);
+    let mut missing: Vec<String> = Vec::new();
+    for name in &info.required {
+        if !missing.contains(name) && !present.contains(name) {
+            missing.push(name.clone());
+        }
+    }
+    if missing.is_empty() {
+        return;
+    }
+    let simple = full.rsplit('.').next().unwrap_or(&full);
+    let words: Vec<String> = missing.iter().map(|name| name.to_lowercase().replace('_', "-")).collect();
+    let message = format!("The annotation '@{simple}' has specified that it must be used together with the following modifiers: [{}]", words.join(", "));
+    let words: Vec<&str> = words.iter().map(String::as_str).collect();
+    let fix = add_modifiers(Fix::new(), declaration, &words);
+    context.report_fixed("RequiredModifiers", annotation, annotation.start_byte(), &message, &[fix]);
 }

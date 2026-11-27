@@ -69,7 +69,6 @@ pub fn preferred(node: Node) -> usize {
         "field_access" => token_of(node, "."),
         "array_access" => token_of(node, "["),
         "instanceof_expression" => token_of(node, "instanceof"),
-        "lambda_expression" => token_of(node, "->"),
         "object_creation_expression" | "array_creation_expression" => Some(new_keyword(node)),
         _ => None,
     };

@@ -1,0 +1,1 @@
+import Funcster from "funcster"; export const data = Funcster.deepDeserialize(text);

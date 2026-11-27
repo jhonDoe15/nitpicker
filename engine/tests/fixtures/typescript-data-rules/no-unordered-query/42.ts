@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export const f = (db, email) => db.selectFrom("user").selectAll().where("email", "=", email).limit(1).executeTakeFirst();

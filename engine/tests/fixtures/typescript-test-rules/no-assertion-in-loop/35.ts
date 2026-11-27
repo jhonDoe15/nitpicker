@@ -1,0 +1,1 @@
+it('x', async () => { for await (const o of stream()) { expect(o).toBe(1); } });

@@ -1,0 +1,1 @@
+import { runInThisContext } from "vm"; export const run = (code) => runInThisContext(`(${code})`);

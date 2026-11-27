@@ -20,12 +20,20 @@ export type FileCalls = {
 export type MethodCall = { readonly receiver: string; readonly method: string };
 
 const MODULE = '';
+const MODULE_STATEMENTS = new Set<string>([
+  AST_NODE_TYPES.Program,
+  AST_NODE_TYPES.ExportNamedDeclaration,
+]);
+
+export function isModuleLevel(statement: TSESTree.Node): boolean {
+  return MODULE_STATEMENTS.has(statement.type);
+}
 
 export function descendants(root: TSESTree.Node): TSESTree.Node[] {
   return [...depthFirst<TSESTree.Node>(root, nodeChildren)];
 }
 
-function isCallable(node: TSESTree.Node | undefined): node is Callable {
+function isCallable(node: TSESTree.Node | null | undefined): node is Callable {
   return (
     node?.type === AST_NODE_TYPES.ArrowFunctionExpression ||
     node?.type === AST_NODE_TYPES.FunctionExpression ||
@@ -59,30 +67,29 @@ function memberEntry(member: TSESTree.ClassElement, owner: string): FileFunction
     member.type === AST_NODE_TYPES.MethodDefinition ||
     member.type === AST_NODE_TYPES.PropertyDefinition;
   const name = isMember && !member.computed ? nameOf(member.key) : undefined;
-  const value = isMember ? (member.value ?? undefined) : undefined;
+  const value = isMember ? member.value : undefined;
   return name !== undefined && isCallable(value) ? entry(owner, name, value) : undefined;
 }
 
-function moduleEntry(node: TSESTree.Node): FileFunction | undefined {
-  if (node.type === AST_NODE_TYPES.FunctionDeclaration && node.id !== null) {
-    return node.parent.type === AST_NODE_TYPES.Program ||
-      node.parent.type === AST_NODE_TYPES.ExportNamedDeclaration
-      ? entry(MODULE, node.id.name, node)
-      : undefined;
-  }
-  const declaration = node.type === AST_NODE_TYPES.VariableDeclarator ? node.parent : undefined;
-  const statement = declaration?.parent;
-  const topLevel =
-    statement?.type === AST_NODE_TYPES.Program ||
-    statement?.type === AST_NODE_TYPES.ExportNamedDeclaration;
-  const init =
-    node.type === AST_NODE_TYPES.VariableDeclarator ? (node.init ?? undefined) : undefined;
-  return node.type === AST_NODE_TYPES.VariableDeclarator &&
-    topLevel &&
-    node.id.type === AST_NODE_TYPES.Identifier &&
-    isCallable(init)
-    ? entry(MODULE, node.id.name, init)
+function functionEntry(node: TSESTree.FunctionDeclaration): FileFunction | undefined {
+  return node.id !== null && isModuleLevel(node.parent)
+    ? entry(MODULE, node.id.name, node)
     : undefined;
+}
+
+function variableEntry(node: TSESTree.VariableDeclarator): FileFunction | undefined {
+  return isModuleLevel(node.parent.parent) &&
+    node.id.type === AST_NODE_TYPES.Identifier &&
+    isCallable(node.init)
+    ? entry(MODULE, node.id.name, node.init)
+    : undefined;
+}
+
+function moduleEntry(node: TSESTree.Node): FileFunction | undefined {
+  if (node.type === AST_NODE_TYPES.FunctionDeclaration) {
+    return functionEntry(node);
+  }
+  return node.type === AST_NODE_TYPES.VariableDeclarator ? variableEntry(node) : undefined;
 }
 
 function functionsOf(program: TSESTree.Program): FileFunction[] {
@@ -110,7 +117,7 @@ export function calledKey(call: TSESTree.CallExpression, owner: string): string 
   return callee.type === AST_NODE_TYPES.MemberExpression &&
     callee.object.type === AST_NODE_TYPES.ThisExpression &&
     !callee.computed
-    ? `${owner}#${nameOf(callee.property) ?? ''}`
+    ? `${owner}#${String(nameOf(callee.property))}`
     : undefined;
 }
 
@@ -137,15 +144,19 @@ export function fileCalls(program: TSESTree.Program): FileCalls {
   return { functions, calls };
 }
 
+export function callsFrom(graph: FileCalls, key: string): ReadonlySet<string> {
+  return graph.calls.get(key) ?? new Set<string>();
+}
+
 export function reachable(graph: FileCalls, start: string): ReadonlySet<string> {
   const seen = new Set<string>();
-  const pending = [...(graph.calls.get(start) ?? [])];
+  const pending = [...callsFrom(graph, start)];
   for (const key of pending) {
     if (seen.has(key)) {
       continue;
     }
     seen.add(key);
-    for (const next of graph.calls.get(key) ?? []) {
+    for (const next of callsFrom(graph, key)) {
       pending.push(next);
     }
   }
@@ -164,12 +175,11 @@ export function methodCall(node: TSESTree.Node): MethodCall | undefined {
   ) {
     return undefined;
   }
-  const method = nameOf(node.callee.property);
   const { object } = node.callee;
   const receiver =
     object.type === AST_NODE_TYPES.MemberExpression &&
     object.object.type === AST_NODE_TYPES.ThisExpression
       ? nameOf(object.property)
       : nameOf(object);
-  return method === undefined ? undefined : { receiver: receiver ?? '', method };
+  return { receiver: receiver ?? '', method: String(nameOf(node.callee.property)) };
 }

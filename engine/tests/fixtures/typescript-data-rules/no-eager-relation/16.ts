@@ -1,0 +1,2 @@
+import { Entity, EntitySchema, ManyToMany, ManyToOne, OneToMany, OneToOne } from 'typeorm';
+new EntitySchema({ name: 'order', relations: { customer: { type: 'many-to-one', target: 'customer' } } });

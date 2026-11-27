@@ -1,0 +1,1 @@
+it('x', () => { for (const c of []) { expect(c).toBe(1); } });

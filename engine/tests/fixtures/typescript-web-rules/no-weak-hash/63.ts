@@ -1,0 +1,1 @@
+import CryptoJS from "crypto-js"; export const mac = (k: string) => CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA1, k);

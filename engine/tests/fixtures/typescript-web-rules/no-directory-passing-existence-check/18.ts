@@ -1,0 +1,1 @@
+const files = paths.filter((p) => isReadable(p)).map((p) => fs.readFileSync(p));

@@ -1,0 +1,1 @@
+export const f = (knex) => knex.select("id").from("users").limit(5);

@@ -1,0 +1,1 @@
+export const text = new TextDecoder().decode(bytes);

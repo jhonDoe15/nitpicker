@@ -1,7 +1,8 @@
 // Writes what ESLint reports for a list of files with the testing-library rules of the React preset, for
 // comparison with `nitpicker-engine typescript-lint --files <list> --rules <the same rules>`.
-// Usage: node engine/parity/typescript-lint-expected.mts <list> <out.json> [rules]
+// Usage: node engine/parity/typescript-lint-expected.mts <list> <out.json> [rules] [options]
 // With `rules`, a comma-separated list of rules of nitpicker's own ESLint plugin, those are reported instead.
+// With `options`, a JSON object from rule name to its options array, those rules run with those options.
 // Each line of the list is the path to read, a tab, and the path to report.
 import { readFileSync, writeFileSync } from 'node:fs';
 import * as parser from '@typescript-eslint/parser';
@@ -23,7 +24,8 @@ const ruleNames = [
   'prefer-user-event-setup',
 ];
 
-const [list, out, own] = process.argv.slice(2);
+const [list, out, own, ruleOptions = '{}'] = process.argv.slice(2);
+const options: Record<string, unknown[]> = JSON.parse(ruleOptions);
 if (list === undefined || out === undefined) {
   throw new Error('usage: typescript-lint-expected.mts <list> <out.json>');
 }
@@ -64,7 +66,12 @@ for (const [file = '', display = file] of files) {
         linterOptions: { noInlineConfig: true },
         plugins,
         settings: { 'testing-library/utils-module': 'test-utils' },
-        rules: Object.fromEntries(enabled.map((name) => [name, 'error'])),
+        rules: Object.fromEntries(
+          enabled.map((name) => [
+            name,
+            ['error', ...(options[name.replace('nitpicker/', '')] ?? [])],
+          ]),
+        ),
       },
     ],
     { filename: file },

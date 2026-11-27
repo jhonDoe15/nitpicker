@@ -1,0 +1,1 @@
+const stream = minio.listObjectsV2('bucket', 'prefix', true);

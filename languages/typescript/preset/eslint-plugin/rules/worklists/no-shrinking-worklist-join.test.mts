@@ -14,6 +14,15 @@ const TRANSFER_KILLS =
 const TRANSFER_ADDS =
   'function transfer(node, input) { const out = new Map(input); for (const name of node.read) out.set(name, true); return out; }\n';
 
+const TRANSFER_DELETES =
+  'function transfer(node, input) { const out = { ...input }; for (const name of Object.keys(out)) { if (node.weakens(name)) delete out[name]; } return out; }\n';
+const TRANSFER_OTHER_DELETES =
+  'function transfer(node, input) { const out = { ...input }; delete flag; delete node.cache[node.id]; delete out[node.id]; return out; }\n';
+const TRANSFER_PATTERN =
+  'function transfer(node, input) { const [first] = input; return first; }\n';
+const SOLVE =
+  'export function solve(entry, input) { const work = [entry]; while (work.length > 0) { const node = work.pop(); const out = transfer(node, input.get(node)); for (const next of node.successors) { if (JOINED) work.push(next); } } }';
+
 tester.run('no-shrinking-worklist-join', rule, {
   valid: [
     `${TRANSFER_ADDS}export function solve(entry, input) { const work = [entry]; while (work.length > 0) { const node = work.pop(); const out = transfer(node, input.get(node)); for (const next of node.successors) { if (join(input.get(next), out)) work.push(next); } } }`,
@@ -21,8 +30,14 @@ tester.run('no-shrinking-worklist-join', rule, {
     `${TRANSFER_DROPS}export function solve(entry, input) { const work = [entry]; while (work.length > 0) { const node = work.pop(); const out = transfer(node, input.get(node)); for (const next of node.successors) { work.push(next); } } }`,
     `${TRANSFER_KILLS}export function solve(entry, input) { const work = [entry]; while (work.length > 0) { const node = work.pop(); const out = transfer(node, input.get(node)); for (const next of node.successors) { if (union(input.get(next), out)) work.push(next); } } }`,
     'export function solve(entry, input, pending) { const work = [entry]; while (work.length) { const node = work.pop(); pending.delete(node); const out = input.get(node); for (const next of succ(node)) { if (merge(input.get(next), out)) work.push(next); } } }',
+    `${TRANSFER_OTHER_DELETES}${SOLVE.replace('JOINED', 'join(input.get(next), out)')}`,
+    `${TRANSFER_PATTERN}${SOLVE.replace('JOINED', 'join(input.get(next), out)')}`,
+    `${TRANSFER_DROPS}${SOLVE.replace('JOINED', 'fns[0](input.get(next), out)')}`,
+    `${TRANSFER_DROPS}${SOLVE.replace('JOINED', 'join(other)')}`,
+    `${TRANSFER_DROPS}${SOLVE.replace('JOINED', 'join(input[other], out)')}`,
   ],
   invalid: [
+    invalid(`${TRANSFER_DELETES}${SOLVE.replace('JOINED', 'join(input.get(next), out)')}`),
     invalid(
       `${TRANSFER_DROPS}export function solve(entry, input) { const work = [entry]; while (work.length > 0) { const node = work.pop(); const out = transfer(node, input.get(node)); for (const next of node.successors) { if (join(input.get(next), out)) work.push(next); } } }`,
     ),

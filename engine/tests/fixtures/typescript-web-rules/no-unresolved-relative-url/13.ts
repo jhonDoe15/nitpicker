@@ -1,0 +1,1 @@
+fetch(new URL(res.headers.location, url));

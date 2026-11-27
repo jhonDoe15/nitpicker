@@ -1,0 +1,1 @@
+import { createHash, createHmac } from "node:crypto"; export const id = (s, algorithm = "sha256") => createHash(algorithm).update(s).digest();

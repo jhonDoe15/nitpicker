@@ -1,0 +1,1 @@
+function go(searchParams) { const callbackUrl = searchParams.get("callbackUrl"); if (callbackUrl?.startsWith("/")) { return Response.redirect(callbackUrl); } }

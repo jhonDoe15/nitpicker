@@ -1,0 +1,1 @@
+function f(path) { if (path.startsWith("/")) { return path.slice(1); } return path; }

@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export const f = (db) => db.selectFrom("asset").selectAll().where("id", "in", db.selectFrom("album").select("assetId")).execute();

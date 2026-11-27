@@ -1,0 +1,1 @@
+it.each([[1, 2], [2, 4], [3, 6]])('doubles %s', (input, expected) => { expect(total(input)).toBe(expected); });

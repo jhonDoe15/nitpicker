@@ -1,0 +1,1 @@
+import serialize from "serialize-javascript"; export const text = serialize(value);

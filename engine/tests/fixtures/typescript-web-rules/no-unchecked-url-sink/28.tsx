@@ -1,0 +1,1 @@
+const items = [{ docsUrl: "https://a.dev" }]; export const A = () => <>{items.map((i) => <a href={i.docsUrl}>x</a>)}</>;

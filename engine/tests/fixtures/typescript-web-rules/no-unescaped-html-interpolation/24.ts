@@ -1,0 +1,1 @@
+export const a = (t: string, safeLabel: string) => `<p>${safeLabel}</p>`;

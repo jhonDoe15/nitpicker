@@ -29,6 +29,7 @@ pub const TYPE_DECLARATIONS: &[&str] = &[
     "RecordDeclaration",
     "AnnotationTypeDeclaration",
     "AnonymousClassDeclaration",
+    "ImplicitClassDeclaration",
 ];
 
 impl<'m, 'a, 't> Ctx<'m, 'a, 't> {

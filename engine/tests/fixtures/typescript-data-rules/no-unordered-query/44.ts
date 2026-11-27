@@ -1,0 +1,1 @@
+import knex from "knex"; export const f = (db, page) => db("users").where({ active: true }).limit(20).offset(page * 20);

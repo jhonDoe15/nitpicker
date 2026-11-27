@@ -1,0 +1,1 @@
+if (fs.existsSync(options.file) && fs.statSync(options.file).isFile()) { fs.readFileSync(options.file, "utf8"); }

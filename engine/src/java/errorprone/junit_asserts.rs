@@ -261,7 +261,7 @@ fn replace_assert(context: &Context, fix: Fix, assertion: Node) -> Fix {
 }
 
 pub fn use_correct_assert_in_tests(context: &Context, method: Node) {
-    if method.kind() != "method_declaration" || method.child_by_field_name("body").is_none() || !is_junit_test_code(context, method) {
+    if !matches!(method.kind(), "method_declaration" | "constructor_declaration" | "compact_constructor_declaration") || method.child_by_field_name("body").is_none() || !(is_junit_test_code(context, method) || context.test_only()) {
         return;
     }
     let mut asserts = Vec::new();

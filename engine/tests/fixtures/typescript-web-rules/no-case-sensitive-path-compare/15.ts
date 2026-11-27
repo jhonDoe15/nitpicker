@@ -1,0 +1,1 @@
+if (isSamePath(msg.workspaceRoot, receiverWorkspaceRoot)) {}

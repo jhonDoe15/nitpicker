@@ -55,6 +55,10 @@ function comparison(node: TSESTree.Node | undefined): Bound | undefined {
   return GREATER.has(node.operator) ? { node, duration: node.right, limit: node.left } : undefined;
 }
 
+function assertsTrue(matcher: string, argument: TSESTree.Node | undefined): boolean {
+  return TRUE_MATCHERS.has(matcher) && (argument === undefined || isTrue(argument));
+}
+
 function matcherBound(call: TSESTree.CallExpression): Bound | undefined {
   const { callee } = call;
   if (callee.type !== AST_NODE_TYPES.MemberExpression) {
@@ -69,8 +73,7 @@ function matcherBound(call: TSESTree.CallExpression): Bound | undefined {
   if (UPPER_MATCHERS.has(matcher) && argument !== undefined) {
     return { node: call, duration: subject, limit: argument };
   }
-  const truthy = TRUE_MATCHERS.has(matcher) && (argument === undefined || isTrue(argument));
-  return truthy ? comparison(subject) : undefined;
+  return assertsTrue(matcher, argument) ? comparison(subject) : undefined;
 }
 
 function assertBound(call: TSESTree.CallExpression): Bound | undefined {

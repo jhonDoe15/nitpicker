@@ -1,0 +1,1 @@
+const BASE = { rejectUnauthorized: false }; export const options = { ...BASE, ca };

@@ -4,6 +4,7 @@ import {
   stringValue,
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
+import { textOf } from '../../../../../../shared/values/readers.mts';
 import { calleeNameOf } from '../typed/syntax-views.mts';
 
 const RESOLVING_TOOLS = new Set([
@@ -22,7 +23,7 @@ const RESOLVING_TOOLS = new Set([
 const SHELL_CALLS = new Set(['exec', 'execSync']);
 
 function programName(text: string): string {
-  const base = text.split(/[\\/]/u).pop() ?? '';
+  const base = textOf(text.split(/[\\/]/u).pop());
   return base.replace(/\.(?:cmd|exe|js|mjs|cjs|bat)$/u, '');
 }
 
@@ -48,10 +49,10 @@ export function runsResolvingTool(context: SourceContext, call: TSESTree.CallExp
   if (text === undefined) {
     return false;
   }
-  const words = SHELL_CALLS.has(calleeNameOf(call.callee) ?? '')
+  const words = SHELL_CALLS.has(textOf(calleeNameOf(call.callee)))
     ? text.trim().split(/\s+/u)
     : [text];
-  const program = programName(words[0] ?? '');
+  const program = programName(textOf(words[0]));
   if (program !== 'npx') {
     return RESOLVING_TOOLS.has(program);
   }

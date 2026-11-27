@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
@@ -39,15 +39,18 @@ describe('fileElements', () => {
       '13.5.0',
       fileElements(['/p/A.java', '/p/B.java'], [ROW, { ...ROW, line: 1, column: 0 }]),
     );
+    const finding = {
+      tool: 'checkstyle',
+      rule: ROW.source,
+      path: 'p/A.java',
+      message: ROW.message,
+      classification: 'enforceable',
+    };
     expect(ingestCheckstyle(xml, { root: '/' }).findings).toEqual([
-      expect.objectContaining({
-        rule: ROW.source,
-        path: 'p/A.java',
-        location: { line: 3, column: 7 },
-      }),
-      expect.objectContaining({ rule: ROW.source, path: 'p/A.java', location: { line: 1 } }),
+      { ...finding, identity: 'checkstyle:8b1ed308e6a54ee6', location: { line: 3, column: 7 } },
+      { ...finding, identity: 'checkstyle:8b1ed308e6a54ee6#2', location: { line: 1 } },
     ]);
-    expect(xml).toContain('<file name="/p/B.java">\n</file>');
+    expect(reportBody(xml).split('\n').slice(-2)).toEqual(['<file name="/p/B.java">', '</file>']);
   });
 });
 
@@ -63,7 +66,10 @@ describe('mergeReports', () => {
     writeFileSync(engine, checkstyleXml('13.5.0', fileElements(['/p/A.java'], [ROW])));
     mergeReports(report, engine);
     const merged = readFileSync(report, 'utf8');
-    expect(reportBody(merged)).toContain('/p/C.java');
+    expect(reportBody(merged).split('\n').slice(0, 2)).toEqual([
+      '<file name="/p/C.java">',
+      '</file>',
+    ]);
     expect(ingestCheckstyle(merged, { root: '/' }).findings.map((finding) => finding.path)).toEqual(
       ['p/A.java'],
     );
@@ -77,6 +83,19 @@ describe('mergeReports', () => {
     writeFileSync(engine, checkstyleXml('13.5.0', fileElements(['/p/A.java'], [ROW])));
     mergeReports(report, engine);
     expect(readFileSync(report, 'utf8')).toBe('');
+  });
+
+  it('leaves a missing report missing and a report untouched when the engine found no files', () => {
+    const root = projectWith({});
+    const report = path.join(root, 'checkstyle.xml');
+    const engine = path.join(root, 'checkstyle-engine.xml');
+    const own = '<?xml version="1.0"?>\n<checkstyle version="13.5.0">\n</checkstyle>\n';
+    writeFileSync(engine, checkstyleXml('13.5.0', ''));
+    mergeReports(report, engine);
+    expect(existsSync(report)).toBe(false);
+    writeFileSync(report, own);
+    mergeReports(report, engine);
+    expect(readFileSync(report, 'utf8')).toBe(own);
   });
 
   it('refuses a report without a checkstyle element', () => {

@@ -183,12 +183,16 @@ pub fn private_constructor_for_utility_class(context: &Context, node: Node) {
     }
     let Some(body) = node.child_by_field_name("body") else { return };
     let list = members(body);
+    let compiled = context.resolver.scope.names.get(&node.id()).and_then(|name| super::compiled::class(context, name));
     let instance = |member: &Node| match member.kind() {
-        "class_declaration" | "method_declaration" | "field_declaration" => !has_modifier(*member, "static"),
+        "class_declaration" | "method_declaration" | "field_declaration" => {
+            !has_modifier(*member, "static") && !super::compiled::static_member(context, compiled, *member)
+        }
         "constructor_declaration" | "compact_constructor_declaration" | "block" => true,
         _ => false,
     };
-    if list.is_empty() || list.iter().any(instance) {
+    let written = super::compiled::written_members(context, node);
+    if (list.is_empty() && written.is_empty()) || list.iter().any(instance) || written.iter().any(|is_static| !is_static) {
         return;
     }
     if let Some(keyword) = children(node).into_iter().find(|part| part.kind() == "class") {

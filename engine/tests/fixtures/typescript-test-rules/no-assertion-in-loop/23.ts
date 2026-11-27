@@ -1,0 +1,1 @@
+it('x', () => { for (const c of [[1, 2], [3, 4]]) { expect(add(c[0], c[0])).toBe(c[1]); } });

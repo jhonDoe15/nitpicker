@@ -1,0 +1,1 @@
+export default async function handler(req, response) { try { await save(); } catch (e) { response.json({ error: "failed" }); } }

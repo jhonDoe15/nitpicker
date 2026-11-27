@@ -1,0 +1,1 @@
+const db = `redis://${config.user}:${encodeURIComponent(secret)}@${host}`;

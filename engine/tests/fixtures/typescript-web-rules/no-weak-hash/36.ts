@@ -1,0 +1,1 @@
+import { createHash, createHmac } from "node:crypto"; const CONFIG = { hash: "md5" }; export const id = (s) => createHash(CONFIG.hash).update(s).digest();

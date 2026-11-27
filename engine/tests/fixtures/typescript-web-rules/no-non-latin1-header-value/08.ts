@@ -1,0 +1,1 @@
+fetch(url, { headers: { "X-Name": "static", Authorization: `Bearer ${token}` } });

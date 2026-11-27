@@ -1,0 +1,1 @@
+const h = new Headers({ "x-path": pathname });

@@ -1,0 +1,1 @@
+describe('x', () => { if (flag) { let inner = 1; run(inner); } });

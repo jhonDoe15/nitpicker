@@ -158,7 +158,7 @@ fn reference(context: &Context, node: Node) {
     let (Some(qualifier), Some(last)) = (parts.first().copied(), parts.last().copied()) else { return };
     let index = context.resolver.index;
     let Some(target) = context.resolver.type_of(node) else { return };
-    let Some((_, function)) = index.functional_method(&target.name()) else { return };
+    let Some((functional, function)) = index.functional_method(&target.name()) else { return };
     if function.returns != VOID || throwing_type(context, &target.name()) {
         return;
     }
@@ -190,7 +190,12 @@ fn reference(context: &Context, node: Node) {
         }
     }
     let short = if constructor { format!("new {}", context.text(qualifier)) } else { name.to_string() };
-    let fixes: Vec<Fix> = candidates.first().map(|(class, method)| declaration_fix(context, &class.name, method)).into_iter().collect();
+    let map = index.member_map(&target, &functional.name);
+    let taken: Vec<Type> = function.generic_parameters.iter().map(|kind| kind.substitute(&map)).collect();
+    let chosen = context.resolver.reference_method(node, &taken).and_then(|(_, class, method, _)| {
+        candidates.iter().find(|(own, other)| own.name == class.name && other.name == method.name && other.parameters == method.parameters)
+    });
+    let fixes: Vec<Fix> = chosen.or(candidates.first()).map(|(class, method)| declaration_fix(context, &class.name, method)).into_iter().collect();
     report(context, node, node.start_byte(), &format!("{short}{}", parens(first.1)), &fixes);
 }
 

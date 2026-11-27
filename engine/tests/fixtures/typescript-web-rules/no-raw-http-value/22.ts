@@ -1,0 +1,1 @@
+const ext = extname(file).toLowerCase(); const mime = MIME_TYPES[ext];

@@ -1,5 +1,7 @@
 //! The lock expressions that `@GuardedBy` annotations name.
+use super::constant::{Constant, cast, infix, literal, unary};
 use super::expr::unwrap;
+use crate::java::errorprone::java_text::{double_to_string, float_to_string};
 use super::index::TypeIndex;
 use super::model::Type;
 use super::scope::{Resolver, enclosing_type};
@@ -19,39 +21,90 @@ pub const GUARDED_BY: &[&str] = &[
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
     Str(String),
-    Int(i64),
-    Char(char),
-    Bool(bool),
+    Num(Constant),
     /// A field read by name: the classes to look in (an empty name stands for the class and those around it), the name.
     Name(Vec<String>, String),
-    Add(Box<Expr>, Box<Expr>),
+    Unary(String, Box<Expr>),
+    Binary(String, Box<Expr>, Box<Expr>),
+    Conditional(Box<Expr>, Box<Expr>, Box<Expr>),
+    Cast(String, Box<Expr>),
 }
 
 #[derive(Clone, Debug)]
 enum Value {
     Str(String),
-    Int(i64),
-    Char(char),
-    Bool(bool),
+    Num(Constant),
+    /// A `byte` or `short` value: an `int` for arithmetic, but not an `int` constant beside a `char` (JLS 15.25).
+    Small(i32),
 }
 
 impl Value {
+    /// The text string conversion gives the value (JLS 5.1.11).
     fn shown(&self) -> String {
         match self {
             Value::Str(text) => text.clone(),
-            Value::Int(number) => number.to_string(),
-            Value::Char(c) => c.to_string(),
-            Value::Bool(flag) => flag.to_string(),
+            Value::Num(Constant::Int(number)) => number.to_string(),
+            Value::Num(Constant::Long(number)) => number.to_string(),
+            Value::Num(Constant::Float(number)) => float_to_string(*number),
+            Value::Num(Constant::Double(number)) => double_to_string(*number),
+            Value::Num(Constant::Char(unit)) => String::from_utf16_lossy(&[*unit]),
+            Value::Num(Constant::Bool(flag)) => flag.to_string(),
+            Value::Small(number) => number.to_string(),
         }
     }
+}
 
-    fn number(&self) -> Option<i64> {
-        match self {
-            Value::Int(number) => Some(*number),
-            Value::Char(c) => Some(i64::from(u32::from(*c))),
-            _ => None,
-        }
+/// A value of the primitive type `kind`, marking `byte` and `short` values.
+fn small(kind: &str, value: Constant) -> Option<Value> {
+    match (kind, value) {
+        ("byte" | "short", Constant::Int(number)) => Some(Value::Small(number)),
+        (_, value) => Some(Value::Num(value)),
     }
+}
+
+/// Java's comparison of two numbers where one is a `float` or a `double`: IEEE 754, so `0.0 == -0.0` and no `NaN`
+/// compares true.
+fn real_compare(operator: &str, left: Constant, right: Constant) -> Option<Constant> {
+    let real = |value: Constant| matches!(value, Constant::Float(_) | Constant::Double(_));
+    if !real(left) && !real(right) || matches!(left, Constant::Bool(_)) || matches!(right, Constant::Bool(_)) {
+        return None;
+    }
+    let wide = if matches!(left, Constant::Double(_)) || matches!(right, Constant::Double(_)) { "double" } else { "float" };
+    let as_double = |value: Constant| match cast(wide, value)? {
+        Constant::Float(number) => Some(f64::from(number)),
+        Constant::Double(number) => Some(number),
+        _ => None,
+    };
+    let (a, b) = (as_double(left)?, as_double(right)?);
+    Some(Constant::Bool(match operator {
+        "==" => a == b,
+        "!=" => a != b,
+        "<" => a < b,
+        "<=" => a <= b,
+        ">" => a > b,
+        ">=" => a >= b,
+        _ => return None,
+    }))
+}
+
+/// The type a conditional of two numeric constants has (JLS 15.25): a `char` beside an `int` constant it can hold
+/// stays a `char`, otherwise both take the wider type.
+fn conditional_kind(first: Constant, second: Constant) -> Option<&'static str> {
+    let rank = |value: Constant| match value {
+        Constant::Char(_) => Some(0),
+        Constant::Int(_) => Some(1),
+        Constant::Long(_) => Some(2),
+        Constant::Float(_) => Some(3),
+        Constant::Double(_) => Some(4),
+        Constant::Bool(_) => None,
+    };
+    let fits = |value: Constant| matches!(value, Constant::Int(number) if u16::try_from(number).is_ok());
+    Some(match (rank(first)?, rank(second)?) {
+        (0, 0) => "char",
+        (0, 1) if fits(second) => "char",
+        (1, 0) if fits(first) => "char",
+        (a, b) => ["int", "int", "long", "float", "double"][a.max(b)],
+    })
 }
 
 fn character(text: &str) -> Option<char> {
@@ -80,36 +133,31 @@ fn character(text: &str) -> Option<char> {
     }
 }
 
-fn integer(text: &str) -> Option<i64> {
-    let digits: String = text.chars().filter(|c| *c != '_').collect();
-    let digits = digits.trim_end_matches(['l', 'L']);
-    let lower = digits.to_ascii_lowercase();
-    if let Some(hex) = lower.strip_prefix("0x") {
-        return i64::from_str_radix(hex, 16).ok();
-    }
-    if let Some(binary) = lower.strip_prefix("0b") {
-        return i64::from_str_radix(binary, 2).ok();
-    }
-    if lower.len() > 1 && lower.starts_with('0') {
-        return i64::from_str_radix(&lower[1..], 8).ok();
-    }
-    lower.parse().ok()
-}
-
 impl Resolver<'_> {
-    /// The constant a declaration's initializer or annotation value is, as far as it is made of literals, `+` and names.
+    /// The constant expression a declaration's initializer or annotation value is, as written (JLS 15.29).
     pub(super) fn fold(&self, node: Node) -> Option<Expr> {
         let node = unwrap(node);
         let text = self.file.text_of(node);
+        let part = |field: &str| node.child_by_field_name(field).and_then(|inner| self.fold(inner)).map(Box::new);
+        let operator = || node.child_by_field_name("operator").map(|operator| self.file.text_of(operator).to_string());
         match node.kind() {
             "string_literal" => super::expr::literal_text(self.file, node).map(Expr::Str),
-            "character_literal" => character(text).map(Expr::Char),
-            "true" => Some(Expr::Bool(true)),
-            "false" => Some(Expr::Bool(false)),
-            "decimal_integer_literal" | "hex_integer_literal" | "octal_integer_literal" | "binary_integer_literal" => integer(text).map(Expr::Int),
-            "binary_expression" if self.file.text_of(node.child_by_field_name("operator")?) == "+" => {
-                let left = self.fold(node.child_by_field_name("left")?)?;
-                Some(Expr::Add(Box::new(left), Box::new(self.fold(node.child_by_field_name("right")?)?)))
+            "character_literal" => character(text).and_then(|c| u16::try_from(u32::from(c)).ok()).map(|unit| Expr::Num(Constant::Char(unit))),
+            "true" => Some(Expr::Num(Constant::Bool(true))),
+            "false" => Some(Expr::Num(Constant::Bool(false))),
+            "decimal_integer_literal" | "hex_integer_literal" | "octal_integer_literal" | "binary_integer_literal" => Some(Expr::Num(literal(text, true).constant())),
+            "decimal_floating_point_literal" | "hex_floating_point_literal" => Some(Expr::Num(literal(text, false).constant())),
+            "unary_expression" => Some(Expr::Unary(operator()?, part("operand")?)),
+            "binary_expression" => Some(Expr::Binary(operator()?, part("left")?, part("right")?)),
+            "ternary_expression" => Some(Expr::Conditional(part("condition")?, part("consequence")?, part("alternative")?)),
+            "cast_expression" => {
+                let kind = node.child_by_field_name("type")?;
+                let written = match kind.kind() {
+                    "integral_type" | "floating_point_type" | "boolean_type" => self.file.text_of(kind).to_string(),
+                    _ if self.class_name(kind, self.file.text_of(kind)).as_deref() == Some("java.lang.String") => "String".to_string(),
+                    _ => return None,
+                };
+                Some(Expr::Cast(written, part("value")?))
             }
             "identifier" => {
                 let mut owners = vec![String::new()];
@@ -184,19 +232,74 @@ impl TypeIndex {
         found
     }
 
+    /// The string a constant expression of a member of `class` folds to.
+    pub fn constant_text(&self, expr: &Expr, class: &str) -> Option<String> {
+        match self.constant(expr, class, 0)? {
+            Value::Str(text) => Some(text),
+            _ => None,
+        }
+    }
+
     fn constant(&self, expr: &Expr, class: &str, depth: usize) -> Option<Value> {
+        let number = |part: &Expr| match self.constant(part, class, depth)? {
+            Value::Num(value) => Some(value),
+            Value::Small(value) => Some(Constant::Int(value)),
+            Value::Str(_) => None,
+        };
         match expr {
             Expr::Str(text) => Some(Value::Str(text.clone())),
-            Expr::Int(number) => Some(Value::Int(*number)),
-            Expr::Char(c) => Some(Value::Char(*c)),
-            Expr::Bool(flag) => Some(Value::Bool(*flag)),
-            Expr::Add(left, right) => {
-                let (left, right) = (self.constant(left, class, depth)?, self.constant(right, class, depth)?);
-                if matches!(left, Value::Str(_)) || matches!(right, Value::Str(_)) {
-                    return Some(Value::Str(left.shown() + &right.shown()));
+            Expr::Num(value) => Some(Value::Num(*value)),
+            Expr::Binary(operator, left_expr, right_expr) if operator == "+" => {
+                let (left, right) = (self.constant(left_expr, class, depth)?, self.constant(right_expr, class, depth)?);
+                match (&left, &right) {
+                    (Value::Str(_), _) | (_, Value::Str(_)) => Some(Value::Str(left.shown() + &right.shown())),
+                    _ => infix("+", number(left_expr)?, number(right_expr)?).ok().flatten().map(Value::Num),
                 }
-                Some(Value::Int(left.number()?.checked_add(right.number()?)?))
             }
+            Expr::Binary(operator, left, right) if matches!(operator.as_str(), "==" | "!=") && matches!(self.constant(left, class, depth), Some(Value::Str(_))) => {
+                let (Some(Value::Str(a)), Some(Value::Str(b))) = (self.constant(left, class, depth), self.constant(right, class, depth)) else { return None };
+                Some(Value::Num(Constant::Bool((a == b) == (operator == "=="))))
+            }
+            Expr::Binary(operator, left, right) => {
+                let (left, right) = (number(left)?, number(right)?);
+                real_compare(operator, left, right).or_else(|| infix(operator, left, right).ok().flatten()).map(Value::Num)
+            }
+            Expr::Unary(operator, operand) => unary(operator, number(operand)?).map(Value::Num),
+            Expr::Conditional(condition, first, second) => {
+                let Constant::Bool(flag) = number(condition)? else { return None };
+                let (first, second) = (self.constant(first, class, depth)?, self.constant(second, class, depth)?);
+                let chosen = if flag { &first } else { &second };
+                let numeric = |value: &Value| match value {
+                    Value::Num(Constant::Bool(_)) | Value::Str(_) => None,
+                    Value::Num(value) => Some((*value, false)),
+                    Value::Small(value) => Some((Constant::Int(*value), true)),
+                };
+                match (numeric(&first), numeric(&second)) {
+                    (Some((a, a_small)), Some((b, b_small))) => {
+                        let kind = match (a, b) {
+                            (Constant::Char(_), _) if b_small => "int",
+                            (_, Constant::Char(_)) if a_small => "int",
+                            _ => conditional_kind(a, b)?,
+                        };
+                        let value = numeric(chosen)?.0;
+                        match value {
+                            Constant::Int(number) if a_small && b_small => Some(Value::Small(number)),
+                            _ => cast(kind, value).map(Value::Num),
+                        }
+                    }
+                    (None, None) if matches!((&first, &second), (Value::Num(_), Value::Num(_)) | (Value::Str(_), Value::Str(_))) => Some(chosen.clone()),
+                    _ => None,
+                }
+            }
+            Expr::Cast(kind, value) if kind == "String" => match self.constant(value, class, depth)? {
+                Value::Str(text) => Some(Value::Str(text)),
+                _ => None,
+            },
+            Expr::Cast(kind, value) => match (kind.as_str(), number(value)?) {
+                ("boolean", Constant::Bool(flag)) => Some(Value::Num(Constant::Bool(flag))),
+                ("boolean", _) => None,
+                (kind, value) => small(kind, cast(kind, value)?),
+            },
             Expr::Name(owners, name) => {
                 if depth > 12 {
                     return None;
@@ -232,15 +335,21 @@ impl TypeIndex {
         if !matches!(field.kind, Type::Primitive(_)) && kind != "java.lang.String" {
             return None;
         }
-        if let Some(expr) = &field.folded {
-            return self.constant(expr, owner, depth + 1);
+        if let Some(found) = field.folded.as_ref().and_then(|expr| self.constant(expr, owner, depth + 1)) {
+            return match (&field.kind, found) {
+                (Type::Primitive(primitive), Value::Num(value)) => small(primitive, cast(primitive, value).unwrap_or(value)),
+                (Type::Primitive(primitive), Value::Small(value)) => small(primitive, cast(primitive, Constant::Int(value))?),
+                (_, found) => Some(found),
+            };
         }
         let number = field.number;
         match (&field.kind, field.constant.as_deref()) {
-            (Type::Primitive("boolean"), Some(flag)) => Some(Value::Bool(flag == "true")),
-            (Type::Primitive("char"), _) => number.and_then(|n| char::from_u32(n as u32)).map(Value::Char),
-            (Type::Primitive("float" | "double"), _) => None,
-            (Type::Primitive(_), _) => number.map(Value::Int),
+            (Type::Primitive("boolean"), Some(flag)) => Some(Value::Num(Constant::Bool(flag == "true"))),
+            (Type::Primitive("char"), _) => number.map(|n| Value::Num(Constant::Char(n as u16))),
+            (Type::Primitive("float"), _) => number.map(|n| Value::Num(Constant::Float(f32::from_bits(n as u32)))),
+            (Type::Primitive("double"), _) => number.map(|n| Value::Num(Constant::Double(f64::from_bits(n as u64)))),
+            (Type::Primitive("long"), _) => number.map(|n| Value::Num(Constant::Long(n))),
+            (Type::Primitive(primitive), _) => number.and_then(|n| small(primitive, Constant::Int(n as i32))),
             (_, Some(text)) => Some(Value::Str(text.to_string())),
             _ => None,
         }

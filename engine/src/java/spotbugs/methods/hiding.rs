@@ -6,6 +6,8 @@ use super::super::{Context, names, place};
 use crate::engine::source::children;
 use crate::java::helpers::{declarators, has_modifier};
 use crate::java::types::scope::TYPE_DECLARATIONS;
+use crate::java::types::classfile::descriptor_method;
+use crate::java::types::compiled::{ACC_PRIVATE, ACC_STATIC, CompiledMethod};
 use crate::java::types::model::{Method, Type};
 use std::collections::HashMap;
 use tree_sitter::Node;
@@ -51,26 +53,35 @@ pub fn check(context: &Context, class: Node) {
     }
     let Some(own) = context.resolver.scope.names.get(&class.id()) else { return };
     let Some(body) = class.child_by_field_name("body").or_else(|| children(class).into_iter().find(|part| part.kind() == "class_body")) else { return };
+    let written = super::super::lombok::compiled(context, own);
+    let utility = written.is_some() && super::super::lombok::annotated(context, class, "UtilityClass");
     let statics: Vec<Node> = place::members(body)
         .into_iter()
-        .filter(|member| member.kind() == "method_declaration" && has_modifier(*member, "static") && !has_modifier(*member, "private"))
+        .filter(|member| member.kind() == "method_declaration" && (utility || has_modifier(*member, "static")) && !has_modifier(*member, "private"))
         .collect();
     let index = context.resolver.index;
-    let Some(info) = statics.first().and_then(|_| index.get(own)).filter(|_| compiled_methods(body) <= MOST_METHODS) else { return };
+    let made: Vec<&CompiledMethod> = super::super::lombok::written(context, own).filter(|method| visible_static(method)).collect();
+    let count = written.map_or_else(|| compiled_methods(body), |class| class.methods.len());
+    let Some(info) = (!statics.is_empty() || !made.is_empty()).then(|| index.get(own)).flatten().filter(|_| count <= MOST_METHODS) else { return };
     let chain = index.superclasses(own);
     if chain.last().is_some_and(|last| last != "java.lang.Object" && index.get(last).is_none()) {
         return;
     }
-    let mut visible: HashMap<&str, Vec<(&String, &Method)>> = HashMap::new();
+    let mut visible: HashMap<String, Vec<(&String, Vec<Type>, Type)>> = HashMap::new();
     for holder in chain.iter().skip(1) {
         for other in index.get(holder).map(|holder| holder.methods.as_slice()).unwrap_or_default() {
             if other.is_static && !other.is_private {
-                visible.entry(other.name.as_str()).or_default().push((holder, other));
+                visible.entry(other.name.clone()).or_default().push((holder, other.parameters.clone(), other.returns.erased()));
+            }
+        }
+        for other in super::super::lombok::written(context, holder).filter(|method| visible_static(method)) {
+            if let Some((parameters, returns)) = descriptor_method(&other.descriptor) {
+                visible.entry(other.name.clone()).or_default().push((holder, parameters, returns.erased()));
             }
         }
     }
     let mut mine: HashMap<&str, Vec<&Method>> = HashMap::new();
-    for known in info.methods.iter().filter(|known| known.is_static && visible.contains_key(known.name.as_str())) {
+    for known in info.methods.iter().filter(|known| (known.is_static || utility) && visible.contains_key(known.name.as_str())) {
         mine.entry(known.name.as_str()).or_default().push(known);
     }
     let binary = names::binary(context, own);
@@ -82,12 +93,7 @@ pub fn check(context: &Context, class: Node) {
         if is_main(name, &erased) {
             continue;
         }
-        let mut hidden: Vec<&String> = Vec::new();
-        for (holder, other) in candidates {
-            if other.parameters == declared.parameters && other.returns.erased() == declared.returns.erased() && !hidden.contains(holder) {
-                hidden.push(holder);
-            }
-        }
+        let hidden = hidden_in(candidates, &declared.parameters, &declared.returns.erased());
         if hidden.is_empty() {
             continue;
         }
@@ -96,17 +102,43 @@ pub fn check(context: &Context, class: Node) {
         }
         let Some(line) = lines::method_start(context, method) else { continue };
         let label = names::method(context, own, method, None);
-        let open = label.find('(').unwrap_or(label.len());
-        let signature = &label[label[..open].rfind('.').map_or(0, |dot| dot + 1)..];
-        let mine = simple_name(&binary);
-        for holder in hidden {
-            let theirs = names::binary(context, holder);
-            let message = format!(
-                "The method '{signature}' in class '{mine}' hides a method in class '{}'. Declare the respective methods non-static or private to eradicate the problem.",
-                simple_name(&theirs)
-            );
-            let place = format!("{}@{theirs}", place::function(&label));
-            context.report_listed(PATTERN, method, line, message, place, 2, vec![signature.to_string(), mine.to_string(), simple_name(&theirs).to_string()]);
+        report(context, (method, line), &label, &binary, &hidden);
+    }
+    for method in made {
+        let (Some(candidates), Some((parameters, returns)), Some(line)) = (visible.get(&method.name), descriptor_method(&method.descriptor), method.entry_line) else { continue };
+        if is_main(&method.name, &parameters) {
+            continue;
         }
+        let label = super::super::lombok::label(context, own, method);
+        report(context, (class, line), &label, &binary, &hidden_in(candidates, &parameters, &returns.erased()));
+    }
+}
+
+fn visible_static(method: &CompiledMethod) -> bool {
+    method.access & ACC_STATIC != 0 && method.access & ACC_PRIVATE == 0 && !method.name.starts_with('<')
+}
+
+fn hidden_in<'h>(candidates: &[(&'h String, Vec<Type>, Type)], parameters: &[Type], returns: &Type) -> Vec<&'h String> {
+    let mut hidden: Vec<&String> = Vec::new();
+    for (holder, theirs, result) in candidates {
+        if theirs.as_slice() == parameters && result == returns && !hidden.contains(holder) {
+            hidden.push(holder);
+        }
+    }
+    hidden
+}
+
+fn report(context: &Context, (at, line): (Node, usize), label: &str, binary: &str, hidden: &[&String]) {
+    let open = label.find('(').unwrap_or(label.len());
+    let signature = &label[label[..open].rfind('.').map_or(0, |dot| dot + 1)..];
+    let mine = simple_name(binary);
+    for holder in hidden {
+        let theirs = names::binary(context, holder);
+        let message = format!(
+            "The method '{signature}' in class '{mine}' hides a method in class '{}'. Declare the respective methods non-static or private to eradicate the problem.",
+            simple_name(&theirs)
+        );
+        let place = format!("{}@{theirs}", place::function(label));
+        context.report_listed(PATTERN, at, line, message, place, 2, vec![signature.to_string(), mine.to_string(), simple_name(&theirs).to_string()]);
     }
 }

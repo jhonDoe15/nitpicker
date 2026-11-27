@@ -116,6 +116,7 @@ impl<'a> Code<'_, 'a> {
                 }
                 self.push(Op::Other);
             }
+            "method_reference" if self.creates_inner(node) => self.ops.extend([Op::Load, Op::Other]),
             "method_reference" => {
                 match node.named_child(0) {
                     Some(object) if matches!(object.kind(), "this" | "super") => self.push(Op::Load),
@@ -185,6 +186,9 @@ impl<'a> Code<'_, 'a> {
     /// Whether javac calls a method of `java.lang.Object` with `invokeinterface`: on a value of an interface type.
     fn on_interface(&self, call: Node, object: Option<Node>) -> bool {
         let index = self.context.resolver.index;
+        if object.is_some_and(|object| self.several_bounds(object)) {
+            return false;
+        }
         let owner = match object {
             Some(object) => match self.context.resolver.type_of(object).map(|kind| kind.erased()) {
                 Some(Type::Class(name, _)) => name,
@@ -206,7 +210,7 @@ impl<'a> Code<'_, 'a> {
             self.value(outer);
         }
         match body {
-            Some(body) if !self.is_static || self.captures(body, false) => self.push(Op::Load),
+            Some(body) if !self.is_static || self.captures(body, false) || self.creates_taking(node, None) => self.push(Op::Load),
             None if outer.is_none() && self.inner(node) => self.push(Op::Load),
             _ => {}
         }
@@ -216,16 +220,7 @@ impl<'a> Code<'_, 'a> {
 
     /// A class created with `new` that takes the instance around it.
     pub(super) fn inner(&self, creation: Node) -> bool {
-        let kind = creation.child_by_field_name("type").and_then(|kind| self.context.resolver.type_node(kind));
-        let Some(Type::Class(name, _)) = kind.map(|kind| kind.erased()) else { return false };
-        let local = self.context.classes.get(&name).copied().filter(|declaration| crate::java::javac::declared_locally(*declaration));
-        if let Some(local) = local {
-            return !self.is_static || local.child_by_field_name("body").is_some_and(|body| self.captures(body, false));
-        }
-        self.context.resolver.index.get(&name).is_some_and(|info| {
-            let nested = info.name.rsplit_once('.').is_some_and(|(outer, _)| self.context.resolver.index.get(outer).is_some());
-            nested && !info.is_interface && info.flags & (flag::STATIC | flag::ENUM | flag::RECORD) == 0
-        })
+        self.takes_values(creation.child_by_field_name("type"))
     }
 
     /// `false && x` and `true || x` fold to a constant; `true && x` and `false || x` are `x`.

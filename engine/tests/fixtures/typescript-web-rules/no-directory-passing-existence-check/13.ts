@@ -1,0 +1,1 @@
+fs.existsSync(options.file);

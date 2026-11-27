@@ -1,0 +1,1 @@
+export const find = (id) => runQuery(`select * from users where id = ${id}`);

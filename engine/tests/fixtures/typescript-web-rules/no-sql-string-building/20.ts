@@ -1,0 +1,1 @@
+export const path = (id) => "/users/" + id + "/orders";

@@ -1,0 +1,1 @@
+const config = { host: "db1.internal", port: "5432" };

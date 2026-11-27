@@ -62,14 +62,16 @@ function plainProperties(
   return found;
 }
 
-function isReadFetch(call: TSESTree.CallExpression): boolean {
-  if (call.callee.type !== AST_NODE_TYPES.Identifier || call.callee.name !== 'fetch') {
-    return false;
-  }
-  const [url, options, ...rest] = call.arguments;
-  if (url === undefined || rest.length > 0) {
-    return false;
-  }
+function isFetchCall(call: TSESTree.CallExpression): boolean {
+  return call.callee.type === AST_NODE_TYPES.Identifier && call.callee.name === 'fetch';
+}
+
+function verbOf(properties: Map<string, TSESTree.Property>): string | undefined {
+  const method = properties.get('method');
+  return method === undefined ? 'GET' : stringValue(method.value)?.toUpperCase();
+}
+
+function readsWithOptions(options: TSESTree.Node | undefined): boolean {
   if (options === undefined) {
     return true;
   }
@@ -77,12 +79,16 @@ function isReadFetch(call: TSESTree.CallExpression): boolean {
     return false;
   }
   const properties = plainProperties(options);
-  const method = properties?.get('method');
   if (properties === undefined || properties.has('body')) {
     return false;
   }
-  const verb = method === undefined ? 'GET' : stringValue(method.value)?.toUpperCase();
+  const verb = verbOf(properties);
   return verb !== undefined && READ_METHODS.has(verb);
+}
+
+function isReadFetch(call: TSESTree.CallExpression): boolean {
+  const [url, options, ...rest] = call.arguments;
+  return isFetchCall(call) && url !== undefined && rest.length === 0 && readsWithOptions(options);
 }
 
 function isReadCall(call: TSESTree.CallExpression, orms: readonly string[]): boolean {
@@ -105,6 +111,17 @@ function isReadOrReadOnlyCall(
   );
 }
 
+function awaitedRead(
+  statement: TSESTree.VariableDeclaration,
+): Pick<ReadStatement, 'call' | 'id'> | undefined {
+  const [declarator, ...others] = statement.declarations;
+  const awaited = others.length === 0 ? declarator.init : undefined;
+  return awaited?.type === AST_NODE_TYPES.AwaitExpression &&
+    awaited.argument.type === AST_NODE_TYPES.CallExpression
+    ? { call: awaited.argument, id: declarator.id }
+    : undefined;
+}
+
 export function readStatement(
   statement: TSESTree.Statement,
   orms: readonly string[],
@@ -113,18 +130,20 @@ export function readStatement(
   if (statement.type !== AST_NODE_TYPES.VariableDeclaration || statement.kind !== 'const') {
     return undefined;
   }
-  const [declarator, ...others] = statement.declarations;
-  const awaited = declarator?.init;
-  if (
-    declarator === undefined ||
-    others.length > 0 ||
-    awaited?.type !== AST_NODE_TYPES.AwaitExpression ||
-    awaited.argument.type !== AST_NODE_TYPES.CallExpression ||
-    !isReadOrReadOnlyCall(awaited.argument, orms, context)
-  ) {
-    return undefined;
-  }
-  return { statement, call: awaited.argument, id: declarator.id };
+  const read = awaitedRead(statement);
+  return read !== undefined && isReadOrReadOnlyCall(read.call, orms, context)
+    ? { statement, ...read }
+    : undefined;
+}
+
+function declaredInit(
+  root: TSESTree.Identifier,
+  sourceCode: TSESLint.SourceCode,
+): TSESTree.Expression | null | undefined {
+  const definition = findVariable({ sourceCode }, root, root.name)?.defs[0];
+  return definition?.node.type === AST_NODE_TYPES.VariableDeclarator
+    ? definition.node.init
+    : undefined;
 }
 
 function clientNames(call: TSESTree.CallExpression, sourceCode: TSESLint.SourceCode): string[] {
@@ -132,9 +151,7 @@ function clientNames(call: TSESTree.CallExpression, sourceCode: TSESLint.SourceC
   if (root?.type !== AST_NODE_TYPES.Identifier) {
     return [];
   }
-  const definition = findVariable({ sourceCode }, root, root.name)?.defs[0];
-  const init =
-    definition?.node.type === AST_NODE_TYPES.VariableDeclarator ? definition.node.init : undefined;
+  const init = declaredInit(root, sourceCode);
   const source = init ? rootNode(init) : undefined;
   return [root.name, ...(source?.type === AST_NODE_TYPES.Identifier ? [source.name] : [])];
 }

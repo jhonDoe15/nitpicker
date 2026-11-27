@@ -1,0 +1,1 @@
+import fs from "node:fs"; export const cfg = JSON.parse(fs.readFileSync(path, "utf8"));

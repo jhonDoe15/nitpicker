@@ -17,25 +17,40 @@ const SPECIAL: Readonly<Record<string, string>> = {
 };
 const REPORT_END = '</checkstyle>';
 const REPORT_START = /<checkstyle\b[^>]*>/u;
+const FIRST_PRINTABLE = 0x20;
+const FIRST_C1_CONTROL = 0x7f;
+const LAST_C1_CONTROL = 0x9f;
+const HEXADECIMAL = 16;
+const UTF8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
+
+function isControl(code: number): boolean {
+  return code < FIRST_PRINTABLE || (code >= FIRST_C1_CONTROL && code <= LAST_C1_CONTROL);
+}
+
+function escapedCharacter(character: string, rest: string): string {
+  if (character === '&') {
+    return ENTITY.test(rest) ? '&' : '&amp;';
+  }
+  const special = SPECIAL[character];
+  if (special !== undefined) {
+    return special;
+  }
+  if (character === '\n') {
+    return '&#10;';
+  }
+  if (character === '\r') {
+    return '';
+  }
+  const code = character.charCodeAt(0);
+  return isControl(code) ? `&#x${code.toString(HEXADECIMAL)};` : character;
+}
 
 export function escaped(text: string): string {
   let result = '';
-  for (let at = 0; at < text.length; at += 1) {
-    const character = text.charAt(at);
-    const code = character.charCodeAt(0);
-    if (character === '&') {
-      result += ENTITY.test(text.slice(at)) ? '&' : '&amp;';
-    } else if (SPECIAL[character] !== undefined) {
-      result += SPECIAL[character];
-    } else if (character === '\n') {
-      result += '&#10;';
-    } else if (character === '\r') {
-      continue;
-    } else if (code < 0x20 || (code >= 0x7f && code <= 0x9f)) {
-      result += `&#x${code.toString(16)};`;
-    } else {
-      result += character;
-    }
+  let at = 0;
+  for (const character of text) {
+    result += escapedCharacter(character, text.slice(at));
+    at += character.length;
   }
   return result;
 }
@@ -92,7 +107,7 @@ export function mergeReports(report: string, engineReport: string): void {
   if (!existsSync(report)) {
     return;
   }
-  const own = readFileSync(report, 'utf8');
+  const own = UTF8.decode(readFileSync(report));
   const body = reportBody(readFileSync(engineReport, 'utf8'));
   const end = own.lastIndexOf(REPORT_END);
   if (body === '' || !REPORT_START.test(own) || end < 0) {

@@ -1,0 +1,1 @@
+const link = `${returnUrl}?checkout_success=1`;

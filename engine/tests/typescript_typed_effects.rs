@@ -8,7 +8,7 @@ type Row = Vec<serde_json::Value>;
 
 const REMOTE_CALLS: [&str; 2] = ["no-remote-call-in-transaction", "no-remote-call-under-lock"];
 const WRITES: [&str; 4] = ["no-retry-without-idempotency", "no-dual-write", "no-stale-retry-after-conflict", "no-unisolated-job-loop"];
-const LOOPS: [&str; 1] = ["no-lazy-relation-in-loop"];
+const LOOPS: [&str; 2] = ["no-lazy-relation-in-loop", "no-io-in-loop"];
 
 fn compiler() -> Option<PathBuf> {
     if let Some(named) = std::env::var_os("NITPICKER_TYPESCRIPT_COMPILER") {
@@ -69,7 +69,7 @@ fn project(name: &str, tag: &str) -> (PathBuf, Vec<String>) {
 
 fn test_sources(root: &Path, files: &[String]) -> PathBuf {
     let path = root.join("test-sources.tsv");
-    let lines: Vec<String> = files.iter().map(|file| format!("0\t{}", posix(&root.join(file)))).collect();
+    let lines: Vec<String> = files.iter().map(|file| format!("{}\t{}", u8::from(file.contains(".test.")), posix(&root.join(file)))).collect();
     std::fs::write(&path, format!("{}\n{}\n", posix(root), lines.join("\n"))).expect("test sources");
     path
 }

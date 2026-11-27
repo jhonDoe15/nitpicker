@@ -1,0 +1,1 @@
+export const q = value.replace(/"/g, "\\");

@@ -1,0 +1,2 @@
+import { Cascade, Entity, EntitySchema, ManyToMany, ManyToOne, defineEntity } from '@mikro-orm/core';
+new EntitySchema({ name: 'Order', properties: { customer: { kind: 'm:1', entity: () => Customer, eager: true } } });

@@ -1,0 +1,1 @@
+import vm from "node:vm"; export const run = (code) => vm.runInNewContext(code, {});

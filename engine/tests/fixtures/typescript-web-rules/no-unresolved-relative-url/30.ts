@@ -1,0 +1,1 @@
+axios.get(response.headers.location);

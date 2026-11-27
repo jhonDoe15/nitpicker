@@ -1,0 +1,1 @@
+import got from "got"; export const get = (url) => got.get(url, { retry: { limit: 1 } });

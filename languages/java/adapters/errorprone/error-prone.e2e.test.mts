@@ -11,6 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { isFile } from '../../../../shared/filesystem.mts';
 import { fieldOf, listOf, parseJson, textOf } from '../../../../shared/values/readers.mts';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mts';
 import { GRADLE_DIRECTORY, INIT_SCRIPT } from '../../builds/java-build.mts';
@@ -366,9 +367,10 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
   });
 
   it('records the annotations of every class around a diagnostic, so a nested class is spared too', () => {
-    const report = listOf(
-      parseJson(readFileSync(path.join(root, 'build/nitpicker/errorprone.json'), 'utf8')),
-    );
+    const report = ['errorprone.json', 'errorprone-engine.json']
+      .map((name) => path.join(root, 'build/nitpicker', name))
+      .filter((file) => isFile(file))
+      .flatMap((file) => listOf(parseJson(readFileSync(file, 'utf8'))));
 
     expect(
       report

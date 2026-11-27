@@ -1,0 +1,1 @@
+it('names init in a message', () => { expect(run('init')).toBe(1); });

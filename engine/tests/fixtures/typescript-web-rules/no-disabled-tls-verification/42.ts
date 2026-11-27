@@ -1,0 +1,1 @@
+import { spawn } from "node:child_process"; spawn(cmd, args, { env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: "0" } });

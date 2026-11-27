@@ -1,0 +1,1 @@
+export const QUERY = `SELECT id, name FROM place WHERE name ILIKE $1 OFFSET 10`;

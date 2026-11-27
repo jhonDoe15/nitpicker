@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export const f = (eb) => sql`coalesce(json_agg(t), '[]')`;

@@ -35,11 +35,13 @@ pub struct Elsewhere {
     run: u64,
     dereferences: RwLock<HashMap<Key, u64>>,
     never_null: RwLock<HashMap<Key, bool>>,
+    /// What the methods of the run do with the values they are handed, for the taint patterns.
+    pub taint: super::super::taint::Summaries,
 }
 
 impl Default for Elsewhere {
     fn default() -> Self {
-        Elsewhere { run: RUNS.fetch_add(1, Ordering::Relaxed), dereferences: RwLock::default(), never_null: RwLock::default() }
+        Elsewhere { run: RUNS.fetch_add(1, Ordering::Relaxed), dereferences: RwLock::default(), never_null: RwLock::default(), taint: Default::default() }
     }
 }
 
@@ -96,6 +98,17 @@ impl Elsewhere {
             cache.entry(key(&other, round - 1)).or_insert(answer);
         }
         cache.insert(wanted, found);
+        Some(found)
+    }
+
+    /// Runs `work` on the file of the run that declares a class, read again as a file of its own.
+    pub fn within<T>(&self, project: &JavaProject, declaring: &str, work: impl FnOnce(&Context) -> T) -> Option<T> {
+        let parsed = parsed(self.run, project.sources.get(declaring)?)?;
+        let resolver = Resolver::remembering(&project.index, &parsed.file, &parsed.scope, parsed.memory.take());
+        let (context, _) = Context::of(&resolver, project, self, Some(Vec::new()));
+        let found = work(&context);
+        drop(context);
+        *parsed.memory.borrow_mut() = resolver.memory();
         Some(found)
     }
 

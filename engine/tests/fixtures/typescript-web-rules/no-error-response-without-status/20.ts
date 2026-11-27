@@ -1,0 +1,1 @@
+import { NextResponse } from './responses'; function f() { try { run(); } catch { return NextResponse.json({ error: 'x' }); } }

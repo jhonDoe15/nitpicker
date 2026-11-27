@@ -1,0 +1,1 @@
+async function f(url) { const res = await fetch(url); if (res.status !== 200) { return null; } return res.json(); }

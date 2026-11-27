@@ -1,0 +1,1 @@
+export const f = (prisma, id) => prisma.user.findUnique({ where: { id }, include: { posts: { orderBy: { id: "asc" }, take: 5 } } });

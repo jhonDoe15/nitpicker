@@ -3,7 +3,7 @@
 //! (to handlers of unchecked exceptions and of what the call declares), and from instructions that throw on
 //! their own (to handlers of runtime exceptions), such as a division, an array access, a cast or `new`.
 mod lines;
-mod throws;
+pub mod throws;
 
 pub use lines::handler_lines;
 

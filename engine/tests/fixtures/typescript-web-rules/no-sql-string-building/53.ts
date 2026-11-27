@@ -1,0 +1,1 @@
+export const find = (name) => { let sql = "SELECT * FROM users WHERE 1 = 1"; if (name) { sql += ` AND name = '${name}'`; } return pool.query(sql); };

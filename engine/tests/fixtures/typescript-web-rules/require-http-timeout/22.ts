@@ -1,0 +1,1 @@
+import got from "got"; export const client = got.extend({ timeout: { request: 5000 } });

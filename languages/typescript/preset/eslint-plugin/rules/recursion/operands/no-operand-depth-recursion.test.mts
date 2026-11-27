@@ -21,6 +21,12 @@ tester.run('no-operand-depth-recursion', rule, {
   ],
   invalid: [
     invalid(
+      'export function evaluate(node) { if (node.kind === "binary") return apply(evaluate(node.left), evaluate(node.right), evaluate(other), evaluate(node[key]), evaluate(node.value < 3)); return node.value; }',
+    ),
+    invalid(
+      'export function evaluate(node) { return [1].map(({ x }) => evaluate(node.left) + evaluate(node.right) + (node.kind === "binary")); }',
+    ),
+    invalid(
       'export function evaluate(node) { if (node.kind === "binary") return apply(node.operator, evaluate(node.left), evaluate(node.right)); return node.value; }',
     ),
     invalid(

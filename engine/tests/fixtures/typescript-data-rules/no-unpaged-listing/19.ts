@@ -1,0 +1,1 @@
+await client.ft.search('idx', '@a:b', { RETURN: ['a'] });

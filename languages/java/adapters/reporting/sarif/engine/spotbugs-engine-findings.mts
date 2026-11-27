@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { SPOTBUGS_ENGINE_SARIF } from '../../../../builds/spotbugs/spotbugs-engine.mts';
-import { classOf } from '../../../../builds/spotbugs/spotbugs-results.mts';
+import { classOf } from '../../../../builds/spotbugs/names/spotbugs-names.mts';
 import { byText } from '../../../../../../shared/text-order/by-text.mts';
 import { firstDifference, withEngineReport } from './engine-report.mts';
 import type { SarifLog, SarifResult } from '../../../jpa/jpa-types.mts';

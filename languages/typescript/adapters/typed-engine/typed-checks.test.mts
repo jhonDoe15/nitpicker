@@ -1,9 +1,11 @@
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { expect, it } from 'vitest';
+import { afterAll, expect, it } from 'vitest';
 import { findEngine } from '../../../../shared/engine/engine-binary.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { nativeCompilerPath } from './compiler-binary.mts';
-import { runTypedChecks } from './typed-checks.mts';
+import { runTypedCheckParts, runTypedChecks } from './typed-checks.mts';
 
 const REQUEST = { project: '/nowhere/tsconfig.json', checks: ['public-contracts'] };
 
@@ -67,5 +69,52 @@ it.runIf(hasEngine)(
     });
 
     expect(outcome).toEqual({ unavailable: `types unavailable: ${project} does not exist` });
+  },
+);
+
+const stubFolder = mkdtempSync(path.join(tmpdir(), 'nitpicker-typed-stub-'));
+afterAll(() => {
+  rmSync(stubFolder, { recursive: true, force: true });
+});
+
+function stubEngine(): string {
+  const stub = path.join(stubFolder, 'engine.mjs');
+  writeFileSync(
+    stub,
+    [
+      `#!${process.execPath}`,
+      "import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';",
+      'const args = process.argv.slice(2);',
+      'const value = (flag) => args[args.indexOf(flag) + 1];',
+      "const checks = value('--checks').split(',');",
+      `const calls = ${JSON.stringify(path.join(stubFolder, 'calls.txt'))};`,
+      "appendFileSync(calls, `${readFileSync(value('--project'), 'utf8')} ${checks}\\n`);",
+      'const answers = Object.fromEntries(checks.map((check) => [check, `answered ${check}`]));',
+      "writeFileSync(value('--out'), JSON.stringify({ checks: answers }));",
+    ].join('\n'),
+  );
+  chmodSync(stub, 0o755);
+  return stub;
+}
+
+it.runIf(process.platform !== 'win32' && nativeCompilerPath() !== undefined)(
+  'runs the parts of one project in one engine call and answers each part',
+  () => {
+    const parts = [
+      { check: 'public-contracts', input: {}, project: { files: ['a.ts'] } },
+      { check: 'unused-api', input: { react: false }, project: { files: ['b.ts'] } },
+      { check: 'unused-api', input: { react: true }, project: { files: ['a.ts'] } },
+    ];
+    const answers = runTypedCheckParts(parts, { NITPICKER_ENGINE: stubEngine() });
+
+    expect(answers).toEqual([
+      'answered public-contracts',
+      'answered unused-api',
+      'answered unused-api',
+    ]);
+    expect(readFileSync(path.join(stubFolder, 'calls.txt'), 'utf8').trim().split('\n')).toEqual([
+      '{"files":["a.ts"]} public-contracts,unused-api',
+      '{"files":["b.ts"]} unused-api',
+    ]);
   },
 );

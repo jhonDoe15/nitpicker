@@ -191,7 +191,7 @@ async function lintAttempt({
 }: AttemptContext): Promise<Outcome> {
   const translation = translatePlan(plan, { ...native, bridgedRules });
   const sampleFile = plan.groups[0]?.files[0];
-  const configs = writeStageConfigs({ stage, projectRoot, sampleFile, translation });
+  const configs = writeStageConfigs({ stage, translation });
   rewriteDirectiveComments({
     stage,
     projectRoot,

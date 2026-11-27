@@ -1,6 +1,7 @@
 //! The text tree-sitter parses in place of a Java file. Every change keeps each byte where it was, so the tree's
 //! positions still point into the real text, and the rules read names from the real text.
 
+use super::annotations_run::before_spread;
 use regex::Regex;
 use std::sync::LazyLock;
 
@@ -8,7 +9,9 @@ use std::sync::LazyLock;
 /// (`case Shape.Box(var inside) ->`, `value instanceof Shape.Box(var inside)`) as a method call. The first is blanked out; in the second the dots of the
 /// record type become `_`, so the grammar sees one name and parses a record pattern. The grammar also stops at a
 /// NUL character, which Java allows in strings, text blocks, character literals and comments: there it becomes a
-/// space. A NUL in code is left, so the file stays broken, as it is for PMD at the end of a file.
+/// space. A NUL in code is left, so the file stays broken, as it is for PMD at the end of a file. The grammar rejects
+/// a parenthesized assignment target (`(x) = 2`, `(this.f) += 1`): those parentheses become spaces, and the PMD tree
+/// puts them back from the real text.
 pub fn masked(text: &str) -> Option<String> {
     let mut bytes: Option<Vec<u8>> = None;
     if text.contains('\0') {
@@ -20,17 +23,93 @@ pub fn masked(text: &str) -> Option<String> {
     if text.contains("case") || text.contains("instanceof") {
         join_record_pattern_names(text, &mut bytes);
     }
+    if text.contains(')') && text.contains('=') {
+        blank_parenthesized_targets(text, &mut bytes);
+    }
+    if text.contains('_') {
+        fill_number_underscores(text, &mut bytes);
+    }
     bytes.and_then(|bytes| String::from_utf8(bytes).ok())
 }
 
-fn blank_spread_annotations(text: &str, bytes: &mut Option<Vec<u8>>) {
-    static ANNOTATED_SPREAD: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"@[A-Za-z_][\w.]*(\s*\([^()]*\))?(\s*)\.\.\.").expect("pattern"));
-    for found in ANNOTATED_SPREAD.find_iter(text) {
+fn blank_parenthesized_targets(text: &str, bytes: &mut Option<Vec<u8>>) {
+    static TARGET: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*(?:\[[^\[\]]*\])*$").expect("pattern")
+    });
+    static ASSIGNMENT: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"^\s*(?:>>>=|<<=|>>=|[-+*/%&|^]=|=)").expect("pattern"));
+    let raw = text.as_bytes();
+    let mut code: Option<Vec<bool>> = None;
+    for (close, _) in text.match_indices(')') {
+        let Some(sign) = ASSIGNMENT.find(&text[close + 1..]) else { continue };
+        if raw.get(close + 1 + sign.end()) == Some(&b'=') && sign.as_str().trim() == "=" {
+            continue;
+        }
+        let code = code.get_or_insert_with(|| code_bytes(text));
+        if !code[close] {
+            continue;
+        }
+        let mut depth = 0usize;
+        let Some(open) = (0..=close).rev().filter(|at| code[*at]).find(|at| {
+            match raw[*at] {
+                b')' => depth += 1,
+                b'(' => depth = depth.saturating_sub(1),
+                _ => {}
+            }
+            depth == 0
+        }) else {
+            continue;
+        };
+        if !code[open..=close].iter().all(|inside| *inside) {
+            continue;
+        }
+        let inner: String = text[open..=close].chars().filter(|character| !character.is_whitespace() && !matches!(character, '(' | ')')).collect();
+        if !TARGET.is_match(&inner) {
+            continue;
+        }
         let bytes = bytes.get_or_insert_with(|| text.as_bytes().to_vec());
-        for byte in &mut bytes[found.start()..found.end() - 3] {
+        for at in open..=close {
+            if matches!(raw[at], b'(' | b')') {
+                bytes[at] = b' ';
+            }
+        }
+    }
+}
+
+fn blank_spread_annotations(text: &str, bytes: &mut Option<Vec<u8>>) {
+    let mut from = 0;
+    while let Some(found) = text[from..].find('@') {
+        let start = from + found;
+        from = start + 1;
+        let Some((_, dots)) = before_spread(text, start) else { continue };
+        let bytes = bytes.get_or_insert_with(|| text.as_bytes().to_vec());
+        for byte in &mut bytes[start..dots] {
             if !byte.is_ascii_whitespace() {
                 *byte = b' ';
+            }
+        }
+        from = dots;
+    }
+}
+
+/// The grammar takes only single underscores between digits, and none right after the `0` of an octal literal,
+/// where Java takes any run of them (`0_1__2l`). In such a number each underscore becomes a `0`, which keeps the kind
+/// of literal; the rules read its value from the real text.
+fn fill_number_underscores(text: &str, bytes: &mut Option<Vec<u8>>) {
+    static NUMBER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\b[0-9][0-9A-Za-z_]*").expect("pattern"));
+    let mut code: Option<Vec<bool>> = None;
+    for number in NUMBER.find_iter(text) {
+        let written = number.as_str();
+        if !written.contains("__") && !written.starts_with("0_") {
+            continue;
+        }
+        if !code.get_or_insert_with(|| code_bytes(text))[number.start()] {
+            continue;
+        }
+        let bytes = bytes.get_or_insert_with(|| text.as_bytes().to_vec());
+        for byte in &mut bytes[number.start()..number.end()] {
+            if *byte == b'_' {
+                *byte = b'0';
             }
         }
     }

@@ -31,6 +31,7 @@ use super::empty_lists;
 use super::entity_versions;
 use super::forwarding;
 use super::handlers;
+use super::io_loops;
 use super::jobs;
 use super::lazy_relations;
 use super::held_scopes;
@@ -67,6 +68,7 @@ pub const TYPED: &[(&str, Rule)] =
     ("no-mutating-method-in-domain", domain::no_mutating_method_in_domain::check), ("no-parameter-mutation", signatures::no_parameter_mutation::check),
     ("no-remote-call-in-transaction", held_scopes::remote_in_scope::no_remote_call_in_transaction),
     ("no-remote-call-under-lock", held_scopes::remote_in_scope::no_remote_call_under_lock),
+    ("no-io-in-loop", io_loops::no_io_in_loop::no_io_in_loop),
     ("no-lazy-relation-in-loop", lazy_relations::no_lazy_relation_in_loop::no_lazy_relation_in_loop),
     ("no-retry-without-idempotency", writes::no_retry_without_idempotency::no_retry_without_idempotency),
     ("no-dual-write", dual_writes::no_dual_write::no_dual_write),

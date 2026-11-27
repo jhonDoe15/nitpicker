@@ -1,0 +1,1 @@
+import knex from "knex"; export async function f(db, ids) { if (ids.length === 0) { return []; } return db("users").whereIn("id", ids); }

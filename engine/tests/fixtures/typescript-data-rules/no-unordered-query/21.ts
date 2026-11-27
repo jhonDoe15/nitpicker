@@ -1,0 +1,1 @@
+export const f = (cursor) => cursor.find({}).limit(10).toArray();

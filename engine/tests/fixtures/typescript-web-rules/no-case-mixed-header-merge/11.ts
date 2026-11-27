@@ -1,0 +1,1 @@
+const merged = { "Content-Type": "application/json", ...data };

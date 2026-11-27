@@ -1,0 +1,1 @@
+import { readFile, writeFile } from "node:fs/promises"; export async function f(p: string) { const buf = await readFile(p); const t = buf.toString("utf8"); await writeFile(p, `${t}\n`); }

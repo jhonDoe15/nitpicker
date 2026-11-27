@@ -1,0 +1,1 @@
+export function f(n: number) { return document.querySelector(`#row-${n}`); }

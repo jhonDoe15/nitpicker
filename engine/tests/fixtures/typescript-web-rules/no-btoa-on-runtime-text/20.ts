@@ -1,0 +1,1 @@
+export const h = `Basic ${btoa(`${user}:${password}`)}`;

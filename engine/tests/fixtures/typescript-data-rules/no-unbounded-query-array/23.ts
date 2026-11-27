@@ -1,0 +1,1 @@
+import { In, Repository } from "typeorm"; export const f = (repo) => repo.findBy({ status: In(["a", "b"]) });

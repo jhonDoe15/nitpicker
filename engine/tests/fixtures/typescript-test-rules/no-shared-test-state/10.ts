@@ -1,0 +1,1 @@
+describe('x', () => { it('a', () => { let total = 0; expect(total).toBe(0); }); });

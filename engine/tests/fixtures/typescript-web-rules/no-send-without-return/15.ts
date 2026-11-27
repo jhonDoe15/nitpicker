@@ -1,0 +1,1 @@
+function f(req) { const res = make(); if (!ok) { res.json({}); } save(); }

@@ -1,0 +1,1 @@
+if (name.includes(other)) {}

@@ -17,10 +17,20 @@ pub struct JavaProject {
     pub literals: HashSet<String>,
     /// The project's `volatile` fields, as the class that declares them and their name.
     pub volatiles: HashSet<(String, String)>,
+    /// The project's final fields initialized to `null`.
+    pub null_finals: HashSet<(String, String)>,
     /// Integer constants the project declares, by field name; `None` when two declarations disagree.
     pub numbers: HashMap<String, Option<i64>>,
+    /// Names of the fields the code stores into outside constructors and initializers, read when first asked.
+    pub rewritten: std::sync::OnceLock<HashSet<(String, String)>>,
     /// The classes some class of the sources extends.
     pub extended: HashSet<String>,
+    /// With Lombok: the class files of the source classes, by binary name (see `compiled`).
+    pub compiled: HashMap<String, super::compiled::CompiledClass>,
+    /// With Lombok: the index name of each source class that has a class file, by binary name.
+    pub binaries: HashMap<String, String>,
+    /// How the code uses the fields some Error Prone fixes change (see `field_uses`).
+    pub field_uses: HashMap<(String, String), u8>,
 }
 
 fn jdk_home() -> PathBuf {
@@ -28,7 +38,12 @@ fn jdk_home() -> PathBuf {
 }
 
 /// The major version of the JDK, from its `release` file; zero when it is unknown.
-fn jdk_major() -> u32 {
+pub fn jdk_major() -> u32 {
+    static MAJOR: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
+    *MAJOR.get_or_init(read_jdk_major)
+}
+
+fn read_jdk_major() -> u32 {
     let text = std::fs::read_to_string(jdk_home().join("release")).unwrap_or_default();
     let version = text.lines().find_map(|line| line.strip_prefix("JAVA_VERSION=")).unwrap_or_default().trim_matches('"');
     let first = version.split(['.', '-', '+']).next().unwrap_or_default();
@@ -48,22 +63,73 @@ fn jdk_modules() -> Vec<PathBuf> {
     modules
 }
 
+/// Reads the class files of the source classes and gives their fields the access bits javac wrote: Lombok's
+/// `@Value`, `@FieldDefaults` and `@UtilityClass` change them.
+fn compiled_members(
+    index: &mut TypeIndex,
+    sources: &HashMap<String, String>,
+    classes: &[PathBuf],
+) -> (HashMap<String, super::compiled::CompiledClass>, HashMap<String, String>) {
+    use super::compiled::{ACC_FINAL, ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC};
+    use super::model::flag;
+    let compiled = super::compiled::read(classes);
+    let mut binaries = HashMap::new();
+    for name in sources.keys() {
+        let binary = crate::java::javac::binary(index, name);
+        let (Some(class), Some(info)) = (compiled.get(&binary), index.get(name)) else { continue };
+        let mut info = info.clone();
+        for field in &mut info.fields {
+            let Some(written) = class.field(&field.name) else { continue };
+            let bits = [(ACC_FINAL, flag::FINAL), (ACC_PUBLIC, flag::PUBLIC), (ACC_PROTECTED, flag::PROTECTED), (ACC_STATIC, flag::STATIC)];
+            field.flags &= !(flag::FINAL | flag::PUBLIC | flag::PROTECTED | flag::STATIC);
+            field.flags |= bits.iter().filter(|(access, _)| written.access & access != 0).map(|(_, bit)| bit).sum::<u32>();
+            field.is_private = written.access & ACC_PRIVATE != 0;
+        }
+        super::compiled_members::add_written(&mut info, class);
+        index.put(info);
+        binaries.insert(binary, name.clone());
+    }
+    super::compiled_members::add_written_classes(index, &compiled, &mut binaries);
+    (compiled, binaries)
+}
+
 fn stub(name: String) -> ClassInfo {
     ClassInfo { name, ..ClassInfo::default() }
 }
 
-pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>, lombok: bool, android_compatible: bool) -> JavaProject {
+/// The modules of a module path: a folder without `module-info.class` holds modules, as javac reads it, each a jar
+/// or a folder of its own.
+fn module_entries(path: &[PathBuf]) -> Vec<PathBuf> {
+    path.iter()
+        .flat_map(|entry| {
+            if !entry.is_dir() || entry.join("module-info.class").exists() {
+                return vec![entry.clone()];
+            }
+            let mut held: Vec<PathBuf> = std::fs::read_dir(entry)
+                .map(|listed| listed.flatten().map(|child| child.path()).filter(|child| child.is_dir() || child.extension().is_some_and(|extension| extension == "jar")).collect())
+                .unwrap_or_default();
+            held.sort();
+            held
+        })
+        .collect()
+}
+
+pub fn build(files: &[SourceFile], options: &crate::engine::Options) -> JavaProject {
+    let (classpath, release) = (&options.classpath, options.release);
     let started = std::time::Instant::now();
     let mut index = TypeIndex::default();
-    index.lombok = lombok;
-    index.android_compatible = android_compatible;
-    index.source_level = release.unwrap_or_else(jdk_major);
-    let mut entries = classpath.to_vec();
+    index.lombok = options.lombok;
+    index.android_compatible = options.android_compatible;
+    index.test_only = options.test_only;
+    index.source_level = release.or(options.source).unwrap_or_else(jdk_major);
+    let modules = module_entries(&options.module_path);
+    let mut entries = [modules.as_slice(), classpath].concat();
     index.load_binaries(&entries);
+    index.load_modules(&modules);
     // An older release sees the library as it was then: the JDK keeps those signatures in `lib/ct.sym`.
     if !release.is_some_and(|release| index.load_release(&jdk_home().join("lib").join("ct.sym"), release)) {
         let modules = jdk_modules();
-        index.load_binaries(&modules);
+        index.load_jdk(&modules);
         entries.extend(modules);
     }
     let binaries_ms = started.elapsed().as_secs_f64() * 1e3;
@@ -101,6 +167,7 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>, 
                         if with_members {
                             resolver.members(*node, &mut info);
                             resolver.lombok_members(*node, &mut info);
+                            resolver.slf4j_field(*node, &mut info);
                         }
                         info
                     })
@@ -113,6 +180,33 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>, 
             index.put(info);
         }
     }
+    // A constant read from another constant is known once that one is: each round settles one more step.
+    for _ in 0..8 {
+        let later: Vec<(String, Vec<(String, String)>)> = files
+            .par_iter()
+            .zip(&scopes)
+            .zip(&declared)
+            .flat_map_iter(|((file, scope), declarations)| {
+                let resolver = Resolver::new(&index, file, scope);
+                declarations
+                    .iter()
+                    .filter_map(|(node, name)| Some((name.clone(), resolver.later_constants(*node, index.get(name)?))))
+                    .filter(|(_, found)| !found.is_empty())
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        if later.is_empty() {
+            break;
+        }
+        for (name, found) in later {
+            let Some(mut info) = index.get(&name).cloned() else { continue };
+            for (field, value) in found {
+                info.fields.iter_mut().filter(|known| known.name == field).for_each(|known| known.constant = Some(value.clone()));
+            }
+            index.put(info);
+        }
+    }
+    let (compiled, binaries) = if options.lombok && !options.classes.is_empty() { compiled_members(&mut index, &sources, &options.classes) } else { Default::default() };
     for (file, scope) in files.iter().zip(&scopes) {
         let declaration = crate::engine::source::children(file.tree.root_node()).into_iter().find(|part| part.kind() == "package_declaration");
         if let Some(declaration) = declaration.filter(|_| file.path.ends_with("package-info.java")) {
@@ -134,44 +228,90 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>, 
     );
     index.settle();
     let literals = class_literals(files, &scopes, &index);
-    let volatiles = volatile_fields(files, &scopes);
+    let volatiles = fields_where(files, &scopes, |_, field, _| field.kind() == "field_declaration" && crate::java::helpers::has_modifier(field, "volatile"));
+    let null_finals = fields_where(files, &scopes, |_, field, declarator| {
+        let fixed = field.kind() == "constant_declaration" || crate::java::helpers::has_modifier(field, "final");
+        fixed && declarator.child_by_field_name("value").is_some_and(|value| value.kind() == "null_literal")
+    });
     let numbers = integer_constants(files);
     let extended = declared.iter().flatten().filter_map(|(_, name)| index.get(name)?.superclass.clone()).collect();
-    JavaProject { index, sources, literals, volatiles, numbers, extended }
+    let targets = fix_targets(files, &scopes, &index);
+    let paths: Vec<&str> = files.iter().map(|file| file.path.as_str()).collect();
+    let field_uses = super::field_uses::field_uses(&paths, options.encoding, &index, &targets);
+    JavaProject {
+        index,
+        sources,
+        literals,
+        volatiles,
+        null_finals,
+        numbers,
+        extended,
+        compiled,
+        binaries,
+        field_uses,
+        rewritten: Default::default(),
+    }
 }
 
-/// Puts back, as statements of the blanked body, the class literals and `assert` statements that `literals` reads.
+/// Puts back, as statements of the blanked body, the class literals, `forName` calls and `assert` statements that
+/// `literals` reads.
 fn keep_class_objects(file: &SourceFile, body: Node, bytes: &mut [u8]) {
     let mut kept: Vec<(usize, usize, bool)> = Vec::new();
     walk(body, |node| {
         let inside = kept.last().is_some_and(|(_, end, _)| node.start_byte() < *end);
         match node.kind() {
             "assert_statement" if !inside => kept.push((node.start_byte(), node.end_byte(), false)),
-            "class_literal" if !inside && bytes.get(node.end_byte()) == Some(&b' ') => kept.push((node.start_byte(), node.end_byte(), true)),
+            "class_literal" | "method_invocation" if !inside && loads_class(file, node) => kept.push((node.start_byte(), node.end_byte(), true)),
             _ => {}
         }
     });
-    for (start, end, literal) in kept {
-        bytes[start..end].copy_from_slice(&file.text.as_bytes()[start..end]);
-        if literal {
-            bytes[end] = b';';
+    for (start, end, _) in &kept {
+        bytes[*start..*end].copy_from_slice(&file.text.as_bytes()[*start..*end]);
+    }
+    for (start, end, _) in kept.into_iter().filter(|(_, _, literal)| *literal) {
+        let after = bytes[end..body.end_byte()].iter().position(|byte| !matches!(byte, b'\n' | b'\r')).map(|at| end + at);
+        match after.filter(|at| bytes[*at] == b' ') {
+            Some(at) => bytes[at] = b';',
+            None => bytes[start..end].iter_mut().filter(|byte| !matches!(byte, b'\n' | b'\r')).for_each(|byte| *byte = b' '),
         }
     }
 }
 
-fn volatile_fields(files: &[SourceFile], scopes: &[FileScope]) -> HashSet<(String, String)> {
+type FieldTest = fn(&SourceFile, Node, Node) -> bool;
+
+fn mock_annotated(file: &SourceFile, field: Node) -> bool {
+    let Some(holder) = crate::java::helpers::modifiers(field) else { return false };
+    crate::engine::source::children(holder).into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation")).any(|annotation| {
+        annotation.child_by_field_name("name").is_some_and(|name| matches!(file.text_of(name), "Mock" | "org.mockito.Mock"))
+    })
+}
+
+/// Fields whose uses StaticMockMember and MutableGuiceModule ask about: static `@Mock` fields, and the instance fields
+/// that are not final in subclasses of Guice's `AbstractModule`.
+fn fix_targets(files: &[SourceFile], scopes: &[FileScope], index: &TypeIndex) -> HashSet<(String, String)> {
+    let mut targets = fields_where(files, scopes, |file, field, _| {
+        crate::java::helpers::has_modifier(field, "static") && mock_annotated(file, field)
+    });
+    let modules = fields_where(files, scopes, |_, field, _| {
+        field.kind() == "field_declaration" && !crate::java::helpers::has_modifier(field, "static") && !crate::java::helpers::has_modifier(field, "final")
+    });
+    targets.extend(modules.into_iter().filter(|(class, _)| index.is_subtype(class, "com.google.inject.AbstractModule")));
+    targets
+}
+
+fn fields_where(files: &[SourceFile], scopes: &[FileScope], test: FieldTest) -> HashSet<(String, String)> {
     files
         .par_iter()
         .zip(scopes)
         .flat_map_iter(|(file, scope)| {
             let mut found = Vec::new();
             walk(file.tree.root_node(), |node| {
-                if node.kind() != "field_declaration" || !crate::java::helpers::has_modifier(node, "volatile") {
+                if !matches!(node.kind(), "field_declaration" | "constant_declaration") {
                     return;
                 }
                 let Some(class) = super::scope::enclosing_types(scope, node).into_iter().next() else { return };
                 let mut cursor = node.walk();
-                for declarator in node.children_by_field_name("declarator", &mut cursor) {
+                for declarator in node.children_by_field_name("declarator", &mut cursor).filter(|declarator| test(file, node, *declarator)) {
                     found.extend(declarator.child_by_field_name("name").map(|name| (class.clone(), file.text_of(name).to_string())));
                 }
             });
@@ -249,11 +389,29 @@ fn class_literals(files: &[SourceFile], scopes: &[FileScope], index: &TypeIndex)
                     }));
                 }
                 "assert_statement" => found.extend(super::scope::enclosing_types(scope, node).pop()),
+                "method_invocation" => found.extend(loaded_by_name(&resolver, index, node)),
                 _ => {}
             });
             found
         })
         .collect()
+}
+
+fn loads_class(file: &SourceFile, node: Node) -> bool {
+    let name = node.child_by_field_name("name").map(|name| file.text_of(name));
+    node.kind() == "class_literal" || (name == Some("forName") && node.child_by_field_name("object").is_some())
+}
+
+/// The class `Class.forName` loads when its one argument is a constant: javac writes the name into the class file.
+fn loaded_by_name(resolver: &Resolver, index: &TypeIndex, call: Node) -> Option<String> {
+    let arguments = call.child_by_field_name("arguments")?;
+    if resolver.file.text_of(call.child_by_field_name("name")?) != "forName" || arguments.named_child_count() != 1 {
+        return None;
+    }
+    let on_class = matches!(resolver.receiver(call.child_by_field_name("object")?)?, super::expr::Receiver::Static(owner) if owner == "java.lang.Class");
+    let binary = resolver.constant_string(arguments.named_child(0)?).filter(|_| on_class)?;
+    let dotted = binary.replace('$', ".");
+    Some(if index.get(&dotted).is_some() { dotted } else { binary })
 }
 
 const CLASS_BODIES: [&str; 4] = ["class_body", "interface_body", "enum_body", "annotation_type_body"];

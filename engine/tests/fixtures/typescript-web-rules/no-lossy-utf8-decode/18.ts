@@ -1,0 +1,1 @@
+export function f(a: Uint8Array, b: string) { const t = new TextDecoder().decode(a); return t === b; }

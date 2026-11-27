@@ -178,4 +178,29 @@ describe('a Maven reactor where one module fails', () => {
 
     expect(report.findings).toEqual(findings);
   });
+
+  it('takes the cause from the error lines when Maven names no failed goal, and says so when it has none', () => {
+    const modules = [CORE, UI];
+    const crashed = failedModules(
+      new Error('Maven failed:\n[ERROR] The JVM crashed\n[INFO] Done'),
+      {
+        work: workWith([CORE]),
+        modules,
+      },
+    );
+    const silent = failedModules(new Error('Maven failed'), { work: workWith([CORE]), modules });
+
+    expect(crashed).toEqual([{ module: UI, reason: undefined, cause: '[ERROR] The JVM crashed' }]);
+    expect(silent).toEqual([{ module: UI, reason: undefined }]);
+    expect(failedModuleFindings(silent ?? [], ROOT).map(({ message }) => message)).toEqual([
+      'Maven did not build 1 module (ui), so its checks did not run; the other modules were checked. ' +
+        'It was skipped because a module it depends on failed. Maven: see the Maven output',
+    ]);
+  });
+
+  it('places a failed root module at the project root', () => {
+    const root = { ...CORE, basedir: ROOT };
+
+    expect(failedModuleFindings([{ module: root, reason: 'broken' }], ROOT)[0]?.path).toBe('.');
+  });
 });

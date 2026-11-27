@@ -1,0 +1,1 @@
+const encoding = req.get('Accept-Encoding'); if (encoding?.includes('gzip')) { run(); }

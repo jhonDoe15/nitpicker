@@ -1,0 +1,1 @@
+export function allow(path: string) { return new RegExp(`^${'src/**/*.ts'.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*')}$`).test(path); }

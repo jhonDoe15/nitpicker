@@ -1,0 +1,1 @@
+const { Pool } = require("pg"); module.exports = new Pool({ statement_timeout: 30_000 });

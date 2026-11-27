@@ -1,0 +1,1 @@
+const link = `${redirectUrl}?next=1`;

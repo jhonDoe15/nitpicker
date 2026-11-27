@@ -1,0 +1,1 @@
+const defaults = { Accept: "application/json" }; const headers = { ...defaults };

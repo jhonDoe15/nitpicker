@@ -1,0 +1,1 @@
+import { Pool, Client } from "pg"; export function make(Pool) { return new Pool({}); }

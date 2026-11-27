@@ -1,0 +1,1 @@
+export function find(req, repo) { const q = req.query.q; return repo.findByNameStartingWith(q); }

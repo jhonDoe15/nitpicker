@@ -35,7 +35,6 @@ pub fn preferred(node: Node) -> usize {
         "ternary_expression" => token(&["?"]),
         "array_access" => token(&["["]),
         "instanceof_expression" => token(&["instanceof"]),
-        "lambda_expression" => token(&["->"]),
         "cast_expression" | "parenthesized_expression" => token(&["("]),
         "update_expression" => token(&["++", "--"]),
         "unary_expression" => node.child_by_field_name("operator").map(|operator| operator.start_byte()),

@@ -1,0 +1,1 @@
+export function find(req, db) { const q = req.query.q; return db.query('select * from t where name = $1', [q]); }

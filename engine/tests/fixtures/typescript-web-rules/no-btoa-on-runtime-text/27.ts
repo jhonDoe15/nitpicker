@@ -1,0 +1,1 @@
+export function f(text: string) { return `data:image/svg+xml;base64,${self.btoa(text)}`; }

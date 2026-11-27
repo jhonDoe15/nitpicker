@@ -1,0 +1,1 @@
+import knex from "knex"; export const f = (db, ids) => db("users").whereIn("id", ids);

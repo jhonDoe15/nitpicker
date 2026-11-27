@@ -16,16 +16,21 @@ import javax.tools.*;
  * crashed, as a JSON array. Usage: {@code ErrorProneReport <report.json> <checks.json> <arguments file>...}; the
  * report, the arguments files and the crash handling are described in docs/java-preset/error-prone-and-nullaway.md.
  * A failed compilation exits with status 1 and javac's errors on stderr. With {@code -Dnitpicker.errorprone.workers=N}
- * it splits each source set into up to N slices, compiled at once against the project's own classes.
+ * it splits each source set into up to N slices, compiled at once against the project's own classes. An arguments file
+ * with {@code --narrowed} lists only part of its source set, which is compiled against the project's own classes too;
+ * the engine step that wrote it has turned off, with project flags, the checks that do not need to run, Immutable among
+ * them when the runner would not run it on the whole source set.
  */
 public final class ErrorProneReport {
   private static final String SOURCES = "--sources";
   private static final String TEST_ONLY = "--test-only";
+  private static final String NARROWED = "--narrowed";
   private static final String OWN_CLASSES = "--own-classes=";
   private static final String PROJECT_ARG = "--project-arg=";
   private static final String PROJECT_FLAG = "--errorprone-flag=";
   private static final String SKIP_GENERATED = "--skip-generated";
   private static final String GENERATED_ROOT = "--generated-root=";
+  private static final String PROCESSOR_OUTPUT = "--processor-output=";
   private static final String EXCLUDED_PATHS = PROJECT_FLAG + "-XepExcludedPaths:";
   private static final String PATCH_LOCATION = PROJECT_FLAG + "-XepPatchLocation:";
   private static final String FIX_CHECKS = PROJECT_FLAG + "-XepNitpickerFixChecks:";
@@ -268,7 +273,8 @@ public final class ErrorProneReport {
         projectArgs.add(line.substring(PROJECT_ARG.length()));
       } else if (form.matches()) {
         level.put(form.group(1), form.group(2));
-      } else if (!line.equals(TEST_ONLY) && !line.equals(SKIP_GENERATED) && !line.startsWith(GENERATED_ROOT)
+      } else if (!line.equals(TEST_ONLY) && !line.equals(NARROWED) && !line.equals(SKIP_GENERATED)
+          && !line.startsWith(GENERATED_ROOT) && !line.startsWith(PROCESSOR_OUTPUT)
           && !line.startsWith(OWN_CLASSES) && !line.startsWith(PROJECT_FLAG)) {
         options.add(line);
       }
@@ -348,7 +354,8 @@ public final class ErrorProneReport {
     Path fixChecks = fixChecks(compiler, head, FIX_CHECK_CLASSES);
     List<String> unsuppressed = lombokUnsuppressed(sources);
     List<String> others = sources.stream().filter(source -> !unsuppressed.contains(source)).toList();
-    boolean immutable = immutableInReach(javacOptions(head, sources), sources);
+    boolean narrowed = head.contains(NARROWED);
+    boolean immutable = narrowed || immutableInReach(javacOptions(head, sources), sources);
     List<Job> jobs = new ArrayList<>();
     List<List<String>> groups = Stream.of(others, unsuppressed).filter(list -> !list.isEmpty()).toList();
     for (List<String> group : groups) {
@@ -364,9 +371,10 @@ public final class ErrorProneReport {
           options.set(processors, options.get(processors) + java.io.File.pathSeparator + fixChecks);
         }
         int classpath = options.indexOf("-classpath") + 1;
-        if (files.size() < sources.size() && classpath == 0) {
+        boolean part = narrowed || files.size() < sources.size();
+        if (part && classpath == 0) {
           options.addAll(List.of("-classpath", ownClasses));
-        } else if (files.size() < sources.size()) {
+        } else if (part) {
           options.set(classpath, options.get(classpath) + java.io.File.pathSeparator + ownClasses);
         }
         String patchDirectory = Integer.toHexString(argumentsFile.toAbsolutePath().normalize().toString().hashCode())
@@ -526,8 +534,8 @@ public final class ErrorProneReport {
     boolean compiled;
     Map<String, List<ClassSpan>> classes = new HashMap<>();
     Map<String, Map<Long, Long>> ends = run.getLast().contains("-XepPatchChecks:") ? new HashMap<>() : null;
-    try (StandardJavaFileManager files =
-        compiler.getStandardFileManager(diagnostics, Locale.ROOT, StandardCharsets.UTF_8)) {
+    try (StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, Locale.ROOT,
+        run.contains("-encoding") ? null : StandardCharsets.UTF_8)) {
       JavacTask task = (JavacTask) compiler.getTask(
           null, files, diagnostics, run, null, files.getJavaFileObjectsFromStrings(sources));
       recordClasses(task, classes, ends);

@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { optionalText, textOf } from '../../../../../../shared/values/readers.mts';
 import { operandsOf } from '../typed/syntax-views.mts';
 import { ancestorsOf, memberRoot, nameOf, scopeChain } from '../typed/node-views.mts';
 
@@ -11,12 +12,10 @@ const EXIT_STATEMENTS = new Set<AST_NODE_TYPES>([
 const TYPE_PROPERTIES = new Set(['type', 'nodeType']);
 
 export function literalText(node: TSESTree.Node | undefined): string | undefined {
-  if (node?.type === AST_NODE_TYPES.TemplateLiteral && node.expressions.length === 0) {
-    return node.quasis[0]?.value.cooked ?? undefined;
+  if (node?.type === AST_NODE_TYPES.TemplateLiteral) {
+    return node.expressions.length === 0 ? optionalText(node.quasis[0]?.value.cooked) : undefined;
   }
-  return node?.type === AST_NODE_TYPES.Literal && typeof node.value === 'string'
-    ? node.value
-    : undefined;
+  return node?.type === AST_NODE_TYPES.Literal ? optionalText(node.value) : undefined;
 }
 
 type Receiver = { readonly text: string; readonly sourceCode: TSESLint.SourceCode };
@@ -27,7 +26,7 @@ function isTypeOf(node: TSESTree.Node, receiver: Receiver): boolean {
   return (
     node.type === AST_NODE_TYPES.MemberExpression &&
     !node.computed &&
-    TYPE_PROPERTIES.has(nameOf(node.property) ?? '') &&
+    TYPE_PROPERTIES.has(textOf(nameOf(node.property))) &&
     receiver.sourceCode.getText(node.object) === receiver.text
   );
 }
@@ -199,12 +198,9 @@ function narrowingAt(
 
 export function narrowedTypes(
   node: TSESTree.Node,
-  receiverNode: TSESTree.Node | undefined,
+  receiverNode: TSESTree.Node,
   sourceCode: TSESLint.SourceCode,
 ): string[] {
-  if (receiverNode === undefined) {
-    return [];
-  }
   const receiver: Receiver = { text: sourceCode.getText(receiverNode), sourceCode };
   const chain = [node, ...ancestorsOf(node)];
   for (const [index, parent] of chain.entries()) {

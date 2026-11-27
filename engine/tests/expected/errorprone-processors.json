@@ -1,0 +1,23 @@
+[
+["shapes/Shapes.java", "ArrayRecordComponent", 164, 35],
+["shapes/Shapes.java", "MissingOverride", 130, 14],
+["shapes/Shapes.java", "MultiVariableDeclaration", 11, 15],
+["shapes/Shapes.java", "MultipleTopLevelClasses", 9, 8],
+["shapes/Shapes.java", "MultipleTopLevelClasses", 119, 1],
+["shapes/Shapes.java", "MultipleTopLevelClasses", 143, 1],
+["shapes/Shapes.java", "MultipleTopLevelClasses", 164, 1],
+["shapes/Shapes.java", "MultipleTopLevelClasses", 166, 1],
+["shapes/Shapes.java", "NullAway", 167, 5],
+["shapes/Shapes.java", "UnusedMethod", 103, 20],
+["shop/Money.java", "AutoValueConstructorOrderChecker", 19, 12],
+["shop/Money.java", "AutoValueImmutableFields", 12, 32],
+["shop/Money.java", "ReferenceEquality", 23, 17],
+["shop/Order.java", "NullAway", 4, 18],
+["shop/OrderDto.java", "NullAway", 4, 18],
+["shop/OrderMapper.java", "StringCaseLocaleUsage", 13, 37],
+["shop/Prices.java", "AutoValueSubclassLeaked", 9, 16],
+["shop/Prices.java", "EqualsIncompatibleType", 22, 15],
+["shop/Prices.java", "ReferenceEquality", 13, 17],
+["shop/Prices.java", "ReturnValueIgnored", 22, 15],
+["shop/Prices.java", "StringCaseLocaleUsage", 17, 40]
+]

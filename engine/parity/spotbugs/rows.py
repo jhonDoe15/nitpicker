@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET,sys,json
 def rows(path):
     out=[]
     for b in ET.parse(path).getroot().findall('BugInstance'):
-        src=b.find('SourceLine')
+        src=next((s for s in b.findall('SourceLine') if s.get('role')!='SOURCE_UNREACHABLE_CODE'),None)
         if src is None:
             for tag in ('Method','Field','Class'):
                 e=b.find(tag)

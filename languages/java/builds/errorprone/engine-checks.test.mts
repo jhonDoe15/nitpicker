@@ -1,21 +1,29 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { zipOf } from '../../../../shared/test-support/archives/zip-writer.mts';
 import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
-import { fieldOf, fieldsOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import {
   argumentSetOf,
   generatedRoots,
+  lombokTested,
+  lombokVersions,
   lookupEntries,
+  modulePathEntries,
   ownPackages,
   releaseOf,
+  sourceLevelOf,
   withProjectFlags,
+  type ArgumentSet,
 } from './engine-arguments.mts';
-import { ENGINE_CHECKS, engineChecksFor, NULL_AWAY, TEST_SENSITIVE } from './engine-checks.mts';
+import { ENGINE_CHECKS, engineChecksFor, NULL_AWAY, wholeReason } from './engine-checks.mts';
 
 const REPOSITORY = path.resolve(import.meta.dirname, '../../../..');
-const WITHOUT_NULL_AWAY = ENGINE_CHECKS.filter((check) => check !== NULL_AWAY);
-const ON_TEST_SOURCES = WITHOUT_NULL_AWAY.filter((check) => !TEST_SENSITIVE.includes(check));
+const IMMUTABLE = 'Immutable';
+const IMMUTABLE_NAMED = ['ImmutableAnnotationChecker', 'ImmutableEnumChecker'];
+const IN_REACH = ENGINE_CHECKS.filter((check) => !IMMUTABLE_NAMED.includes(check));
+const WITHOUT_NULL_AWAY = IN_REACH.filter((check) => check !== NULL_AWAY);
 const projectWith = useTempProjects('nitpicker-errorprone-checks-');
 
 function classesIn(...packages: readonly string[]): string {
@@ -28,75 +36,104 @@ function classesIn(...packages: readonly string[]): string {
   return path.join(root, 'classes');
 }
 
+function setOf(head: readonly string[]): ArgumentSet {
+  return { head, sources: [] };
+}
+
 function headWith(own: string, ...lines: readonly string[]): string[] {
   return ['-d', '/out', '-processorpath', '', `--own-classes=${own}`, ...lines];
 }
 
 describe('engineChecksFor', () => {
-  it('runs every engine check on main sources, NullAway on the packages of the own classes', () => {
+  it('runs the engine checks on main sources, NullAway on own packages, Immutable ones only in reach', () => {
     const own = classesIn('demo.api', 'demo.api.inner', 'other');
 
-    expect(engineChecksFor(headWith(own))).toStrictEqual({
-      checks: ENGINE_CHECKS,
+    expect(engineChecksFor(setOf(headWith(own)))).toStrictEqual({
+      checks: IN_REACH,
       packages: ['demo.api', 'other'],
     });
   });
 
-  it('leaves a source set in another encoding than UTF-8 to Error Prone', () => {
+  it('runs the engine checks whatever the encoding of the sources', () => {
     const own = classesIn('demo');
 
-    expect(engineChecksFor(headWith(own, '-encoding', 'ISO-8859-1')).checks).toStrictEqual([]);
-    expect(engineChecksFor(headWith(own, '-encoding', 'utf-8')).checks).toStrictEqual(
-      ENGINE_CHECKS,
+    expect(engineChecksFor(setOf(headWith(own, '-encoding', 'ISO-8859-1'))).checks).toStrictEqual(
+      IN_REACH,
     );
   });
 
-  it('leaves NullAway to Error Prone on test sources, without own classes and with a module path', () => {
+  it('runs NullAway on the engine with a module path, not on test sources or without own classes', () => {
     const own = classesIn('demo');
 
-    expect(engineChecksFor(headWith(own, '--test-only'))).toStrictEqual({
-      checks: ON_TEST_SOURCES,
+    expect(engineChecksFor(setOf(headWith(own, '--test-only')))).toStrictEqual({
+      checks: WITHOUT_NULL_AWAY,
       packages: [],
     });
-    expect(engineChecksFor(headWith(path.join(own, 'missing'))).checks).toStrictEqual(
+    expect(engineChecksFor(setOf(headWith(path.join(own, 'missing')))).checks).toStrictEqual(
       WITHOUT_NULL_AWAY,
     );
-    expect(engineChecksFor(headWith(own, '--module-path', '/lib.jar')).checks).toStrictEqual(
-      WITHOUT_NULL_AWAY,
-    );
+    expect(engineChecksFor(setOf(headWith(own, '--module-path', '/lib.jar')))).toStrictEqual({
+      checks: IN_REACH,
+      packages: ['demo'],
+    });
   });
 
-  it('leaves checks that Error Prone treats differently in test code to Error Prone on test sources', () => {
-    const watched = ['CheckReturnValue', 'ThrowSpecificExceptions', 'ReturnValueIgnored'];
-
-    expect(ON_TEST_SOURCES.length).toBe(WITHOUT_NULL_AWAY.length - TEST_SENSITIVE.length);
-    expect(ON_TEST_SOURCES.filter((check) => watched.includes(check))).toStrictEqual([
-      'CheckReturnValue',
-    ]);
-  });
-
-  it('leaves only the checks the project configures to Error Prone', () => {
+  it('leaves the checks the project turns off or raises to errors off the engine, the last level winning', () => {
     const head = headWith(
       classesIn('demo'),
-      '--errorprone-flag=-Xep:SystemOut:OFF',
-      '--errorprone-flag=-Xep:EmptyCatch:ERROR',
-      '--errorprone-flag=-Xep:JavaUtilDate',
-      '--errorprone-flag=-Xep:NullAway:ERROR',
-      '--errorprone-flag=-Xep:Other:ERROR',
-    );
-    const configured = ['SystemOut', 'EmptyCatch', 'JavaUtilDate', NULL_AWAY];
+      ...[
+        '-Xep:SystemOut:OFF',
+        '-Xep:EmptyCatch:ERROR',
+        '-Xep:JavaUtilDate',
+        '-Xep:NullAway:ERROR',
+      ],
+      ...[
+        '-Xep:Other:ERROR',
+        '-Xep:FallThrough:OFF',
+        '-Xep:FallThrough:WARN',
+        `-Xep:${IMMUTABLE}:WARN`,
+      ],
+    ).map((line) => (line.startsWith('-Xep') ? `--errorprone-flag=${line}` : line));
+    const leftOut = ['SystemOut', 'EmptyCatch', NULL_AWAY];
 
-    expect(engineChecksFor(head)).toStrictEqual({
-      checks: ENGINE_CHECKS.filter((check) => !configured.includes(check)),
+    expect(engineChecksFor(setOf(head))).toStrictEqual({
+      checks: ENGINE_CHECKS.filter((check) => !leftOut.includes(check)),
       packages: [],
     });
   });
 
   it.each([
-    '-XepExcludedPaths:.*/generated/.*',
-    '-XepOpt:NullAway:ExcludedClasses=demo.A',
+    [['-Xep:SystemOut:WARN', '-XepDisableAllChecks'], ['UnicodeDirectionalityCharacters']],
+    [
+      ['-XepDisableAllChecks', '-Xep:SystemOut:WARN'],
+      ['SystemOut', 'UnicodeDirectionalityCharacters'],
+    ],
+  ])('applies %j to the check list as Error Prone does', (flags, checks) => {
+    const head = headWith(classesIn('demo'), ...flags.map((flag) => `--errorprone-flag=${flag}`));
+
+    expect(engineChecksFor(setOf(head)).checks).toStrictEqual(checks);
+  });
+
+  it('keeps the checks that read a project -XepOpt option on Error Prone', () => {
+    const head = headWith(
+      classesIn('demo'),
+      '--errorprone-flag=-XepOpt:NullAway:ExcludedClasses=demo.A',
+      '--errorprone-flag=-XepOpt:IdentifierName:AllowInitialismsInTypeName=true',
+    );
+    const { checks } = engineChecksFor(setOf(head));
+
+    const readers = [NULL_AWAY, 'IdentifierName', 'PatternMatchingInstanceof'];
+
+    expect(checks).toStrictEqual(IN_REACH.filter((check) => !readers.includes(check)));
+  });
+
+  it.each([
+    '-XepExcludedPaths:(?i).*/generated/.*',
+    '-XepOpt:Unknown:Flag=1',
     '-XepPatchChecks:MissingOverride',
-    '-XepDisableAllChecks',
+    '-XepIgnoreSuppressionAnnotations',
+    '-Xep:SystemOut:LOUD',
+    '-Xep:UnicodeDirectionalityCharacters:OFF',
   ])('leaves every check to Error Prone when the project passes %s', (flag) => {
     const head = headWith(
       classesIn('demo'),
@@ -104,10 +141,10 @@ describe('engineChecksFor', () => {
       `--errorprone-flag=${flag}`,
     );
 
-    expect(engineChecksFor(head).checks).toStrictEqual([]);
+    expect(engineChecksFor(setOf(head)).checks).toStrictEqual([]);
   });
 
-  it('leaves every check to Error Prone when an annotation processor runs', () => {
+  it('keeps the checks on the engine when an annotation processor other than Lombok runs', () => {
     const own = classesIn('demo');
     const processor = path.join(path.dirname(own), 'processor');
     mkdirSync(path.join(processor, 'META-INF/services'), { recursive: true });
@@ -115,28 +152,80 @@ describe('engineChecksFor', () => {
       path.join(processor, 'META-INF/services/javax.annotation.processing.Processor'),
       'demo.Processor\n',
     );
-    const head = ['-processorpath', ['/missing.jar', processor].join(path.delimiter)];
+    const head = [
+      ...['-processorpath', ['/missing.jar', processor].join(path.delimiter)],
+      ...[`--own-classes=${own}`, `--processor-output=${own}`],
+    ];
 
-    expect(engineChecksFor([...head, `--own-classes=${own}`]).checks).toStrictEqual([]);
+    expect(engineChecksFor(setOf(head))).toStrictEqual(
+      engineChecksFor(setOf([`--own-classes=${own}`])),
+    );
+    expect(wholeReason(setOf(head))).toBeUndefined();
   });
 
-  it('moves only checks the engine has, that no class annotation exempts and Lombok does not switch off', () => {
+  it('names a Lombok version outside the compared range as the reason to stay on Error Prone', () => {
+    const root = projectWith({});
+    const lombok = (version: string): string => {
+      const jar = path.join(root, `lombok-${version}.jar`);
+      writeFileSync(
+        jar,
+        zipOf({
+          'META-INF/MANIFEST.MF': `Manifest-Version: 1.0\r\nLombok-Version: ${version}\r\n`,
+          'META-INF/services/javax.annotation.processing.Processor':
+            'lombok.launch.AnnotationProcessorHider$AnnotationProcessor\n',
+        }),
+      );
+      return jar;
+    };
+    const tested = ['-processorpath', lombok('1.18.46')];
+    const older = ['-processorpath', [lombok('1.18.30'), '/missing.jar'].join(path.delimiter)];
+
+    expect(lombokVersions(older)).toStrictEqual(['1.18.30']);
+    expect(lombokVersions(['-processorpath', root])).toStrictEqual([]);
+    expect(wholeReason({ head: tested, sources: [] })).toBe(
+      'it runs Lombok, which rewrites classes',
+    );
+    expect(wholeReason({ head: older, sources: [] })).toBe(
+      'it runs Lombok 1.18.30, outside the versions compared with Error Prone (1.18.38 to 1.18.48)',
+    );
+    expect(['1.18.38', '1.18.48', '1.18.40'].map(lombokTested)).toStrictEqual([true, true, true]);
+    expect(['1.18.36', '1.18.50', '1.20.0', '1.18'].map(lombokTested)).toStrictEqual([
+      false,
+      false,
+      false,
+      false,
+    ]);
+  });
+
+  it('moves only checks the engine has and Java runs enable', () => {
     const read = (file: string): unknown =>
       parseJson(readFileSync(path.join(REPOSITORY, file), 'utf8'));
     const checks = read('languages/java/gradle/errorprone/checks.json');
     const ported = textsOf(read('engine/parity/errorprone/ported.json'));
-    const special = [
-      ...textsOf(fieldOf(checks, 'lombokUnsuppressedOff')),
-      ...Object.keys(fieldsOf(fieldOf(checks, 'classExemptions'))),
-      ...textsOf(fieldOf(checks, 'disable')),
-    ];
+    const disabled = textsOf(fieldOf(checks, 'disable'));
 
-    expect(WITHOUT_NULL_AWAY.filter((check) => !ported.includes(check))).toStrictEqual([]);
-    expect(ENGINE_CHECKS.filter((check) => special.includes(check))).toStrictEqual([]);
+    expect(
+      ENGINE_CHECKS.filter((check) => check !== NULL_AWAY).filter(
+        (check) => !ported.includes(check),
+      ),
+    ).toStrictEqual([]);
+    expect(ENGINE_CHECKS.filter((check) => disabled.includes(check))).toStrictEqual([]);
   });
 
-  it('keeps on Error Prone the checks Error Prone refuses to switch off', () => {
-    expect(ENGINE_CHECKS).not.toContain('UnicodeDirectionalityCharacters');
+  it('moves the checks with class exemptions, Lombok grouping and the one Error Prone cannot switch off', () => {
+    expect(
+      [
+        'IdentifierName',
+        'MissingBraces',
+        'UnicodeDirectionalityCharacters',
+        'HardCodedSdCardPath',
+      ].filter((check) => !ENGINE_CHECKS.includes(check)),
+    ).toStrictEqual([]);
+    expect(
+      ENGINE_CHECKS.filter((check) =>
+        ['ReferenceEquality', 'UnnecessaryMethodReference'].includes(check),
+      ),
+    ).toStrictEqual([]);
   });
 });
 
@@ -154,11 +243,12 @@ describe('the arguments file', () => {
     ...['--sources', '/src/A.java', '/src/B.java', ''],
   ].join('\n');
 
-  it('gives the sources, the class lookup, the release and the generated roots', () => {
+  it('gives the sources, the class and module lookup, the release and the generated roots', () => {
     const { head, sources } = argumentSetOf(text);
 
     expect(sources).toStrictEqual(['/src/A.java', '/src/B.java']);
-    expect(lookupEntries(head)).toStrictEqual(['/m.jar', '/a.jar', '/b', '/own']);
+    expect(lookupEntries(head)).toStrictEqual(['/a.jar', '/b', '/own']);
+    expect(modulePathEntries(head)).toStrictEqual(['/m.jar']);
     expect(releaseOf(head)).toBe('17');
     expect(generatedRoots(head)).toStrictEqual(['/gen']);
     expect(generatedRoots(head.filter((line) => line !== '--skip-generated'))).toStrictEqual([]);
@@ -175,6 +265,15 @@ describe('the arguments file', () => {
     expect(releaseOf([...head, '--project-arg=--add-exports=demo/demo.api=ALL-UNNAMED'])).toBe(
       '17',
     );
+  });
+
+  it('gives the language level from the release, else from the source option', () => {
+    const { head } = argumentSetOf(text);
+    const sourceOnly = head.filter((line) => !line.startsWith('--release='));
+
+    expect(sourceLevelOf(head)).toBe('17');
+    expect(sourceLevelOf([...sourceOnly, '--source=11'])).toBe('11');
+    expect(sourceLevelOf(sourceOnly)).toBeUndefined();
   });
 
   it('adds project flags before the sources', () => {

@@ -1,0 +1,1 @@
+export function param(re: RegExp) { return re.source.replace(/\.\*/g, '%').replace(/\./g, '_').replace(/\\_/g, '.').replace(/^\^/g, '').replace(/\$$/g, ''); }

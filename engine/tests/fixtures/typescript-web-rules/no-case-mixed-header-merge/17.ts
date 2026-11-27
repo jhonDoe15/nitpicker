@@ -1,0 +1,1 @@
+const res = await fetch(url, { headers: { ...headers, "Content-Type": "application/json" } });

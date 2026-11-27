@@ -109,6 +109,18 @@ function argumentTimeouts(
     : [{ node: argument, hook }];
 }
 
+function isFactoryCall(callee: TSESTree.Node): boolean {
+  return (
+    callee.type === AST_NODE_TYPES.MemberExpression &&
+    !callee.computed &&
+    isTestFactoryMember(callee.property.name)
+  );
+}
+
+function isHookCall(root: string | undefined, callee: TSESTree.Node): boolean {
+  return root !== undefined && TEST_HOOKS.has(root) && callee.type === AST_NODE_TYPES.Identifier;
+}
+
 function timeoutNodes(context: SourceContext, node: TSESTree.CallExpression): TimeoutNode[] {
   const global = globalTimeouts(context, node);
   if (global !== undefined) {
@@ -118,18 +130,10 @@ function timeoutNodes(context: SourceContext, node: TSESTree.CallExpression): Ti
     return firstArgumentTimeouts(node);
   }
   const root = registrationRoot(node.callee);
-  if (
-    node.callee.type === AST_NODE_TYPES.MemberExpression &&
-    !node.callee.computed &&
-    isTestFactoryMember(node.callee.property.name)
-  ) {
+  if (isFactoryCall(node.callee)) {
     return [];
   }
-  if (
-    root !== undefined &&
-    TEST_HOOKS.has(root) &&
-    node.callee.type === AST_NODE_TYPES.Identifier
-  ) {
+  if (isHookCall(root, node.callee)) {
     return node.arguments
       .slice(1, 2)
       .flatMap((argument) => argumentTimeouts(context, argument, true));

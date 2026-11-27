@@ -1,0 +1,1 @@
+const link = `${pathToFileURL(file).href}?stamp=${Date.now()}`;

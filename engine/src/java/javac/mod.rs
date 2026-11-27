@@ -8,6 +8,7 @@ pub mod classes;
 mod lambdas;
 pub mod locals;
 mod references;
+pub(crate) use references::inner_class;
 pub mod rule;
 
 use crate::engine::source::{children, parent};
@@ -83,6 +84,11 @@ impl<'t> Names<'t> {
             return Vec::new();
         }
         captures::of_local_class(resolver, self, declaration).into_iter().map(|(_, kind)| kind.map(|kind| kind.erased())).collect()
+    }
+
+    /// Where the variables a local class takes from the method are declared.
+    pub fn local_class_captured(&self, resolver: &Resolver, declaration: Node<'t>) -> Vec<Node<'t>> {
+        captures::of_local_class(resolver, self, declaration).into_iter().map(|(declared, _)| declared).collect()
     }
 
     /// The erased parameter types of the constructor the compiler writes for an anonymous class: the instance

@@ -37,8 +37,9 @@ const ROOT_NAME = /root|repository|repo$/iu;
 const FILE_LIKE = /^[\w./-]+\.\w+$/u;
 const DEFAULT_NAME = /^[A-Z][A-Z0-9_]*$|^[a-z]\w*Default|^default/u;
 
-function lastName(node: TSESTree.Node): string | undefined {
-  return node.type === AST_NODE_TYPES.MemberExpression ? nameOf(node.property) : nameOf(node);
+function lastName(node: TSESTree.Node | undefined): string {
+  const target = node?.type === AST_NODE_TYPES.MemberExpression ? node.property : node;
+  return nameOf(target) ?? '';
 }
 
 function isDefault(node: TSESTree.Node | undefined): boolean {
@@ -52,11 +53,10 @@ function isDefault(node: TSESTree.Node | undefined): boolean {
     return typeof node.value === 'string' && FILE_LIKE.test(node.value);
   }
   if (node.type === AST_NODE_TYPES.Identifier || node.type === AST_NODE_TYPES.MemberExpression) {
-    return DEFAULT_NAME.test(lastName(node) ?? '');
+    return DEFAULT_NAME.test(lastName(node));
   }
   return (
-    node.type === AST_NODE_TYPES.CallExpression &&
-    /^default|Default/u.test(lastName(node.callee) ?? '')
+    node.type === AST_NODE_TYPES.CallExpression && /^default|Default/u.test(lastName(node.callee))
   );
 }
 
@@ -70,18 +70,11 @@ function isNothing(node: TSESTree.Node | undefined): boolean {
 
 type Outcome = { readonly value: TSESTree.Node | undefined } | undefined;
 
-function branchOutcome(branch: TSESTree.Node | undefined): Outcome {
-  if (branch === undefined) {
-    return undefined;
-  }
-  if (
-    branch.type !== AST_NODE_TYPES.BlockStatement &&
-    branch.type !== AST_NODE_TYPES.ReturnStatement &&
-    branch.type !== AST_NODE_TYPES.ExpressionStatement
-  ) {
-    return { value: branch };
-  }
-  const last = branch.type === AST_NODE_TYPES.BlockStatement ? branch.body.at(-1) : branch;
+function lastStatement(branch: TSESTree.Node): TSESTree.Node | undefined {
+  return branch.type === AST_NODE_TYPES.BlockStatement ? branch.body.at(-1) : branch;
+}
+
+function endingOutcome(last: TSESTree.Node | undefined): Outcome {
   if (last?.type === AST_NODE_TYPES.ReturnStatement) {
     return { value: last.argument ?? undefined };
   }
@@ -91,19 +84,29 @@ function branchOutcome(branch: TSESTree.Node | undefined): Outcome {
     : undefined;
 }
 
+function branchOutcome(branch: TSESTree.Node | undefined): Outcome {
+  if (branch === undefined) {
+    return undefined;
+  }
+  const isStatement =
+    branch.type === AST_NODE_TYPES.BlockStatement ||
+    branch.type === AST_NODE_TYPES.ReturnStatement ||
+    branch.type === AST_NODE_TYPES.ExpressionStatement;
+  return isStatement ? endingOutcome(lastStatement(branch)) : { value: branch };
+}
+
 function joinedName(context: SourceContext, argument: TSESTree.Node): string | undefined {
   const joined = resolveConstant(context, argument);
   if (
     joined?.type !== AST_NODE_TYPES.CallExpression ||
-    !JOINS.has(lastName(joined.callee) ?? '') ||
+    !JOINS.has(lastName(joined.callee)) ||
     joined.arguments.length !== 2
   ) {
     return undefined;
   }
   const [directory, file] = joined.arguments;
   const name = stringValue(resolveConstant(context, file));
-  return directory !== undefined &&
-    !ROOT_NAME.test(lastName(directory) ?? '') &&
+  return !ROOT_NAME.test(lastName(directory)) &&
     name !== undefined &&
     CONFIG_NAMES.some((pattern) => pattern.test(name))
     ? name
@@ -128,20 +131,25 @@ function absentTarget(call: TSESTree.CallExpression): {
       : undefined,
   );
   const negations = chain.filter((link) => link.type === AST_NODE_TYPES.UnaryExpression).length;
-  return { node: chain.at(-1) ?? call, negated: negations % 2 === 1 };
+  return { node: chain.reduce((_, link) => link, call), negated: negations % 2 === 1 };
 }
 
 function followingReturn(statement: TSESTree.IfStatement): Outcome {
   const siblings =
     statement.parent.type === AST_NODE_TYPES.BlockStatement ? statement.parent.body : [];
   const next = siblings[siblings.indexOf(statement) + 1];
-  const { consequent } = statement;
-  const ending =
-    consequent.type === AST_NODE_TYPES.BlockStatement ? consequent.body.at(-1) : consequent;
+  const ending = lastStatement(statement.consequent);
   return ending?.type === AST_NODE_TYPES.ReturnStatement &&
     next?.type === AST_NODE_TYPES.ReturnStatement
     ? branchOutcome(next)
     : undefined;
+}
+
+function ifOutcome(statement: TSESTree.IfStatement, negated: boolean): Outcome {
+  if (negated) {
+    return branchOutcome(statement.consequent);
+  }
+  return statement.alternate ? branchOutcome(statement.alternate) : followingReturn(statement);
 }
 
 function absentOutcome(call: TSESTree.CallExpression): Outcome {
@@ -150,13 +158,9 @@ function absentOutcome(call: TSESTree.CallExpression): Outcome {
   if (parent?.type === AST_NODE_TYPES.ConditionalExpression && parent.test === node) {
     return branchOutcome(negated ? parent.consequent : parent.alternate);
   }
-  if (parent?.type !== AST_NODE_TYPES.IfStatement || parent.test !== node) {
-    return undefined;
-  }
-  if (negated || parent.alternate) {
-    return branchOutcome(negated ? parent.consequent : (parent.alternate ?? undefined));
-  }
-  return followingReturn(parent);
+  return parent?.type === AST_NODE_TYPES.IfStatement && parent.test === node
+    ? ifOutcome(parent, negated)
+    : undefined;
 }
 
 function catchOutcome(call: TSESTree.CallExpression): Outcome {
@@ -216,7 +220,7 @@ export const rule: TSESLint.RuleModule<'singleFolder'> = {
   create(context) {
     return {
       CallExpression(node) {
-        const name = lastName(node.callee) ?? '';
+        const name = lastName(node.callee);
         const [target] = node.arguments;
         const isRead = READS.has(name);
         if (!(CHECKS.has(name) || isRead) || target === undefined) {

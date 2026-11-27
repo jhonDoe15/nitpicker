@@ -1,4 +1,5 @@
-//! BareDotMetacharacter, CharacterGetNumericValue and GetClassOnEnum: calls recognised by owner, name and arguments.
+//! BareDotMetacharacter, InvalidPatternSyntax, CharacterGetNumericValue and GetClassOnEnum: calls recognised by owner, name
+//! and arguments.
 use super::Context;
 use super::call_match::{instance_on_exact_class, static_on_class};
 use super::consts::{Const, constant};
@@ -71,6 +72,29 @@ pub fn bare_dot_metacharacter(context: &Context, call: Node) {
         let fix = Fix::replace(first.start_byte(), first.end_byte(), "\"\\\\.\"");
         let message = "\".\" is rarely useful as a regex, as it matches any character. To match a literal '.' character, instead write \"\\\\.\".";
         context.report_fixed("BareDotMetacharacter", call, preferred(context, call), message, &[fix]);
+    }
+}
+
+/// What `Pattern.compile` throws for a constant regular expression, from the engine's model of `Pattern`.
+pub fn invalid_pattern_syntax(context: &Context, call: Node) {
+    if call.kind() != "method_invocation" {
+        return;
+    }
+    let Some(with_flags) = regex_usage(context, call) else { return };
+    let list = arguments(call);
+    let Some(Const::Str(pattern)) = list.first().and_then(|first| constant(context, *first)) else { return };
+    let flags = match list.get(1).and_then(|second| constant(context, *second)) {
+        _ if !with_flags => 0,
+        Some(Const::Int(flags)) => flags as u32,
+        _ => return,
+    };
+    let jdk = match crate::java::types::project::jdk_major() {
+        0 => 21,
+        major => major,
+    };
+    if let Some(error) = super::regex::syntax_error(&pattern, flags, jdk) {
+        let message = format!("Invalid syntax used for a regular expression: {}", error.replace('\n', "\n  "));
+        context.report_fixed("InvalidPatternSyntax", call, preferred(context, call), &message, &[]);
     }
 }
 

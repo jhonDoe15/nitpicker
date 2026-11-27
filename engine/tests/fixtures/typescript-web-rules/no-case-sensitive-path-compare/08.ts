@@ -1,0 +1,1 @@
+if (path.resolve(a) === path.resolve(b)) {}

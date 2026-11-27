@@ -144,8 +144,18 @@ pub fn non_serializable_class(ctx: &Ctx, out: &mut Vec<Hit>) {
             let mut shown = String::new();
             let written = ctx.kids(field).iter().copied().find(|kid| !matches!(ctx.name(*kid), "ModifierList" | "VariableDeclarator"));
             if let Some(kind) = written.and_then(|written| ctx.symbolic_type(written)).or_else(|| ctx.type_of(variable)) {
-                let index = ctx.machine.resolver.index;
-                TypePrinter { index, qualify: true, bounds: None, known: Vec::new() }.kind(&kind, false, &mut shown);
+                let mut printer = TypePrinter::new(ctx.machine.resolver.index, true);
+                let qualifier = written.filter(|written| ctx.is(*written, "ClassType")).and_then(|written| ctx.kid(written, "ClassType"));
+                if let Some(Type::Class(_, given)) = qualifier.and_then(|qualifier| ctx.symbolic_type(qualifier)) {
+                    printer.outer = given;
+                } else if qualifier.is_none() {
+                    let mut around = Some(declaration);
+                    while let Some(owner) = around {
+                        printer.implicit.extend(ctx.class_name(owner));
+                        around = ctx.enclosing(owner, TYPE_DECLARATIONS).filter(|outer| *outer != owner);
+                    }
+                }
+                printer.kind(&kind, false, &mut shown);
             }
             let owner = ctx.binary_name(declaration).unwrap_or_default();
             out.push(hit_with(variable, &[&name, &owner, &shown]));
