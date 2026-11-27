@@ -355,6 +355,23 @@ the reason in the log when the version is outside the range compared (`TESTED_LO
 `languages/java/builds/errorprone/engine-arguments.mts`). Source sets with Lombok still compile whole on Error
 Prone (see the list above); the comparison runs the engine with `--lombok`, as those runs will.
 
+Measured on 2026-11-27 (all ported checks, NullAway off; findings same / only Error Prone / only engine / other
+sentence):
+
+| Lombok | Compared | Do not compile alone | Identical | Findings | Inside generated code |
+| --- | ---: | ---: | ---: | --- | ---: |
+| 1.18.36 | 354 | 61 | 239 | 1643 / 114 / 132 / 38 | 989 |
+| 1.18.38 | 355 | 61 | 248 | 1683 / 113 / 120 / 18 | 974 |
+| 1.18.40 | 356 | 61 | 248 | 1688 / 114 / 120 / 18 | 975 |
+| 1.18.42 | 365 | 61 | 248 | 1754 / 159 / 120 / 18 | 975 |
+| 1.18.44 | 367 | 61 | 248 | 1751 / 151 / 121 / 20 | 976 |
+| 1.18.46 | 371 | 61 | 250 | 1758 / 154 / 123 / 20 | 985 |
+| 1.18.48 | 374 | 63 | 250 | 1755 / 158 / 124 / 20 | 985 |
+
+Error Prone's rows on the 351 files compared in all seven are the same for 1.18.40 and 1.18.42 and for 1.18.44 and
+1.18.46; each other step changes some (16 files from 1.18.36 to 1.18.38, 32 files, most of them `@SuperBuilder`, from 1.18.46 to
+1.18.48).
+
 
 ## SpotBugs patterns
 
