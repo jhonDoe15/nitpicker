@@ -93,7 +93,10 @@ describe('the code a removed test imported', () => {
     ['imports through an alias', new Map([['a.test.ts', "import './a.ts';\nimport '#/b';"]])],
     ['imports a barrel', new Map([['a.test.ts', "import './a.ts';\nimport '../index.ts';"]])],
     ['imports a directory', new Map([['a.test.ts', "import './a.ts';\nimport '..';"]])],
-    ['imports a computed path', new Map([['a.test.ts', 'await import(`./cases/${name}.ts`);']])],
+    [
+      'imports a computed path',
+      new Map([['a.test.ts', ['await import(`./cases/$', '{name}.ts`);'].join('')]]),
+    ],
   ])('knows no targets when a removed test %s', (_name, texts) => {
     expect(removedTestTargetsOf(['a.test.ts'], texts, '')).toBeUndefined();
   });
