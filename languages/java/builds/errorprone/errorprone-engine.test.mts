@@ -2,19 +2,24 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
-import { parseJson } from '../../../../shared/values/readers.mts';
+import { fieldOf, listOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import { ENGINE_REPORT, positionIn, withEngineDiagnostics } from './engine-diagnostics.mts';
 import {
+  argumentFilesToCompile,
   errorPronePlanOf,
   errorProneOnEngine,
   javaHomeOf,
   type ErrorProneEnginePlan,
 } from './errorprone-engine.mts';
 import { ENGINE_CHECKS, NULL_AWAY } from './engine-checks.mts';
+import { ENABLED_CHECKS, IMMUTABLE } from './skip/runner-checks.mts';
 
 import { engineWriting, type Started } from '../test-support/engine-writing.mts';
 
 const projectWith = useTempProjects('nitpicker-errorprone-engine-');
+const LEFT = ENABLED_CHECKS.filter(
+  (check) => !ENGINE_CHECKS.includes(check) && check !== IMMUTABLE,
+);
 
 type Setup = {
   readonly plan: ErrorProneEnginePlan;
@@ -61,6 +66,10 @@ function rowIn(file: string, rule: string) {
   return { file, rule, line: 3, column: 24, message: `[${rule}] found` };
 }
 
+function mayReportIn(file: string, checks = '') {
+  return { file, rule: '_MayReport', line: 1, column: 1, message: checks };
+}
+
 describe('errorProneOnEngine', () => {
   it('runs its checks on the engine, reports them like Error Prone and switches them off there', () => {
     const { plan, environment, source, generated, argumentFile } = setup();
@@ -69,6 +78,8 @@ describe('errorProneOnEngine', () => {
       rowIn(source, 'SystemOut'),
       rowIn(generated, NULL_AWAY),
       rowIn(source, 'Other'),
+      mayReportIn(source),
+      mayReportIn(generated),
     ];
 
     errorProneOnEngine(plan, environment, { run: engineWriting({ findings }, started) });
@@ -99,15 +110,53 @@ describe('errorProneOnEngine', () => {
     expect(passed).toStrictEqual({
       ...environment,
       NP_EP_ONLY: ENGINE_CHECKS.join(','),
+      NP_EP_MAY_REPORT: LEFT.join(','),
       NP_NULLAWAY_PACKAGES: 'demo',
       NITPICKER_JDK: plan.javaHome,
     });
     const lines = readFileSync(argumentFile, 'utf8').split('\n');
-    const off = ENGINE_CHECKS.filter((check) => check !== 'UnicodeDirectionalityCharacters');
-    expect(lines.slice(lines.indexOf('--sources') - off.length)).toStrictEqual([
-      ...off.map((check) => `--errorprone-flag=-Xep:${check}:OFF`),
-      ...['--sources', source, generated, ''],
+    expect(lines.slice(lines.indexOf('--sources'))).toStrictEqual(['--sources', '']);
+    expect(lines).toContain(`--errorprone-flag=-Xep:${LEFT[0] ?? ''}:OFF`);
+    expect(lines).not.toContain('--errorprone-flag=-Xep:UnicodeDirectionalityCharacters:OFF');
+    expect(argumentFilesToCompile(plan.argumentFiles)).toStrictEqual([]);
+  });
+
+  it('narrows Error Prone to the files and checks the engine cannot answer', () => {
+    const { plan, environment, source, generated, argumentFile } = setup();
+    const notes: string[] = [];
+    const findings = [
+      { ...rowIn(source, 'UnicodeDirectionalityCharacters'), line: 1, column: 1 },
+      { ...rowIn(generated, 'UnicodeDirectionalityCharacters'), line: 1, column: 1 },
+      { ...rowIn(source, 'IdentifierName'), arguments: ['demo.Marked'] },
+      mayReportIn(source, 'FallThrough,NotAsked'),
+      mayReportIn(generated),
+    ];
+
+    errorProneOnEngine(plan, environment, {
+      run: engineWriting({ findings }),
+      log: { write: (text: string) => notes.push(text) },
+    });
+
+    const lines = readFileSync(argumentFile, 'utf8').split('\n');
+    expect(lines.slice(lines.indexOf('--narrowed'))).toStrictEqual([
+      '--narrowed',
+      '--sources',
+      source,
+      '',
     ]);
+    expect(lines).not.toContain('--errorprone-flag=-Xep:FallThrough:OFF');
+    expect(lines).toContain('--errorprone-flag=-Xep:SwitchDefault:OFF');
+    expect(lines).toContain('--errorprone-flag=-Xep:Immutable:OFF');
+    const reported = textsOf(
+      listOf(parseJson(readFileSync(path.join(plan.reportDir, ENGINE_REPORT), 'utf8'))).map((row) =>
+        JSON.stringify([fieldOf(row, 'message'), fieldOf(row, 'classAnnotations')]),
+      ),
+    );
+    expect(reported).toStrictEqual([JSON.stringify(['[IdentifierName] found', ['demo.Marked']])]);
+    expect(notes).toStrictEqual([
+      'nitpicker: Error Prone compiles 1 of 2 files of main for 1 checks the engine does not run: FallThrough\n',
+    ]);
+    expect(argumentFilesToCompile(plan.argumentFiles)).toStrictEqual([argumentFile]);
   });
 
   it.each([

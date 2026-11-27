@@ -26,7 +26,11 @@ import { errorProneJava, isNoFittingJdk, skipWithoutJdk } from './maven-jdk.mts'
 import { toolHeapFlags, toolSlots } from '../parallel/slots/tool-slots.mts';
 import { analyzesGenerated, generatedRoots } from '../generated/generated-roots.mts';
 import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mts';
-import { errorProneOnEngine, javaHomeOf } from '../../builds/errorprone/errorprone-engine.mts';
+import {
+  argumentFilesToCompile,
+  errorProneOnEngine,
+  javaHomeOf,
+} from '../../builds/errorprone/errorprone-engine.mts';
 import { ENGINE_REPORT } from '../../builds/errorprone/engine-diagnostics.mts';
 
 type ErrorProneContext = {
@@ -218,7 +222,12 @@ function analyze(
   }
   const java = errorProneJava({ preview: usesPreview(compiler), spawn, environment });
   errorProneOnEngine({ reportDir, argumentFiles, javaHome: javaHomeOf(java) }, environment);
-  runReport({ module, spawn, timeoutMs }, java, { report, argumentFiles });
+  const compiled = argumentFilesToCompile(argumentFiles);
+  if (compiled.length === 0) {
+    writeFileSync(report, '[]\n');
+    return;
+  }
+  runReport({ module, spawn, timeoutMs }, java, { report, argumentFiles: compiled });
 }
 
 function runReport(

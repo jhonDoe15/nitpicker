@@ -5,6 +5,18 @@ import type { ArgumentSet } from '../engine-arguments.mts';
 import type { EngineRow } from '../engine-diagnostics.mts';
 import { CANNOT_BE_OFF, LOMBOK_UNSUPPRESSED_OFF, lombokUnsuppressed } from './runner-checks.mts';
 
+const MAY_REPORT = '_MayReport';
+
+/** For each file, the checks the engine was asked about that may report there. */
+export function mayReportOf(report: unknown): ReadonlyMap<string, readonly string[]> {
+  const rows = listOf(fieldOf(report, 'findings')).map(engineFindingOf);
+  return new Map(
+    rows
+      .filter(({ rule }) => rule === MAY_REPORT)
+      .map(({ file, message }) => [file, message.split(',').filter(Boolean)] as const),
+  );
+}
+
 function slashed(file: string): string {
   return file.split(path.sep).join('/');
 }

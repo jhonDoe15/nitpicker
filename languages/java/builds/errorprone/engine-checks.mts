@@ -45,9 +45,20 @@ function readsAsUtf8(head: readonly string[]): boolean {
   return at === -1 || UTF_8.test(head[at + 1] ?? '');
 }
 
+/** Why the source set stays whole on Error Prone and the engine runs none of its checks there, if it does. */
+export function wholeReason(head: readonly string[]): string | undefined {
+  if (configuredChecks(projectFlags(head)) === undefined) {
+    return 'the project sets Error Prone options';
+  }
+  if (runsProcessors(head)) {
+    return 'it runs annotation processors';
+  }
+  return readsAsUtf8(head) ? undefined : 'its sources are not read as UTF-8';
+}
+
 export function engineChecksFor(head: readonly string[]): EngineChecks {
   const configured = configuredChecks(projectFlags(head));
-  if (configured === undefined || runsProcessors(head) || !readsAsUtf8(head)) {
+  if (configured === undefined || wholeReason(head) !== undefined) {
     return NONE;
   }
   const elsewhere = head.includes(TEST_ONLY) || head.includes(MODULE_PATH);
