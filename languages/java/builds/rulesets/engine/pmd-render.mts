@@ -1,3 +1,5 @@
+import { pathToFileURL } from 'node:url';
+import type { EngineFinding as Row } from '../../../../../shared/engine/engine-rows.mts';
 import type { XmlElement } from '../../../../../shared/ingest/report-records.mts';
 import { element, renderXml } from '../../../../../shared/xml/xml-write.mts';
 import type { ResolvedRule } from './pmd-catalog.mts';
@@ -7,6 +9,8 @@ import {
   overriddenProperties,
   portablePattern,
 } from './pmd-rule-parts.mts';
+
+const CRASHED_RULE = '!';
 
 export type RulesetScope = {
   readonly include: readonly string[];
@@ -63,4 +67,37 @@ export function renderedRuleset(
 
 export function onlyFiles(files: readonly string[]): RulesetScope {
   return { exclude: [EVERY_FILE], include: files.map((file) => String.raw`\Q${file}\E`) };
+}
+
+export function isCrashed(row: Row): boolean {
+  return row.rule.startsWith(CRASHED_RULE);
+}
+
+export function sarifOf(rows: readonly Row[], levels: ReadonlyMap<string, string>): string {
+  const results = rows.map(({ file, rule, line, column, message }) => ({
+    ruleId: rule,
+    message: { text: message },
+    level: levels.get(rule) ?? 'warning',
+    locations: [
+      {
+        physicalLocation: {
+          artifactLocation: { uri: pathToFileURL(file).href },
+          region: { startLine: line, startColumn: column },
+        },
+      },
+    ],
+  }));
+  return JSON.stringify({
+    version: '2.1.0',
+    runs: [{ tool: { driver: { name: 'PMD', rules: [] } }, results }],
+  });
+}
+
+export function crashLog(rows: readonly Row[]): string {
+  return rows
+    .map(
+      ({ rule, file }) =>
+        `Exception applying rule ${rule.slice(CRASHED_RULE.length)} on file ${file}, continuing with next rule\n`,
+    )
+    .join('');
 }

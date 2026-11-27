@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { escapeRegExp } from '../typed/regex-views.mts';
-import { GRADLE_DIRECTORY } from '../java-build.mts';
+import { escapeRegExp } from '../../../../shared/paths/glob.mts';
 
+const GRADLE_DIRECTORY = path.resolve(import.meta.dirname, '../../gradle');
 const INLINE_CHECKSTYLE_FILTERS = [
   'SuppressWarningsFilter',
   'SuppressWarningsHolder',

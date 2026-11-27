@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
-import { PLACED, placesByArguments, type Placed } from './spotbugs-placed.mts';
+import { PLACED, placesByArguments, placesByName, type Placed } from './spotbugs-placed.mts';
 
 export type EngineSpotbugsFinding = {
   readonly file: string;
@@ -188,18 +188,28 @@ function fieldName(qualified: string, owner: string, reader: string): string {
   return packageOf(owner) === local ? withoutPackage(qualified, owner) : qualified;
 }
 
-function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): SpotbugsResult {
+type PlaceParts = {
+  readonly kind: string;
+  readonly qualified: string;
+  readonly written: string | undefined;
+  readonly level: string;
+};
+
+function placePartsOf(finding: EngineSpotbugsFinding, placed: Placed): PlaceParts {
   const place = finding.symbol ?? '';
   const colon = place.indexOf(':');
   const level = placed.levels[finding.priority ?? 0];
   if (colon < 1 || level === undefined) {
     throw new Error(`the engine wrote a ${finding.rule} finding nitpicker cannot place: ${place}`);
   }
-  const kind = place.slice(0, colon);
   const body = place.slice(colon + 1);
-  const named = placed.placement === 'relative' || placed.placement === 'shown';
-  const at = named ? body.lastIndexOf('@') : -1;
+  const at = placesByName(placed) ? body.lastIndexOf('@') : -1;
   const [qualified = '', written] = (at === -1 ? body : body.slice(0, at)).split('|');
+  return { kind: place.slice(0, colon), qualified, written, level };
+}
+
+function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): SpotbugsResult {
+  const { kind, qualified, written, level } = placePartsOf(finding, placed);
   const owner = ownerOf(kind, qualified);
   const reader = readerOf(finding, placed, kind);
   const subject = reader ?? (placesByArguments(placed) ? (finding.arguments?.[0] ?? owner) : owner);

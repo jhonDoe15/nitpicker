@@ -73,15 +73,19 @@ export function releaseOf(head: readonly string[]): string | undefined {
   return patchesJdk ? undefined : release;
 }
 
-function declaresProcessor(entry: string): boolean {
+export function entryHolds(entry: string, name: string): boolean {
   if (!existsSync(entry)) {
     return false;
   }
   if (statSync(entry).isDirectory()) {
-    return existsSync(path.join(entry, PROCESSOR_SERVICE));
+    return existsSync(path.join(entry, name));
   }
   const read = readZipOrFailure(entry);
-  return read.kind !== 'zip' || read.zip.names.has(PROCESSOR_SERVICE);
+  return read.kind !== 'zip' || read.zip.names.has(name);
+}
+
+function declaresProcessor(entry: string): boolean {
+  return entryHolds(entry, PROCESSOR_SERVICE);
 }
 
 export function runsProcessors(head: readonly string[]): boolean {

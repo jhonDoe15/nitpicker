@@ -1,6 +1,5 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { findEngine } from '../../../../../shared/engine/engine-binary.mts';
 import {
   runEngineSync,
@@ -24,7 +23,15 @@ import {
   textsOf,
 } from '../../../../../shared/values/readers.mts';
 import { resolvedRulesets, rulesetReader, type ResolvedRule } from './pmd-catalog.mts';
-import { covers, onlyFiles, renderedRuleset, type RulesetScope } from './pmd-render.mts';
+import {
+  covers,
+  crashLog,
+  isCrashed,
+  onlyFiles,
+  renderedRuleset,
+  sarifOf,
+  type RulesetScope,
+} from './pmd-render.mts';
 import {
   engineRule,
   needsWholeRun,
@@ -53,7 +60,6 @@ export const ENGINE_SARIF = 'pmd-engine.sarif';
 export const ENGINE_LOG = 'pmd-engine-log.txt';
 const ENGINE_RULES = 'pmd-engine-rules.json';
 const ENGINE_REPORT = 'pmd-engine-report.json';
-const CRASHED_RULE = '!';
 const XPATH_RULE_KIND = '_XPath';
 
 export function enginePlanOf(
@@ -93,35 +99,6 @@ function splitOf(file: string, resolve: Resolve): Split | Unresolved {
   } catch (error) {
     return { unresolved: error };
   }
-}
-
-function sarifOf(rows: readonly Row[], levels: ReadonlyMap<string, string>): string {
-  const results = rows.map(({ file, rule, line, column, message }) => ({
-    ruleId: rule,
-    message: { text: message },
-    level: levels.get(rule) ?? 'warning',
-    locations: [
-      {
-        physicalLocation: {
-          artifactLocation: { uri: pathToFileURL(file).href },
-          region: { startLine: line, startColumn: column },
-        },
-      },
-    ],
-  }));
-  return JSON.stringify({
-    version: '2.1.0',
-    runs: [{ tool: { driver: { name: 'PMD', rules: [] } }, results }],
-  });
-}
-
-function crashLog(rows: readonly Row[]): string {
-  return rows
-    .map(
-      ({ rule, file }) =>
-        `Exception applying rule ${rule.slice(CRASHED_RULE.length)} on file ${file}, continuing with next rule\n`,
-    )
-    .join('');
 }
 
 function pmdRulesets(
@@ -206,10 +183,6 @@ function engineSplits(plan: PmdEnginePlan): Map<string, Split> {
   );
 }
 
-function isCrashed(row: Row): boolean {
-  return row.rule.startsWith(CRASHED_RULE);
-}
-
 function writeEngineReports(
   reportDir: string,
   rows: readonly Row[],
@@ -236,12 +209,17 @@ export function withoutEngineReports(reportDir: string): void {
   }
 }
 
-function mayNeedWholeRun(file: string, resolve: Resolve): boolean {
+function rulesOf(file: string, resolve: Resolve): readonly ResolvedRule[] | Unresolved {
   try {
-    return resolve(file).rules.some(needsWholeRun);
-  } catch {
-    return true;
+    return resolve(file).rules;
+  } catch (error) {
+    return { unresolved: error };
   }
+}
+
+function mayNeedWholeRun(file: string, resolve: Resolve): boolean {
+  const rules = rulesOf(file, resolve);
+  return 'unresolved' in rules || rules.some(needsWholeRun);
 }
 
 function wholeRunOnEngine(plan: PmdEnginePlan, splits: ReadonlyMap<string, Split>): boolean {

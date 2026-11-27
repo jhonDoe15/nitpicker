@@ -118,11 +118,15 @@ describe('checkstyleOnEngine', () => {
     expect(readFileSync(plan.left, 'utf8')).toBe([b, c].join('\n'));
     const xml = readFileSync(plan.engineReport, 'utf8');
     expect(ingestCheckstyle(xml, { root: path.dirname(a) }).findings).toEqual([
-      expect.objectContaining({
+      {
+        tool: 'checkstyle',
         rule: METHOD_NAME,
         path: 'A.java',
+        identity: expect.any(String),
+        message: 'm',
+        classification: 'enforceable',
         location: { line: 4, column: 3 },
-      }),
+      },
     ]);
     expect(existsSync(`${plan.engineReport}.json`)).toBe(false);
   });

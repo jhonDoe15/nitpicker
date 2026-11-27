@@ -184,38 +184,34 @@ export function runnerFlags(
     : pool;
 }
 
-function analyze(
-  {
-    module,
-    reportDir,
-    tools,
-    classpaths,
-    configs,
-    spawn,
-    timeoutMs,
-    environment,
-  }: ErrorProneContext,
+function argumentFilesOf(
+  { module, reportDir, tools, classpaths, configs }: ErrorProneContext,
+  compiler: CompilerSettings,
   modular: Modular,
-): void {
-  const report = path.join(reportDir, 'errorprone.json');
+): string[] {
   const work = path.join(reportDir, ERROR_PRONE);
   rmSync(work, { recursive: true, force: true });
-  rmSync(path.join(reportDir, ENGINE_REPORT), { force: true });
-  const compiler = compilerOf(module.compiler);
   const declaredFlags = textsOf(fieldOf(fieldOf(configs, ERROR_PRONE), 'arguments'));
   const files = { main: javaFiles(module.sourceRoots), test: javaFiles(module.testSourceRoots) };
-  const argumentFiles = compileSets({ module, classpaths, files }, compiler, modular).flatMap(
-    (set) =>
-      writeArguments(work, {
-        ...set,
-        processors: [
-          ...resolvedTool(tools, ERROR_PRONE),
-          ...processorPath(set.classpath, compiler, tools),
-        ],
-        flags: declaredFlags,
-        skipRoots: analyzesGenerated(configs) ? undefined : generatedRoots(module, set.roots),
-      }),
+  return compileSets({ module, classpaths, files }, compiler, modular).flatMap((set) =>
+    writeArguments(work, {
+      ...set,
+      processors: [
+        ...resolvedTool(tools, ERROR_PRONE),
+        ...processorPath(set.classpath, compiler, tools),
+      ],
+      flags: declaredFlags,
+      skipRoots: analyzesGenerated(configs) ? undefined : generatedRoots(module, set.roots),
+    }),
   );
+}
+
+function analyze(context: ErrorProneContext, modular: Modular): void {
+  const { module, reportDir, spawn, timeoutMs, environment } = context;
+  const report = path.join(reportDir, 'errorprone.json');
+  const compiler = compilerOf(module.compiler);
+  const argumentFiles = argumentFilesOf(context, compiler, modular);
+  rmSync(path.join(reportDir, ENGINE_REPORT), { force: true });
   if (argumentFiles.length === 0) {
     writeFileSync(report, '[]\n');
     return;
