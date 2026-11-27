@@ -747,6 +747,46 @@ runs and SpotBugs no longer runs the detector. Measured (`tests/fixtures/spotbug
 - Instance initializer blocks and field initializers are reported once per constructor that does not start with
   `this(...)`, as javac copies them there; static ones in the static initializer.
 
+### Unchecked reads and uninitialized reads
+
+`src/java/spotbugs/values/` rebuilds ReadReturnShouldBeChecked (`SR_NOT_CHECKED`, `RR_NOT_CHECKED`) and
+FindUninitializedGet (`UR_UNINIT_READ`). Both run on the engine in real runs and SpotBugs no longer runs the
+detectors; Lombok modules keep `UR_UNINIT_READ` on SpotBugs, since the constructors Lombok writes run the field
+initializers too. Measured (`tests/fixtures/spotbugs/values_reads*`, `values_uninit*`):
+
+- A dropped result (a call statement, a `for` update, the body of a lambda returning nothing) of `skip(long)` or
+  `skipBytes(int)` made on a subtype of `InputStream`, `Reader` or `DataInput` is `SR_NOT_CHECKED`; of `read(byte[])`
+  or `read(byte[], int, int)` made on a subtype of `InputStream` or `DataInput`, or `read(char[])` or
+  `read(char[], int, int)` made on a subtype of `Reader`, `RR_NOT_CHECKED`. The class is the one javac names in the
+  call, the type of the receiver, also when it only inherits the method. Nothing on a `ByteArrayInputStream`, no skip
+  on an `ImageInputStream`, and nothing when the receiver's class is not on the class path. A `skip` on a
+  `BufferedInputStream` is priority 1, the rest priority 2. Each called method is reported once per method, on the
+  first call's line.
+- `UR_UNINIT_READ` follows a constructor's code in javac's order: the field initializers and initializer blocks run
+  after the super call in every constructor that does not start with `this(...)` (and in the implicit one), and a
+  `finally` block comes before the `catch` blocks and again, as javac copies it, before each `return`, `break` or
+  `continue` that leaves it. The first read of each field of the class itself through `this` (a name, `this.f`,
+  `Outer.this.f`, `((Own) this).f`) is reported when no store into that field, on any instance and on any path,
+  came earlier. That first read is not reported, and the field is done with, inside a loop javac jumps back in (a
+  loop whose body can reach its end or a `continue`; not `do ... while (false)`, and a `for` update javac drops
+  when it cannot be reached). Labels, pattern variables and the names they hide are no reads. A read javac
+  follows with `ifnonnull` is reported only at priority 1: `f == null` where the condition jumps when false (an
+  `if`, a loop, `?:`, a boolean value, the right side of `&&` or `||` there), `f != null` where it jumps when true
+  (an `assert`, the left side of `||`, under `!`). `f++`, `f += x` and `null == f` are no such reads; constants are
+  inlined. Nothing more is reported after a call made on the class (a method of the class or one it inherits, not
+  one `Object` declares, on any instance whose type is the class), a `super.` call, a `new` of the class itself, or
+  a call of a method named `start` that is not static and not made on an interface. Static calls, lambdas and
+  method references do not count. A constructor with a parameter whose binary class name starts with the class's
+  own (the class, a nested class, `AB` for `A`) is skipped.
+- Priority 1 names the parameter SpotBugs takes as the one meant: of the parameters of the field's erased type the
+  constructor never loads, the one whose name is fewest edits (Levenshtein) from the field's; else, when none or
+  several tie, the only parameter of that type at most two edits from it. javac's hidden parameters (the instance
+  around an inner class, the name and ordinal of an enum constant) count as loaded. Otherwise priority 2, placed on
+  the field.
+- Not measured: the hidden parameters of local classes, an `int` parameter only ever incremented (`iinc`).
+  Anonymous classes and enum constant bodies are not checked yet, though SpotBugs checks their implicit
+  constructors.
+
 ### Statement patterns
 
 Patterns that look at single statements or at one method's switches (`src/java/spotbugs/statements/`), measured on

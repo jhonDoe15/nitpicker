@@ -55,7 +55,7 @@ describe('spotbugsOnEngine', () => {
 
     expect(added.slice(0, 3)).toStrictEqual([
       '-omitVisitors',
-      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,FindHiddenMethod,FindNakedNotify,SharedVariableAtomicityDetector,AtomicityProblem,FindUnsyncGet,ConfusionBetweenInheritedAndOuterMethod,IteratorIdioms,DefaultEncodingDetector,FindUselessControlFlow,URLProblems,DumbMethodInvocations,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,FindDeadLocalStores,FindLocalSelfAssignment2',
+      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,FindHiddenMethod,FindNakedNotify,SharedVariableAtomicityDetector,AtomicityProblem,FindUnsyncGet,ReadReturnShouldBeChecked,FindUninitializedGet,ConfusionBetweenInheritedAndOuterMethod,IteratorIdioms,DefaultEncodingDetector,FindUselessControlFlow,URLProblems,DumbMethodInvocations,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,FindDeadLocalStores,FindLocalSelfAssignment2',
       '-exclude',
     ]);
     expect(sarifResults(plan).map((result) => fieldOf(result, 'ruleId'))).toStrictEqual([
@@ -145,10 +145,10 @@ describe('spotbugsOnEngine', () => {
 
     expect(added.slice(0, 2)).toStrictEqual([
       '-omitVisitors',
-      'CloneIdiom,ConstructorThrow,FindNakedNotify,ConfusionBetweenInheritedAndOuterMethod,IteratorIdioms,DefaultEncodingDetector,FindUselessControlFlow,URLProblems,DumbMethodInvocations,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,FindLocalSelfAssignment2',
+      'CloneIdiom,ConstructorThrow,FindNakedNotify,ReadReturnShouldBeChecked,ConfusionBetweenInheritedAndOuterMethod,IteratorIdioms,DefaultEncodingDetector,FindUselessControlFlow,URLProblems,DumbMethodInvocations,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,FindLocalSelfAssignment2',
     ]);
     expect(plain[1]).toBe(
-      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,FindHiddenMethod,FindNakedNotify,SharedVariableAtomicityDetector,AtomicityProblem,FindUnsyncGet,ConfusionBetweenInheritedAndOuterMethod,IteratorIdioms,DefaultEncodingDetector,FindUselessControlFlow,URLProblems,DumbMethodInvocations,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,FindDeadLocalStores,FindLocalSelfAssignment2',
+      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,FindHiddenMethod,FindNakedNotify,SharedVariableAtomicityDetector,AtomicityProblem,FindUnsyncGet,ReadReturnShouldBeChecked,FindUninitializedGet,ConfusionBetweenInheritedAndOuterMethod,IteratorIdioms,DefaultEncodingDetector,FindUselessControlFlow,URLProblems,DumbMethodInvocations,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,FindDeadLocalStores,FindLocalSelfAssignment2',
     );
     expect(started.map(({ argumentList }) => argumentList.includes('--lombok'))).toStrictEqual([
       true,
@@ -183,6 +183,7 @@ describe('spotbugsOnEngine', () => {
       'SharedVariableAtomicityDetector',
       'AtomicityProblem',
       'FindUnsyncGet',
+      'FindUninitializedGet',
     ]);
     const listed = started[0]?.argumentList ?? [];
     const file = listed[listed.indexOf('--classes') + 1] ?? '';
