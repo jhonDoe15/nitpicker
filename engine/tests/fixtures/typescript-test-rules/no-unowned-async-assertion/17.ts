@@ -1,0 +1,1 @@
+import process from 'node:process'; it('x', () => { process.nextTick(() => expect(a).toBe(1)); });

@@ -169,5 +169,410 @@
   "A literal condition switches the test off for good. Delete the test or make it run; a real platform condition such as `process.platform === \"win32\"` is allowed.",
   3,
   9
+ ],
+ [
+  "no-unowned-async-assertion/01.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  58,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  93
+ ],
+ [
+  "no-unowned-async-assertion/02.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  81,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  116
+ ],
+ [
+  "no-unowned-async-assertion/03.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  61,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  106
+ ],
+ [
+  "no-unowned-async-assertion/04.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  75,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  120
+ ],
+ [
+  "no-unowned-async-assertion/05.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  56,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  101
+ ],
+ [
+  "no-unowned-async-assertion/06.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  59,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  104
+ ],
+ [
+  "no-unowned-async-assertion/07.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  59,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  97
+ ],
+ [
+  "no-unowned-async-assertion/08.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  36,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  71
+ ],
+ [
+  "no-unowned-async-assertion/09.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  32,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  67
+ ],
+ [
+  "no-unowned-async-assertion/10.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  42,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  82
+ ],
+ [
+  "no-unowned-async-assertion/11.ts",
+  "nitpicker/no-unowned-async-assertion",
+  2,
+  42,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  2,
+  90
+ ],
+ [
+  "no-unowned-async-assertion/12.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  46,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  81
+ ],
+ [
+  "no-unowned-async-assertion/13.ts",
+  "nitpicker/no-unowned-async-assertion",
+  2,
+  17,
+  "This assertion runs in a `createServer` handler, and nothing after it in the test triggers the event or waits for it, so the event can arrive after the test has finished and a failure is lost or blamed on another test. Trigger the event in the test after adding the handler, or await it (`await once(emitter, 'ready')`, or a promise the handler resolves). An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  2,
+  75
+ ],
+ [
+  "no-unowned-async-assertion/14.ts",
+  "nitpicker/no-unowned-async-assertion",
+  2,
+  17,
+  "This assertion runs in a `watch` handler, and nothing after it in the test triggers the event or waits for it, so the event can arrive after the test has finished and a failure is lost or blamed on another test. Trigger the event in the test after adding the handler, or await it (`await once(emitter, 'ready')`, or a promise the handler resolves). An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  2,
+  63
+ ],
+ [
+  "no-unowned-async-assertion/15.ts",
+  "nitpicker/no-unowned-async-assertion",
+  2,
+  17,
+  "This assertion runs in the callback of `get`, which Node calls after the test function returns, so a failure is lost or blamed on another test. Await the promise form of the API (`node:fs/promises`, `util.promisify`) instead. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  2,
+  78
+ ],
+ [
+  "no-unowned-async-assertion/16.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  58,
+  "This assertion runs in a `nextTick` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or `await` after scheduling it so it runs before the test ends. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  91
+ ],
+ [
+  "no-unowned-async-assertion/17.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  53,
+  "This assertion runs in a `nextTick` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or `await` after scheduling it so it runs before the test ends. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  94
+ ],
+ [
+  "no-unowned-async-assertion/18.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  52
+ ],
+ [
+  "no-unowned-async-assertion/19.ts",
+  "nitpicker/no-unowned-async-assertion",
+  3,
+  17,
+  "This assertion runs in a `subscribe` handler, and nothing after it in the test triggers the event or waits for it, so the event can arrive after the test has finished and a failure is lost or blamed on another test. Trigger the event in the test after adding the handler, or await it (`await once(emitter, 'ready')`, or a promise the handler resolves). An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  3,
+  65
+ ],
+ [
+  "no-unowned-async-assertion/20.ts",
+  "nitpicker/no-unowned-async-assertion",
+  3,
+  17,
+  "This assertion runs in a `subscribe` handler, and nothing after it in the test triggers the event or waits for it, so the event can arrive after the test has finished and a failure is lost or blamed on another test. Trigger the event in the test after adding the handler, or await it (`await once(emitter, 'ready')`, or a promise the handler resolves). An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  3,
+  75
+ ],
+ [
+  "no-unowned-async-assertion/21.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  41,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  76
+ ],
+ [
+  "no-unowned-async-assertion/22.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  58,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  97
+ ],
+ [
+  "no-unowned-async-assertion/23.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  26,
+  "This assertion runs in a `on` handler, and nothing after it in the test triggers the event or waits for it, so the event can arrive after the test has finished and a failure is lost or blamed on another test. Trigger the event in the test after adding the handler, or await it (`await once(emitter, 'ready')`, or a promise the handler resolves). An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  62
+ ],
+ [
+  "no-unowned-async-assertion/24.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  37,
+  "This assertion runs in a `on` handler, and nothing after it in the test triggers the event or waits for it, so the event can arrive after the test has finished and a failure is lost or blamed on another test. Trigger the event in the test after adding the handler, or await it (`await once(emitter, 'ready')`, or a promise the handler resolves). An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  78
+ ],
+ [
+  "no-unowned-async-assertion/25.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  56
+ ],
+ [
+  "no-unowned-async-assertion/26.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  56
+ ],
+ [
+  "no-unowned-async-assertion/27.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  56
+ ],
+ [
+  "no-unowned-async-assertion/28.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  56
+ ],
+ [
+  "no-unowned-async-assertion/29.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  29,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  64
+ ],
+ [
+  "no-unowned-async-assertion/30.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  19,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  54
+ ],
+ [
+  "no-unowned-async-assertion/31.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  22,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  57
+ ],
+ [
+  "no-unowned-async-assertion/32.ts",
+  "nitpicker/no-unowned-async-assertion",
+  4,
+  16,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  4,
+  51
+ ],
+ [
+  "no-unowned-async-assertion/33.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  61
+ ],
+ [
+  "no-unowned-async-assertion/34.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  15,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  50
+ ],
+ [
+  "no-unowned-async-assertion/35.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  30,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  65
+ ],
+ [
+  "no-unowned-async-assertion/36.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  19,
+  "This assertion runs in a `nextTick` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or `await` after scheduling it so it runs before the test ends. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  61
+ ],
+ [
+  "no-unowned-async-assertion/37.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  37,
+  "This assertion runs in a `nextTick` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or `await` after scheduling it so it runs before the test ends. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  78
+ ],
+ [
+  "no-unowned-async-assertion/38.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  37,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  76
+ ],
+ [
+  "no-unowned-async-assertion/39.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  56
+ ],
+ [
+  "no-unowned-async-assertion/40.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `queueMicrotask` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or `await` after scheduling it so it runs before the test ends. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  71
+ ],
+ [
+  "no-unowned-async-assertion/41.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  68,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  98
+ ],
+ [
+  "no-unowned-async-assertion/42.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `requestAnimationFrame` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  63
+ ],
+ [
+  "no-unowned-async-assertion/43.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  26,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  61
+ ],
+ [
+  "no-unowned-async-assertion/44.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  34,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  69
+ ],
+ [
+  "no-unowned-async-assertion/45.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  53,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  71
  ]
 ]
