@@ -1,5 +1,13 @@
 import PORTED_CHECKS from '../../gradle/errorprone/engine-checks.json' with { type: 'json' };
-import { ownClasses, ownPackages, projectFlags, runsProcessors } from './engine-arguments.mts';
+import {
+  lombokTested,
+  lombokVersions,
+  ownClasses,
+  ownPackages,
+  projectFlags,
+  runsProcessors,
+  TESTED_LOMBOK,
+} from './engine-arguments.mts';
 
 export const NULL_AWAY = 'NullAway';
 export const ENGINE_CHECKS: readonly string[] = [...PORTED_CHECKS, NULL_AWAY];
@@ -26,6 +34,11 @@ function configuredChecks(flags: readonly string[]): ReadonlySet<string> | undef
 export function wholeReason(head: readonly string[]): string | undefined {
   if (configuredChecks(projectFlags(head)) === undefined) {
     return 'the project sets Error Prone options';
+  }
+  const untested = lombokVersions(head).find((version) => !lombokTested(version));
+  if (untested !== undefined) {
+    const { lowest, highest } = TESTED_LOMBOK;
+    return `it runs Lombok ${untested}, outside the versions compared with Error Prone (${lowest} to ${highest})`;
   }
   return runsProcessors(head) ? 'it runs annotation processors' : undefined;
 }

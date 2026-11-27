@@ -1,11 +1,14 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { zipOf } from '../../../../shared/test-support/archives/zip-writer.mts';
 import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
 import { fieldOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import {
   argumentSetOf,
   generatedRoots,
+  lombokTested,
+  lombokVersions,
   lookupEntries,
   modulePathEntries,
   ownPackages,
@@ -13,7 +16,7 @@ import {
   sourceLevelOf,
   withProjectFlags,
 } from './engine-arguments.mts';
-import { ENGINE_CHECKS, engineChecksFor, NULL_AWAY } from './engine-checks.mts';
+import { ENGINE_CHECKS, engineChecksFor, NULL_AWAY, wholeReason } from './engine-checks.mts';
 
 const REPOSITORY = path.resolve(import.meta.dirname, '../../../..');
 const WITHOUT_NULL_AWAY = ENGINE_CHECKS.filter((check) => check !== NULL_AWAY);
@@ -110,6 +113,38 @@ describe('engineChecksFor', () => {
     const head = ['-processorpath', ['/missing.jar', processor].join(path.delimiter)];
 
     expect(engineChecksFor([...head, `--own-classes=${own}`]).checks).toStrictEqual([]);
+  });
+
+  it('names a Lombok version outside the compared range as the reason to stay on Error Prone', () => {
+    const root = projectWith({});
+    const lombok = (version: string): string => {
+      const jar = path.join(root, `lombok-${version}.jar`);
+      writeFileSync(
+        jar,
+        zipOf({
+          'META-INF/MANIFEST.MF': `Manifest-Version: 1.0\r\nLombok-Version: ${version}\r\n`,
+          'META-INF/services/javax.annotation.processing.Processor':
+            'lombok.launch.AnnotationProcessorHider$AnnotationProcessor\n',
+        }),
+      );
+      return jar;
+    };
+    const tested = ['-processorpath', lombok('1.18.46')];
+    const older = ['-processorpath', [lombok('1.18.30'), '/missing.jar'].join(path.delimiter)];
+
+    expect(lombokVersions(older)).toStrictEqual(['1.18.30']);
+    expect(lombokVersions(['-processorpath', root])).toStrictEqual([]);
+    expect(wholeReason(tested)).toBe('it runs annotation processors');
+    expect(wholeReason(older)).toBe(
+      'it runs Lombok 1.18.30, outside the versions compared with Error Prone (1.18.36 to 1.18.48)',
+    );
+    expect(['1.18.36', '1.18.48', '1.18.40'].map(lombokTested)).toStrictEqual([true, true, true]);
+    expect(['1.18.34', '1.18.50', '1.20.0', '1.18'].map(lombokTested)).toStrictEqual([
+      false,
+      false,
+      false,
+      false,
+    ]);
   });
 
   it('moves only checks the engine has and Java runs enable', () => {

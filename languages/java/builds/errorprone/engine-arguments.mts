@@ -15,6 +15,9 @@ const GENERATED_ROOT = '--generated-root=';
 const RELEASE = '--release=';
 const SOURCE = '--source=';
 const PROCESSOR_SERVICE = 'META-INF/services/javax.annotation.processing.Processor';
+const MANIFEST = 'META-INF/MANIFEST.MF';
+const LOMBOK_VERSION = /^Lombok-Version:\s*(\S+)\s*$/mu;
+export const TESTED_LOMBOK = { lowest: '1.18.36', highest: '1.18.48' } as const;
 const JDK_MODULE = /^--(?:add-exports|patch-module)=(?:java|jdk)\./u;
 const PAIRED = ['--add-exports', '--patch-module'];
 
@@ -103,6 +106,41 @@ function declaresProcessor(entry: string): boolean {
 
 export function runsProcessors(head: readonly string[]): boolean {
   return entriesOf(optionOf(head, '-processorpath')).some(declaresProcessor);
+}
+
+function lombokVersionIn(entry: string): string | undefined {
+  if (!existsSync(entry) || statSync(entry).isDirectory()) {
+    return undefined;
+  }
+  const read = readZipOrFailure(entry);
+  const manifest = read.kind === 'zip' ? read.zip.text(MANIFEST) : undefined;
+  return LOMBOK_VERSION.exec(manifest ?? '')?.[1];
+}
+
+export function lombokVersions(head: readonly string[]): string[] {
+  return entriesOf(optionOf(head, '-processorpath')).flatMap(
+    (entry) => lombokVersionIn(entry) ?? [],
+  );
+}
+
+function versionParts(version: string): number[] {
+  return version.split(/[.-]/u).map((part) => Number.parseInt(part, 10) || 0);
+}
+
+function compareVersions(left: string, right: string): number {
+  const [a, b] = [versionParts(left), versionParts(right)];
+  const width = Math.max(a.length, b.length);
+  const at = Array.from({ length: width }, (_, index) => index).find(
+    (index) => (a[index] ?? -1) !== (b[index] ?? -1),
+  );
+  return at === undefined ? 0 : (a[at] ?? -1) - (b[at] ?? -1);
+}
+
+export function lombokTested(version: string): boolean {
+  return (
+    compareVersions(version, TESTED_LOMBOK.lowest) >= 0 &&
+    compareVersions(version, TESTED_LOMBOK.highest) <= 0
+  );
 }
 
 function packagesIn(root: string): string[] {
