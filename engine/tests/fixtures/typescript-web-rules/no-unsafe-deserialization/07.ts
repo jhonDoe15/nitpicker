@@ -1,0 +1,1 @@
+import { deserialize } from "other-lib"; export const data = deserialize(bytes);

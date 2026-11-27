@@ -1,0 +1,1 @@
+function F({ item }) { return <Link href={item.profileUrl}>x</Link>; }

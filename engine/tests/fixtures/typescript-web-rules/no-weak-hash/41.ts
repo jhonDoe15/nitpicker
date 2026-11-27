@@ -1,0 +1,1 @@
+import { createHash, createHmac } from "node:crypto"; export const id = (s) => createHash("MD5".toLowerCase()).update(s).digest();

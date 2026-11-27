@@ -1,0 +1,1 @@
+import { hash } from "node:crypto"; export const id = (s) => hash("md5", s);

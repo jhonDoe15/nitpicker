@@ -1,0 +1,1 @@
+function go(redirectTo, res) { if (redirectTo.startsWith("/")) { res.redirect(redirectTo); } }

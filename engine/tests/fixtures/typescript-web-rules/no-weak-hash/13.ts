@@ -1,0 +1,1 @@
+export const names = ["md5", "sha1"]; export const label = (n) => names.includes(n);

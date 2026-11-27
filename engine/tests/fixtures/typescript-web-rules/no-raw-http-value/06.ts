@@ -1,0 +1,1 @@
+if (headers.get('content-length') === '0') { run(); }

@@ -1,0 +1,1 @@
+import ns = require("node-serialize"); export const r = (s: string) => ns.unserialize(s);

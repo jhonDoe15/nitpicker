@@ -1,0 +1,1 @@
+import * as vm from "node:vm"; const sandbox = vm; export const run = (code: string) => sandbox.runInNewContext(code);

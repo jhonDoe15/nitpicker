@@ -1,0 +1,1 @@
+import * as CryptoJS from "crypto-js"; export const id = (s, k) => CryptoJS.HmacSHA1(s, k);

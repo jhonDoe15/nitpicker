@@ -1,0 +1,1 @@
+const type = headers.get('accept')?.split(';')[0].trim().toLowerCase();

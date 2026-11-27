@@ -1,0 +1,1 @@
+import { SHA1 } from "crypto-js"; export const id = (s) => SHA1(s).toString();

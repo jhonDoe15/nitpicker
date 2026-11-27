@@ -1,0 +1,1 @@
+const { createHash } = require("node:crypto"); exports.id = (s) => createHash("sha1").update(s).digest();

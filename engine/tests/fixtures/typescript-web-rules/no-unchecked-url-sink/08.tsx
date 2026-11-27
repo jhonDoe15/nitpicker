@@ -1,0 +1,1 @@
+const a = <a href={sanitizeUrl(model.url)}>x</a>;

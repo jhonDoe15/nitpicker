@@ -1,0 +1,1 @@
+const contentType = headers.get('content-type'); const mediaType = contentType?.split(';')[0].trim().toLowerCase();

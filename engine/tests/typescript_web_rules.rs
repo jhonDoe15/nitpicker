@@ -1,12 +1,12 @@
-//! The URL, header, file path, secret, escaping, wildcard and response rules on the engine against what their
-//! ESLint-plugin rules report for the same files. The expected rows come from
+//! The URL, header, file path, secret, escaping, wildcard, response, hash, deserialization and redirect rules on
+//! the engine against what their ESLint-plugin rules report for the same files. The expected rows come from
 //! `parity/typescript-lint-expected.mts <list> <out> <rules>`.
 use std::path::Path;
 use std::process::Command;
 
 type Row = Vec<serde_json::Value>;
 
-const RULES: [&str; 14] = [
+const RULES: [&str; 20] = [
     "no-case-mixed-header-merge",
     "no-case-sensitive-path-compare",
     "no-double-decode",
@@ -14,13 +14,19 @@ const RULES: [&str; 14] = [
     "no-error-response-without-status",
     "no-hardcoded-secret",
     "no-incomplete-escaping",
+    "no-raw-http-value",
     "no-secret-in-log",
     "no-send-without-return",
+    "no-slash-only-redirect-guard",
     "no-unchecked-response-json",
+    "no-unchecked-url-sink",
     "no-unencoded-url-part",
     "no-unescaped-filter-value",
     "no-unescaped-pattern-translation",
     "no-unresolved-relative-url",
+    "no-unsafe-deserialization",
+    "no-unstripped-remote-text",
+    "no-weak-hash",
 ];
 
 fn sorted(mut rows: Vec<Row>) -> Vec<Row> {

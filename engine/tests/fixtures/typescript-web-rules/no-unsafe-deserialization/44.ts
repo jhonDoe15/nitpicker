@@ -1,0 +1,1 @@
+import yaml from "js-yaml"; const { DEFAULT_FULL_SCHEMA } = yaml; export const r = (t: string) => yaml.load(t, { schema: DEFAULT_FULL_SCHEMA });

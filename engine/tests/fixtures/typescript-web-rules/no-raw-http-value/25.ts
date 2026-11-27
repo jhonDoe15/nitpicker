@@ -1,0 +1,1 @@
+if (name.toLowerCase().startsWith('__host-')) { run(); }

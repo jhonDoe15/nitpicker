@@ -1,0 +1,1 @@
+import { sha1 } from "@noble/hashes/sha1"; export const h = (b: Uint8Array) => sha1(b);

@@ -1,0 +1,1 @@
+const a = <div href={model.url}>x</div>;

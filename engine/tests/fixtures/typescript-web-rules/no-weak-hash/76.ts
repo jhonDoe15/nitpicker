@@ -1,0 +1,1 @@
+import CryptoJS from "crypto-js"; export const sign = (s: string, k: string) => CryptoJS.HmacMD5(s, k).toString();

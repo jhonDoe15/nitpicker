@@ -1,0 +1,1 @@
+if (request.headers.get('content-type') === 'application/json') { run(); }

@@ -1,0 +1,1 @@
+import { createHash } from "node:crypto"; export class Etag { static readonly ALGO = "md5"; static of(s: string) { return createHash(Etag.ALGO).update(s).digest("hex"); } }

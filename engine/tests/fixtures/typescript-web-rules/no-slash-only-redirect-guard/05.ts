@@ -1,0 +1,1 @@
+function f(name) { if (name.startsWith("/")) { return name; } return "/"; }

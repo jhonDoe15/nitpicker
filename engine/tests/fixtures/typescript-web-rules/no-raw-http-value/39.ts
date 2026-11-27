@@ -1,0 +1,1 @@
+switch (headers.get('content-type')) { case 'text/plain': run(); }

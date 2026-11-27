@@ -1,0 +1,1 @@
+const sha1 = require("sha1"); exports.id = (s) => sha1(s);
