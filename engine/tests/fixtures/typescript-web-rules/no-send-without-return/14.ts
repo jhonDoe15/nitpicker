@@ -1,0 +1,1 @@
+function f(req, other) { if (!ok) { res.status(400).json({}); } save(); }

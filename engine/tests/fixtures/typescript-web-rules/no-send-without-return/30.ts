@@ -1,0 +1,1 @@
+async function h(req, res) { const result = check(); if (!result.valid) { audit(); res.status(400).json({ errors: result.errors }); } await catalog.addEntity(entity); res.status(201).json(entity); }

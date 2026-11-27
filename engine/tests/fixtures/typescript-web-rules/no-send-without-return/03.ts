@@ -1,0 +1,1 @@
+async function create(req, res, next) { if (!ok) return res.sendStatus(400); await save(); res.status(201).json({}); }

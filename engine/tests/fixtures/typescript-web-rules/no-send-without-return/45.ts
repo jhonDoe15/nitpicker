@@ -1,0 +1,1 @@
+const h = (req, res) => { if (a) { res.send(1); } else if (b) { res.send(2); } save(); };

@@ -1,0 +1,1 @@
+function f(req, res) { switch (a) { case 1: if (!ok) { res.send("x"); } break; } }

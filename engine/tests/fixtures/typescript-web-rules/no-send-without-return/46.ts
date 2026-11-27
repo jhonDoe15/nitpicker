@@ -1,0 +1,1 @@
+function f(req, res) { try { if (!ok) { res.json({}); } save(); } catch (e) { next(e); } }
