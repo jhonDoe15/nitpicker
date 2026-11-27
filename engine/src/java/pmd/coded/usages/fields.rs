@@ -59,15 +59,29 @@ impl Walk<'_, '_, '_, '_> {
             if self.found.declared.contains_key(&access) {
                 continue;
             }
-            let Some(owner) = ctx.nth(access, 0).and_then(|qualifier| ctx.type_of(qualifier)) else { continue };
+            let classes = ctx.nth(access, 0).map(|qualifier| self.qualifier_classes(qualifier)).unwrap_or_default();
             let name = ctx.text(access, "Name");
-            let class = owner.erased().name();
-            let own = self.types.get(&class).and_then(|fields| fields.iter().find(|(known, _)| *known == name)).map(|(_, at)| *at);
-            let inherited = || ctx.machine.resolver.index.field(&class, &name).and_then(|(info, _)| self.in_file(info, &name));
-            if let Some(variable) = own.or_else(inherited) {
+            let found = classes.iter().find_map(|class| {
+                let own = self.types.get(class).and_then(|fields| fields.iter().find(|(known, _)| *known == name)).map(|(_, at)| *at);
+                own.or_else(|| ctx.machine.resolver.index.field(class, &name).and_then(|(info, _)| self.in_file(info, &name)))
+            });
+            if let Some(variable) = found {
                 self.bind(access, variable);
             }
         }
+    }
+
+    /// The classes whose fields a qualifier names, in the order PMD looks: for `C.super.f`, `C` itself (own fields
+    /// first), then its superclass for the private fields `C` does not inherit.
+    fn qualifier_classes(&self, qualifier: u32) -> Vec<String> {
+        let ctx = self.ctx;
+        if let Some(kind) = ctx.type_of(qualifier) {
+            return vec![kind.erased().name()];
+        }
+        let Some(named) = ctx.nth(qualifier, 0).filter(|_| ctx.is(qualifier, "SuperExpression")) else { return Vec::new() };
+        let Some(class) = ctx.type_of(named).map(|kind| kind.erased().name()) else { return Vec::new() };
+        let parent = ctx.machine.resolver.index.get(&class).and_then(|info| info.superclass.clone());
+        std::iter::once(class).chain(parent).collect()
     }
 
     /// When a type body between an access and the variable it seems to name (or any body around it, when no

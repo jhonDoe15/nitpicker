@@ -1,0 +1,7 @@
+[
+ {"name": "VariableAccess", "file": "test", "message": "VariableAccess", "xpath": "//VariableAccess"},
+ {"name": "AmbiguousName", "file": "test", "message": "AmbiguousName", "xpath": "//AmbiguousName"},
+ {"name": "StaticInitializer", "file": "test", "message": "StaticInitializer", "xpath": "//Initializer[@Static=true()]"},
+ {"name": "InstanceInitializer", "file": "test", "message": "InstanceInitializer", "xpath": "//Initializer[@Static=false()]"},
+ {"name": "TypePattern", "file": "test", "message": "TypePattern", "xpath": "//SwitchLabel/TypePattern"}
+]

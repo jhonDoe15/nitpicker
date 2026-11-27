@@ -721,6 +721,8 @@
 ["j/Overrides.java", "UnusedFormalParameter", 49, 28, "Avoid unused method parameters such as 'values'."],
 ["j/Overrides.java", "UnusedFormalParameter", 52, 28, "Avoid unused method parameters such as 'values'."],
 ["j/Overrides.java", "UnusedFormalParameter", 57, 20, "Avoid unused method parameters such as 'values'."],
+["k/Supers.java", "UnusedPrivateField", 10, 21, "Avoid unused private fields such as 'unused'."],
+["k/Supers.java", "UnusedPrivateField", 15, 21, "Avoid unused private fields such as 'own'."],
 ["junit/framework/TestCase.java", "AbstractClassWithoutAbstractMethod", 3, 17, "This abstract class does not have any abstract methods"],
 ["junit/framework/TestSuite.java", "TestClassWithoutTestCases", 3, 8, "The class 'TestSuite' might be a test class, but it contains no test cases."],
 ["org/junit/Assert.java", "UnusedFormalParameter", 4, 43, "Avoid unused method parameters such as 'condition'."],
