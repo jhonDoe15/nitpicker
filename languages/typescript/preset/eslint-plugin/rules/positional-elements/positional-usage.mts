@@ -2,7 +2,7 @@ import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint
 import { nameOf } from '../typed/node-views.mts';
 import { isFunction, type FunctionNode } from '../typed/syntax-views.mts';
 
-const ITERATORS = new Set(['map', 'flatMap', 'forEach', 'filter']);
+const ITERATORS: ReadonlySet<string | undefined> = new Set(['map', 'flatMap', 'forEach', 'filter']);
 const ALWAYS_GUARDS = new Set<AST_NODE_TYPES>([
   AST_NODE_TYPES.LogicalExpression,
   AST_NODE_TYPES.UnaryExpression,
@@ -23,7 +23,16 @@ export function isCallback(fn: FunctionNode): fn is MappingCallback {
     parent.arguments[0] === fn &&
     parent.callee.type === AST_NODE_TYPES.MemberExpression &&
     !parent.callee.computed &&
-    ITERATORS.has(nameOf(parent.callee.property) ?? '')
+    ITERATORS.has(nameOf(parent.callee.property))
+  );
+}
+
+function isOptionalUse(parent: TSESTree.Node, reference: UseNode): boolean {
+  if (parent.type === AST_NODE_TYPES.MemberExpression) {
+    return parent.object === reference && parent.optional;
+  }
+  return (
+    parent.type === AST_NODE_TYPES.CallExpression && parent.callee === reference && parent.optional
   );
 }
 
@@ -41,12 +50,7 @@ export function isGuard(reference: UseNode): boolean {
   if (parent.type === AST_NODE_TYPES.BinaryExpression) {
     return GUARD_OPERATORS.has(parent.operator);
   }
-  if (parent.type === AST_NODE_TYPES.MemberExpression) {
-    return parent.object === reference && parent.optional;
-  }
-  return (
-    parent.type === AST_NODE_TYPES.CallExpression && parent.callee === reference && parent.optional
-  );
+  return isOptionalUse(parent, reference);
 }
 
 export function isUnchecked(reference: UseNode): boolean {
@@ -122,10 +126,11 @@ function laterUse(
   sourceCode: Readonly<TSESLint.SourceCode>,
   collected: TSESTree.Identifier,
 ): UseNode | undefined {
-  const variable = sourceCode
+  const references = sourceCode
     .getDeclaredVariables(collected.parent)
-    .find((candidate) => candidate.name === collected.name);
-  for (const reference of variable?.references ?? []) {
+    .filter((candidate) => candidate.name === collected.name)
+    .flatMap((variable) => variable.references);
+  for (const reference of references) {
     const callback = mappingCallbackOf(reference);
     const found = callback === undefined ? undefined : firstParameterUse(sourceCode, callback);
     if (found !== undefined) {
@@ -141,9 +146,6 @@ export function returnedElementUse(
   references: readonly TSESLint.Scope.Reference[],
 ): UseNode | undefined {
   if (!isCallback(fn) || nameOf(fn.parent.callee.property) !== 'map') {
-    return undefined;
-  }
-  if (references.some((reference) => isGuard(reference.identifier))) {
     return undefined;
   }
   if (!references.some((reference) => isReturned(reference.identifier))) {

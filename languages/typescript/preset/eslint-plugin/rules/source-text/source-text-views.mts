@@ -7,8 +7,11 @@ import {
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
 import { chainOf, depthFirst, nameOf, nodeChildren } from '../typed/node-views.mts';
+import { optionalText, textOf } from '../../../../../../shared/values/readers.mts';
 
 const { DefinitionType } = TSESLint.Scope;
+type FunctionNode =
+  TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | TSESTree.FunctionDeclaration;
 const MAX_MASKING_DEPTH = 6;
 const KEYWORDS = [
   'abstract',
@@ -61,11 +64,7 @@ const LEXING = /[a-z]Lex/u;
 const MASKING_VALUE = /^(?:strip|mask|blank|parse)/iu;
 const PATH_JOINS = new Set(['join', 'resolve']);
 
-export function regexPattern(context: SourceContext, node: TSESTree.Node): string | undefined {
-  const target = resolveConstant(context, node);
-  if (target?.type === AST_NODE_TYPES.Literal && 'regex' in target) {
-    return target.regex.pattern;
-  }
+function regExpArgument(target: TSESTree.Node | undefined): string | undefined {
   const created =
     (target?.type === AST_NODE_TYPES.NewExpression ||
       target?.type === AST_NODE_TYPES.CallExpression) &&
@@ -74,8 +73,25 @@ export function regexPattern(context: SourceContext, node: TSESTree.Node): strin
   return created ? stringValue(target.arguments[0]) : undefined;
 }
 
+export function regexPattern(context: SourceContext, node: TSESTree.Node): string | undefined {
+  const target = resolveConstant(context, node);
+  if (target?.type === AST_NODE_TYPES.Literal && 'regex' in target) {
+    return target.regex.pattern;
+  }
+  return regExpArgument(target);
+}
+
 export function hasKeyword(pattern: string): boolean {
   return KEYWORD_PATTERN.test(pattern);
+}
+
+function toStringReceiver(node: TSESTree.Node): TSESTree.Node | undefined {
+  return node.type === AST_NODE_TYPES.CallExpression &&
+    node.arguments.length === 0 &&
+    node.callee.type === AST_NODE_TYPES.MemberExpression &&
+    nameOf(node.callee.property) === 'toString'
+    ? node.callee.object
+    : undefined;
 }
 
 function peeled(node: TSESTree.Node): TSESTree.Node | undefined {
@@ -89,51 +105,45 @@ function peeled(node: TSESTree.Node): TSESTree.Node | undefined {
   ) {
     return node.expression;
   }
-  return node.type === AST_NODE_TYPES.CallExpression &&
-    node.arguments.length === 0 &&
-    node.callee.type === AST_NODE_TYPES.MemberExpression &&
-    nameOf(node.callee.property) === 'toString'
-    ? node.callee.object
-    : undefined;
+  return toStringReceiver(node);
 }
 
 function peel(node: TSESTree.Node): TSESTree.Node {
-  return chainOf(node, peeled).at(-1) ?? node;
+  const inner = peeled(node);
+  return inner === undefined ? node : peel(inner);
 }
 
 function lastJoinArgument(node: TSESTree.Node | undefined): TSESTree.Node | undefined {
   return node?.type === AST_NODE_TYPES.CallExpression &&
     node.callee.type === AST_NODE_TYPES.MemberExpression &&
-    PATH_JOINS.has(nameOf(node.callee.property) ?? '')
+    PATH_JOINS.has(textOf(nameOf(node.callee.property)))
     ? node.arguments.at(-1)
     : undefined;
 }
 
 function pathText(node: TSESTree.Node | undefined): string | undefined {
-  const last = node === undefined ? undefined : chainOf(node, lastJoinArgument).at(-1);
+  const last = chainOf(node, lastJoinArgument).at(-1);
   if (last?.type === AST_NODE_TYPES.TemplateLiteral) {
-    return last.quasis.at(-1)?.value.cooked ?? undefined;
+    return optionalText(last.quasis.at(-1)?.value.cooked);
   }
   return stringValue(last);
+}
+
+function calleeNode(node: TSESTree.CallExpression | TSESTree.NewExpression): TSESTree.Node {
+  return node.callee.type === AST_NODE_TYPES.MemberExpression ? node.callee.property : node.callee;
+}
+
+function calleeName(node: TSESTree.CallExpression | TSESTree.NewExpression): string {
+  return textOf(nameOf(calleeNode(node)));
 }
 
 function readsSourceFile(node: TSESTree.Node): boolean {
   const call = peel(node);
   return (
     call.type === AST_NODE_TYPES.CallExpression &&
-    FILE_READS.has(
-      nameOf(
-        call.callee.type === AST_NODE_TYPES.MemberExpression ? call.callee.property : call.callee,
-      ) ?? '',
-    ) &&
-    SOURCE_FILE.test(pathText(call.arguments[0]) ?? '')
+    FILE_READS.has(calleeName(call)) &&
+    SOURCE_FILE.test(textOf(pathText(call.arguments[0])))
   );
-}
-
-function calleeName(node: TSESTree.CallExpression | TSESTree.NewExpression): string {
-  const callee =
-    node.callee.type === AST_NODE_TYPES.MemberExpression ? node.callee.property : node.callee;
-  return nameOf(callee) ?? '';
 }
 
 function isMaskingHelper(name: string): boolean {
@@ -155,11 +165,11 @@ function maskingInputs(value: TSESTree.CallExpression): TSESTree.Node[] {
   ];
 }
 
-function maskingChildren(value: TSESTree.Node): TSESTree.Node[] {
-  if (value.type === AST_NODE_TYPES.MemberExpression) {
+function maskingChildren(value: TSESTree.Node | undefined): TSESTree.Node[] {
+  if (value?.type === AST_NODE_TYPES.MemberExpression) {
     return [value.object];
   }
-  return value.type === AST_NODE_TYPES.CallExpression ? maskingInputs(value) : [];
+  return value?.type === AST_NODE_TYPES.CallExpression ? maskingInputs(value) : [];
 }
 
 function isMaskingCall(value: TSESTree.CallExpression): boolean {
@@ -175,44 +185,13 @@ function passesThroughMasking(context: SourceContext, start: TSESTree.Node | und
       continue;
     }
     seen.add(node);
-    const value = peel(resolveConstant(context, node) ?? node);
-    if (value.type === AST_NODE_TYPES.CallExpression && isMaskingCall(value)) {
+    const value = chainOf(resolveConstant(context, node), peeled).at(-1);
+    if (value?.type === AST_NODE_TYPES.CallExpression && isMaskingCall(value)) {
       return true;
     }
-    for (const child of maskingChildren(value)) {
-      pending.push({ node: child, depth: depth + 1 });
-    }
+    pending.push(...maskingChildren(value).map((child) => ({ node: child, depth: depth + 1 })));
   }
   return false;
-}
-
-function maskedParameter(context: SourceContext, node: TSESTree.Node): boolean {
-  const text = peel(node);
-  if (text.type !== AST_NODE_TYPES.Identifier) {
-    return false;
-  }
-  const definition = findVariable(context, text, text.name)?.defs[0];
-  const fn = definition?.type === DefinitionType.Parameter ? definition.node : undefined;
-  if (fn === undefined || !isFunctionNode(fn)) {
-    return false;
-  }
-  const index = fn.params.findIndex(
-    (param) => param.type === AST_NODE_TYPES.Identifier && param.name === text.name,
-  );
-  const owner = functionName(fn);
-  if (index < 0 || owner === undefined) {
-    return false;
-  }
-  const calls = [...depthFirst<TSESTree.Node>(context.sourceCode.ast, nodeChildren)].filter(
-    (candidate): candidate is TSESTree.CallExpression =>
-      candidate.type === AST_NODE_TYPES.CallExpression &&
-      (candidate.callee.type === AST_NODE_TYPES.MemberExpression
-        ? nameOf(candidate.callee.property)
-        : nameOf(candidate.callee)) === owner,
-  );
-  return (
-    calls.length > 0 && calls.every((call) => passesThroughMasking(context, call.arguments[index]))
-  );
 }
 
 function functionName(fn: TSESTree.Node): string | undefined {
@@ -227,6 +206,49 @@ function functionName(fn: TSESTree.Node): string | undefined {
     parent?.type === AST_NODE_TYPES.Property
     ? nameOf(parent.key)
     : undefined;
+}
+
+function parameterOwner(
+  context: SourceContext,
+  text: TSESTree.Identifier,
+): FunctionNode | undefined {
+  const definition = findVariable(context, text, text.name)?.defs[0];
+  const fn = definition?.type === DefinitionType.Parameter ? definition.node : undefined;
+  return isFunctionNode(fn) ? fn : undefined;
+}
+
+function parameterSlot(
+  context: SourceContext,
+  text: TSESTree.Identifier,
+): { readonly owner: string; readonly index: number } | undefined {
+  const fn = parameterOwner(context, text);
+  if (fn === undefined) {
+    return undefined;
+  }
+  const index = fn.params.findIndex(
+    (param) => param.type === AST_NODE_TYPES.Identifier && param.name === text.name,
+  );
+  const owner = functionName(fn);
+  return index < 0 || owner === undefined ? undefined : { owner, index };
+}
+
+function callsNamed(context: SourceContext, owner: string): TSESTree.CallExpression[] {
+  return [...depthFirst<TSESTree.Node>(context.sourceCode.ast, nodeChildren)].filter(
+    (candidate): candidate is TSESTree.CallExpression =>
+      candidate.type === AST_NODE_TYPES.CallExpression && nameOf(calleeNode(candidate)) === owner,
+  );
+}
+
+function maskedParameter(context: SourceContext, text: TSESTree.Identifier): boolean {
+  const slot = parameterSlot(context, text);
+  if (slot === undefined) {
+    return false;
+  }
+  const calls = callsNamed(context, slot.owner);
+  return (
+    calls.length > 0 &&
+    calls.every((call) => passesThroughMasking(context, call.arguments[slot.index]))
+  );
 }
 
 export function holdsSourceText(context: SourceContext, node: TSESTree.Node): boolean {

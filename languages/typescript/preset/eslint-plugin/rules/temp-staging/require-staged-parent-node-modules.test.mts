@@ -36,8 +36,30 @@ tester.run('require-staged-parent-node-modules', rule, {
       const p = 'node_modules'; } run();`,
     `function run() { ${STAGE} ${LINK} spawn('tsc', [], { cwd: stage }); } function caller() {
       process.env.NODE_PATH = modules; run(); } caller(); run();`,
+    `getTool()(a, b);`,
+    `function run() { ${STAGE} for (const entry of entries) {
+      symlinkSync(path.join(projectRoot, entry), path.join(stage, entry)); }
+      spawn('tsc', [], { cwd: stage }); }`,
+    `function run() { ${STAGE} ${LINK} spawn('npx', args, { cwd: stage }); }`,
+    `function run() { ${STAGE} ${LINK} spawn('npx', [], { cwd: stage }); }`,
+    `function run() { ${STAGE} ${LINK} spawn('npx', [,], { cwd: stage }); }`,
+    `const run = () => { ${STAGE} ${LINK} spawn('tsc', [], { cwd: stage }); };
+      run(); const hint = 'node_modules';`,
   ],
   invalid: [
+    invalid(`${STAGE} ${LINK} spawn('tsc', [], { cwd: stage });`),
+    invalid(`const run = () => { ${STAGE} ${LINK} spawn('tsc', [], { cwd: stage }); };`),
+    invalid(`const [run] = () => { ${STAGE} ${LINK} spawn('tsc', [], { cwd: stage }); };`),
+    invalid(`later(() => { ${STAGE} ${LINK} spawn('tsc', [], { cwd: stage }); });`),
+    invalid(`export default function () { ${STAGE} ${LINK} spawn('tsc', [], { cwd: stage }); }`),
+    invalid(`function run() { ${STAGE} ${LINK} execFileSync(tool, [, '-p', stage]); }`),
+    invalid(`function run() { ${STAGE} for (const entry of readdirSync(projectRoot)) {
+      symlinkSync(path.join(projectRoot, entry), flag ? path.join(stage, entry) : other); }
+      spawn('tsc', [], { cwd: stage }); }`),
+    invalid(`function run() { ${STAGE} const link = path.join(stage, 'x');
+      for (const entry of readdirSync(projectRoot)) {
+        symlinkSync(path.join(projectRoot, entry), path.join(link, link)); }
+      spawn('tsc', [], { cwd: stage }); }`),
     invalid(
       `function run() { ${STAGE} ${LINK} writeFileSync(path.join(stage, 'tsconfig.json'), text); }`,
     ),

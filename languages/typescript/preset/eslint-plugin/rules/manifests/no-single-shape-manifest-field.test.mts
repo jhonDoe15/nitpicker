@@ -30,6 +30,11 @@ tester.run('no-single-shape-manifest-field', rule, {
     'function f(manifest: { workspaces: string[] }) { return manifest.workspaces.map(String); }',
     'function f(pkg) { const { name } = pkg; return name.length; }',
     'function f(pkg) { const { bundleDependencies } = pkg; return Array.isArray(bundleDependencies) && bundleDependencies.includes("a"); }',
+    'function f() { const data = load(); return data.workspaces.map(String); }',
+    'function f() { return data.workspaces.map(String); }',
+    'function f() { let data; return data.workspaces.map(String); }',
+    'function f(pkg) { const { workspaces: [first] } = pkg; return first.map(String); }',
+    'function f(pkg) { const { [key]: bundleDependencies } = pkg; return bundleDependencies.map(String); }',
   ],
   invalid: [
     invalid('function f(pkg, n) { pkg.version = "1"; return pkg.bundleDependencies.includes(n); }'),
@@ -56,5 +61,12 @@ tester.run('no-single-shape-manifest-field', rule, {
     ),
     invalid('function f(input: PackageJson) { return input.workspaces.map(String); }'),
     invalid('function f(ctx) { return ctx.manifest.bundledDependencies.includes("a"); }'),
+    invalid('pkg.workspaces.map(String);'),
+    invalid('function f(pkg) { pkg[key] = 1; return pkg.workspaces.map(String); }'),
+    invalid(
+      'function f(pkg, n) { const { bundleDependencies = [] } = pkg; return bundleDependencies.includes(n); }',
+    ),
+    invalid('function f(pkg) { return (pkg?.workspaces).map(String); }'),
+    invalid("function f(pkg) { return pkg['workspaces'].map(String); }"),
   ],
 });

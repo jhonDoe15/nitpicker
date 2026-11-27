@@ -1,40 +1,35 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { optionalText } from '../../../../../../shared/values/readers.mts';
 
 const BINDINGS = new Set(['web-tree-sitter', 'tree-sitter']);
 const GRAMMAR_PACKAGE = /^((?:@[\w.-]+\/)?tree-sitter-[\w-]+)(?:\/.*)?$/u;
 const WASM_NAME = /tree-sitter-([\w-]+)\.wasm/u;
+
+function literalSource(node: TSESTree.Node | undefined): string | undefined {
+  return node?.type === AST_NODE_TYPES.Literal ? optionalText(node.value) : undefined;
+}
 
 export function sourceOf(node: TSESTree.Node): string | undefined {
   if (
     node.type === AST_NODE_TYPES.ImportDeclaration ||
     node.type === AST_NODE_TYPES.ImportExpression
   ) {
-    const { source } = node;
-    return source.type === AST_NODE_TYPES.Literal && typeof source.value === 'string'
-      ? source.value
-      : undefined;
+    return literalSource(node.source);
   }
   if (
     node.type === AST_NODE_TYPES.CallExpression &&
     node.callee.type === AST_NODE_TYPES.Identifier &&
     node.callee.name === 'require'
   ) {
-    const [first] = node.arguments;
-    return first?.type === AST_NODE_TYPES.Literal && typeof first.value === 'string'
-      ? first.value
-      : undefined;
+    return literalSource(node.arguments[0]);
   }
   return undefined;
 }
 
-export function stringText(node: TSESTree.Node): string | undefined {
-  if (node.type === AST_NODE_TYPES.Literal && typeof node.value === 'string') {
-    return node.value;
-  }
-  if (node.type === AST_NODE_TYPES.TemplateElement) {
-    return node.value.cooked ?? undefined;
-  }
-  return undefined;
+export function stringText(node: TSESTree.Literal | TSESTree.TemplateElement): string | undefined {
+  return node.type === AST_NODE_TYPES.Literal
+    ? optionalText(node.value)
+    : optionalText(node.value.cooked);
 }
 
 export function isTreeSitterBinding(source: string): boolean {

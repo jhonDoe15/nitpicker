@@ -64,7 +64,7 @@ function provesNotInstance(guard: Guard, expression: TSESTree.Node): boolean {
 }
 
 function exits(statement: TSESTree.Node): boolean {
-  return EXIT_STATEMENTS.has(blockTail(statement)?.type ?? '');
+  return EXIT_STATEMENTS.has(String(blockTail(statement)?.type));
 }
 
 function isEarlierExitGuard(guard: Guard, statement: TSESTree.Node): boolean {

@@ -49,6 +49,10 @@ function rendersPortal(branches: readonly TSESTree.Node[]): boolean {
   );
 }
 
+function exemptBranches(branches: readonly TSESTree.Node[]): boolean {
+  return rendersNothing(branches) || rendersPortal(branches);
+}
+
 function renderedPosition(node: Branching): boolean {
   const { parent } = node;
   if (parent.type === AST_NODE_TYPES.JSXExpressionContainer) {
@@ -89,8 +93,7 @@ function check(node: Branching, context: Context): void {
     !renderedPosition(node) ||
     !inComponentRender(node) ||
     !testsBrowser(found.test, context) ||
-    rendersNothing(found.branches) ||
-    rendersPortal(found.branches) ||
+    exemptBranches(found.branches) ||
     insideOtherBranch(node) ||
     suppressed(node)
   ) {

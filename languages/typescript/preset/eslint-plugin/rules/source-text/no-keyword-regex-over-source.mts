@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { textOf } from '../../../../../../shared/values/readers.mts';
 import { nameOf } from '../typed/node-views.mts';
 import { enclosingFunction } from '../typed/syntax-views.mts';
 import {
@@ -43,7 +44,7 @@ export const rule: TSESLint.RuleModule<'keywordRegex'> = {
         if (callee.type !== AST_NODE_TYPES.MemberExpression || callee.computed) {
           return;
         }
-        const method = nameOf(callee.property) ?? '';
+        const method = textOf(nameOf(callee.property));
         const [first] = node.arguments;
         const pair = textAndRegex(method, callee.object, first);
         if (pair === undefined || pair[1] === undefined || first === undefined) {

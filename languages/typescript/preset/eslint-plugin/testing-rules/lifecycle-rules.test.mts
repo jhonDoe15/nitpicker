@@ -121,6 +121,10 @@ ruleTester.run('no-fixed-sleep-synchronization', noFixedSleepSynchronization, {
     { filename: '/repo/tests/integration/poll.test.ts', code: 'await clock.sleep(10);' },
     {
       filename: '/repo/tests/integration/poll.test.ts',
+      code: 'await new Promise((resolve) => { setTimeout(compute(), 10); });',
+    },
+    {
+      filename: '/repo/tests/integration/poll.test.ts',
       code: 'await new Promise((resolve) => onReady(resolve));',
     },
     {

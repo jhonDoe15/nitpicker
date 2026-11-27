@@ -4,7 +4,7 @@ import {
   resolveConstant,
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
-import { chainOf } from '../typed/node-views.mts';
+import { textOf } from '../../../../../../shared/values/readers.mts';
 import { inTemp, nameOfCall, propertyNamed, resolvedValues } from './temp-paths.mts';
 
 const WRITERS = new Set(['writeFile', 'writeFileSync']);
@@ -51,7 +51,7 @@ function ownStrings(value: TSESTree.Node): readonly string[] {
     return typeof value.value === 'string' ? [value.value] : [];
   }
   return value.type === AST_NODE_TYPES.TemplateLiteral
-    ? value.quasis.map((part) => part.value.cooked ?? '')
+    ? value.quasis.map((part) => textOf(part.value.cooked))
     : [];
 }
 
@@ -75,13 +75,11 @@ function extendsSibling(config: TSESTree.ObjectExpression): boolean {
 }
 
 function accessRoot(identifier: TSESTree.Node): TSESTree.Node {
-  return (
-    chainOf(identifier, (current) =>
-      current.parent?.type === AST_NODE_TYPES.MemberExpression && current.parent.object === current
-        ? current.parent
-        : undefined,
-    ).at(-1) ?? identifier
-  );
+  let root = identifier;
+  while (root.parent?.type === AST_NODE_TYPES.MemberExpression && root.parent.object === root) {
+    root = root.parent;
+  }
+  return root;
 }
 
 function isMutated(context: SourceContext, node: TSESTree.Node | undefined): boolean {
@@ -89,18 +87,20 @@ function isMutated(context: SourceContext, node: TSESTree.Node | undefined): boo
     return false;
   }
   const variable = findVariable(context, node, node.name);
-  return (variable?.references ?? []).some((reference) => {
-    const root = accessRoot(reference.identifier);
-    const parent = root.parent;
-    return (
-      (root !== reference.identifier &&
-        parent?.type === AST_NODE_TYPES.AssignmentExpression &&
-        parent.left === root) ||
-      (parent?.type === AST_NODE_TYPES.CallExpression &&
-        nameOfCall(parent) === 'assign' &&
-        parent.arguments[0] === root)
-    );
-  });
+  return (
+    variable?.references.some((reference) => {
+      const root = accessRoot(reference.identifier);
+      const parent = root.parent;
+      return (
+        (root !== reference.identifier &&
+          parent?.type === AST_NODE_TYPES.AssignmentExpression &&
+          parent.left === root) ||
+        (parent?.type === AST_NODE_TYPES.CallExpression &&
+          nameOfCall(parent) === 'assign' &&
+          parent.arguments[0] === root)
+      );
+    }) === true
+  );
 }
 
 function lacksTypeRoots(context: SourceContext, config: TSESTree.ObjectExpression): boolean {
@@ -113,6 +113,26 @@ function lacksTypeRoots(context: SourceContext, config: TSESTree.ObjectExpressio
     body !== undefined &&
     propertyNamed(body, 'typeRoots') === undefined &&
     propertyNamed(body, 'types') === undefined
+  );
+}
+
+function isMovedExtendingConfig(
+  context: SourceContext,
+  target: TSESTree.Node,
+  content: TSESTree.Node | undefined,
+): boolean {
+  const serialized = resolveConstant(context, content);
+  if (!isStringify(serialized)) {
+    return false;
+  }
+  const config = literalObject(context, serialized.arguments[0]);
+  return (
+    config !== undefined &&
+    namesTsconfig(context, target) &&
+    !extendsSibling(config) &&
+    !isMutated(context, serialized.arguments[0]) &&
+    propertyNamed(config, 'extends') !== undefined &&
+    lacksTypeRoots(context, config)
   );
 }
 
@@ -136,19 +156,7 @@ export const rule: TSESLint.RuleModule<'typeRoots'> = {
         if (!WRITERS.has(nameOfCall(node)) || target === undefined || !inTemp(context, target)) {
           return;
         }
-        const serialized = resolveConstant(context, content);
-        const config = isStringify(serialized)
-          ? literalObject(context, serialized.arguments[0])
-          : undefined;
-        if (
-          config !== undefined &&
-          isStringify(serialized) &&
-          namesTsconfig(context, target) &&
-          !extendsSibling(config) &&
-          !isMutated(context, serialized.arguments[0]) &&
-          propertyNamed(config, 'extends') !== undefined &&
-          lacksTypeRoots(context, config)
-        ) {
+        if (isMovedExtendingConfig(context, target, content)) {
           context.report({ node, messageId: 'typeRoots' });
         }
       },

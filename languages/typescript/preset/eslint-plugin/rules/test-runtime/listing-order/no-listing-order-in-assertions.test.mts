@@ -50,6 +50,34 @@ tester.run('no-listing-order-in-assertions', rule, {
       it("lists", () => { expect(readdirSync(dir)).toEqual(["a.txt", "b.txt"]); });`,
     `import fs from "fs";
       it("lists", () => { const { fs } = setup(); expect(fs.readdirSync(d)).toEqual(["a", "b"]); });`,
+    withFs('expect(readdirSync(dir)["map"](String)).toEqual(["a", "b"]);'),
+    withFs('expect(readdirSync(dir))["toEqual"](["a", "b"]);'),
+    withFs('expect(files).toEqual(["a", "b"]);'),
+    withFs('expect().toEqual(["a", "b"]);'),
+    withFs('expect(files).toEqual(["a", "b"]); var files = readdirSync(dir); var files = [];'),
+    withFs('const check = (files) => expect(files).toEqual(["a", "b"]);'),
+    withFs('function files() {} expect(files).toEqual(["a", "b"]);'),
+    withFs('const [files] = readdirSync(dir); expect(files).toEqual(["a", "b"]);'),
+    withFs('let files; expect(files).toEqual(["a", "b"]);'),
+    withFs('const files = readdirSync(dir); expect(files).toEqual(["a", "b"]); files = [];'),
+    withFs('deepEqual(readdirSync(dir), ["a", "b"]);'),
+    withFs('assert["deepEqual"](readdirSync(dir), ["a", "b"]);'),
+    withFs('a.b.deepEqual(readdirSync(dir), ["a", "b"]);'),
+    withFs('assert.deepEqual(readdirSync(dir), [a, "b"].concat(c));'),
+    withFs('assert.deepEqual(readdirSync(dir));'),
+    withFs('expect(readdirSync(dir)()).toEqual(["a", "b"]);'),
+    withFs('expect(fs.other.readdirSync(dir)).toEqual(["a", "b"]);'),
+    withFs('expect(fs["readdirSync"](dir)).toEqual(["a", "b"]);'),
+    withFs('expect(statSync(dir)).toEqual(["a", "b"]);'),
+    withFs('expect(tree.entries).toEqual(["a", "b"]);'),
+    withFs('expect(fs.statSync(dir)).toEqual(["a", "b"]);'),
+    withFs('expect(readdirSync(dir)).toEqual([,"b"]);'),
+    `import { statSync, "a-b" as ab } from "node:fs"; it("x", () => { expect(statSync(d)).toEqual(["a", "b"]); expect(ab(d)).toEqual(["a", "b"]); });`,
+    `import glob from "glob"; import { globSync as gs } from "glob";
+      it("x", () => { const { a: [b] } = require("glob"); expect(b(d)).toEqual(["a", "b"]); });`,
+    `const [x] = require("fs"); const { ...rest } = require("fs"); const { "a-b": y, z: { w } } = require("fs");
+      let u; const v = foo(); const { statSync } = require("fs");
+      it("x", () => { expect(statSync(d)).toEqual(["a", "b"]); expect(y(d)).toEqual(["a", "b"]); });`,
   ],
   invalid: [
     flagged(withFs('expect(readdirSync(dir)).toEqual(["a.txt", "b.txt"]);')),
@@ -74,6 +102,23 @@ tester.run('no-listing-order-in-assertions', rule, {
     ),
     flagged(
       `const { readdirSync } = require("fs"); it("lists", () => { expect(readdirSync(dir)).toEqual(["a", "b"]); });`,
+    ),
+    flagged(
+      withFs('const files = readdirSync(dir); files["sort"](); expect(files).toEqual(["a", "b"]);'),
+    ),
+    flagged(
+      `const { readdirSync: list } = require("fs"); it("x", () => { expect(list(d)).toEqual(["a", "b"]); });`,
+    ),
+    flagged(
+      `const fs = await require("fs"); it("x", () => { expect(fs.readdirSync(d)).toEqual(["a", "b"]); });`,
+    ),
+    flagged(withFs('assert.deepEqual(readdirSync(dir), ["a", "b"]);')),
+    flagged(withFs('t.deepStrictEqual(readdirSync(dir), ["a", "b"]);')),
+    flagged(
+      `import { readdirSync } from "fs";
+      vi.mock(name); vi.mock(1); vi.mock("lodash"); vi.mock(); vi.spyOn(fs, name); vi.spyOn(fs, "stat");
+      mock("x"); foo.bar();
+      it("x", () => { expect(readdirSync(d)).toEqual(["a", "b"]); });`,
     ),
   ],
 });

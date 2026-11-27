@@ -46,6 +46,15 @@ tester.run('no-wall-clock-bound-in-tests', rule, {
     ),
     timed('Date.now = () => 5; expect(Date.now() - start).toBeLessThan(100);'),
     timed('const clock = FakeTimers.install(); expect(Date.now() - start).toBeLessThan(100);'),
+    timed('expect(Date.now() - start)["toBeLessThan"](100);'),
+    'it("is fast", (start) => { run(); expect(Date.now() - start).toBeLessThan(100); });',
+    timed('let took; expect(took).toBeLessThan(100);'),
+    'it("is fast", (took) => { run(); expect(took).toBeLessThan(100); });',
+    timed('let a = Date.now(); a = performance.now(); expect(Date.now() - a).toBeLessThan(100);'),
+    timed('const took = compute(); expect(took).toBeLessThan(100);'),
+    timed('const took = Date.now() + start; expect(took).toBeLessThan(100);'),
+    timed('vi.stubGlobal("Date", fake); expect(Date.now() - start).toBeLessThan(100);'),
+    timed('vi.spyOn(Date, "now"); expect(Date.now() - start).toBeLessThan(100);'),
   ],
   invalid: [
     flagged(timed('expect(Date.now() - start).toBeLessThan(500);')),
@@ -73,6 +82,12 @@ tester.run('no-wall-clock-bound-in-tests', rule, {
       `it("is fast", () => {
         const start = new Date().getTime(); run(); expect(new Date().getTime() - start).toBeLessThan(100);
       });`,
+    ),
+    flagged(
+      timed(
+        `vi.spyOn(Date, name); vi.spyOn(globalThis.Date, "now"); vi.stubGlobal("Other", x); install();
+        a.b.install(); a.b.now = 1; spy.install(); expect(Date.now() - start).toBeLessThan(100);`,
+      ),
     ),
   ],
 });
