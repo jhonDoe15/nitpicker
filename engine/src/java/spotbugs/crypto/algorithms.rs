@@ -29,6 +29,7 @@ pub enum Use {
     /// The settings of `super::super::tls::values`.
     Protocol,
     ReturnsObjects,
+    MaxAge,
 }
 
 pub struct Hit {
@@ -76,7 +77,7 @@ pub fn hits(used: Use, name: &str) -> Vec<Hit> {
     match used {
         Use::Digest => found.extend(digest(name)),
         Use::Signature => found.extend(name.find("with").and_then(|at| digest(&name[..at]))),
-        Use::Protocol | Use::ReturnsObjects => return super::super::tls::values::hits(used, name),
+        Use::Protocol | Use::ReturnsObjects | Use::MaxAge => return super::super::tls::values::hits(used, name),
         Use::Cipher | Use::KeyGenerator => {
             if used == Use::Cipher {
                 cipher(name, &mut found);

@@ -69,7 +69,7 @@ fn patterns_report_what_spotbugs_reports() {
     let missed: Vec<&Row> = expected.difference(&found).collect();
     let extra: Vec<&Row> = found.difference(&expected).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(expected.iter().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 183);
+    assert_eq!(expected.iter().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 187);
 }
 
 /// SpotBugs names the variable a stored value came from; `tests/expected/spotbugs-variables.json` holds the names

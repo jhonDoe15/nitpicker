@@ -7,7 +7,7 @@
 //! method are one.
 pub mod algorithms;
 mod hex;
-mod material;
+pub mod material;
 mod shapes;
 pub mod summary;
 mod values;
@@ -81,7 +81,7 @@ fn patterns_of(used: Use) -> &'static [&'static str] {
     match used {
         Use::Digest | Use::Signature => &[algorithms::MD5, algorithms::SHA1],
         Use::Cipher | Use::KeyGenerator => &[algorithms::INTEGRITY, algorithms::ECB, algorithms::ORACLE, algorithms::DES, algorithms::RSA],
-        Use::Protocol | Use::ReturnsObjects => super::tls::values::patterns_of(used),
+        Use::Protocol | Use::ReturnsObjects | Use::MaxAge => super::tls::values::patterns_of(used),
     }
 }
 

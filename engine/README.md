@@ -1081,16 +1081,20 @@ Eight FindSecBugs patterns of TLS, sockets, mail and LDAP settings (#2534, `src/
   `checkClientTrusted`, `checkServerTrusted` and `getAcceptedIssuers`, and in a `HostnameVerifier` each `verify`,
   whose code makes no call and reads no instance field, whatever its parameters. A call is also a `new`, a lambda or
   method reference, joined strings, boxing, a `for` over a collection, a `switch` on strings or enums, `try` with
-  resources and `assert`; `throw e`, `return null`, static fields, constants and stores to fields are not. A local
-  captured by an anonymous class and `Outer.this` are field reads. On the line of the method's first instruction.
+  resources and `assert`; `throw e`, `return null`, static fields, constants, strings javac folds (`"a" + 1`) and
+  stores to fields are not. A local captured by an anonymous class, `Outer.this` and a record component are field
+  reads. On the line of the method's first instruction.
   Lambdas are not classes and never count.
 - UNENCRYPTED_SOCKET, UNENCRYPTED_SERVER_SOCKET and DEFAULT_HTTP_CLIENT (priority 2): each call of a constructor of
   `java.net.Socket`, `java.net.ServerSocket` and the no-argument one of Apache HttpClient's `DefaultHttpClient`:
   `new`, an anonymous class, and a direct subclass's constructors (`super(..)` written or not). The socket message
-  names the class whose code makes the call (the anonymous class for one). Factories are not calls.
+  names the class whose code makes the call (the anonymous class for one). Factories are not calls. The body of an
+  enum constant is not followed yet (#2796).
 - INSECURE_SMTP_SSL (priority 1, with FindSecBugs' leading space and spelling): each `setSSLOnConnect(true)` in a
-  method that never calls `setSSLCheckServerIdentity(true)`, both written against Commons Email's `Email` itself.
-  The argument must be the constant `true`; a local holding it does not count. A lambda is a method of its own.
+  method that never calls `setSSLCheckServerIdentity(true)` written against the same class, for calls written
+  against Commons Email's `Email`, `MultiPartEmail`, `HtmlEmail` or `ImageHtmlEmail` (not `SimpleEmail`, not a
+  class of one's own). The argument must be what javac writes as the constant `true` (a constant `?:` or a `final`
+  constant local too); a plain local holding it does not count. A lambda is a method of its own.
 - SSL_CONTEXT (priority 2): `SSLContext.getInstance(protocol)` without a provider, protocol `SSL` in any case.
 - LDAP_ENTRY_POISONING (priority 2): `true` as the flag of `setReturningObjFlag` or the fifth argument of the
   six-argument `SearchControls` constructor, written against `SearchControls` itself (a direct subclass's
@@ -1098,7 +1102,31 @@ Eight FindSecBugs patterns of TLS, sockets, mail and LDAP settings (#2534, `src/
 - SSL_CONTEXT and LDAP_ENTRY_POISONING judge the value as the crypto names are judged: `boolean` constants, locals
   and fields are followed as strings are. LDAP_ANONYMOUS is priority 3 and never shown.
 
-Labs: all findings and places the same.
+Labs: all findings and places the same. Nacos (the comparison code base with such findings): WEAK_TRUST_MANAGER 3
+and UNENCRYPTED_SERVER_SOCKET 1, same / missed / extra 4 / 0 / 0.
+
+### Cookie patterns (FindSecBugs)
+
+Four FindSecBugs cookie patterns (#2534, `src/java/spotbugs/cookies/`), labs in `tests/fixtures/spotbugs/cookies`,
+measured and left to the engine like the crypto patterns. Servlet's `javax` and `jakarta` classes behave the same.
+
+- HTTPONLY_COOKIE and INSECURE_COOKIE (priority 2): each `new Cookie(..)` (the class itself) stored straight into a
+  local, unless `setHttpOnly(true)` or `setSecure(true)` is called later in the method's code on a local in the
+  same slot javac gives it, written against that `Cookie` class. Slots, not variables: a call through an alias does
+  not count, and a variable that reuses the slot later covers every cookie stored there before it. Only the
+  constant `true` counts (a constant `?:` or `final` constant local too), wherever the call is. Parentheses and a
+  cast between the `new` and the local do not matter; a cookie returned, passed or stored without a local is not
+  followed. On the line of the `new`. Lambdas, static initializers and the initializers a constructor runs are
+  methods like any other. Code javac leaves out (a `catch` of an empty `try`) is still read (#2796).
+- COOKIE_PERSISTENT (priority 2): `setMaxAge(age)` written against `Cookie` itself with an age of 31536000 seconds
+  or more, the age judged as the crypto names are (`int` and `Integer` fields and locals too, arithmetic of known
+  numbers, `x++`, `x--` and `x op= v`, casts to `int` or `long`, `Integer.valueOf`; a `for` loop's update makes its
+  variable unknown).
+- URL_REWRITING (priority 1): each call of `encodeURL`, `encodeRedirectURL`, `encodeUrl` or `encodeRedirectUrl`
+  written against `HttpServletResponse` itself; method references are not calls.
+- COOKIE_USAGE is excluded by nitpicker's SpotBugs configuration, so CookieReadDetector is not ported.
+
+Labs: all findings and places the same. Nacos: HTTPONLY_COOKIE 2 and INSECURE_COOKIE 2, 4 / 0 / 0.
 
 ### Lombok
 

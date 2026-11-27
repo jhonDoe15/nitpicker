@@ -4,8 +4,8 @@
 //! `return` or an operator), a `for` over something not an array, a `switch` on anything but
 //! an `int`-like value, `try` with resources or `assert`. A read is an instance field read by name, through a value
 //! or by a compound assignment (a plain `=` only stores), `Outer.this`, or a local captured from the method
-//! around an anonymous or local class. Constants read by simple name are written in place. Lambda bodies and
-//! classes declared inside are code of their own.
+//! around an anonymous or local class, and a record component. Constants read by simple name and strings javac
+//! folds are written in place. Lambda bodies and classes declared inside are code of their own.
 use super::super::Context;
 use crate::engine::source::{children, parent, walk};
 use crate::java::types::expr::Binding;
@@ -19,10 +19,19 @@ fn is_string(context: &Context, node: Node) -> bool {
     context.resolver.type_of(node).is_some_and(|kind| kind.name() == "java.lang.String")
 }
 
+/// Whether javac folds an expression into a constant: literals and constants of any kind joined by operators.
+fn folded(context: &Context, node: Node) -> bool {
+    let node = crate::java::types::expr::unwrap(node);
+    if constant(context, node) || matches!(node.kind(), "string_literal" | "character_literal" | "true" | "false" | "decimal_floating_point_literal") {
+        return true;
+    }
+    node.kind() == "binary_expression" && ["left", "right"].iter().all(|side| node.child_by_field_name(side).is_some_and(|part| folded(context, part)))
+}
+
 fn joins(context: &Context, node: Node) -> bool {
     let operator = node.child_by_field_name("operator").map(|operator| context.text(operator));
     match node.kind() {
-        "binary_expression" => operator == Some("+") && context.resolver.constant_string(node).is_none() && is_string(context, node),
+        "binary_expression" => operator == Some("+") && !folded(context, node) && is_string(context, node),
         "assignment_expression" => operator == Some("+=") && node.child_by_field_name("left").is_some_and(|left| is_string(context, left)),
         _ => false,
     }
@@ -100,6 +109,13 @@ fn declared_in(context: &Context, member: Node, name: &str) -> bool {
     found
 }
 
+/// Whether the record the method belongs to has a component of this name, which javac reads as a field.
+fn component(context: &Context, member: Node, name: &str) -> bool {
+    let record = parent(member).and_then(parent).filter(|holder| holder.kind() == "record_declaration");
+    let listed = record.and_then(|record| record.child_by_field_name("parameters")).map(children).unwrap_or_default();
+    listed.into_iter().any(|part| part.child_by_field_name("name").is_some_and(|named| context.text(named) == name))
+}
+
 fn reads(context: &Context, member: Node, node: Node, nested: bool) -> bool {
     match node.kind() {
         "identifier" => {
@@ -120,8 +136,9 @@ fn reads(context: &Context, member: Node, node: Node, nested: bool) -> bool {
             let name = context.text(node);
             match context.resolver.binding(node, name) {
                 Some(Binding::Field(_, _, field)) => field.flags & flag::STATIC == 0,
-                Some(Binding::Local(_)) => nested && !declared_in(context, member, name),
-                None => false,
+                Some(Binding::Local(_)) if !declared_in(context, member, name) => nested || component(context, member, name),
+                None => !declared_in(context, member, name) && component(context, member, name),
+                _ => false,
             }
         }
         "field_access" => {
@@ -130,7 +147,8 @@ fn reads(context: &Context, member: Node, node: Node, nested: bool) -> bool {
             if name == "this" {
                 return true;
             }
-            !only_stored(context, node) && name != "length" && instance_field(context, field, name)
+            let own = node.child_by_field_name("object").is_some_and(|object| object.kind() == "this");
+            !only_stored(context, node) && name != "length" && (instance_field(context, field, name) || (own && component(context, member, name)))
         }
         _ => false,
     }

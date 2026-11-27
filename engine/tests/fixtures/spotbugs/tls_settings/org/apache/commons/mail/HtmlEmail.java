@@ -1,2 +1,2 @@
 package org.apache.commons.mail;
-public class HtmlEmail extends Email { }
+public class HtmlEmail extends MultiPartEmail { }

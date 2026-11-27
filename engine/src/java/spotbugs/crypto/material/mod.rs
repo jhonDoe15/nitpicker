@@ -50,7 +50,7 @@ fn called(context: &Context, node: Node, class: &str, name: &str) -> Option<Vec<
 }
 
 /// The value a `final` local with a constant value gives, which javac writes in place of every read.
-fn constant_variable<'t>(context: &Context, node: Node<'t>) -> Option<Node<'t>> {
+pub fn constant_variable<'t>(context: &Context, node: Node<'t>) -> Option<Node<'t>> {
     let node = unwrap(node);
     if node.kind() != "identifier" || !matches!(context.resolver.binding(node, context.text(node)), Some(Binding::Local(_))) {
         return None;

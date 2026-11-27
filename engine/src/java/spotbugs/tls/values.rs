@@ -5,6 +5,8 @@
 //! - LDAP_ENTRY_POISONING: `true` as the flag of `setReturningObjFlag` or the fifth argument of the six-argument
 //!   constructor of `javax.naming.directory.SearchControls`, the call written against that class itself; a direct
 //!   subclass calling `super(..)` counts too.
+//! - COOKIE_PERSISTENT (PersistentCookieDetector): `setMaxAge(age)` written against Servlet's `Cookie` itself
+//!   (`javax` or `jakarta`) with an age of a year (31536000 seconds) or more.
 use super::super::Context;
 use super::super::crypto::algorithms::{Hit, Use, hit};
 use super::super::idioms::encoding::written_owner;
@@ -14,8 +16,10 @@ use tree_sitter::Node;
 
 pub const CONTEXT: &str = "SSL_CONTEXT";
 pub const POISONING: &str = "LDAP_ENTRY_POISONING";
-pub const PATTERNS: &[&str] = &[CONTEXT, POISONING];
-pub const MARKS: &[&str] = &["SSLContext", "SearchControls"];
+pub const PERSISTENT: &str = "COOKIE_PERSISTENT";
+pub const PATTERNS: &[&str] = &[CONTEXT, POISONING, PERSISTENT];
+pub const MARKS: &[&str] = &["SSLContext", "SearchControls", "setMaxAge"];
+const YEAR: i64 = 31_536_000;
 
 const CONTROLS: &str = "javax.naming.directory.SearchControls";
 
@@ -42,6 +46,9 @@ pub fn configured<'t>(context: &Context, own: &str, node: Node<'t>) -> Option<(U
                     let call = context.resolver.resolve_call(node)?;
                     (call.declaring == "javax.net.ssl.SSLContext" && call.method.is_static).then_some((Use::Protocol, given[0]))
                 }
+                "setMaxAge" if given.len() == 1 && written_owner(context, own, node).is_some_and(|owner| super::super::cookies::COOKIES.contains(&owner.as_str())) => {
+                    Some((Use::MaxAge, given[0]))
+                }
                 "setReturningObjFlag" if given.len() == 1 && written_owner(context, own, node).as_deref() == Some(CONTROLS) => Some((Use::ReturnsObjects, given[0])),
                 _ => None,
             }
@@ -58,9 +65,25 @@ pub fn configured<'t>(context: &Context, own: &str, node: Node<'t>) -> Option<(U
     }
 }
 
+/// Whether javac writes the constant `true` for an argument: a constant expression, a `?:` with a constant test,
+/// or a `final` local holding one.
+pub fn constant_true(context: &Context, node: Node) -> bool {
+    let node = crate::java::types::expr::unwrap(node);
+    if node.kind() == "ternary_expression" {
+        let test = node.child_by_field_name("condition").and_then(|condition| context.resolver.constant_boolean(condition));
+        let side = test.and_then(|test| node.child_by_field_name(if test { "consequence" } else { "alternative" }));
+        return side.is_some_and(|side| constant_true(context, side));
+    }
+    if let Some(value) = super::super::crypto::material::constant_variable(context, node) {
+        return constant_true(context, value);
+    }
+    context.resolver.constant_boolean(node) == Some(true)
+}
+
 pub fn patterns_of(used: Use) -> &'static [&'static str] {
     match used {
         Use::Protocol => &[CONTEXT],
+        Use::MaxAge => &[PERSISTENT],
         _ => &[POISONING],
     }
 }
@@ -69,6 +92,7 @@ pub fn hits(used: Use, value: &str) -> Vec<Hit> {
     match used {
         Use::Protocol if value.eq_ignore_ascii_case("SSL") => vec![hit(CONTEXT, "SSLContext needs to be compatible with TLS 1.2", 2)],
         Use::ReturnsObjects if value == "true" => vec![hit(POISONING, "LDAP Entry Poisoning", 2)],
+        Use::MaxAge if value.parse::<i64>().is_ok_and(|age| age >= YEAR) => vec![hit(PERSISTENT, "Cookie Set To Expire In 1 Year Or More", 2)],
         _ => Vec::new(),
     }
 }

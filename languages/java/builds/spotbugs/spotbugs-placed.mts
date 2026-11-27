@@ -1,4 +1,5 @@
 import { CAST_PLACED } from './casts/spotbugs-casts-placed.mts';
+import { COOKIE_PLACED } from './cookies/spotbugs-cookies-placed.mts';
 import { CRYPTO_PLACED } from './crypto/spotbugs-crypto-placed.mts';
 import { DUMB_PLACED } from './spotbugs-dumb-placed.mts';
 import { RESOURCE_PLACED } from './resources/spotbugs-resources-placed.mts';
@@ -303,4 +304,5 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   ...VALUES_PLACED,
   ...CRYPTO_PLACED,
   ...TLS_PLACED,
+  ...COOKIE_PLACED,
 };

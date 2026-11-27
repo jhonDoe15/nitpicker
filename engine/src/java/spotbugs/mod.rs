@@ -11,6 +11,7 @@ mod concurrent;
 mod crypto;
 mod compare;
 mod constructors;
+mod cookies;
 mod dead;
 mod dumb;
 mod equality;
@@ -295,6 +296,7 @@ impl FileRule for SpotBugs {
         floats::floats(&context, &declared, &self.floats);
         crypto::crypto(&context, &declared, &self.crypto);
         tls::tls(&context, &declared);
+        cookies::cookies(&context, &declared);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
         if context.wants(attributes::PATTERNS) {
             let names = self.attributes.names(&project.index, &project.sources);

@@ -1,4 +1,4 @@
-//! What the whole run stores in each `String` or `boolean` field, as SpotBugs sums it up before it reads the code: a
+//! What the whole run stores in each `String`, `boolean`, `int` or `Integer` field, as SpotBugs sums it up before it reads the code: a
 //! field holds a known value when every store of every class gives that value (an initializer, `x = ..`, `this.x = ..`,
 //! `o.x = ..`, in a constructor, an initializer block, a method or a lambda), measured on test code. A compound
 //! store or a value nobody knows spoils it, and so does the default of an instance field that a constructor not
@@ -36,7 +36,7 @@ pub struct Fields {
 }
 
 /// The field types whose values are followed: strings, and the flags of `super::super::tls::values`.
-const TYPES: &[&str] = &["String", "java.lang.String", "boolean"];
+const TYPES: &[&str] = &["String", "java.lang.String", "boolean", "int", "Integer", "java.lang.Integer"];
 
 fn writes_in(context: &Context, code: Node, key: &Key) -> bool {
     let mut found = false;
