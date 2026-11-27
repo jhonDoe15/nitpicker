@@ -560,5 +560,6 @@
  "RecordComponentAccessorAnnotationConflict",
  "ModifySourceCollectionInStream",
  "TypeNameShadowing",
- "UseBinds"
+ "UseBinds",
+ "InlineMeValidator"
 ]
