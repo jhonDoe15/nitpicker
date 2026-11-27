@@ -4289,5 +4289,17 @@
 ["iterators/p/W9.java", "IT_NO_SUCH_ELEMENT", 6, "p.W9.next() cannot throw NoSuchElementException"],
 ["notify/p/Q.java", "UCF_USELESS_CONTROL_FLOW", 26, "Useless control flow in p.Q.d5(boolean)"],
 ["ref_boolean11/p/A.java", "UCF_USELESS_CONTROL_FLOW", 62, "Useless control flow in p.A.t13(Boolean, Boolean)"],
-["ref_boolean11/p/A.java", "UCF_USELESS_CONTROL_FLOW_NEXT_LINE", 57, "Useless control flow to next line in p.A.t12(Boolean, Boolean)"]
+["ref_boolean11/p/A.java", "UCF_USELESS_CONTROL_FLOW_NEXT_LINE", 57, "Useless control flow to next line in p.A.t12(Boolean, Boolean)"],
+["lock_places/p/K.java", "JLM_JSR166_LOCK_MONITORENTER", 5, "Synchronization performed on p.K in p.K.a()"],
+["lock_places/p/K.java", "JLM_JSR166_LOCK_MONITORENTER", 6, "Synchronization performed on p.K in p.K.lambda$b$0()"],
+["lock_places/p/K.java", "JLM_JSR166_LOCK_MONITORENTER", 7, "Synchronization performed on p.K in p.K$In.c()"],
+["lock_places/p/K.java", "JLM_JSR166_LOCK_MONITORENTER", 8, "Synchronization performed on p.K in p.K$1.e()"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 6, "Synchronization performed on p.K2 in p.K2$In$In2.x()"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 7, "Synchronization performed on p.K2$In in p.K2$In$In2.y()"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 9, "Synchronization performed on p.K2 in p.K2$In.lambda$z$0()"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 10, "Synchronization performed on p.K2$In in p.K2$In.w()"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 12, "Synchronization performed on p.K2 in p.K2$1Loc.u()"],
+["lock_places/p/K3.java", "JLM_JSR166_LOCK_MONITORENTER", 5, "Synchronization performed on java.util.concurrent.locks.ReentrantLock in p.K3.a(Holder)"],
+["lock_places/p/K3.java", "JLM_JSR166_LOCK_MONITORENTER", 6, "Synchronization performed on java.util.concurrent.locks.ReentrantLock in p.K3.b()"],
+["lock_places/p/K.java", "DLS_DEAD_LOCAL_STORE", 8, "Dead store to o in p.K.d()"]
 ]

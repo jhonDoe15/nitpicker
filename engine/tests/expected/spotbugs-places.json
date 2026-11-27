@@ -2669,5 +2669,17 @@
 ["iterators/p/W9.java", "IT_NO_SUCH_ELEMENT", 6, "function:p.W9.next()"],
 ["notify/p/Q.java", "UCF_USELESS_CONTROL_FLOW", 26, "function:p.Q.d5(boolean)"],
 ["ref_boolean11/p/A.java", "UCF_USELESS_CONTROL_FLOW", 62, "function:p.A.t13(Boolean, Boolean)"],
-["ref_boolean11/p/A.java", "UCF_USELESS_CONTROL_FLOW_NEXT_LINE", 57, "function:p.A.t12(Boolean, Boolean)"]
+["ref_boolean11/p/A.java", "UCF_USELESS_CONTROL_FLOW_NEXT_LINE", 57, "function:p.A.t12(Boolean, Boolean)"],
+["lock_places/p/K.java", "JLM_JSR166_LOCK_MONITORENTER", 5, "variable:p.K.a()#this"],
+["lock_places/p/K.java", "JLM_JSR166_LOCK_MONITORENTER", 6, "variable:p.K.lambda$b$0()#this"],
+["lock_places/p/K.java", "JLM_JSR166_LOCK_MONITORENTER", 8, "member:p.K$1.this$0"],
+["lock_places/p/K.java", "JLM_JSR166_LOCK_MONITORENTER", 7, "member:p.K$In.this$0"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 12, "member:p.K2$1Loc.this$0"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 9, "member:p.K2$In.this$0"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 10, "variable:p.K2$In.w()#this"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 6, "member:p.K2$In$In2.this$0"],
+["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 7, "member:p.K2$In$In2.this$1"],
+["lock_places/p/K3.java", "JLM_JSR166_LOCK_MONITORENTER", 5, "member:p.K3.lk"],
+["lock_places/p/K3.java", "JLM_JSR166_LOCK_MONITORENTER", 6, "member:p.K3.SLK"],
+["lock_places/p/K.java", "DLS_DEAD_LOCAL_STORE", 8, "variable:p.K.d()#o"]
 ]
