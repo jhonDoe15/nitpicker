@@ -54,11 +54,13 @@ fn stub(name: String) -> ClassInfo {
     ClassInfo { name, ..ClassInfo::default() }
 }
 
-pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>, lombok: bool, android_compatible: bool) -> JavaProject {
+pub fn build(files: &[SourceFile], options: &crate::engine::Options) -> JavaProject {
+    let (classpath, release) = (&options.classpath, options.release);
     let started = std::time::Instant::now();
     let mut index = TypeIndex::default();
-    index.lombok = lombok;
-    index.android_compatible = android_compatible;
+    index.lombok = options.lombok;
+    index.android_compatible = options.android_compatible;
+    index.test_only = options.test_only;
     index.source_level = release.unwrap_or_else(jdk_major);
     let mut entries = classpath.to_vec();
     index.load_binaries(&entries);

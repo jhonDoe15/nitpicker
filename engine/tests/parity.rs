@@ -29,6 +29,10 @@ fn rows_of(case: &str, rule: &str, rules: &str) -> (Rows, Rows) {
 }
 
 fn rows_selected(case: &str, rule: &str, rules: &str, only: Option<&str>) -> (Rows, Rows) {
+    rows_with(case, rule, rules, only, &[], case)
+}
+
+fn rows_with(case: &str, rule: &str, rules: &str, only: Option<&str>, options: &[&str], expected: &str) -> (Rows, Rows) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
     let source = root.join("fixtures").join(case);
     let run = RUNS.fetch_add(1, Ordering::Relaxed);
@@ -41,6 +45,7 @@ fn rows_selected(case: &str, rule: &str, rules: &str, only: Option<&str>) -> (Ro
         .arg(&source)
         .args(["--rules", rule, "--out"])
         .arg(&out)
+        .args(options)
         .env("NP_XPATH_RULES", root.join("rules").join(format!("{rules}.json")))
         .status()
         .expect("engine runs");
@@ -64,7 +69,7 @@ fn rows_selected(case: &str, rule: &str, rules: &str, only: Option<&str>) -> (Ro
         })
         .collect::<Vec<Row>>());
     let expected: Vec<Row> =
-        serde_json::from_str(&std::fs::read_to_string(root.join("expected").join(format!("{case}.json"))).expect("expected")).expect("rows");
+        serde_json::from_str(&std::fs::read_to_string(root.join("expected").join(format!("{expected}.json"))).expect("expected")).expect("rows");
     (found, counted(expected))
 }
 
@@ -129,14 +134,23 @@ fn concurrency_and_value_rules_report_what_pmd_reports() {
     same_as_pmd("values", "all");
 }
 
-#[test]
-fn error_prone_checks_report_what_error_prone_reports() {
-    let (found, expected) = rows_of("errorprone", "_ErrorProne", "all");
+fn same_as_error_prone((found, expected): (Rows, Rows), checks: usize) {
     let found: BTreeMap<Row, _> = found.into_iter().filter(|(row, _)| row.1 != "NullAway").collect();
     let missed: Vec<&Row> = expected.iter().filter(|(row, count)| found.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     let extra: Vec<&Row> = found.iter().filter(|(row, count)| expected.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(expected.keys().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 527);
+    assert_eq!(expected.keys().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), checks);
+}
+
+#[test]
+fn error_prone_checks_report_what_error_prone_reports() {
+    same_as_error_prone(rows_of("errorprone", "_ErrorProne", "all"), 527);
+}
+
+/// `--test-only` is Error Prone's `-XepCompilingTestOnlyCode`; the rows come from Error Prone run with that flag.
+#[test]
+fn error_prone_checks_report_what_error_prone_reports_on_test_only_code() {
+    same_as_error_prone(rows_with("errorprone", "_ErrorProne", "all", None, &["--test-only"], "errorprone-test-only"), 514);
 }
 
 /// A Java run selects some checks (`NP_EP_ONLY`); the others are skipped, and each selected check reports what it

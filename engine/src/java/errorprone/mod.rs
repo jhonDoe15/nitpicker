@@ -342,7 +342,7 @@ impl Context<'_> {
     }
     /// Reports without looking for a suppression: some checks report from the file as a whole.
     pub fn report_always(&self, check: &'static str, offset: usize, message: &str) {
-        if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == check)) {
+        if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == check)) || self.skipped(check) {
             return;
         }
         let line = self.line_starts.partition_point(|start| *start <= offset) - 1;
@@ -386,6 +386,13 @@ impl Context<'_> {
             let above = self.resolver.index.get(&name).map(|info| info.class_annotations.clone()).unwrap_or_default();
             self.add_annotations(above, names);
         }
+    }
+    /// Whether the run compiles test-only code: Error Prone's `-XepCompilingTestOnlyCode`.
+    pub fn test_only(&self) -> bool {
+        self.resolver.index.test_only
+    }
+    fn skipped(&self, check: &str) -> bool {
+        self.test_only() && NOT_ON_TEST_ONLY.contains(&check)
     }
     /// Whether the node or a declaration around it carries `@SuppressWarnings` with the check's name or "all".
     pub fn suppressed(&self, check: &str, node: Node) -> bool {
@@ -971,6 +978,13 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["GuardedBy"], guarded_by::guarded_by),
 ];
 
+/// Checks Error Prone runs only on code that is not test-only (`isTestOnlyTarget()` makes them return early).
+const NOT_ON_TEST_ONLY: &[&str] = &[
+    "BanClassLoader", "BanJNDI", "BanSerializableRead", "CheckedExceptionNotThrown", "ConstantPatternCompile", "DefaultPackage",
+    "ExposedPrivateType", "Interruption", "LiteProtoToString", "MissingSummary",
+    "StaticAssignmentOfThrowable", "ThrowSpecificExceptions", "TimeInStaticInitializer",
+];
+
 pub struct ErrorProne;
 
 /// The row that lists, for each file the engine read, the checks of `NP_EP_MAY_REPORT` that may report there.
@@ -1002,7 +1016,10 @@ impl FileRule for ErrorProne {
         line_starts.extend(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1));
         let selected = std::env::var("NP_EP_ONLY").ok().map(|names| names.split(',').map(String::from).collect());
         let context = Context { resolver, file, line_starts, selected, out: std::cell::RefCell::new(Vec::new()), named: std::cell::RefCell::new(std::collections::HashMap::new()) };
-        let wanted = |names: &[&str]| context.selected.as_ref().is_none_or(|selected| names.iter().any(|name| selected.iter().any(|one| one == name)));
+        let wanted = |names: &[&str]| {
+            !names.iter().all(|name| context.skipped(name))
+                && context.selected.as_ref().is_none_or(|selected| names.iter().any(|name| selected.iter().any(|one| one == name)))
+        };
         let checks: Vec<Check> = CHECKS.iter().filter(|(names, _)| wanted(names)).map(|(_, check)| *check).collect();
         walk(file.tree.root_node(), |node| {
             if node.is_named() {

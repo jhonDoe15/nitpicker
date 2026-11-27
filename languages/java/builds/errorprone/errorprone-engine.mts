@@ -15,7 +15,13 @@ import {
   releaseOf,
   type ArgumentSet,
 } from './engine-arguments.mts';
-import { engineChecksFor, NULL_AWAY, wholeReason, type EngineChecks } from './engine-checks.mts';
+import {
+  engineChecksFor,
+  NULL_AWAY,
+  testOnly,
+  wholeReason,
+  type EngineChecks,
+} from './engine-checks.mts';
 import {
   diagnosticsOf as engineDiagnostics,
   ENGINE_REPORT,
@@ -74,6 +80,7 @@ function engineReport(
     [
       ...['--files', listed, '--rules', ERROR_PRONE_RULES, '--classpath', lookup],
       ...(release === undefined ? [] : ['--release', release]),
+      ...(testOnly(head) ? ['--test-only'] : []),
       ...['--out', report],
     ],
     {

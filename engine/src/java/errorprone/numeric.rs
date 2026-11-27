@@ -102,7 +102,7 @@ pub fn narrow_calculation(context: &Context, node: Node) {
         }
         let message = "This division will discard the fractional part of the result, despite being assigned to a float.";
         context.report_fixed("NarrowCalculation", node, operator.start_byte(), message, &[force_type(context, node, target)]);
-    } else if left_type == Type::Primitive("int") && right_type == Type::Primitive("int") && target == "long" {
+    } else if left_type == Type::Primitive("int") && right_type == Type::Primitive("int") && target == "long" && !context.test_only() {
         if let (Some(Const::Int(a)), Some(Const::Int(b))) = (constant(context, left), constant(context, right)) {
             let product = i64::from(a) * i64::from(b);
             if product == i64::from(product as i32) {

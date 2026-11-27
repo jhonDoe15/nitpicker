@@ -44,6 +44,8 @@ pub struct TypeIndex {
     pub lombok: bool,
     /// The javac option `-XDandroidCompatible=true` is set.
     pub android_compatible: bool,
+    /// The sources are test code only: see `Options::test_only`.
+    pub test_only: bool,
     /// The Java source level of the compile: `--release`, else the JDK's own.
     pub source_level: u32,
 }

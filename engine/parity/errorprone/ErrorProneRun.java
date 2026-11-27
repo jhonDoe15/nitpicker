@@ -6,7 +6,7 @@ import java.util.*;
 import java.util.regex.*;
 import javax.tools.*;
 
-/** ErrorProneRun <mode ep|javac> <out.json> <checks.json> <classpath file> <sources file> [extra javac options...] */
+/** ErrorProneRun <mode ep|javac> <out.json> <checks.json> <classpath file> <sources file> [extra javac options...]; -Dep.test=true compiles as test-only code */
 public class ErrorProneRun {
   public static void main(String[] a) throws Exception {
     boolean ep = a[0].equals("ep");
@@ -27,6 +27,7 @@ public class ErrorProneRun {
     if (opts.contains("--module-path")) { int i = opts.indexOf("-sourcepath"); opts.remove(i); opts.remove(i); }
     if (ep) {
       List<String> f = new ArrayList<>(List.of("-Xplugin:ErrorProne", "-XepAllErrorsAsWarnings"));
+      if (Boolean.getBoolean("ep.test")) f.add("-XepCompilingTestOnlyCode");
       String only = System.getProperty("ep.only", "");
       if (!only.isEmpty()) {
         f.add("-XepDisableAllChecks");

@@ -90,6 +90,7 @@ fn main() {
             }
             "--lombok" => options.lombok = true,
             "--android-compatible" => options.android_compatible = true,
+            "--test-only" => options.test_only = true,
             "--release" => { index += 1; options.release = Some(args[index].parse().expect("release number")); }
             other => roots.push(PathBuf::from(other)),
         }

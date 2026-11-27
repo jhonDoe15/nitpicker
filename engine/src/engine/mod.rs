@@ -33,6 +33,8 @@ pub struct Options {
     pub lombok: bool,
     /// The compile runs with `-XDandroidCompatible=true`.
     pub android_compatible: bool,
+    /// The sources are test code only: Error Prone's `-XepCompilingTestOnlyCode`.
+    pub test_only: bool,
 }
 
 /// Facts a language extracts from one file for whole-project passes (duplicates, metrics).
