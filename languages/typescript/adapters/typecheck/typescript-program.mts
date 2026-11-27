@@ -7,7 +7,12 @@ import { escapeRegExp, isToolInstalled, resolveTool } from '../typed/tooling.mts
 import { packageHasJavaScriptApi } from '../../typescript-api/api-redirect.mts';
 import { chainOf, isTypeScriptApi, parentOf, typescriptApi } from '../typed/typescript-program.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
-import { configFailure, isNonFatalConfigCode, nativeDiagnostics } from './native-diagnostics.mts';
+import {
+  configFailure,
+  isNonFatalConfigCode,
+  nativeDiagnostics,
+  ownNativeDiagnostics,
+} from './native-diagnostics.mts';
 import { withTypescript7Options } from './removed-options/typescript7-config.mts';
 import type { ProgramFiles } from './native-api.mts';
 
@@ -101,15 +106,13 @@ async function engineDiagnostics({
     }
   }
   if (projectNative !== undefined) {
-    const own = await nativeDiagnostics({
+    return ownNativeDiagnostics({
       ts,
       configPath,
       projectRoot,
       apiRoot: projectNative,
-      engineHint: false,
       scopedConfigPath,
     });
-    return { diagnostics: own.diagnostics ?? [], files: own.files };
   }
   return { diagnostics: projectDiagnostics(ts, configPath, projectRoot) };
 }

@@ -69,3 +69,13 @@ describe('typed parsing that releases the child lists of the previous file', () 
     expect(cachedChildren(first)).toBeUndefined();
   });
 });
+
+describe('parsers without a typed program', () => {
+  it('parses every file and releases nothing it did not get a source file for', () => {
+    const parsed = { ast: undefined, services: {} };
+    const released = releasingChildren({ parseForESLint: () => parsed });
+
+    expect(released.parseForESLint('a', {})).toBe(parsed);
+    expect(released.parseForESLint('b', {})).toBe(parsed);
+  });
+});
