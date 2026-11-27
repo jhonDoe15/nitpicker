@@ -126,7 +126,7 @@ fn names(field: &str, boolean: bool, naming: &Naming) -> Option<(String, String)
 }
 
 impl Resolver<'_> {
-    fn lombok_name(&self, written: &str, name: &str) -> bool {
+    pub fn lombok_name(&self, written: &str, name: &str) -> bool {
         let full = [format!("lombok.{name}"), format!("lombok.experimental.{name}")];
         if full.iter().any(|path| path == written) {
             return true;

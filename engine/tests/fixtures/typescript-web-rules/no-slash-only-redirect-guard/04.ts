@@ -1,0 +1,1 @@
+function safe(callbackUrl) { if (isSafeRedirect(callbackUrl) && callbackUrl.startsWith("/")) { return callbackUrl; } return "/"; }

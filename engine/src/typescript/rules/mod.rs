@@ -4,6 +4,7 @@ mod chunks;
 mod collections;
 mod contracts;
 mod defaults;
+mod deserialization;
 mod delegation;
 mod domain;
 mod database;
@@ -16,6 +17,8 @@ mod escaping;
 mod events;
 mod forwarding;
 mod handlers;
+mod http_values;
+mod hashes;
 mod io_loops;
 mod jobs;
 mod lazy_relations;
@@ -24,6 +27,7 @@ mod lifecycles;
 mod listeners;
 mod listings;
 mod loop_repeats;
+mod module_values;
 mod modules;
 mod number_input;
 mod patterns;
@@ -32,6 +36,8 @@ mod presence;
 mod promises;
 mod queries;
 mod react_tests;
+mod redirects;
+mod response_json;
 mod secrets;
 mod security_values;
 mod signatures;
@@ -41,6 +47,7 @@ pub mod support;
 mod test_assertions;
 mod test_quality;
 mod test_runtime;
+mod terminal;
 pub mod testing_library;
 mod time;
 mod time_zones;
@@ -140,7 +147,7 @@ impl<'a> Context<'a, '_> {
 pub type Rule = fn(&mut Context);
 
 /// Rules written against the ESTree-shaped view.
-const ON_VIEW: &[&str] = &["contract-infrastructure-type", "exhaustive-union-predicate", "handler-entity-type", "hover-test-needs-keyboard", "no-accumulator-concat", "no-add-only-collection", "no-array-spread-arguments", "no-assertion-in-loop", "no-blank-number-coercion", "no-case-mixed-header-merge", "no-case-sensitive-path-compare", "no-chunkwise-stream-text", "no-copied-constant", "no-copy-pasted-tests", "no-double-decode", "no-dropped-delegate-result", "no-dual-write", "no-dynamic-import-of-path", "no-eager-relation", "no-empty-every-signal", "no-expanding-replacement-string", "no-external-executables-in-unit-tests", "no-falsy-default", "no-forwarding-method-alias", "no-forwarding-wrapper", "no-git-repository-per-test", "no-hardcoded-secret", "no-in-presence-check", "no-incomplete-escaping", "no-internal-module-mocks", "no-interval-polling-in-tests", "no-io-in-loop", "no-lazy-relation-in-loop", "no-local-time-zone", "no-lookup-as-presence", "no-many-to-many-cascade-remove", "no-mutating-method-in-domain", "no-node-process-per-test", "no-orm-query-logging", "no-orm-schema-sync", "no-parameter-mutation", "no-remote-call-in-transaction", "no-remote-call-under-lock", "no-retry-without-idempotency", "no-secret-in-log", "no-server-or-worker-per-test", "no-shadowed-spread-key", "no-shared-test-state", "no-stale-retry-after-conflict", "no-string-as-regex", "no-swapped-arguments", "no-switched-off-tests", "no-unbounded-query-array", "no-unencoded-url-part", "no-unescaped-filter-value", "no-unescaped-pattern-translation", "no-unhandled-void-promise", "no-union-order-dependence", "no-unisolated-job-loop", "no-unknown-in-domain", "no-unordered-query", "no-unowned-async-assertion", "no-unpaged-listing", "no-unresolved-relative-url", "no-unversioned-orm-entity", "no-wait-for-with-fake-timers", "preserve-error-cause", "react-test-no-implementation-details", "report-module-load-effects", "require-error-listener", "settle-pending-on-close", "structured-catch-logging", "test-must-use-production-runtime", "time-unit-mismatch"];
+const ON_VIEW: &[&str] = &["contract-infrastructure-type", "exhaustive-union-predicate", "handler-entity-type", "hover-test-needs-keyboard", "no-accumulator-concat", "no-add-only-collection", "no-array-spread-arguments", "no-assertion-in-loop", "no-blank-number-coercion", "no-case-mixed-header-merge", "no-case-sensitive-path-compare", "no-chunkwise-stream-text", "no-copied-constant", "no-copy-pasted-tests", "no-double-decode", "no-dropped-delegate-result", "no-dual-write", "no-dynamic-import-of-path", "no-eager-relation", "no-empty-every-signal", "no-error-response-without-status", "no-expanding-replacement-string", "no-external-executables-in-unit-tests", "no-falsy-default", "no-forwarding-method-alias", "no-forwarding-wrapper", "no-git-repository-per-test", "no-hardcoded-secret", "no-in-presence-check", "no-incomplete-escaping", "no-internal-module-mocks", "no-interval-polling-in-tests", "no-io-in-loop", "no-lazy-relation-in-loop", "no-local-time-zone", "no-lookup-as-presence", "no-many-to-many-cascade-remove", "no-mutating-method-in-domain", "no-node-process-per-test", "no-orm-query-logging", "no-orm-schema-sync", "no-parameter-mutation", "no-raw-http-value", "no-remote-call-in-transaction", "no-remote-call-under-lock", "no-retry-without-idempotency", "no-secret-in-log", "no-send-without-return", "no-server-or-worker-per-test", "no-shadowed-spread-key", "no-shared-test-state", "no-slash-only-redirect-guard", "no-stale-retry-after-conflict", "no-string-as-regex", "no-swapped-arguments", "no-switched-off-tests", "no-unbounded-query-array", "no-unchecked-response-json", "no-unchecked-url-sink", "no-unencoded-url-part", "no-unescaped-filter-value", "no-unescaped-pattern-translation", "no-unhandled-void-promise", "no-union-order-dependence", "no-unisolated-job-loop", "no-unknown-in-domain", "no-unordered-query", "no-unowned-async-assertion", "no-unpaged-listing", "no-unresolved-relative-url", "no-unsafe-deserialization", "no-unstripped-remote-text", "no-unversioned-orm-entity", "no-wait-for-with-fake-timers", "no-weak-hash", "preserve-error-cause", "react-test-no-implementation-details", "report-module-load-effects", "require-error-listener", "settle-pending-on-close", "structured-catch-logging", "test-must-use-production-runtime", "time-unit-mismatch"];
 
 pub const ALL: &[(&str, Rule)] = &[
     ("hover-test-needs-keyboard", react_tests::hover_test_needs_keyboard::check),
@@ -153,6 +160,7 @@ pub const ALL: &[(&str, Rule)] = &[
     ("no-double-decode", urls::decoding::check),
     ("no-dynamic-import-of-path", urls::paths::imports::check),
     ("no-eager-relation", persistence::no_eager_relation::check),
+    ("no-error-response-without-status", handlers::error_response_without_status),
     ("no-external-executables-in-unit-tests", test_runtime::no_external_executables_in_unit_tests::check),
     ("no-git-repository-per-test", test_runtime::per_test::rules::no_git_repository_per_test),
     ("no-hardcoded-secret", secrets::hardcoded::check),
@@ -165,13 +173,18 @@ pub const ALL: &[(&str, Rule)] = &[
     ("no-orm-query-logging", database::no_orm_query_logging::check),
     ("no-orm-schema-sync", database::no_orm_schema_sync::check),
     ("no-production-console", modules::no_production_console::check),
+    ("no-raw-http-value", http_values::check),
     ("no-secret-in-log", secrets::in_log::check),
+    ("no-send-without-return", handlers::send_without_return),
     ("no-server-or-worker-per-test", test_runtime::per_test::rules::no_server_or_worker_per_test),
     ("no-shared-test-state", test_quality::no_shared_test_state::check),
     ("no-silent-catch", errors::no_silent_catch::check),
+    ("no-slash-only-redirect-guard", redirects::check),
     ("no-switched-off-tests", test_assertions::switched_off::check),
     ("no-test-helpers-in-source", test_quality::helpers_in_source::check),
     ("no-unbounded-query-array", queries::arrays::no_unbounded_query_array::check),
+    ("no-unchecked-response-json", response_json::check),
+    ("no-unchecked-url-sink", urls::links::check),
     ("no-unencoded-url-part", urls::unencoded::check),
     ("no-unescaped-filter-value", wildcards::filters::check),
     ("no-unescaped-pattern-translation", wildcards::translation::check),
@@ -179,7 +192,10 @@ pub const ALL: &[(&str, Rule)] = &[
     ("no-unowned-async-assertion", test_assertions::unowned_async::check),
     ("no-unpaged-listing", listings::no_unpaged_listing::check),
     ("no-unresolved-relative-url", urls::relative::check),
+    ("no-unsafe-deserialization", deserialization::check),
+    ("no-unstripped-remote-text", terminal::check),
     ("no-wait-for-with-fake-timers", test_runtime::no_wait_for_with_fake_timers::check),
+    ("no-weak-hash", hashes::check),
     ("preserve-error-cause", errors::preserve_error_cause::check),
     ("react-test-no-implementation-details", react_tests::no_implementation_details::check),
     ("report-module-load-effects", modules::load_effects::check),

@@ -17,6 +17,7 @@ tester.run('no-depth-only-worklist', rule, {
     'export function reach(root) { const pending = [{ node: root, depth: 0 }]; const out = []; for (const item of pending) { if (item.depth > 3) continue; out.push(...childrenOf(item.node)); } return out; }',
     'export function reach(root) { const pending = [{ node: root, depth: 0 }]; for (const item of pending) { if (item.depth > 8) continue; for (const child of item.node.children) { pending.push({ node: child, depth: item.depth + 1 }); } } }',
     'export function reach(root, depth) { const pending = [root]; while (pending.length > 0) { const node = pending.pop(); if (depth < 5) { log(node); } for (const child of sourcesOf(node)) pending.push(child); } }',
+    "export function reach(root) { const pending = [{ node: root, depth: 0 }]; for (const item of pending) { if (item['depth'] > 8) continue; pending.push(...childrenOf(item.node)); } }",
   ],
   invalid: [
     invalid(

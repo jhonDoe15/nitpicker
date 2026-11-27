@@ -1,0 +1,1 @@
+import libxmljs from "libxmljs"; export const doc = libxmljs.parseXml(xml, { noent: true });

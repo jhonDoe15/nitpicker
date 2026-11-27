@@ -1,0 +1,1 @@
+const type = headers.get('content-type'); if (['a/b', 'c/d'].includes(type)) { run(); }

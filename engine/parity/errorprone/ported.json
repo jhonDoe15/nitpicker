@@ -533,6 +533,7 @@
  "CacheLoaderNull",
  "DoNotMockAutoValue",
  "RequiredModifiers",
+ "RestrictedApi",
  "CollectionIncompatibleType",
  "FallThrough",
  "MissingDefault",

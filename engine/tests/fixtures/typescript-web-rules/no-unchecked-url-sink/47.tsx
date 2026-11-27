@@ -1,0 +1,1 @@
+function go(item) { window.location.href = item.returnTo; }

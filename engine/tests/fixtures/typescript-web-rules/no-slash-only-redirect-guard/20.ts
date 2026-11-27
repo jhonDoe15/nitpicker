@@ -1,0 +1,1 @@
+function pick(callbackURL) { return callbackURL.startsWith("/") ? callbackURL : "/"; }

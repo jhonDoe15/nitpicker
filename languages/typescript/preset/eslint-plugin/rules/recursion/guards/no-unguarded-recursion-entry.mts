@@ -1,5 +1,11 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
-import { fileCalls, reachable, type FileCalls, type FileFunction } from '../graph/file-calls.mts';
+import {
+  callsFrom,
+  fileCalls,
+  reachable,
+  type FileCalls,
+  type FileFunction,
+} from '../graph/file-calls.mts';
 import { keyedUses, sharedGuards, touched } from './guard-uses.mts';
 
 type MessageIds = 'unguardedEntry';
@@ -14,13 +20,13 @@ function guardOf(fn: FileFunction, guards: ReadonlySet<string>): string | undefi
 }
 
 function sharesCycle(graph: FileCalls, guarded: FileFunction, entry: FileFunction): boolean {
-  const fromGuarded = graph.calls.get(guarded.key) ?? new Set<string>();
-  const fromEntry = graph.calls.get(entry.key) ?? new Set<string>();
+  const fromGuarded = callsFrom(graph, guarded.key);
+  const fromEntry = callsFrom(graph, entry.key);
   if (fromEntry.has(guarded.key)) {
     return false;
   }
   return [...fromEntry].some((shared) => {
-    if (shared === guarded.key || shared === entry.key || !fromGuarded.has(shared)) {
+    if (shared === entry.key || !fromGuarded.has(shared)) {
       return false;
     }
     const back = reachable(graph, shared);

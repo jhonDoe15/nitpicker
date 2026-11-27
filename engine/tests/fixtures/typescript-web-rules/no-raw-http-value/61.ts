@@ -1,0 +1,1 @@
+const ext = file.split('.').pop(); const type = mimeTypes.get(ext);

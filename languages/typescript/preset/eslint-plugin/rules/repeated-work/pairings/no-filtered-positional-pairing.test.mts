@@ -54,8 +54,39 @@ declare function use(...xs: unknown[]): void;
 
 export function f(a: number[], b: number[]) { return zip(a, b); }
 declare function zip<A, B>(a: A[], b: B[]): [A, B][];
+
+export function f(a: number[], b: number[]) { const ka = a.sort(); const kb = b.sort();
+  return ka.map((x, i) => x + kb[i]!); }
+
+export function f(a: number[], b: number[], mode: "reverse") { const ka = a[mode](); const kb = b.sort();
+  return ka.map((x, i) => x + kb[i]!); }
+
+export function f(a: number[], b: number[], run: "map") { return a[run]((x, i) => x + b[i]!); }
+
+export function f(a: number[], b: number[], n: number) { for (let i = 0; i < n; i++) { use(a[i], b[i]); } }
+declare function use(...xs: unknown[]): void;
+
+export function f(n: number) { for (;;) { if (n > 0) break; } }
+
+export function f(a: number[], b: number[]) { for (let i = 0; i <= a.length; i++) { use(a[i], b[i]); } }
+declare function use(...xs: unknown[]): void;
+
+export function f(a: number[], b: number[]) { let i = 0; for (i = 0; i < a.length; i++) { use(a[i], b[i]); } }
+declare function use(...xs: unknown[]): void;
+
+export class Box { a: number[] = []; b: number[] = []; run() { for (let i = 0; i < this.a.length; i++) {
+  use(this.a[i], this.b[i]); } } }
+declare function use(...xs: unknown[]): void;
 `),
   invalid: [
+    {
+      code: 'export function f(a: number[], b: number[]) { const ka = a.filter((x) => x > 0).map((x) => x * 2); return ka.map((x, i) => x + b[i]!); }',
+      errors: [PAIRED('ka')],
+    },
+    {
+      code: 'export function f(b: number[]) { const ka = load(); const kb = b.filter((y) => y > 0); return ka.map((x, i) => x + kb[i]!); }\ndeclare function load(): number[];',
+      errors: [PAIRED('kb')],
+    },
     {
       code: 'export function f(params: Type[], wanted: Type[]) { const declared = params.map(substitute).filter((kind) => !kind.isVariable); return declared.map((d, i) => unify(wanted[i]!, d)); }\ndeclare function substitute(t: Type): Type;\ndeclare function unify(a: Type, b: Type): void;',
       errors: [PAIRED('declared')],

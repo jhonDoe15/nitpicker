@@ -1,0 +1,1 @@
+function f(url) { router.push(url.pathname); }

@@ -1,0 +1,1 @@
+const ext = file.slice(file.lastIndexOf('.') + 1); const type = MIME[ext];

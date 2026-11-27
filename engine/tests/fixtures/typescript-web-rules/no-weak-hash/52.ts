@@ -1,0 +1,1 @@
+import md5 from "md5"; export const id = (s) => md5(s);

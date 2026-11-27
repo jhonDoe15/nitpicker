@@ -15,6 +15,19 @@ function isCollected(node: TSESTree.CallExpression): boolean {
   );
 }
 
+function isMapCall(
+  node: TSESTree.Node | undefined,
+): node is TSESTree.CallExpression & { callee: TSESTree.MemberExpression } {
+  return (
+    node?.type === AST_NODE_TYPES.CallExpression &&
+    node.callee.type === AST_NODE_TYPES.MemberExpression &&
+    !node.callee.computed &&
+    node.callee.property.type === AST_NODE_TYPES.Identifier &&
+    node.callee.property.name === 'map' &&
+    node.arguments.length === 1
+  );
+}
+
 export const rule: TSESLint.RuleModule<'allOrNothing'> = {
   meta: {
     type: 'problem',
@@ -33,12 +46,7 @@ export const rule: TSESLint.RuleModule<'allOrNothing'> = {
         const [mapped] = node.arguments;
         if (
           !isNamedMember(node.callee, 'Promise', 'all') ||
-          mapped?.type !== AST_NODE_TYPES.CallExpression ||
-          mapped.callee.type !== AST_NODE_TYPES.MemberExpression ||
-          mapped.callee.computed ||
-          mapped.callee.property.type !== AST_NODE_TYPES.Identifier ||
-          mapped.callee.property.name !== 'map' ||
-          mapped.arguments.length !== 1 ||
+          !isMapCall(mapped) ||
           !isCollected(node) ||
           isInsideTry(node) ||
           !isIndependentInputs(context, mapped.callee.object)

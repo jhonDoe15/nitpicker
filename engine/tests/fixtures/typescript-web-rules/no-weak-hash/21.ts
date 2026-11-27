@@ -1,0 +1,1 @@
+export const a = hashOf("sha256", data);

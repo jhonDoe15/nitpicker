@@ -1,4 +1,5 @@
 import type { Finding } from '../../../../shared/values/findings.mts';
+import { messageOf } from '../../../../shared/values/readers.mts';
 import { runTypedCheckParts } from '../../adapters/typed-engine/typed-checks.mts';
 import type { TypedPlan } from '../unused-api/engine/typed-plans.mts';
 import { unusedApiPlan } from '../unused-api/analyze.mts';
@@ -24,7 +25,7 @@ function attempt<T>(run: () => T): Outcome<T> {
   try {
     return run();
   } catch (error) {
-    return { error: error instanceof Error ? error.message : String(error) };
+    return { error: messageOf(error) };
   }
 }
 
@@ -40,15 +41,15 @@ export function analyzeTypedStructure(
     plan: attempt((): TypedPlan<Finding[]> => plan(request)),
   }));
   const asked = plans.flatMap(({ plan }) =>
-    isFailed(plan) || plan.part === undefined ? [] : [plan],
+    isFailed(plan) || plan.part === undefined ? [] : [{ plan, part: plan.part }],
   );
   const results = attempt(() =>
     runTypedCheckParts(
-      asked.flatMap(({ part }) => (part === undefined ? [] : [part])),
+      asked.map(({ part }) => part),
       request.environment,
     ),
   );
-  const positions = new Map(asked.map((plan, index) => [plan, index]));
+  const positions = new Map(asked.map(({ plan }, index) => [plan, index]));
   return Object.fromEntries(
     plans.map(({ rule, plan }) => {
       if (isFailed(plan)) {

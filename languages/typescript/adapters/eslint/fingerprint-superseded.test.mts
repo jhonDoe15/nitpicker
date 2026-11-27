@@ -47,3 +47,34 @@ describe('findings another rule already covers', () => {
     ]);
   });
 });
+
+describe('ESLint output that is not a list of results', () => {
+  function normalizing(value: unknown) {
+    const root = makeTemporaryRoot('nitpicker-eslint-shape-');
+    mkdirSync(path.join(root, 'src'), { recursive: true });
+    writeFileSync(path.join(root, 'src/a.ts'), 'export const a = 1;\n');
+    const resolved: unknown = JSON.parse(
+      JSON.stringify(value).replaceAll('src/a.ts', path.join(root, 'src/a.ts')),
+    );
+    return () =>
+      normalizeEslintResults({ value: resolved, projectRoot: root, analyzerName: 'eslint-lint' });
+  }
+
+  it('refuses output that is not an array', () => {
+    expect(normalizing({})).toThrow('ESLint JSON output must be an array');
+  });
+
+  it('refuses a result without a file path or messages', () => {
+    expect(normalizing([null])).toThrow('ESLint result 0 must contain filePath');
+    expect(normalizing([{ filePath: 1, messages: [] }])).toThrow('must contain filePath');
+    expect(normalizing([{ filePath: 'src/a.ts' }])).toThrow(
+      'ESLint result 0 must contain messages',
+    );
+  });
+
+  it('refuses a message that is not an object', () => {
+    expect(normalizing([{ filePath: 'src/a.ts', messages: ['text'] }])).toThrow(
+      'must be an object',
+    );
+  });
+});

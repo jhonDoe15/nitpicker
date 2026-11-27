@@ -1,0 +1,1 @@
+const ext = path.extname(file); const size = SIZES[ext];

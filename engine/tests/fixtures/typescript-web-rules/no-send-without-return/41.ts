@@ -1,0 +1,1 @@
+async function create(req, res, next) { if (!ok) { next(new Error("x")); } await save(); res.status(201).json({}); }

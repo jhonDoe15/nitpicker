@@ -1,0 +1,1 @@
+import { createHash, createHmac } from "node:crypto"; export const id = (s, fast) => createHash(fast ? "md5" : "sha256").update(s).digest();

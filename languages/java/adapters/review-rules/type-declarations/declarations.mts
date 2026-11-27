@@ -1,4 +1,5 @@
 import { appendAll } from '../../../../../shared/lists/lists.mts';
+import { textOf } from '../../../../../shared/values/readers.mts';
 import type { BareSource, SourceFile, Span } from '../max-value-sums/sum-types.mts';
 import {
   angleStep,
@@ -182,7 +183,7 @@ function declarationsOf(source: BareSource, context: FileContext): TypeDecl[] {
 const WILDCARD_IMPORT = /^\s*import\s+([\w.]+)\.\*\s*;/gmu;
 
 function wildcardImports(text: string): string[] {
-  return [...text.matchAll(WILDCARD_IMPORT)].map((match) => `${match[1] ?? ''}.*`);
+  return [...text.matchAll(WILDCARD_IMPORT)].map((match) => `${textOf(match[1])}.*`);
 }
 
 export type ParsedTypes = { readonly source: SourceFile; readonly types: readonly TypeDecl[] };

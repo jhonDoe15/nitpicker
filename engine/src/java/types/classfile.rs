@@ -1,4 +1,5 @@
 //! A minimal class-file reader: name, supertypes, fields and method descriptors. Nothing else is read.
+use super::annotation_values::{Element, KEPT, Kept, modified_utf8};
 use super::model::{ClassInfo, Detail, Field, Hidden, Method, OBJECT, Type, flag};
 use super::typemarks::{self, Mark};
 
@@ -229,11 +230,19 @@ struct Attributes<'a> {
     type_marks: Vec<Mark>,
     /// `@org.mockito.Mock` without an explicit `answer`.
     mock: bool,
+    /// The annotations of `annotation_values::KEPT`, with their element values.
+    kept: Vec<Kept>,
 }
 
 fn starter(descriptor: &[u8]) -> bool {
     let named = descriptor.strip_prefix(b"L").and_then(|rest| rest.strip_suffix(b";"));
     named.is_some_and(|named| super::model::STARTERS.iter().any(|known| known.len() == named.len() && known.bytes().zip(named).all(|(a, b)| a == *b || a == b'.' && *b == b'/')))
+}
+
+/// Whether an annotation descriptor names one of `annotation_values::KEPT`.
+fn kept_kind(descriptor: &[u8]) -> bool {
+    let named = descriptor.strip_prefix(b"L").and_then(|rest| rest.strip_suffix(b";"));
+    named.is_some_and(|named| KEPT.iter().any(|known| known.len() == named.len() && known.bytes().zip(named).all(|(a, b)| a == *b || a == b'.' && *b == b'/')))
 }
 
 fn skip_element(reader: &mut Reader) -> Option<()> {
@@ -248,6 +257,47 @@ fn skip_element(reader: &mut Reader) -> Option<()> {
         }
         _ => reader.skip(2),
     }
+}
+
+/// Reads one element value whole.
+fn element_value<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<Element> {
+    let text = |index: u16| utf8(index).and_then(modified_utf8);
+    Some(match reader.u1()? {
+        b's' => text(reader.u2()?).map_or(Element::Other, Element::Text),
+        b'c' => utf8(reader.u2()?).and_then(annotation_name).map_or(Element::Other, Element::Class),
+        b'e' => {
+            let kind = utf8(reader.u2()?).and_then(annotation_name);
+            let name = text(reader.u2()?);
+            match (kind, name) {
+                (Some(kind), Some(name)) => Element::Enum(kind, name),
+                _ => Element::Other,
+            }
+        }
+        b'[' => {
+            let mut values = Vec::new();
+            for _ in 0..reader.u2()? {
+                values.push(element_value(reader, utf8)?);
+            }
+            Element::Array(values)
+        }
+        b'@' => kept_annotation(reader, utf8).map_or(Element::Other, |kept| Element::Annotation(Box::new(kept))),
+        _ => {
+            reader.skip(2)?;
+            Element::Other
+        }
+    })
+}
+
+/// Reads one annotation with its element values.
+fn kept_annotation<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<Kept> {
+    let name = utf8(reader.u2()?).and_then(annotation_name);
+    let mut elements = Vec::new();
+    for _ in 0..reader.u2()? {
+        let key = utf8(reader.u2()?).and_then(modified_utf8);
+        let value = element_value(reader, utf8)?;
+        elements.extend(key.map(|key| (key, value)));
+    }
+    name.map(|name| Kept { name, elements })
 }
 
 /// Reads one element value and adds the constant names of the enum values in it.
@@ -463,6 +513,10 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                         skip_element(reader)?;
                     }
                     found.mock = !answered;
+                }
+                if kept_kind(kind) {
+                    reader.at = begin;
+                    found.kept.extend(kept_annotation(reader, utf8));
                 }
                 if kind == b"Lcom/google/errorprone/annotations/DoNotMock;" {
                     found.do_not_mock = Some(text);
@@ -829,7 +883,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == 0 {
             let fixed = constant.filter(|_| flags & ACC_STATIC != 0).map(|_| Vec::new());
             let constant = constant.and_then(|index| match pool.get(index as usize)? {
-                Constant::Text(text) => Some(String::from_utf8_lossy(utf8(*text)?).into_owned()),
+                Constant::Text(text) => modified_utf8(utf8(*text)?),
                 Constant::Int(value) if descriptor == b"Z" => Some((*value != 0).to_string()),
                 _ => None,
             });
@@ -917,6 +971,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                         .collect(),
                     marked: String::new(),
                     nullable_types: Vec::new(),
+                    kept: std::mem::take(&mut found.kept),
                 },
                 shown: show_parameters(written.unwrap_or(descriptor), flags & ACC_VARARGS != 0).unwrap_or_default(),
                 nullable_parameters: {

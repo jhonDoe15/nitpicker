@@ -1,0 +1,1 @@
+function login(method, callback) { if (disabled) { callback(); } validate(); }

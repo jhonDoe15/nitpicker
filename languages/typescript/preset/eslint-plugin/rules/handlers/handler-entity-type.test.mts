@@ -23,6 +23,7 @@ write(
     "import { Model } from 'sequelize';",
     "import type { HydratedDocument } from 'mongoose';",
     'export class Invoice extends Model {}',
+    'export class Audit extends Model {}',
     'export type ProfileDocument = HydratedDocument<{ name: string }>;',
     'export interface Cat { name: string }',
     'export type CatDocument = HydratedDocument<Cat>;',
@@ -142,6 +143,15 @@ tester.run('handler-entity-type', rule, {
     source(
       `${NEST}import type { Account } from '${CUSTOM_PRISMA}';\n@Controller('accounts')\nexport class AccountsController { @Get() list(): Promise<Account[]> { return Promise.resolve([]); } }`,
       { errors: [entity('AccountsController.list', 'Account', 'Prisma')] },
+    ),
+    source(
+      `${ENTITIES}import { Audit as Ledger } from '../users/models';\n${NEST}@Controller('users')\nexport class UsersController {\n  @Get() list(): Promise<(Audit | Ledger | UserEntity)[]> { return Promise.resolve([]); }\n}`,
+      {
+        errors: [
+          entity('UsersController.list', 'Audit', 'Sequelize'),
+          entity('UsersController.list', 'UserEntity', 'TypeORM'),
+        ],
+      },
     ),
   ],
 });

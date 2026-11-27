@@ -41,18 +41,14 @@ function readGroup(spread: TSESTree.SpreadElement): Group | undefined {
   return storedGroup(fallback.left);
 }
 
-function writtenGroup(written: TSESTree.ArrayExpression): Group | undefined {
-  const array = outermostOf(written, WRAPPERS);
-  const { parent } = array;
-  if (parent === undefined) {
-    return undefined;
-  }
-  if (parent.type === AST_NODE_TYPES.AssignmentExpression) {
-    return parent.operator === '=' && parent.right === array ? storedGroup(parent.left) : undefined;
-  }
-  if (parent.type !== AST_NODE_TYPES.CallExpression || parent.arguments[1] !== array) {
-    return undefined;
-  }
+function assignedGroup(
+  parent: TSESTree.AssignmentExpression,
+  array: TSESTree.Node,
+): Group | undefined {
+  return parent.operator === '=' && parent.right === array ? storedGroup(parent.left) : undefined;
+}
+
+function setGroup(parent: TSESTree.CallExpression): Group | undefined {
   const member = calledMember(parent);
   const [key] = parent.arguments;
   return member !== undefined &&
@@ -60,6 +56,17 @@ function writtenGroup(written: TSESTree.ArrayExpression): Group | undefined {
     parent.arguments.length === 2 &&
     key !== undefined
     ? { target: member.object, key }
+    : undefined;
+}
+
+function writtenGroup(written: TSESTree.ArrayExpression): Group | undefined {
+  const array = outermostOf(written, WRAPPERS);
+  const { parent } = array;
+  if (parent?.type === AST_NODE_TYPES.AssignmentExpression) {
+    return assignedGroup(parent, array);
+  }
+  return parent?.type === AST_NODE_TYPES.CallExpression && parent.arguments[1] === array
+    ? setGroup(parent)
     : undefined;
 }
 

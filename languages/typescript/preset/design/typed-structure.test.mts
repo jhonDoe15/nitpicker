@@ -98,3 +98,48 @@ it('reports a failed plan for its own check and still runs the other one', () =>
     typeof failure === 'object' && 'error' in failure ? failure.error.split(':')[0] : failure,
   ).toBe('The TypeScript config could not be read');
 });
+
+it('reports a failed engine run for the checks that asked it and still runs the others', () => {
+  const root = createProject({
+    fixture: 'signals',
+    files: {
+      'src/legacy.mjs':
+        '/** @param {string} options */\nexport function shown(options) {\n  return options;\n}\n',
+    },
+  });
+  folders.push(root);
+  const outcome = typedStructureOf(root, {
+    NITPICKER_ENGINE: 'off',
+    NITPICKER_TYPED_ENGINE: 'required',
+  });
+
+  expect(outcome['unused-api']).toEqual({
+    error: 'NITPICKER_TYPED_ENGINE=required, but there is no engine binary',
+  });
+  expect(Array.isArray(outcome['design-signals'])).toBe(true);
+});
+
+it.runIf(process.platform !== 'win32')('reads the design facts the engine answers', () => {
+  const root = createProject({
+    files: {
+      'src/shown.ts': 'export function shown(options: string): string {\n  return options;\n}\n',
+    },
+  });
+  folders.push(root);
+  const stub = path.join(root, 'engine.mjs');
+  writeFileSync(
+    stub,
+    [
+      `#!${process.execPath}`,
+      "import { writeFileSync } from 'node:fs';",
+      'const args = process.argv.slice(2);',
+      "const out = args[args.indexOf('--out') + 1];",
+      "writeFileSync(out, JSON.stringify({ checks: { design: { types: [], callables: [] }, 'unused-api': {} } }));",
+    ].join('\n'),
+  );
+  chmodSync(stub, 0o755);
+
+  const outcome = typedStructureOf(root, { NITPICKER_ENGINE: stub });
+
+  expect(outcome['design-signals']).toEqual([]);
+});

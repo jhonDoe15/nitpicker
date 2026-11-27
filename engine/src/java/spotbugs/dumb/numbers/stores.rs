@@ -27,7 +27,12 @@ fn loop_start(usage: Node, store: Node, body: Node) -> Option<usize> {
 /// around the use: the declarator or assignment itself, so that a compound assignment keeps its operator.
 pub fn stores<'t>(context: &Context, usage: Node<'t>, name: &str) -> Vec<Node<'t>> {
     let Some(body) = ancestor(usage, BODIES) else { return Vec::new() };
-    let mut found: Vec<(usize, Node)> = Vec::new();
+    reaching(usage, &writes(context, body, name), body)
+}
+
+/// Every declarator with a value, assignment and update of a name in a body, in the order they are written.
+pub fn writes<'t>(context: &Context, body: Node<'t>, name: &str) -> Vec<Node<'t>> {
+    let mut found = Vec::new();
     walk(body, |node| {
         let writes = match node.kind() {
             "variable_declarator" => node.child_by_field_name("name").is_some_and(|declared| context.text(declared) == name) && node.child_by_field_name("value").is_some(),
@@ -35,11 +40,22 @@ pub fn stores<'t>(context: &Context, usage: Node<'t>, name: &str) -> Vec<Node<'t
             "update_expression" => crate::engine::source::named_children(node).iter().any(|part| part.kind() == "identifier" && context.text(*part) == name),
             _ => false,
         };
-        let at = if node.end_byte() <= usage.start_byte() { Some(node.start_byte()) } else { loop_start(usage, node, body) };
-        if let Some(at) = at.filter(|_| writes) {
-            found.push((at, node));
+        if writes {
+            found.push(node);
         }
     });
+    found
+}
+
+/// Which of the writes of a local reach a use, as `stores` counts them.
+pub fn reaching<'t>(usage: Node<'t>, writes: &[Node<'t>], body: Node<'t>) -> Vec<Node<'t>> {
+    let mut found: Vec<(usize, Node)> = Vec::new();
+    for node in writes.iter().copied() {
+        let at = if node.end_byte() <= usage.start_byte() { Some(node.start_byte()) } else { loop_start(usage, node, body) };
+        if let Some(at) = at {
+            found.push((at, node));
+        }
+    }
     found.sort_by_key(|(at, _)| *at);
     let found: Vec<Node> = found.into_iter().map(|(_, node)| node).collect();
     let first = found.iter().rposition(|store| store.end_byte() <= usage.start_byte() && always_before(*store, usage, body)).unwrap_or(0);

@@ -7,6 +7,7 @@ import {
   type Typescript7Overrides,
 } from '../../../typescript-api/typescript7-options.mts';
 import { fieldsOf, parseJson } from '../../../../../shared/values/readers.mts';
+import { valueOr } from '../../../../../shared/values/attempt/attempt.mts';
 
 const NO_INPUT_CODES = new Set([18002, 18003]);
 export type { Typescript7Overrides };
@@ -37,17 +38,6 @@ export function typescript7Overrides(
   return options === undefined ? undefined : optionOverrides(options);
 }
 
-function jsonObject(text: string): Readonly<Record<string, unknown>> | undefined {
-  try {
-    return fieldsOf(parseJson(text));
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      return undefined;
-    }
-    throw error;
-  }
-}
-
 export async function withTypescript7Options<T>(
   configPath: string,
   run: () => Promise<T>,
@@ -57,7 +47,7 @@ export async function withTypescript7Options<T>(
     return run();
   }
   const original = await readFile(configPath, 'utf8');
-  const config = jsonObject(original);
+  const config = valueOr(() => fieldsOf(parseJson(original)), undefined);
   if (config === undefined) {
     return run();
   }

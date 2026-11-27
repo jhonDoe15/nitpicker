@@ -1,0 +1,1 @@
+export const f = (u: URL) => u.protocol === 'HTTPS:';

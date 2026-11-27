@@ -1,0 +1,1 @@
+const vary = res.headers.get('vary') || ''; if (!/(?:^|,)(?:\*|accept-encoding)(?:,|$)/i.test(vary)) { run(); }

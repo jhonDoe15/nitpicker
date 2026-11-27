@@ -1,0 +1,1 @@
+function F({ model }) { return /^https?:/.test(model.url) ? <a href={model.url}>x</a> : null; }

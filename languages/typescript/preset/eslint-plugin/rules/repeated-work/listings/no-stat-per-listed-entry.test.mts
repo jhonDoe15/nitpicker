@@ -32,8 +32,38 @@ declare function use(n: string): void;
       if (statSync(join(dir, name)).isDirectory()) use(name); } }\ndeclare function use(n: string): void;`,
     `${SYNC}\nexport function f(dir: string, other: string) { for (const name of readdirSync(dir)) {
       if (statSync(other).isDirectory()) use(name); } }\ndeclare function use(n: string): void;`,
+    `${SYNC}\nexport function f(dir: string, k: "isFile") { for (const name of readdirSync(dir)) {
+      if (statSync(join(dir, name))[k]()) use(name); } }\ndeclare function use(n: string): void;`,
+    `${SYNC}\nexport function f(fns: Record<string, (d: string) => void>, d: string) { fns[d](d); }`,
+    `${SYNC}\nexport function f(dir: string) { if (statSync(dir).isDirectory()) use(dir); }\ndeclare function use(n: string): void;`,
+    `${SYNC}\nexport function f(dir: string) { const names = ["a", "b"]; for (const name of names) {
+      if (statSync(join(dir, name)).isFile()) use(name); } }\ndeclare function use(n: string): void;`,
+    `${SYNC}\nexport function f(dir: string) { const names = readdirSync(dir, "utf8", 1); for (const name of names) {
+      if (statSync(join(dir, name)).isFile()) use(name); } }\ndeclare function use(n: string): void;`,
+    `${SYNC}\nexport function f(dir: string, api: Record<string, (d: string) => string[]>, kind: string) {
+      const names = api[kind](dir); for (const name of names) { if (statSync(join(dir, name)).isFile()) use(name); } }\ndeclare function use(n: string): void;`,
+    `${SYNC}\nexport function f(dir: string, names: string[]) { return names.filter(((name: string) =>
+      statSync(join(dir, name)).isFile()) as (name: string) => boolean); }`,
+    `${SYNC}\nexport function f(dir: string, names: string[]) { return names.filter((name) =>
+      statSync(join(dir, name)).isFile()); }`,
+    `${SYNC}\nexport function f(dir: string) { let name: string; for (name of readdirSync(dir)) {
+      if (statSync(join(dir, name)).isFile()) use(name); } }\ndeclare function use(n: string): void;`,
+    `${SYNC}\nexport function f(dir: string) { for (const [first] of readdirSync(dir)) {
+      if (statSync(join(dir, first)).isFile()) use(first); } }\ndeclare function use(n: string): void;`,
+    `${SYNC}\nexport function f(dir: string) { for (const name of readdirSync(dir)) {
+      if (statSync(\`\${dir}/\${name}.json\`).isFile()) use(name); } }\ndeclare function use(n: string): void;`,
+    `${SYNC}\nexport function f(dir: string, other: string) { for (const name of readdirSync(dir)) {
+      if (statSync(\`\${name}/\${other}\`).isFile()) use(name); } }\ndeclare function use(n: string): void;`,
   ],
   invalid: [
+    {
+      code: `${SYNC}\nexport function f(dir: string) { for (const name of readdirSync(dir)) { if (statSync(name).isFile()) use(name); } }\ndeclare function use(n: string): void;`,
+      errors: [STAT('statSync')],
+    },
+    {
+      code: `${SYNC}\nexport function f(dir: string) { for (const name of readdirSync(dir)) { if (statSync(\`\${dir}/\${name}\`).isFile()) use(name); } }\ndeclare function use(n: string): void;`,
+      errors: [STAT('statSync')],
+    },
     {
       code: `${SYNC}\nexport function walk(dir: string) { for (const name of readdirSync(dir)) { if (statSync(join(dir, name)).isDirectory()) walk(join(dir, name)); } }`,
       errors: [STAT('statSync')],

@@ -11,25 +11,35 @@ import { collectionValuedTarget } from './collection-values.mts';
 
 type Merge = { readonly target: TSESTree.Node; readonly sources: TSESTree.Node };
 
-function entryPair(repeat: Repeat): readonly [string, string] | undefined {
-  if (repeat.node.type === AST_NODE_TYPES.ForOfStatement) {
-    const { left } = repeat.node;
-    const [declarator] = left.type === AST_NODE_TYPES.VariableDeclaration ? left.declarations : [];
-    const pattern = declarator?.id;
-    const [key, value] = pattern?.type === AST_NODE_TYPES.ArrayPattern ? pattern.elements : [];
-    return key?.type === AST_NODE_TYPES.Identifier && value?.type === AST_NODE_TYPES.Identifier
-      ? [key.name, value.name]
-      : undefined;
-  }
-  const params = 'params' in repeat.node ? repeat.node.params : [];
-  const [value, key] = params;
-  const call = repeat.node.parent;
-  return call?.type === AST_NODE_TYPES.CallExpression &&
-    calleeNameOf(call.callee) === 'forEach' &&
-    key?.type === AST_NODE_TYPES.Identifier &&
-    value?.type === AST_NODE_TYPES.Identifier
+function namedPair(
+  key: TSESTree.Node | null | undefined,
+  value: TSESTree.Node | null | undefined,
+): readonly [string, string] | undefined {
+  return key?.type === AST_NODE_TYPES.Identifier && value?.type === AST_NODE_TYPES.Identifier
     ? [key.name, value.name]
     : undefined;
+}
+
+function loopPair(loop: TSESTree.ForOfStatement): readonly [string, string] | undefined {
+  const { left } = loop;
+  const [declarator] = left.type === AST_NODE_TYPES.VariableDeclaration ? left.declarations : [];
+  const pattern = declarator?.id;
+  const [key, value] = pattern?.type === AST_NODE_TYPES.ArrayPattern ? pattern.elements : [];
+  return namedPair(key, value);
+}
+
+function callbackPair(node: TSESTree.Node): readonly [string, string] | undefined {
+  const [value, key] = 'params' in node ? node.params : [];
+  const call = node.parent;
+  return call?.type === AST_NODE_TYPES.CallExpression && calleeNameOf(call.callee) === 'forEach'
+    ? namedPair(key, value)
+    : undefined;
+}
+
+function entryPair(repeat: Repeat): readonly [string, string] | undefined {
+  return repeat.node.type === AST_NODE_TYPES.ForOfStatement
+    ? loopPair(repeat.node)
+    : callbackPair(repeat.node);
 }
 
 function isName(node: TSESTree.Node | undefined, name: string): boolean {
@@ -53,22 +63,12 @@ function readsTarget(area: TSESTree.Node, target: TSESTree.Node): boolean {
   });
 }
 
-function setMerge(call: TSESTree.CallExpression): Merge | undefined {
-  const member = calledMember(call);
+function isEntrySet(call: TSESTree.CallExpression, pair: readonly [string, string]): boolean {
   const [key, value] = call.arguments;
-  const repeat = innermostRepeat(call);
-  const pair = repeat === undefined ? undefined : entryPair(repeat);
-  if (
-    member === undefined ||
-    memberName(member) !== 'set' ||
-    call.arguments.length !== 2 ||
-    pair === undefined ||
-    repeat === undefined ||
-    !isName(key, pair[0]) ||
-    !isName(value, pair[1])
-  ) {
-    return undefined;
-  }
+  return call.arguments.length === 2 && isName(key, pair[0]) && isName(value, pair[1]);
+}
+
+function outerMerge(member: TSESTree.MemberExpression, repeat: Repeat): Merge | undefined {
   if (readsTarget(repeat.node, member.object)) {
     return undefined;
   }
@@ -76,16 +76,38 @@ function setMerge(call: TSESTree.CallExpression): Merge | undefined {
   return outer === undefined ? undefined : { target: member.object, sources: outer.node };
 }
 
-function assignMerge(call: TSESTree.CallExpression): Merge | undefined {
-  const [target, source] = call.arguments;
-  const callee = unwrapped(call.callee);
+function setMerge(call: TSESTree.CallExpression): Merge | undefined {
+  const member = calledMember(call);
   const repeat = innermostRepeat(call);
-  return target !== undefined &&
-    repeat !== undefined &&
+  const pair = repeat === undefined ? undefined : entryPair(repeat);
+  if (
+    member === undefined ||
+    memberName(member) !== 'set' ||
+    pair === undefined ||
+    repeat === undefined ||
+    !isEntrySet(call, pair)
+  ) {
+    return undefined;
+  }
+  return outerMerge(member, repeat);
+}
+
+function isPlainAssign(call: TSESTree.CallExpression): boolean {
+  const callee = unwrapped(call.callee);
+  return (
     callee.type === AST_NODE_TYPES.MemberExpression &&
     isName(callee.object, 'Object') &&
     memberName(callee) === 'assign' &&
-    call.arguments.length === 2 &&
+    call.arguments.length === 2
+  );
+}
+
+function assignMerge(call: TSESTree.CallExpression): Merge | undefined {
+  const [target, source] = call.arguments;
+  const repeat = innermostRepeat(call);
+  return target !== undefined &&
+    repeat !== undefined &&
+    isPlainAssign(call) &&
     source?.type !== AST_NODE_TYPES.ObjectExpression
     ? { target, sources: repeat.node }
     : undefined;

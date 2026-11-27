@@ -60,9 +60,6 @@ export function isManifestName(node: TSESTree.Node): boolean {
 
 function alternatives(node: TSESTree.Node): TSESTree.Node[] {
   const plain = unwrapped(node);
-  if (plain.type === AST_NODE_TYPES.ChainExpression) {
-    return [plain.expression];
-  }
   return plain.type === AST_NODE_TYPES.LogicalExpression &&
     (plain.operator === '||' || plain.operator === '??')
     ? [plain.left, plain.right]

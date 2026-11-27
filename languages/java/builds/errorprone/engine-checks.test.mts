@@ -186,10 +186,10 @@ describe('engineChecksFor', () => {
       'it runs Lombok, which rewrites classes',
     );
     expect(wholeReason({ head: older, sources: [] })).toBe(
-      'it runs Lombok 1.18.30, outside the versions compared with Error Prone (1.18.36 to 1.18.48)',
+      'it runs Lombok 1.18.30, outside the versions compared with Error Prone (1.18.38 to 1.18.48)',
     );
-    expect(['1.18.36', '1.18.48', '1.18.40'].map(lombokTested)).toStrictEqual([true, true, true]);
-    expect(['1.18.34', '1.18.50', '1.20.0', '1.18'].map(lombokTested)).toStrictEqual([
+    expect(['1.18.38', '1.18.48', '1.18.40'].map(lombokTested)).toStrictEqual([true, true, true]);
+    expect(['1.18.36', '1.18.50', '1.20.0', '1.18'].map(lombokTested)).toStrictEqual([
       false,
       false,
       false,

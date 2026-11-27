@@ -1,0 +1,1 @@
+export const id = (s) => digest(s, { algorithm: "sha1" });

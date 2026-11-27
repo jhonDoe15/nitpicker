@@ -1,0 +1,1 @@
+function go(item) { location.replace(item.url); }

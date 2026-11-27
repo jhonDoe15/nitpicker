@@ -1,0 +1,1 @@
+async function create(req, res, next) { if (!ok) { res.redirect("/login"); } await save(); res.status(201).json({}); }

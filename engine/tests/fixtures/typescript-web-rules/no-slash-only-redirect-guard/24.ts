@@ -1,0 +1,1 @@
+function go(next) { if (next[0] === "/") { redirect(next); } }

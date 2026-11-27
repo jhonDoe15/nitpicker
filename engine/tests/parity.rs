@@ -135,7 +135,7 @@ fn concurrency_and_value_rules_report_what_pmd_reports() {
 }
 
 fn same_as_error_prone((found, expected): (Rows, Rows), checks: usize) {
-    let found: BTreeMap<Row, _> = found.into_iter().filter(|(row, _)| row.1 != "NullAway").collect();
+    let found: BTreeMap<Row, _> = found.into_iter().filter(|(row, _)| row.1 != "NullAway" && row.1 != "_HandBack").collect();
     let missed: Vec<&Row> = expected.iter().filter(|(row, count)| found.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     let extra: Vec<&Row> = found.iter().filter(|(row, count)| expected.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
@@ -162,6 +162,7 @@ fn a_selected_error_prone_check_reports_the_same_alone() {
     names.insert("NullAway".to_string());
     for name in &names {
         let (alone, _) = rows_selected("errorprone", "_ErrorProne", "all", Some(name));
+        let alone: Rows = alone.into_iter().filter(|(row, _)| row.1 != "_HandBack").collect();
         let wanted: Rows = all.iter().filter(|(row, _)| &row.1 == name).map(|(row, count)| (row.clone(), *count)).collect();
         assert!(!wanted.is_empty(), "{name}: nothing reported");
         assert_eq!(alone, wanted, "{name}");

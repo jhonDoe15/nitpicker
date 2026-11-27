@@ -1,0 +1,1 @@
+function f(url) { const parsed = new URL(url, origin); router.push(parsed.pathname); }

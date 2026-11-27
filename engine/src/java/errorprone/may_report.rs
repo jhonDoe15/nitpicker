@@ -98,7 +98,6 @@ pub const PRECONDITIONS: &[(&str, Gate)] = &[
         ]),
     ),
     ("ASTHelpersSuggestions", Gate::Types(&["com.google.errorprone.util.ASTHelpers"])),
-    ("RestrictedApi", Gate::Types(&["com.google.errorprone.annotations.RestrictedApi"])),
     ("StatementSwitchToExpressionSwitch", SWITCH),
     ("RefactorSwitch", SWITCH),
     ("BadInstanceof", INSTANCEOF),

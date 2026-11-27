@@ -105,20 +105,27 @@ function isReordered(reference: TSESLint.Scope.Reference): boolean {
   );
 }
 
+function soleDeclarator(variable: TSESLint.Scope.Variable): TSESTree.Expression | null {
+  const [definition] = variable.defs;
+  const declarator = definition?.node;
+  const isSole =
+    variable.defs.length === 1 &&
+    declarator?.type === AST_NODE_TYPES.VariableDeclarator &&
+    declarator.id.type === AST_NODE_TYPES.Identifier;
+  return isSole ? declarator.init : null;
+}
+
 function holdsListing(
   context: Context,
   bindings: ListingBindings,
   node: TSESTree.Identifier,
 ): boolean {
   const variable = variableNamed(context.sourceCode, node);
-  const [definition] = variable?.defs ?? [];
-  if (
-    variable === undefined ||
-    variable.defs.length !== 1 ||
-    definition?.node.type !== AST_NODE_TYPES.VariableDeclarator ||
-    definition.node.id.type !== AST_NODE_TYPES.Identifier ||
-    definition.node.init === null
-  ) {
+  if (variable === undefined) {
+    return false;
+  }
+  const init = soleDeclarator(variable);
+  if (init === null) {
     return false;
   }
   const writes = variable.references.filter(
@@ -126,7 +133,7 @@ function holdsListing(
   );
   return (
     writes.length === 0 &&
-    isListingValue(bindings, definition.node.init) &&
+    isListingValue(bindings, init) &&
     !variable.references.some((reference) => reference.isRead() && isReordered(reference))
   );
 }

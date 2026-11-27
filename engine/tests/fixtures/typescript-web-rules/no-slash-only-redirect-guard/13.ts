@@ -1,0 +1,1 @@
+function f(next) { if (!next.startsWith("/")) { return "/"; } return next.replace(/\/+/g, "/").replace(/^\/\//, "/"); }

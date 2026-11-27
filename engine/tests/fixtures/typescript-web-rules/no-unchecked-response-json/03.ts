@@ -1,0 +1,1 @@
+async function f(url) { const res = await fetch(url); if (!res.headers.get("content-type")?.includes("json")) { return null; } return res.json(); }

@@ -1,0 +1,1 @@
+if (c.req.header('Accept') !== 'text/html') { run(); }

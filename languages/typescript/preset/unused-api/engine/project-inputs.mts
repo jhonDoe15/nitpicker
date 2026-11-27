@@ -38,15 +38,26 @@ function absolutePaths(
   );
 }
 
+function pathsBaseOf(options: ProgramInputs['options'], projectRoot: string): string {
+  return (
+    optionalText(fieldOf(options, 'baseUrl')) ??
+    optionalText(fieldOf(options, 'pathsBasePath')) ??
+    projectRoot
+  );
+}
+
+function typescript7Options(options: ProgramInputs['options']): Readonly<Record<string, unknown>> {
+  const overrides = optionOverrides(options);
+  return {
+    ...overrides?.set,
+    ...Object.fromEntries((overrides?.unset ?? []).map((option) => [option, null])),
+  };
+}
+
 export function engineProjectConfig(
   { parsed, options, rootNames }: ProgramInputs,
   { configPath, projectRoot }: { readonly configPath: string; readonly projectRoot: string },
 ): unknown {
-  const pathsBase =
-    optionalText(fieldOf(options, 'baseUrl')) ??
-    optionalText(fieldOf(options, 'pathsBasePath')) ??
-    projectRoot;
-  const overrides = optionOverrides(options);
   return {
     extends: path.resolve(configPath),
     compilerOptions: {
@@ -57,9 +68,8 @@ export function engineProjectConfig(
       types: [],
       typeRoots: ts.getEffectiveTypeRoots(options, ts.sys) ?? [],
       ...(parsed.options.jsx === undefined ? { jsx: 'react-jsx' } : {}),
-      paths: absolutePaths(options.paths ?? {}, pathsBase),
-      ...overrides?.set,
-      ...Object.fromEntries((overrides?.unset ?? []).map((option) => [option, null])),
+      paths: absolutePaths(options.paths ?? {}, pathsBaseOf(options, projectRoot)),
+      ...typescript7Options(options),
     },
     files: rootNames,
     include: [],

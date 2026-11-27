@@ -1,0 +1,1 @@
+const type = request.headers.get('content-type')?.toLowerCase(); if (type === 'application/json') { run(); }

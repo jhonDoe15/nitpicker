@@ -1,0 +1,1 @@
+const auth = req.headers.authorization; if (auth?.startsWith('Bearer ')) { run(); }

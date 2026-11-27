@@ -216,8 +216,8 @@ pub fn assigned_writes(identifier: Node) -> Vec<Node> {
 
 fn written_values<'s>(scopes: &Scopes<'_, 's>, identifier: Node<'s>) -> Vec<Node<'s>> {
     let Some(name) = identifier.name() else { return Vec::new() };
-    let Some(variable) = scopes.variable_by_name(&name, identifier.start()) else { return Vec::new() };
-    let definitions = scopes.defs(variable);
+    let Some(variable) = super::variable_of(scopes, identifier) else { return Vec::new() };
+    let definitions = defs(scopes, identifier);
     let mut found: Vec<Node> = Vec::new();
     let mut add = |node: Node<'s>| {
         if !found.contains(&node) {

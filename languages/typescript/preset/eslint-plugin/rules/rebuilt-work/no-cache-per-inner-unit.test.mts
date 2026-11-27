@@ -9,6 +9,7 @@ function invalid(code: string) {
 
 tester.run('no-cache-per-inner-unit', rule, {
   valid: [
+    'export function f(file) { for (const decl of file.classes) { const s = new ns.SummaryCache(file); s.describe(decl); } }',
     'export function f(file) { const summaries = new SummaryCache(file); for (const decl of file.classes) { summaries.describe(decl); } }',
     'export function f(files) { for (const file of files) { const summaries = new SummaryCache(file); summaries.describe(); } }',
     'export function f(file) { const all = []; for (const decl of file.classes) { const summaries = new SummaryCache(file); all.push(summaries); } return all; }',

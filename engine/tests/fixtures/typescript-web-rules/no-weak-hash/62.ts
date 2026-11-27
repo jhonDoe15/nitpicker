@@ -1,0 +1,1 @@
+import CryptoJS from "crypto-js"; export const sign = (s: string, k: string) => CryptoJS.HmacSHA1(s, k).toString();

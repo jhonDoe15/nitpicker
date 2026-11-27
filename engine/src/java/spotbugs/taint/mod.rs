@@ -31,7 +31,7 @@ mod calls;
 mod derived;
 mod flow;
 mod injection;
-mod jdk;
+pub(crate) mod jdk;
 pub mod lines;
 mod sinks;
 mod statics;

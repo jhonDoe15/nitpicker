@@ -1,0 +1,1 @@
+const a = <Route path={model.url} />;

@@ -1,8 +1,10 @@
 //! SpotBugs bug patterns rebuilt for the engine from the documented meaning of each pattern and from what
 //! SpotBugs 4.9.8 reports on test code: same pattern name, line and message, read from source instead of class files.
 mod attributes;
+mod calendars;
 mod calls;
 mod casts;
+mod circuit;
 mod catches;
 mod classes;
 mod concurrent;
@@ -16,6 +18,7 @@ mod fields;
 mod handlers;
 mod held;
 mod idioms;
+mod floats;
 mod flow;
 mod folds;
 mod known;
@@ -28,6 +31,7 @@ mod naming;
 mod nulls;
 mod order;
 mod sequence;
+mod resources;
 mod returns;
 mod serial;
 pub mod place;
@@ -68,6 +72,8 @@ pub struct Context<'a> {
     out: RefCell<Vec<Finding>>,
     /// The names the compiler makes up for lambdas and anonymous classes, worked out once.
     compiled: std::cell::OnceCell<crate::java::javac::Names<'a>>,
+    /// The values the file stores into each field, `None` for a value no one can follow, worked out once.
+    pub field_stores: std::cell::OnceCell<HashMap<(String, String), Vec<Option<Node<'a>>>>>,
     /// SE_BAD_FIELD findings that wait for the classes the whole run knows.
     pub serial: RefCell<Vec<serial::Pending>>,
 }
@@ -100,6 +106,7 @@ impl<'a> Context<'a> {
             selected,
             out: RefCell::new(Vec::new()),
             compiled: std::cell::OnceCell::new(),
+            field_stores: std::cell::OnceCell::new(),
             serial: RefCell::new(Vec::new()),
         };
         (context, declared)
@@ -238,6 +245,8 @@ const DETECTORS: &[Detector] = &[
     sequence::sequence as Detector,
     dumb::dumb as Detector,
     tail::tail as Detector,
+    calendars::calendars as Detector,
+    circuit::circuits as Detector,
 ];
 
 #[derive(Default)]
@@ -248,6 +257,7 @@ pub struct SpotBugs {
     attributes: attributes::Attributes,
     taint: taint::Derived,
     effects: returns::Effects,
+    floats: floats::Floats,
 }
 
 impl FileRule for SpotBugs {
@@ -275,9 +285,11 @@ impl FileRule for SpotBugs {
             returns::returns(&context, &self.effects);
         }
         catches::catches(&context);
+        resources::resources(&context);
         values::values(&context, &declared);
         nulls::null_dereference(&context, &declared);
         taint::injections(&context, &declared, &self.taint);
+        floats::floats(&context, &declared, &self.floats);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
         if context.wants(attributes::PATTERNS) {
             let names = self.attributes.names(&project.index, &project.sources);
@@ -295,6 +307,7 @@ impl FileRule for SpotBugs {
             self.attributes.settle(&project.index, &project.literals, || self.known.visits(&project.index), out);
             self.taint.settle(project, &self.elsewhere, out);
             self.effects.settle(project, out);
+            self.floats.settle(out);
         }
     }
 }

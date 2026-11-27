@@ -1,0 +1,1 @@
+function f(req, res) { if (!req.body) { res.status(400).send("Invalid body"); } res.send("OK"); }

@@ -31,6 +31,21 @@ tester.run('no-single-folder-config-lookup', rule, {
     "function pick(directory) { return existsSync(path.join(directory, 'tsconfig.json', 'x')) ? 'a' : DEFAULT_CONFIG; }",
     "function pick(directory) { try { return readFileSync(path.join(directory, 'package.json'), 'utf8'); } catch { return DEFAULT_TEXT; } }",
     "function pick(directory) { return existsSync(path.join(directory, 'tsconfig.json')) ? read(directory) : fail(directory); }",
+    "function pick(d) { return existsSync(d) ? 'a' : DEFAULT_CONFIG; }",
+    "function pick(d) { return existsSync(foo(d, 'tsconfig.json')) ? 'a' : DEFAULT_CONFIG; }",
+    "function pick(d) { return existsSync(path['join'](d, 'tsconfig.json')) ? 'a' : DEFAULT_CONFIG; }",
+    "function pick(d) { return fs['existsSync'](path.join(d, 'tsconfig.json')) ? 'a' : DEFAULT_CONFIG; }",
+    "function pick(d) { return existsSync(path.join()) ? 'a' : DEFAULT_CONFIG; }",
+    "function pick(d) { return existsSync(path.join(d)) ? 'a' : DEFAULT_CONFIG; }",
+    "function pick(d) { try { return readFileSync(path.join(d, 'tsconfig.json'), 'utf8'); } finally { done(); } }",
+    "function pick(d) { try { return readFileSync(path.join(d, 'tsconfig.json'), 'utf8'); } catch { log(d); } }",
+    "function pick(d) { try { return readFileSync(path.join(d, 'tsconfig.json'), 'utf8'); } catch { } }",
+    "function pick(d) { if (x) if (existsSync(path.join(d, 'tsconfig.json'))) return 'a'; }",
+    "const config = existsSync(join(d, 'tsconfig.json')) ? 'a' : undefined;",
+    "const found = list.map((d) => existsSync(join(d, 'tsconfig.json')) ? d : undefined);",
+    "function pick(d) { return existsSync(path.join(d, 'tsconfig.json')) ? 'a' : 5; }",
+    "function pick(d) { return existsSync(path.join(d, 'tsconfig.json')) ? 'a' : other(); }",
+    "function pick(d) { return existsSync(path.join(d, 'tsconfig.json')) ? 'a' : `none`; }",
   ],
   invalid: [
     invalid(
@@ -65,6 +80,27 @@ tester.run('no-single-folder-config-lookup', rule, {
     ),
     invalid(
       "function pick(directory) { return existsSync(path.join(directory, 'eslint.config.mjs')) ? 'a' : 'bundled.mjs'; }",
+    ),
+    invalid(
+      "function pick(d) { return !existsSync(join(d, 'tsconfig.json')) ? DEFAULT_CONFIG : 'a'; }",
+    ),
+    invalid(
+      "function pick(d) { return existsSync(path.join(d, 'tsconfig.json')) ? 'a' : config.DEFAULT_CONFIG; }",
+    ),
+    invalid(
+      "function pick(d) { return existsSync(path.join(foo(), 'tsconfig.json')) ? 'a' : DEFAULT_CONFIG; }",
+    ),
+    invalid(
+      "function pick(d) { if (existsSync(path.join(d, 'tsconfig.json'))) { return 'a'; } return; }\nconst config = pick(x) ?? DEFAULT_CONFIG;",
+    ),
+    invalid(
+      "function pick(d) { let c; try { c = JSON.parse(readFileSync(path.join(d, 'tsconfig.json'), 'utf8')); } catch { c = DEFAULT_TSCONFIG; } return c; }",
+    ),
+    invalid(
+      "const found = list.map((d) => existsSync(join(d, 'tsconfig.json')) ? 'a' : DEFAULT_CONFIG);",
+    ),
+    invalid(
+      "const config = existsSync(join(d, 'tsconfig.json')) ? 'a' : DEFAULT_CONFIG;\nother['run']();",
     ),
   ],
 });

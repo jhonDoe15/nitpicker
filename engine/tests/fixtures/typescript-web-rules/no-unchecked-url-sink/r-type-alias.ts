@@ -1,0 +1,1 @@
+type url = string; const { url } = m; window.open(url);

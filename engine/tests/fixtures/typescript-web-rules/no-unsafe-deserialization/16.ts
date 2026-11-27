@@ -1,0 +1,1 @@
+import v8 from "node:v8"; export const data = v8.deserialize(bytes);

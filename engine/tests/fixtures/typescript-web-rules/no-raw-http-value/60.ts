@@ -1,0 +1,1 @@
+const ext = path.extname(file); const type = MIME_TYPES[ext];

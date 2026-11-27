@@ -67,14 +67,30 @@ function addSpecifier(
   }
 }
 
-function requiredModule(node: TSESTree.Expression | undefined): string | undefined {
+function requiredModule(node: TSESTree.Expression | null): string | undefined {
   const call = node?.type === AST_NODE_TYPES.AwaitExpression ? node.argument : node;
   const source = requiredLiteral(call);
   return typeof source === 'string' ? source : undefined;
 }
 
+function addDestructured(bindings: ListingBindings, kind: Kind, id: TSESTree.BindingName): void {
+  if (id.type !== AST_NODE_TYPES.ObjectPattern) {
+    return;
+  }
+  for (const property of id.properties) {
+    if (property.type !== AST_NODE_TYPES.Property) {
+      continue;
+    }
+    const imported = nameOf(property.key);
+    const local = nameOf(property.value);
+    if (imported !== undefined && local !== undefined && LISTING_NAMES[kind].has(imported)) {
+      bindings.named.set(local, imported);
+    }
+  }
+}
+
 function addRequire(bindings: ListingBindings, declarator: TSESTree.VariableDeclarator): void {
-  const kind = MODULE_KINDS.get(requiredModule(declarator.init ?? undefined) ?? '');
+  const kind = MODULE_KINDS.get(requiredModule(declarator.init) ?? '');
   const { id } = declarator;
   if (kind === undefined) {
     return;
@@ -83,13 +99,7 @@ function addRequire(bindings: ListingBindings, declarator: TSESTree.VariableDecl
     bindings.namespaces.set(id.name, kind);
     return;
   }
-  for (const property of id.type === AST_NODE_TYPES.ObjectPattern ? id.properties : []) {
-    const imported = property.type === AST_NODE_TYPES.Property ? nameOf(property.key) : undefined;
-    const local = property.type === AST_NODE_TYPES.Property ? nameOf(property.value) : undefined;
-    if (imported !== undefined && local !== undefined && LISTING_NAMES[kind].has(imported)) {
-      bindings.named.set(local, imported);
-    }
-  }
+  addDestructured(bindings, kind, id);
 }
 
 function addImport(bindings: ListingBindings, statement: TSESTree.ImportDeclaration): void {
@@ -112,14 +122,18 @@ function stringArgument(node: TSESTree.Node | undefined): string | undefined {
     : undefined;
 }
 
+function mocksModule(first: TSESTree.Node | undefined): boolean {
+  const mocked = stringArgument(first) ?? '';
+  return MODULE_KINDS.has(mocked) || MOCKING_MODULES.has(mocked);
+}
+
 export function mocksListing(call: TSESTree.CallExpression): boolean {
   const { callee } = call;
   const method =
     callee.type === AST_NODE_TYPES.MemberExpression ? nameOf(callee.property) : undefined;
   const [first, second] = call.arguments;
   if (MOCK_METHODS.has(method ?? '')) {
-    const mocked = stringArgument(first) ?? '';
-    return MODULE_KINDS.has(mocked) || MOCKING_MODULES.has(mocked);
+    return mocksModule(first);
   }
   return SPIES.has(method ?? '') && LISTED.has(stringArgument(second) ?? '');
 }
@@ -162,20 +176,23 @@ function isTopLevel(sourceCode: SourceCode, node: TSESTree.Node): boolean {
   return scope === ScopeType.module || scope === ScopeType.global;
 }
 
+function isListingMember(bindings: ListingBindings, callee: TSESTree.MemberExpression): boolean {
+  const kind = namespaceKind(bindings, callee.object);
+  return kind !== undefined && LISTING_NAMES[kind].has(nameOf(callee.property) ?? '');
+}
+
 export function isListingCall(bindings: ListingBindings, node: TSESTree.Node): boolean {
-  if (
-    node.type !== AST_NODE_TYPES.CallExpression ||
-    !isTopLevel(bindings.sourceCode, memberRoot(node.callee))
-  ) {
+  if (node.type !== AST_NODE_TYPES.CallExpression) {
     return false;
   }
   const { callee } = node;
+  const { sourceCode } = bindings;
   if (callee.type === AST_NODE_TYPES.Identifier) {
-    return bindings.named.has(callee.name);
+    return isTopLevel(sourceCode, callee) && bindings.named.has(callee.name);
   }
-  if (callee.type !== AST_NODE_TYPES.MemberExpression) {
-    return false;
-  }
-  const kind = namespaceKind(bindings, callee.object);
-  return kind !== undefined && LISTING_NAMES[kind].has(nameOf(callee.property) ?? '');
+  return (
+    callee.type === AST_NODE_TYPES.MemberExpression &&
+    isTopLevel(sourceCode, memberRoot(callee)) &&
+    isListingMember(bindings, callee)
+  );
 }

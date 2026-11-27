@@ -1,0 +1,1 @@
+const A = ({ items }) => <>{items.map((i) => <a href={i.docsUrl}>x</a>)}</>;

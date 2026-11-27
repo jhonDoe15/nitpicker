@@ -1,0 +1,1 @@
+import crypto from "node:crypto"; const { createHash: make } = crypto; export const id = (s) => make("md5").update(s).digest();

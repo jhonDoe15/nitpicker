@@ -1,0 +1,1 @@
+async function f(request, reply) { try { await save(); } catch (e) { return reply.send({ error: e.message }); } }

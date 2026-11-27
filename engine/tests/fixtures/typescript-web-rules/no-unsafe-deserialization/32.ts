@@ -1,0 +1,1 @@
+import yaml from "js-yaml"; export const read = (t: string) => yaml.load(t, { schema: yaml.JSON_SCHEMA });

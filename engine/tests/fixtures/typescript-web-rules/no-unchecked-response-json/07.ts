@@ -1,0 +1,1 @@
+async function f(url) { const res = await fetch(url); try { return await res.json(); } catch { return null; } }

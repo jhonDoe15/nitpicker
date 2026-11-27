@@ -315,6 +315,7 @@ mod truth_checks;
 mod three_letter_zones;
 mod wakelock;
 mod may_report;
+mod restricted;
 mod reach;
 mod reach_checks;
 mod oneof;
@@ -328,6 +329,7 @@ mod no_allocation;
 mod must_be_closed;
 mod must_be_closed_fix;
 mod processor_audit;
+mod lombok_rewrites;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -344,6 +346,8 @@ pub struct Context<'a> {
     line_starts: Vec<usize>,
     selected: Option<Vec<String>>,
     out: std::cell::RefCell<Vec<Finding>>,
+    /// The checks that leave this file to Error Prone: the engine cannot tell what they report here.
+    handed: std::cell::RefCell<Vec<&'static str>>,
     /// The class each name in the file stands for, as written and in full: two checks read every name.
     pub named: std::cell::RefCell<std::collections::HashMap<usize, Option<(String, String)>>>,
 }
@@ -358,6 +362,16 @@ impl Context<'_> {
             return;
         }
         self.report_always(check, offset, message);
+    }
+    /// Leaves the check in this file to Error Prone, unless a `@SuppressWarnings` around the node turns it off there.
+    pub fn hand_back(&self, check: &'static str, node: Node) {
+        if self.suppressed(check, node) || self.skipped(check) {
+            return;
+        }
+        let mut handed = self.handed.borrow_mut();
+        if !handed.contains(&check) {
+            handed.push(check);
+        }
     }
     /// Reports with Error Prone's "Did you mean" sentence for the check's suggested fixes.
     pub fn report_fixed(&self, check: &'static str, matched: Node, offset: usize, message: &str, fixes: &[fixes::Fix]) {
@@ -375,15 +389,11 @@ impl Context<'_> {
         if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == check)) || self.skipped(check) {
             return;
         }
-        let line = self.line_starts.partition_point(|start| *start <= offset) - 1;
-        let mut column = 0usize;
-        for character in self.file.text[self.line_starts[line]..offset].chars() {
-            column = if character == '\t' { column / 8 * 8 + 8 } else { column + character.len_utf16() };
-        }
+        let (line, column) = self.line_column(offset);
         self.out.borrow_mut().push(Finding {
             file: self.file.path.clone(),
-            line: line + 1,
-            column: column + 1,
+            line,
+            column,
             rule: check.to_string(),
             message: format!("[{check}] {message}"),
             symbol: None,
@@ -456,6 +466,15 @@ impl Context<'_> {
             });
         }
         names
+    }
+    /// javac's line and column of a byte offset, from one: UTF-16 units, a tab moves to the next multiple of eight.
+    pub fn line_column(&self, offset: usize) -> (usize, usize) {
+        let line = self.line_of(offset);
+        let mut column = 0usize;
+        for character in self.file.text[self.line_starts[line]..offset].chars() {
+            column = if character == '\t' { column / 8 * 8 + 8 } else { column + character.len_utf16() };
+        }
+        (line + 1, column + 1)
     }
     /// The line of a byte offset, from zero.
     pub fn line_of(&self, offset: usize) -> usize {
@@ -707,6 +726,7 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["InjectOnMemberAndConstructor"], guice::inject_on_member_and_constructor),
     (&["IncompatibleModifiers"], guice::incompatible_modifiers),
     (&["RequiredModifiers"], guice::required_modifiers),
+    (&["RestrictedApi"], restricted::restricted_api),
     (&["CollectionIncompatibleType"], collection_types::collection_incompatible_type),
     (&["JUnit4SetUpNotRun"], junit_init::set_up_not_run),
     (&["JUnit4TearDownNotRun"], junit_init::tear_down_not_run),
@@ -1048,6 +1068,11 @@ const MAY_REPORT: &str = "_MayReport";
 /// The row for a class an annotation processor changed (`NP_EP_AUDIT_CLASSES`): the class file the build wrote for it
 /// has members its source does not explain.
 const REWRITTEN: &str = "_Rewritten";
+/// The row that lists, for a file, the engine's checks it leaves to Error Prone there.
+const HAND_BACK: &str = "_HandBack";
+/// The row for a place where Lombok rewrites written code in a way the engine does not model (`lombok_rewrites`):
+/// Error Prone has to check that file.
+const LOMBOK_REWRITE: &str = "_LombokRewrite";
 /// Checks whose findings nitpicker drops inside classes with certain annotations; their rows carry the annotations.
 const CLASS_EXEMPTED: &[&str] = &["IdentifierName", "PrivateConstructorForUtilityClass"];
 const CLASS_KINDS: &[&str] = &[
@@ -1103,7 +1128,7 @@ impl FileRule for ErrorProne {
         let mut line_starts = vec![0];
         line_starts.extend(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1));
         let selected = std::env::var("NP_EP_ONLY").ok().map(|names| names.split(',').map(String::from).collect());
-        let context = Context { resolver, project, file, line_starts, selected, out: std::cell::RefCell::new(Vec::new()), named: std::cell::RefCell::new(std::collections::HashMap::new()) };
+        let context = Context { resolver, project, file, line_starts, selected, out: std::cell::RefCell::new(Vec::new()), handed: std::cell::RefCell::new(Vec::new()), named: std::cell::RefCell::new(std::collections::HashMap::new()) };
         let wanted = |names: &[&str]| {
             !names.iter().all(|name| context.skipped(name))
                 && context.selected.as_ref().is_none_or(|selected| names.iter().any(|name| selected.iter().any(|one| one == name)))
@@ -1119,11 +1144,38 @@ impl FileRule for ErrorProne {
         for (_, check) in FILE_CHECKS.iter().filter(|(names, _)| wanted(names)) {
             check(&context, file.tree.root_node());
         }
+        let rewrites = if project.index.lombok { lombok_rewrites::rewrites(&context, file.tree.root_node()) } else { Vec::new() };
+        let places: Vec<(usize, usize)> = rewrites.iter().map(|rewrite| context.line_column(rewrite.at)).collect();
+        let handed = context.handed.take();
         let mut found = context.out.into_inner();
+        for (rewrite, (line, column)) in rewrites.into_iter().zip(places) {
+            found.push(Finding {
+                file: file.path.clone(),
+                line,
+                column,
+                rule: LOMBOK_REWRITE.to_string(),
+                message: rewrite.feature.to_string(),
+                symbol: None,
+                priority: None,
+                arguments: None,
+            });
+        }
         if twice_analyzed(file) {
             found = found.into_iter().flat_map(|finding| [finding.clone(), finding]).collect();
         }
         out.append(&mut found);
+        if !handed.is_empty() {
+            out.push(Finding {
+                file: file.path.clone(),
+                line: 1,
+                column: 1,
+                rule: HAND_BACK.to_string(),
+                message: handed.join(","),
+                symbol: None,
+                priority: None,
+                arguments: None,
+            });
+        }
         if let Ok(asked) = std::env::var("NP_EP_MAY_REPORT") {
             let asked: Vec<&str> = asked.split(',').filter(|name| !name.is_empty()).collect();
             let found = may_report::may_report(&asked, &file.text, file.tree.root_node(), &project.index);

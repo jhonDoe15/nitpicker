@@ -1,8 +1,9 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { findVariable } from '../analysis/constant-resolution.mts';
+import { findVariable, referencesOf } from '../analysis/constant-resolution.mts';
 import { nodesOutsideNestedFunctions } from '../react/react-effects.mts';
-import { memberRoot, nodeChildren, nodesWithoutNested } from '../typed/node-views.mts';
+import { memberRoot, nameOf, nodeChildren, nodesWithoutNested } from '../typed/node-views.mts';
 import { calleeNameOf } from '../typed/syntax-views.mts';
+import { textOf } from '../../../../../../shared/values/readers.mts';
 
 type Handle = TSESTree.Identifier | TSESTree.MemberExpression;
 
@@ -52,13 +53,17 @@ function memberPath(node: TSESTree.Node): string | undefined {
   return undefined;
 }
 
-function awaitedTask(statement: TSESTree.Statement): Handle | undefined {
+function awaitedArgument(statement: TSESTree.Statement): TSESTree.Node | undefined {
   if (statement.type !== AST_NODE_TYPES.VariableDeclaration) {
     return undefined;
   }
   const [declarator, ...others] = statement.declarations;
   const init = others.length === 0 ? declarator.init : undefined;
-  const argument = init?.type === AST_NODE_TYPES.AwaitExpression ? init.argument : undefined;
+  return init?.type === AST_NODE_TYPES.AwaitExpression ? init.argument : undefined;
+}
+
+function awaitedTask(statement: TSESTree.Statement): Handle | undefined {
+  const argument = awaitedArgument(statement);
   if (argument?.type === AST_NODE_TYPES.Identifier) {
     return argument;
   }
@@ -67,16 +72,22 @@ function awaitedTask(statement: TSESTree.Statement): Handle | undefined {
     : undefined;
 }
 
+function declaratorOf(
+  task: TSESTree.Identifier,
+  sourceCode: TSESLint.SourceCode,
+): TSESTree.VariableDeclarator | undefined {
+  const node = findVariable({ sourceCode }, task, task.name)?.defs[0]?.node;
+  return node?.type === AST_NODE_TYPES.VariableDeclarator ? node : undefined;
+}
+
 function startedEarlier(
   task: TSESTree.Identifier,
   block: TSESTree.BlockStatement,
   sourceCode: TSESLint.SourceCode,
 ): boolean {
-  const definition = findVariable({ sourceCode }, task, task.name)?.defs[0];
-  const declarator = definition?.node;
+  const declarator = declaratorOf(task, sourceCode);
   return (
-    declarator?.type === AST_NODE_TYPES.VariableDeclarator &&
-    declarator.parent.kind === 'const' &&
+    declarator?.parent.kind === 'const' &&
     declarator.parent.parent === block &&
     (declarator.init?.type === AST_NODE_TYPES.CallExpression ||
       declarator.init?.type === AST_NODE_TYPES.NewExpression)
@@ -105,28 +116,34 @@ function memberStart(statement: TSESTree.Statement | undefined, path: string): b
   );
 }
 
-function isPlainRead(node: TSESTree.Node, property: string): boolean {
+function readMember(node: TSESTree.Node, property: string): TSESTree.MemberExpression | undefined {
   const { parent } = node;
-  if (
-    parent?.type !== AST_NODE_TYPES.MemberExpression ||
-    parent.object !== node ||
-    parent.computed ||
-    parent.property.type !== AST_NODE_TYPES.Identifier ||
-    parent.property.name === property
-  ) {
-    return false;
-  }
-  const user = parent.parent;
-  return !(
-    (user.type === AST_NODE_TYPES.CallExpression && user.callee === parent) ||
-    (user.type === AST_NODE_TYPES.AssignmentExpression && user.left === parent) ||
+  return parent?.type === AST_NODE_TYPES.MemberExpression &&
+    parent.object === node &&
+    !parent.computed &&
+    parent.property.type === AST_NODE_TYPES.Identifier &&
+    parent.property.name !== property
+    ? parent
+    : undefined;
+}
+
+function isCalledOrChanged(member: TSESTree.MemberExpression): boolean {
+  const user = member.parent;
+  return (
+    (user.type === AST_NODE_TYPES.CallExpression && user.callee === member) ||
+    (user.type === AST_NODE_TYPES.AssignmentExpression && user.left === member) ||
     user.type === AST_NODE_TYPES.UpdateExpression
   );
 }
 
+function isPlainRead(node: TSESTree.Node, property: string): boolean {
+  const member = readMember(node, property);
+  return member !== undefined && !isCalledOrChanged(member);
+}
+
 function touchesOwner(statement: TSESTree.Statement, handle: TSESTree.MemberExpression): boolean {
   const ownerPath = memberPath(handle.object);
-  const property = handle.property.type === AST_NODE_TYPES.Identifier ? handle.property.name : '';
+  const property = textOf(nameOf(handle.property));
   return allNodes(statement).some(
     (node) =>
       (node.type === AST_NODE_TYPES.ThisExpression ||
@@ -142,7 +159,7 @@ function memberStartedEarlier(
   index: number,
   handle: TSESTree.MemberExpression,
 ): boolean {
-  const path = memberPath(handle) ?? '';
+  const path = textOf(memberPath(handle));
   const before = block.body.slice(0, index);
   const start = before.findLastIndex((statement) => mentions(statement, path));
   return (
@@ -153,16 +170,14 @@ function memberStartedEarlier(
 
 function readsAny(
   statement: TSESTree.Statement,
-  variables: readonly TSESLint.Scope.Variable[],
+  references: readonly TSESLint.Scope.Reference[],
 ): boolean {
   const [start, end] = statement.range;
-  return variables.some((variable) =>
-    variable.references.some(
-      (reference) =>
-        !reference.init &&
-        reference.identifier.range[0] >= start &&
-        reference.identifier.range[1] <= end,
-    ),
+  return references.some(
+    (reference) =>
+      !reference.init &&
+      reference.identifier.range[0] >= start &&
+      reference.identifier.range[1] <= end,
   );
 }
 
@@ -191,7 +206,7 @@ type TaskQuery = {
 
 function blocksTask({ handle, block, index, sourceCode }: TaskQuery): Between | undefined {
   if (handle.type === AST_NODE_TYPES.MemberExpression) {
-    const path = memberPath(handle) ?? '';
+    const path = textOf(memberPath(handle));
     return memberStartedEarlier(block, index, handle)
       ? (statement) => mentions(statement, path) || touchesOwner(statement, handle)
       : undefined;
@@ -199,45 +214,57 @@ function blocksTask({ handle, block, index, sourceCode }: TaskQuery): Between | 
   if (!startedEarlier(handle, block, sourceCode)) {
     return undefined;
   }
-  const variable = findVariable({ sourceCode }, handle, handle.name);
-  const variables = variable === undefined ? [] : [variable];
-  return (statement) => readsAny(statement, variables);
+  const references = referencesOf({ sourceCode }, handle, handle.name);
+  return (statement) => readsAny(statement, references);
 }
 
-function earlyWaitAt(
-  block: TSESTree.BlockStatement,
-  index: number,
-  sourceCode: TSESLint.SourceCode,
-): EarlyWait | undefined {
-  const wait = block.body[index];
-  const handle = wait === undefined ? undefined : awaitedTask(wait);
-  if (wait?.type !== AST_NODE_TYPES.VariableDeclaration || handle === undefined) {
+function nextAfterWait(
+  later: readonly TSESTree.Statement[],
+  result: readonly TSESLint.Scope.Reference[],
+  usesTask: Between,
+): TSESTree.Statement | undefined {
+  const firstUse = later.findIndex((statement) => readsAny(statement, result));
+  const between = later.slice(0, firstUse);
+  const [next] = between;
+  return firstUse >= MIN_GAP - 1 &&
+    between.some(doesWork) &&
+    !between.some(leaves) &&
+    !between.some(usesTask)
+    ? next
+    : undefined;
+}
+
+type WaitSite = {
+  readonly wait: TSESTree.Statement;
+  readonly index: number;
+  readonly block: TSESTree.BlockStatement;
+  readonly sourceCode: TSESLint.SourceCode;
+};
+
+function earlyWaitAt({ wait, index, block, sourceCode }: WaitSite): EarlyWait | undefined {
+  const handle = awaitedTask(wait);
+  if (wait.type !== AST_NODE_TYPES.VariableDeclaration || handle === undefined) {
     return undefined;
   }
   const usesTask = blocksTask({ handle, block, index, sourceCode });
   if (usesTask === undefined) {
     return undefined;
   }
-  const result = sourceCode.getDeclaredVariables(wait);
   const later = block.body.slice(index + 1);
-  const firstUse = later.findIndex((statement) => readsAny(statement, result));
-  const between = later.slice(0, firstUse);
-  const [next] = between;
-  return firstUse >= MIN_GAP - 1 &&
-    next !== undefined &&
-    between.some(doesWork) &&
-    !between.some(leaves) &&
-    !between.some(usesTask)
-    ? { wait, task: sourceCode.getText(handle), handle, next }
-    : undefined;
+  const next = nextAfterWait(
+    later,
+    sourceCode.getDeclaredVariables(wait).flatMap((variable) => variable.references),
+    usesTask,
+  );
+  return next === undefined ? undefined : { wait, task: sourceCode.getText(handle), handle, next };
 }
 
 export function earlyWaits(
   block: TSESTree.BlockStatement,
   sourceCode: TSESLint.SourceCode,
 ): EarlyWait[] {
-  return block.body.flatMap((_, index) => {
-    const found = earlyWaitAt(block, index, sourceCode);
+  return block.body.flatMap((wait, index) => {
+    const found = earlyWaitAt({ wait, index, block, sourceCode });
     return found === undefined ? [] : [found];
   });
 }

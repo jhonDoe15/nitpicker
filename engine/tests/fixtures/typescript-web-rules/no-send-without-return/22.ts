@@ -1,0 +1,1 @@
+function f(req, res) { if (a) { res.send(1); } else if (b) { res.send(2); } else { save(); } }
