@@ -3,15 +3,16 @@
 //! - DM_STRING_CTOR `new String(String)`, DM_STRING_VOID_CTOR `new String()`, DM_BOOLEAN_CTOR any `new Boolean(…)`:
 //!   priority 2, on the line of the constructor call javac writes (after the arguments).
 //! - DM_BOXED_PRIMITIVE_FOR_PARSING: `Integer`, `Long`, `Double` or `Float` `.valueOf(String)` unboxed right away
-//!   to its own primitive (`xValue()` of that type, a primitive context, an operand); priority 1, on the line
-//!   of the `xValue()` call, else of the `valueOf` call. `Short`, `Byte`, `Boolean`, a radix and
+//!   to its own primitive (`xValue()` of that type, a primitive context, cast, switch, array size, compound
+//!   assignment or ternary, an operand); priority 1, on the line of the `xValue()` call, else where the
+//!   `valueOf` expression starts. `Short`, `Byte`, `Boolean`, a radix and
 //!   `Integer.valueOf(s).longValue()` are not.
 //! - DM_BOXED_PRIMITIVE_TOSTRING: `toString()` on `Integer.valueOf(int)` or a cast of an `int` (priority 1), or on
 //!   `new Box(primitive)` of any box (priority 2), on the `toString` call's line.
 //! - DM_BOXED_PRIMITIVE_FOR_COMPARE: `compareTo` of a box whose receiver was boxed from a primitive (by `valueOf`, a
-//!   cast or a local that holds only boxed primitives, not `new`) and whose argument is a primitive or boxed one;
+//!   cast, a ternary of those or a local that holds only boxed primitives, not `new`) and whose argument is a primitive or boxed one;
 //!   priority 1, `Byte` 2, `Boolean` 3; on the `compareTo` call's line.
-//! - DM_NEW_FOR_GETCLASS: `getClass()` on a `new` object (not an array); priority 2, on the call's line.
+//! - DM_NEW_FOR_GETCLASS: `getClass()` on a `new` object (not an array), also through casts; priority 2, on the call's line.
 //! - DM_STRING_TOSTRING is priority 3 only, which `-medium` hides. Of two findings of a method the better
 //!   priority is kept.
 use super::super::observed::local_values;
@@ -103,6 +104,11 @@ fn boxed_from(context: &Context, node: Node, boxed: &str, locals: bool) -> Optio
             let call = context.resolver.resolve_constructor(node)?;
             (call.declaring == boxed && matches!(call.method.parameters[..], [Type::Primitive(_)])).then_some(Boxed::Created)
         }
+        "ternary_expression" => {
+            let branches = [node.child_by_field_name("consequence"), node.child_by_field_name("alternative")];
+            let boxes = |branch: Node| primitive(context, unwrap(branch)).is_some() || boxed_from(context, branch, boxed, false) == Some(Boxed::ValueOf);
+            branches.iter().all(|branch| branch.is_some_and(boxes)).then_some(Boxed::ValueOf)
+        }
         "identifier" if locals => {
             let held = local_values(context, node, context.text(node));
             let all = !held.is_empty() && held.iter().all(|value| primitive(context, unwrap(*value)).is_some() || boxed_from(context, *value, boxed, false) == Some(Boxed::ValueOf));
@@ -137,7 +143,18 @@ fn unboxed_at_once(context: &Context, node: Node, kind: &str) -> bool {
             let reference = matches!(operator, "==" | "!=") && other.is_some_and(|other| primitive(context, other).is_none());
             !text && !reference
         }
-        "unary_expression" => true,
+        "unary_expression" | "dimensions_expr" => true,
+        "cast_expression" => matches!(context.resolver.type_of(above), Some(Type::Primitive(_))),
+        "ternary_expression" => {
+            let other = [above.child_by_field_name("consequence"), above.child_by_field_name("alternative")].into_iter().flatten().find(|side| side.id() != inner.id());
+            other.is_some_and(|other| primitive(context, unwrap(other)).is_some()) || matches!(context.resolver.type_of(above), Some(Type::Primitive(_)))
+        }
+        "switch_expression" | "switch_statement" => above.child_by_field_name("condition").is_some_and(|condition| condition.id() == inner.id() || unwrap(condition).id() == node.id()),
+        "assignment_expression" => {
+            let compound = above.child_by_field_name("operator").is_some_and(|operator| context.text(operator) != "=");
+            let text = context.resolver.type_of(above).is_some_and(|kind| kind.name() == STRING);
+            (compound && !text) || matches!(context.resolver.expected(node), Some(Type::Primitive(_)))
+        }
         "array_access" => above.child_by_field_name("index").is_some_and(|index| index.id() == inner.id()),
         _ => matches!(context.resolver.expected(node), Some(Type::Primitive(_))),
     }
@@ -182,7 +199,7 @@ fn parsing(context: &Context, node: Node) -> Option<Found> {
     }
     let called = format!("{}.{parse}(String)", short(&declaring));
     let explicit = holder(node).filter(|(above, _)| above.kind() == "method_invocation").map(|(above, _)| above);
-    let line = call_line(context, explicit.unwrap_or(node));
+    let line = explicit.map_or_else(|| context.line(node), |explicit| call_line(context, explicit));
     Some(Found { pattern: PARSING, key: declaring, line, priority: 1, called: Some(called), arguments: None })
 }
 
@@ -226,7 +243,10 @@ fn compare(context: &Context, node: Node) -> Option<Found> {
 }
 
 fn get_class(context: &Context, node: Node) -> Option<Found> {
-    let object = node.child_by_field_name("object").map(unwrap)?;
+    let mut object = node.child_by_field_name("object").map(unwrap)?;
+    while object.kind() == "cast_expression" {
+        object = object.child_by_field_name("value").map(unwrap)?;
+    }
     let fits = named(context, node) == Some("getClass") && arguments(node).is_empty() && object.kind() == "object_creation_expression";
     fits.then(|| Found { pattern: GETCLASS, key: String::new(), line: call_line(context, node), priority: 2, called: None, arguments: None })
 }

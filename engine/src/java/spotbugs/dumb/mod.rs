@@ -16,7 +16,7 @@ pub fn dumb<'a>(context: &Context<'a>, class: Node<'a>) {
         return;
     }
     let body = class.child_by_field_name("body").or_else(|| children(class).into_iter().find(|part| part.kind() == "class_body"));
-    let Some(body) = body.filter(|_| TYPE_DECLARATIONS.contains(&class.kind()) || class.kind() == "object_creation_expression") else { return };
+    let Some(body) = body.filter(|_| TYPE_DECLARATIONS.contains(&class.kind()) || matches!(class.kind(), "object_creation_expression" | "enum_constant")) else { return };
     let Some(own) = context.resolver.scope.names.get(&class.id()).cloned() else { return };
     let members = place::members(body);
     let methods = compiled(context, &own, class);

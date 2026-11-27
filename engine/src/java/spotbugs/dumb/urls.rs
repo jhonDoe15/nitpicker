@@ -37,8 +37,23 @@ const KEYED: &[(&str, &str, usize)] = &[
 ];
 const QUERIES: &[(&str, &str)] = &[("java.util.Map", "get"), ("java.util.HashMap", "get"), ("java.util.Set", "contains"), ("java.util.HashSet", "contains")];
 
+fn declares_variable(context: &Context, written: Node) -> bool {
+    let name = context.text(written);
+    let mut scope = crate::engine::source::parent(written);
+    while let Some(node) = scope {
+        let declared = node.child_by_field_name("type_parameters").map(named_children).unwrap_or_default();
+        let named = |parameter: &Node| children(*parameter).into_iter().any(|part| part.kind() == "type_identifier" && context.text(part) == name);
+        if declared.iter().any(|parameter| parameter.kind() == "type_parameter" && named(parameter)) {
+            return true;
+        }
+        scope = crate::engine::source::parent(node);
+    }
+    false
+}
+
 fn is_url(context: &Context, written: Node) -> bool {
-    let named = matches!(written.kind(), "type_identifier" | "scoped_type_identifier");
+    let written = if written.kind() == "annotated_type" { named_children(written).into_iter().last().unwrap_or(written) } else { written };
+    let named = written.kind() == "scoped_type_identifier" || (written.kind() == "type_identifier" && !declares_variable(context, written));
     named && matches!(context.resolver.type_node(written), Some(Type::Class(name, _)) if name == URL)
 }
 
@@ -149,7 +164,7 @@ fn record_members(context: &Context, own: &str, class: Node, members: &[Node], b
 fn signatures(context: &Context, own: &str, class: Node, members: &[Node]) {
     let binary = names::binary(context, own);
     if hogs_class(context, class) {
-        let anonymous = children(class).into_iter().find(|part| part.kind() == "class_body" && class.kind() == "object_creation_expression").map(|body| context.line(body));
+        let anonymous = children(class).into_iter().find(|part| part.kind() == "class_body" && matches!(class.kind(), "object_creation_expression" | "enum_constant")).map(|body| context.line(body));
         let line = anonymous.or_else(|| lines::class_first(context, own, class, members)).unwrap_or(0);
         report_at(context, class, line, binary.clone(), format!("type:{binary}"));
     }
@@ -173,6 +188,16 @@ fn tracked_class(context: &Context, value: Node) -> Option<String> {
     }
 }
 
+/// Whether a value is a call that returns a type variable, which SpotBugs does not track through javac's cast.
+pub fn generic_return(context: &Context, value: Node) -> bool {
+    let value = crate::java::types::expr::unwrap(value);
+    value.kind() == "method_invocation" && context.resolver.resolve_call(value).is_some_and(|call| matches!(call.method.generic_returns, Type::Variable(_)))
+}
+
+fn url_argument(context: &Context, node: Node) -> bool {
+    first_argument(node).is_some_and(|argument| !generic_return(context, argument) && tracked_class(context, argument).as_deref() == Some(URL))
+}
+
 fn first_argument(node: Node) -> Option<Node> {
     node.child_by_field_name("arguments").and_then(|arguments| named_children(arguments).into_iter().find(|part| !part.kind().ends_with("comment")))
 }
@@ -185,19 +210,29 @@ fn call_line(context: &Context, node: Node) -> usize {
     node.child_by_field_name("arguments").map_or_else(|| context.line(node), |arguments| context.line(arguments))
 }
 
+fn on_super(node: Node) -> bool {
+    node.child_by_field_name("object").is_some_and(|object| object.kind() == "super")
+}
+
 fn keyed_call(context: &Context, node: Node, name: &str) -> Option<String> {
+    if on_super(node) {
+        return None;
+    }
     let receiver = tracked_class(context, node.child_by_field_name("object")?)?;
     let (class, method, count) = KEYED.iter().find(|(class, method, _)| *class == receiver && *method == name)?;
-    if arity(node) != *count || tracked_class(context, first_argument(node)?).as_deref() != Some(URL) {
+    if arity(node) != *count || !url_argument(context, node) {
         return None;
     }
     Some(format!("{class}.{method}({})", vec!["Object"; *count].join(", ")))
 }
 
 fn queries(context: &Context, own: &str, node: Node, name: &str) -> bool {
+    if on_super(node) {
+        return false;
+    }
     let Some(owner) = written_owner(context, own, node) else { return false };
     let listed = QUERIES.contains(&(owner.as_str(), name)) && arity(node) == 1;
-    listed && first_argument(node).and_then(|argument| tracked_class(context, argument)).as_deref() == Some(URL)
+    listed && url_argument(context, node)
 }
 
 fn blocking(context: &Context, node: Node, name: &str) -> Option<String> {
@@ -245,7 +280,7 @@ fn calls(context: &Context, own: &str, methods: &[Compiled]) {
 }
 
 pub fn check(context: &Context, own: &str, class: Node, members: &[Node], methods: &[Compiled]) {
-    if context.wants(&[COLLECTION]) && (TYPE_DECLARATIONS.contains(&class.kind()) || class.kind() == "object_creation_expression") {
+    if context.wants(&[COLLECTION]) && (TYPE_DECLARATIONS.contains(&class.kind()) || matches!(class.kind(), "object_creation_expression" | "enum_constant")) {
         signatures(context, own, class, members);
     }
     calls(context, own, methods);

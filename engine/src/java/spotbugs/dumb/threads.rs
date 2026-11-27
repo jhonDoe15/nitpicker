@@ -1,17 +1,18 @@
 //! The thread, exit and collector calls of DumbMethods, measured on test code:
-//! - DM_GC: `System.gc()` or `Runtime.gc()`, unless the method's name contains `gc`, starts with `test` or is
-//!   `main`; priority 1, once per method.
-//! - DM_EXIT: `System.exit(int)` (not `Runtime.exit` or `halt`), unless the method's name contains `exit` in any
-//!   case or is `main`; priority 2, 3 (hidden) in a static method or a lambda that does not use `this`.
+//! - DM_GC: `System.gc()` or `Runtime.gc()`, unless the method's name starts or ends with `gc`, starts with `test`
+//!   or the method is a non-private `void main()` or `void main(String[])`; priority 1, once per method.
+//! - DM_EXIT: `System.exit(int)` (not `Runtime.exit` or `halt`), unless the method's name contains `exit`, `Exit`
+//!   or `main`; priority 2, 3 (hidden) in a static method or a lambda that does not use `this`.
 //! - DM_RUN_FINALIZERS_ON_EXIT: `System.runFinalizersOnExit` or `Runtime.runFinalizersOnExit` (gone since JDK 11,
 //!   so matched by name); priority 1, once per method.
 //! - DMI_THREAD_PASSED_WHERE_RUNNABLE_EXPECTED: an argument declared exactly `java.lang.Thread` for a parameter
 //!   declared `Runnable`, of a method or constructor; priority 2, once per method and called method. The SARIF
-//!   place is the called method.
+//!   place is the called method, owned by the receiver's class when that inherits it; the shown name drops the
+//!   current class and package.
 //! - DMI_FUTILE_ATTEMPT_TO_CHANGE_MAXPOOL_SIZE_OF_SCHEDULED_THREAD_POOL_EXECUTOR: `setMaximumPoolSize` written
-//!   against `ScheduledThreadPoolExecutor` itself; priority 1, once per method.
+//!   against `ScheduledThreadPoolExecutor` itself, not through `super` or an anonymous subclass; priority 1.
 //! - DM_MONITOR_WAIT_ON_CONDITION: `wait(…)` on a receiver declared as a class that implements `Condition` (javac
-//!   writes `Object.wait` for an interface); priority 1, once per method.
+//!   writes `Object.wait` for an interface), seen through casts to `Object`; priority 1, once per method.
 //! - DM_USELESS_THREAD is priority 3 only; DMI_SCHEDULED_THREAD_POOL_EXECUTOR_WITH_ZERO_CORE_THREADS is not
 //!   reported for `new ScheduledThreadPoolExecutor(0)` nor `Executors.newScheduledThreadPool(0)`.
 use super::super::idioms::{Compiled, called};
@@ -19,7 +20,7 @@ use super::super::idioms::encoding::written_owner;
 use super::super::taint::lines::line as invoke_line;
 use super::super::{Context, names, place};
 use crate::engine::source::{named_children, walk};
-use crate::java::types::expr::Binding;
+use crate::java::types::expr::{Binding, unwrap};
 use crate::java::types::model::{Type, flag};
 use crate::java::types::scope::enclosing_types;
 use std::collections::HashSet;
@@ -78,6 +79,19 @@ fn is_static(context: &Context, method: &Compiled) -> bool {
     }
 }
 
+/// Whether the method is a launcher SpotBugs leaves alone: a non-private `void main()` or `void main(String...)`.
+fn launcher(context: &Context, method: &Compiled) -> bool {
+    let member = method.member;
+    if method.lambda || member.kind() != "method_declaration" || crate::java::helpers::has_modifier(member, "private") {
+        return false;
+    }
+    let spread = |part: &Node| part.kind() == "spread_parameter" && named_children(*part).into_iter().find(|inner| inner.kind() != "modifiers").and_then(|kind| context.resolver.type_node(kind)).is_some_and(|kind| kind.name() == "java.lang.String");
+    let void = member.child_by_field_name("type").is_some_and(|kind| context.text(kind) == "void");
+    let given: Vec<Node> = member.child_by_field_name("parameters").map(named_children).unwrap_or_default().into_iter().filter(|part| part.kind().ends_with("parameter")).collect();
+    let strings = |part: &Node| part.child_by_field_name("type").and_then(|kind| context.resolver.type_node(kind)).is_some_and(|kind| kind == Type::Array(Box::new(Type::class("java.lang.String"))));
+    void && method_name(&method.label) == "main" && (given.is_empty() || (given.len() == 1 && (strings(&given[0]) || spread(&given[0]))))
+}
+
 fn declared_class(context: &Context, node: Node) -> Option<String> {
     match context.resolver.type_of(node)?.erased() {
         Type::Class(name, _) => Some(name),
@@ -107,7 +121,12 @@ fn waits_on_condition(context: &Context, node: Node) -> bool {
     if node.child_by_field_name("name").is_none_or(|name| context.text(name) != "wait") {
         return false;
     }
-    let Some(class) = node.child_by_field_name("object").and_then(|object| declared_class(context, object)) else { return false };
+    let mut object = node.child_by_field_name("object").map(unwrap);
+    while let Some(cast) = object.filter(|object| object.kind() == "cast_expression") {
+        let upcast = cast.child_by_field_name("type").and_then(|kind| context.resolver.type_node(kind)).is_some_and(|kind| kind.name() == "java.lang.Object");
+        object = upcast.then(|| cast.child_by_field_name("value").map(unwrap)).flatten();
+    }
+    let Some(class) = object.and_then(|object| declared_class(context, object)) else { return false };
     let index = context.resolver.index;
     index.get(&class).is_some_and(|info| !info.is_interface) && index.is_subtype(&class, "java.util.concurrent.locks.Condition")
 }
@@ -116,18 +135,26 @@ fn waits_on_condition(context: &Context, node: Node) -> bool {
 fn thread_passed(context: &Context, node: Node) -> Option<(String, String)> {
     let call = match node.kind() {
         "object_creation_expression" => context.resolver.resolve_constructor(node)?,
-        "method_invocation" => context.resolver.resolve_call(node)?,
+        "method_invocation" if node.child_by_field_name("object").is_none_or(|object| object.kind() != "super") => context.resolver.resolve_call(node)?,
         _ => return None,
     };
     let given = arguments(node);
-    let passed = call.method.parameters.iter().zip(&given).any(|(formal, argument)| formal.erased().name() == RUNNABLE && declared_class(context, *argument).as_deref() == Some(THREAD));
+    let passed = call.method.parameters.iter().zip(&given).any(|(formal, argument)| formal.erased().name() == RUNNABLE && !super::urls::generic_return(context, *argument) && declared_class(context, *argument).as_deref() == Some(THREAD));
     if !passed {
         return None;
     }
     let name = if node.kind() == "object_creation_expression" { "<init>".to_string() } else { context.text(node.child_by_field_name("name")?).to_string() };
-    let label = called(context, &call.declaring, &name, &call.method.parameters);
     let own = enclosing_types(context.resolver.scope, node).into_iter().next().map(|own| names::binary(context, &own)).unwrap_or_default();
+    let written = (node.kind() == "method_invocation").then(|| written_owner(context, &own, node)).flatten();
+    let owner = written.filter(|written| context.resolver.index.is_subtype(written, &call.declaring)).unwrap_or(call.declaring);
+    let label = called(context, &owner, &name, &call.method.parameters);
+    let package = names::package_of(&own);
     let shown = label.strip_prefix(&format!("{own}.")).map_or_else(|| label.clone(), String::from);
+    let shown = match (package.is_empty(), shown.strip_prefix("new ")) {
+        (false, Some(rest)) => rest.strip_prefix(&format!("{package}.")).map_or(shown.clone(), |rest| format!("new {rest}")),
+        (false, None) => shown.strip_prefix(&format!("{package}.")).map_or(shown.clone(), String::from),
+        _ => shown,
+    };
     Some((label, shown))
 }
 
@@ -154,12 +181,12 @@ pub fn check(context: &Context, own: &str, methods: &[Compiled]) {
             if node.kind() != "method_invocation" {
                 continue;
             }
-            let skip_gc = name.contains("gc") || name.starts_with("test") || name == "main";
+            let skip_gc = name.starts_with("gc") || name.ends_with("gc") || name.starts_with("test") || launcher(context, method);
             if !skip_gc && collects(context, own, node) && seen.insert(GC.to_string()) {
                 let message = format!("{label} forces garbage collection; extremely dubious except in benchmarking code");
                 report(context, GC, node, call_line(context, node), method, 1, message);
             }
-            let skip_exit = name.to_lowercase().contains("exit") || name == "main";
+            let skip_exit = name.contains("exit") || name.contains("Exit") || name.contains("main");
             if !skip_exit && static_on(context, node, "java.lang.System", "exit") && seen.insert(EXIT.to_string()) {
                 let priority = if is_static(context, method) { 3 } else { 2 };
                 let message = format!("{label} invokes System.exit(...), which shuts down the entire virtual machine");
@@ -170,7 +197,8 @@ pub fn check(context: &Context, own: &str, methods: &[Compiled]) {
             if finalizes(context, node) && seen.insert(FINALIZERS.to_string()) {
                 report(context, FINALIZERS, node, call_line(context, node), method, 1, format!("{label} invokes dangerous method runFinalizersOnExit"));
             }
-            let futile = node.child_by_field_name("name").is_some_and(|written| context.text(written) == "setMaximumPoolSize")
+            let plain = node.child_by_field_name("object").map(unwrap).is_none_or(|object| object.kind() != "super" && !(object.kind() == "object_creation_expression" && crate::engine::source::children(object).iter().any(|part| part.kind() == "class_body")));
+            let futile = plain && node.child_by_field_name("name").is_some_and(|written| context.text(written) == "setMaximumPoolSize")
                 && written_owner(context, own, node).as_deref() == Some("java.util.concurrent.ScheduledThreadPoolExecutor");
             if futile && seen.insert(FUTILE.to_string()) {
                 let message = format!("Futile attempt to change max pool size of ScheduledThreadPoolExecutor in {label}");
