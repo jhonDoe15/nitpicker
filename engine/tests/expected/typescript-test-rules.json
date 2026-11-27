@@ -1,0 +1,173 @@
+[
+ [
+  "no-shared-test-state/01.ts",
+  "nitpicker/no-shared-test-state",
+  1,
+  5,
+  "Shared mutable state makes tests depend on their order. Keep `attempts` inside the test, or declare it without a value and set it in `beforeEach`.",
+  1,
+  17
+ ],
+ [
+  "no-shared-test-state/02.ts",
+  "nitpicker/no-shared-test-state",
+  1,
+  12,
+  "Shared mutable state makes tests depend on their order. Keep `counter` inside the test, or declare it without a value and set it in `beforeEach`.",
+  1,
+  23
+ ],
+ [
+  "no-shared-test-state/03.ts",
+  "nitpicker/no-shared-test-state",
+  1,
+  27,
+  "Shared mutable state makes tests depend on their order. Keep `calls` inside the test, or declare it without a value and set it in `beforeEach`.",
+  1,
+  36
+ ],
+ [
+  "no-shared-test-state/04.ts",
+  "nitpicker/no-shared-test-state",
+  1,
+  32,
+  "Shared mutable state makes tests depend on their order. Keep `calls` inside the test, or declare it without a value and set it in `beforeEach`.",
+  1,
+  41
+ ],
+ [
+  "no-shared-test-state/05.ts",
+  "nitpicker/no-shared-test-state",
+  1,
+  5,
+  "Shared mutable state makes tests depend on their order. Keep `first` inside the test, or declare it without a value and set it in `beforeEach`.",
+  1,
+  14
+ ],
+ [
+  "no-switched-off-tests/01.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  13,
+  "A fixed `skip` or `todo` option switches the test off for good. Delete the test or make it run; a real condition such as `{ skip: process.platform === \"win32\" }` is allowed.",
+  1,
+  23
+ ],
+ [
+  "no-switched-off-tests/02.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  11,
+  "A fixed `skip` or `todo` option switches the test off for good. Delete the test or make it run; a real condition such as `{ skip: process.platform === \"win32\" }` is allowed.",
+  1,
+  30
+ ],
+ [
+  "no-switched-off-tests/03.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  17,
+  "A fixed `skip` or `todo` option switches the test off for good. Delete the test or make it run; a real condition such as `{ skip: process.platform === \"win32\" }` is allowed.",
+  1,
+  27
+ ],
+ [
+  "no-switched-off-tests/04.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  20,
+  "An unconditional `skip()` or `todo()` in the test body switches the test off for good. Delete the test or make it run; a skip under a real condition such as `if (process.platform === \"win32\") { t.skip(); }` is allowed.",
+  1,
+  36
+ ],
+ [
+  "no-switched-off-tests/05.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  20,
+  "An unconditional `skip()` or `todo()` in the test body switches the test off for good. Delete the test or make it run; a skip under a real condition such as `if (process.platform === \"win32\") { t.skip(); }` is allowed.",
+  1,
+  29
+ ],
+ [
+  "no-switched-off-tests/06.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  23,
+  "An unconditional `skip()` or `todo()` in the test body switches the test off for good. Delete the test or make it run; a skip under a real condition such as `if (process.platform === \"win32\") { t.skip(); }` is allowed.",
+  1,
+  35
+ ],
+ [
+  "no-switched-off-tests/07.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  17,
+  "A fixed `skip` or `todo` option switches the test off for good. Delete the test or make it run; a real condition such as `{ skip: process.platform === \"win32\" }` is allowed.",
+  1,
+  27
+ ],
+ [
+  "no-switched-off-tests/08.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  16,
+  "A fixed `skip` or `todo` option switches the test off for good. Delete the test or make it run; a real condition such as `{ skip: process.platform === \"win32\" }` is allowed.",
+  1,
+  29
+ ],
+ [
+  "no-switched-off-tests/09.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  16,
+  "A fixed `skip` or `todo` option switches the test off for good. Delete the test or make it run; a real condition such as `{ skip: process.platform === \"win32\" }` is allowed.",
+  1,
+  26
+ ],
+ [
+  "no-switched-off-tests/10.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  22,
+  "A fixed `skip` or `todo` option switches the test off for good. Delete the test or make it run; a real condition such as `{ skip: process.platform === \"win32\" }` is allowed.",
+  1,
+  32
+ ],
+ [
+  "no-switched-off-tests/11.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  25,
+  "An unconditional `skip()` or `todo()` in the test body switches the test off for good. Delete the test or make it run; a skip under a real condition such as `if (process.platform === \"win32\") { t.skip(); }` is allowed.",
+  1,
+  32
+ ],
+ [
+  "no-switched-off-tests/r-lone-surrogate.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  4,
+  "A literal condition switches the test off for good. Delete the test or make it run; a real platform condition such as `process.platform === \"win32\"` is allowed.",
+  1,
+  10
+ ],
+ [
+  "no-switched-off-tests/r-lone-surrogate.ts",
+  "nitpicker/no-switched-off-tests",
+  2,
+  11,
+  "A fixed `skip` or `todo` option switches the test off for good. Delete the test or make it run; a real condition such as `{ skip: process.platform === \"win32\" }` is allowed.",
+  2,
+  26
+ ],
+ [
+  "no-switched-off-tests/r-lone-surrogate.ts",
+  "nitpicker/no-switched-off-tests",
+  3,
+  4,
+  "A literal condition switches the test off for good. Delete the test or make it run; a real platform condition such as `process.platform === \"win32\"` is allowed.",
+  3,
+  9
+ ]
+]

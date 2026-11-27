@@ -120,9 +120,11 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
     },
   ],
   ['no-shadowed-spread-key', TYPED],
+  ['no-shared-test-state', {}],
   ['no-silent-catch', {}],
   ['no-string-as-regex', TYPED],
   ['no-swapped-arguments', TYPED],
+  ['no-switched-off-tests', {}],
   [
     'no-unhandled-void-promise',
     {
