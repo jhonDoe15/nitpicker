@@ -2,7 +2,7 @@
 //! (ConfusionBetweenInheritedAndOuterMethod), IT_NO_SUCH_ELEMENT (IteratorIdioms), DM_DEFAULT_ENCODING
 //! (DefaultEncodingDetector) and UCF_USELESS_CONTROL_FLOW with UCF_USELESS_CONTROL_FLOW_NEXT_LINE (FindUselessControlFlow).
 mod control;
-mod encoding;
+pub mod encoding;
 mod iterators;
 mod outer;
 mod outer_this;

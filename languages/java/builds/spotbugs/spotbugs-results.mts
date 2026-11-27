@@ -157,7 +157,7 @@ function placedNameOf(
   if (placesByArguments(placed)) {
     return finding.arguments?.[1] ?? qualified;
   }
-  if (placed.placement === 'relative') {
+  if (placed.placement === 'relative' && (finding.symbol ?? '').includes('@')) {
     return relativeName(qualified, finding.symbol ?? '');
   }
   const shown = (finding.symbol ?? '').lastIndexOf('@');

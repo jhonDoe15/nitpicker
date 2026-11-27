@@ -1339,6 +1339,34 @@ labs (`no_side_effect` and the lab notes):
   judged wrong.
 The SpotBugs detectors behind these patterns still run in SpotBugs for their other patterns.
 
+### URLs in maps and sets
+
+URLProblems' two patterns of #2532 (`src/java/spotbugs/dumb/urls.rs`), labs in
+`tests/fixtures/spotbugs/url_maps*`, all priority 1 and level `note`. SpotBugs no longer runs URLProblems.
+
+DMI_COLLECTION_OF_URLS:
+- A field, method or class whose generic signature holds a type whose simple name ends in `Map`, `Set` or
+  `Hashtable` (any class, by name only: `XHashtable<URL>` counts, `Dictionary<URL, …>` and `List<URL>` do not)
+  with `java.net.URL` itself as first type argument, at any depth (`Map<String, Set<URL>>`, `Set<URL>[]`,
+  `Comparable<Set<URL>>`, a type parameter bound). Wildcards (`? extends URL`) and later arguments do not count;
+  lambdas have no signature. A field has no line; a method sits on its first line of code, without one when
+  abstract; the accessor and canonical constructor javac writes for a record on the `record` line; a class on
+  its first line of code, an anonymous class on the `{` of its body.
+- A call on a receiver tracked as exactly `java.util.HashMap` (`put`, `get`, `containsKey`, `remove`) or
+  `java.util.HashSet` (`add`, `contains`, `remove`) whose first argument is tracked as `java.net.URL`; the type
+  is tracked as for DM_DEFAULT_ENCODING (what was stored; a cast to `Object` keeps `URL`). One finding per method
+  and called method; the SARIF place is the called method of `HashMap` or `HashSet`.
+- A call javac writes against `java.util.Map` or `java.util.HashMap` named `get`, or `java.util.Set` or
+  `java.util.HashSet` named `contains` (not `TreeMap.get`, `Collection.contains`, `containsKey`), with an argument
+  tracked as `java.net.URL`, whatever the receiver holds: one finding per method, at the first, placed on the
+  method. It comes on top of the previous kind and of a signature finding of the same method.
+
+DMI_BLOCKING_METHODS_ON_URL: `equals(Object)` or `hashCode()` called on a receiver declared `java.net.URL`
+(`((Object) url).equals(…)` and `Objects.equals` are not); one finding per method and called method.
+
+On the six comparison code bases, SARIF results, same / missed / extra: Nacos 2 / 0 / 0 (two blocking calls),
+the others 0 / 0 / 0.
+
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in
