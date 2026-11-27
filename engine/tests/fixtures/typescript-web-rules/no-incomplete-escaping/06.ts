@@ -1,0 +1,1 @@
+export const r = text.replace(/[.*+?^{}$()|[\]\\]/g, "\\$&");

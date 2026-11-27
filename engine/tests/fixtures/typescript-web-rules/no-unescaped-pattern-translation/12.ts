@@ -1,0 +1,1 @@
+export function like(value: string) { return escapeLike(value).replace(/\*/g, '%').replace(/\?/g, '_'); }

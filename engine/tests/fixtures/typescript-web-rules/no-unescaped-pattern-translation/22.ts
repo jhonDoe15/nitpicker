@@ -1,0 +1,1 @@
+export function allow(value: string) { return RegExp(value.trim().replace(/\?/g, '.').replace(/\*/g, '.*'), 'i'); }

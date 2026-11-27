@@ -1,0 +1,1 @@
+export const u = text.replace(/\\(["'nt\\])/g, (_, c) => table[c]);

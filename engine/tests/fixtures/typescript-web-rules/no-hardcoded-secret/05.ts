@@ -1,0 +1,1 @@
+const password = process.env.DB_PASSWORD;

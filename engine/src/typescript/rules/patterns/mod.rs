@@ -2,4 +2,4 @@
 mod input_dependence;
 pub mod no_string_as_regex;
 pub mod replacements;
-mod syntax;
+pub(crate) mod syntax;

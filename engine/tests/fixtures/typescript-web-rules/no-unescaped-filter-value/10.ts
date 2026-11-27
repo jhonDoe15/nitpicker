@@ -1,0 +1,1 @@
+export const a = (n: string) => expect(x).toEqual({ name: { contains: n } });

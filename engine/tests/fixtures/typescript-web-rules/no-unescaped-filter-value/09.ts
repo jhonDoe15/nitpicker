@@ -1,0 +1,1 @@
+export const a = (n: string) => matcher.find({ where: { name: { contains: n } } });

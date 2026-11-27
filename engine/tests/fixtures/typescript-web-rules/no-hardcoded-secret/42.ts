@@ -1,0 +1,1 @@
+const password = "abc123def456".trim();
