@@ -1874,6 +1874,39 @@ On the comparison code bases, SARIF results: guava 4 / 0 / 0 (one FE, three NS_D
 mybatis-3 and Nacos 0 / 0 / 0. On the Elasticsearch server sources the engine reports the three FE findings of the
 saved SpotBugs report and nothing else of these patterns.
 
+### Field self assignment and local double assignment
+
+FindFieldSelfAssignment of the long tail (#2535): `src/java/spotbugs/assign/`, labs in
+`tests/fixtures/spotbugs/tail_assign*`. SpotBugs no longer runs it.
+- SA_FIELD_SELF_ASSIGNMENT: a store into an instance field of `this` (also through `super.` or a local holding
+  `this`) or of the object in a local variable or parameter, of the value read from that same field of that same
+  object: `f = f`, `x.f = x.f`, `f = (f)`, `f = (int) f` for an `int`, `f = g = f`, and through locals
+  (`v = f; ...; f = v`, copies of copies, any type), and `x.f = x.f++`. Locals follow each path (paths that meet
+  must agree, as for `c ? f : f`), but what makes the value read out of date counts for all code after it in
+  javac's order, on any path: a call (`new` too, one on a path that returns or throws too, an `assert`), a store
+  into the field of any object, the head of a loop (`do { } while (false)` is none). A lambda, a string
+  concatenation, a cast javac writes no code for, a store into another field, a static field or an array, and
+  `synchronized` change nothing. A `finally` block counts where javac copies it. Static fields, `o.f = o.f` with
+  `o` a field, and fields of an outer object are not reported. One finding per field, line and priority of a
+  method; the message names the field by the class the code names it by (`super.f` names the superclass).
+- The SARIF place is the parameter SpotBugs suggests, else the field (always under the class whose code it is).
+  Candidates are the parameters of the field's erased type, javac's hidden ones first (the name and number of an
+  enum constant, the outer object of an inner class, the captured variables of a lambda). SpotBugs looks each one
+  up at slot index + 1 (index in a static method), as if no parameter took two slots: the name of the parameter
+  starting there or `?`, and whether the method reads that slot (`x++` and `x += 1` read, `x = 1` does not). Of
+  the unread candidates, or of all when all are read, the first without a name wins, else the nearest name to the
+  field's when no other is as near (edit distance where a change of case costs half); a read one must be at most
+  2 away. Priority 1 when the chosen slot is unread, the object is not in slot 0, or for `x.f = x.f++`; else 2.
+  SpotBugs also makes every finding priority 1 once the run has seen a `dup` that javac follows with a store into
+  a local (`synchronized`, `x = y = 1`, `while ((n = read()) > 0)`, `y = (x += z)`), in class visiting order; the
+  engine does not follow that, since both priorities have the same SARIF level.
+- SA_LOCAL_DOUBLE_ASSIGNMENT: `x = x = value` (parentheses or not) for a local or parameter of one slot (not
+  `long` or `double`), priority 2; three or more in a row are not reported. Once per variable and line of a method.
+
+On the comparison code bases, SARIF results: guava 1 / 0 / 0, commons-lang, jackson-databind, javaparser-core and
+mybatis-3 0 / 0 / 0. The saved Nacos and Elasticsearch server reports have none of these patterns, and the engine
+reports none on their sources.
+
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in

@@ -16,6 +16,7 @@ import {
   WAIT_PATTERNS,
 } from './tail/spotbugs-tail-placed.mts';
 import {
+  ASSIGNMENT_PATTERNS,
   CALENDAR_PATTERNS,
   CIRCUIT_PATTERNS,
   FLOAT_PATTERNS,
@@ -124,6 +125,7 @@ export const ON_ENGINE: readonly string[] = [
   ...FLOAT_PATTERNS,
   ...CIRCUIT_PATTERNS,
   ...CALENDAR_PATTERNS,
+  ...ASSIGNMENT_PATTERNS,
 ];
 
 export const LOMBOK_WITHOUT_CLASSES: readonly string[] = [

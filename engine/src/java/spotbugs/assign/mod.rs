@@ -1,0 +1,143 @@
+//! FindFieldSelfAssignment rebuilt from what SpotBugs 4.9.8 reports on test code: SA_FIELD_SELF_ASSIGNMENT and
+//! SA_LOCAL_DOUBLE_ASSIGNMENT (`doubled`).
+//! - A store into an instance field of `this` or of the object in a local variable or parameter of the value read
+//!   from that same field of that same object (`f = f`, `x.f = x.f`, `v = f; ...; f = v`, `r = this; r.f = f`),
+//!   when nothing in between made the value read out of date (`values`, `exprs`, `walk`): no call, no store into
+//!   that field (of any object), no loop head; paths that meet must agree. `o.f = o.f` with `o` a field, static
+//!   fields and fields of an outer object are not reported. `x.f = x.f++` is reported too.
+//! - The SARIF place is the parameter SpotBugs suggests (`suggest`), else the field. The priority is 1 for a
+//!   suggested parameter the method does not read, an object not in slot 0, or `x.f = x.f++`; else 2. SpotBugs
+//!   also gives priority 1 to every finding after the first `dup` that javac follows with a store into a local
+//!   (`synchronized`, `x = y = 1`, `while ((n = read()) > 0)`) in the run, which the engine does not follow: both
+//!   priorities have the same SARIF level.
+//! - One finding per field, line and priority of a method; the message names the field by the class the code names it by.
+mod doubled;
+mod exprs;
+mod suggest;
+mod values;
+mod walk;
+
+use super::idioms::{Compiled, compiled, initializes};
+use super::nulls::redundant::line_before;
+use super::{Context, names, place};
+use crate::engine::source::{children, named_children};
+use crate::java::helpers::has_modifier;
+use crate::java::types::scope::TYPE_DECLARATIONS;
+use std::collections::HashSet;
+use tree_sitter::Node;
+use values::State;
+use walk::Walk;
+
+pub const SELF: &str = "SA_FIELD_SELF_ASSIGNMENT";
+pub use doubled::DOUBLE;
+pub const PATTERNS: &[&str] = &[SELF, DOUBLE];
+
+pub fn assignments<'a>(context: &Context<'a>, class: Node<'a>) {
+    if !context.wants(PATTERNS) {
+        return;
+    }
+    let declared = TYPE_DECLARATIONS.contains(&class.kind()) || matches!(class.kind(), "object_creation_expression" | "enum_constant");
+    let Some(own) = context.resolver.scope.names.get(&class.id()).cloned().filter(|_| declared) else { return };
+    for method in compiled(context, &own, class) {
+        if context.wants(&[DOUBLE]) {
+            doubled::check(context, &method);
+        }
+        if context.wants(&[SELF]) {
+            self_assignments(context, &own, class, &method);
+        }
+    }
+}
+
+fn interface(class: Node) -> bool {
+    matches!(class.kind(), "interface_declaration" | "annotation_type_declaration")
+}
+
+fn class_body(class: Node) -> Option<Node> {
+    class.child_by_field_name("body").or_else(|| children(class).into_iter().find(|part| part.kind() == "class_body"))
+}
+
+/// Whether the method has no `this`.
+fn fixed(context: &Context, method: &Compiled) -> bool {
+    if method.lambda {
+        return !super::locals::lambdas::uses_this(context, method.member);
+    }
+    match method.member.kind() {
+        "method_declaration" => has_modifier(method.member, "static"),
+        "constructor_declaration" | "compact_constructor_declaration" => false,
+        _ => method.label.contains(".<static initializer for "),
+    }
+}
+
+/// The field initializers and initializer blocks javac copies into a constructor, or into the static initializer.
+fn initializers<'a>(class: Node<'a>, wanted_static: bool) -> Vec<Node<'a>> {
+    let Some(body) = class_body(class) else { return Vec::new() };
+    let members = place::members(body).into_iter().filter(|member| initializes(*member, interface(class), wanted_static));
+    members.map(|member| if member.kind() == "static_initializer" { named_children(member).into_iter().next().unwrap_or(member) } else { member }).collect()
+}
+
+fn walk_method<'c, 'a>(walk: &mut Walk<'c, 'a>, class: Node<'a>, method: &Compiled<'a>) {
+    let member = method.member;
+    let state = Some(State::default());
+    if method.lambda {
+        let Some(body) = member.child_by_field_name("body") else { return };
+        let mut state = State::default();
+        if body.kind() == "block" { walk.statement(body, Some(state)); } else { walk.expression(body, &mut state); }
+        return;
+    }
+    match member.kind() {
+        "method_declaration" => drop(member.child_by_field_name("body").map(|body| walk.statement(body, state))),
+        "constructor_declaration" | "compact_constructor_declaration" => {
+            let Some(body) = member.child_by_field_name("body") else { return };
+            let mut parts = named_children(body);
+            let first = parts.first().copied().filter(|part| part.kind() == "explicit_constructor_invocation");
+            let mut state = State::default();
+            match first {
+                Some(call) => {
+                    parts.remove(0);
+                    walk.expression(call, &mut state);
+                }
+                None => walk.called(),
+            }
+            let delegates = first.is_some_and(|call| walk.context.text(call).trim_start().starts_with("this"));
+            let state = if delegates { Some(state) } else { walk.statements(&initializers(class, false), Some(state)) };
+            walk.statements(&parts, state);
+        }
+        _ if fixed(walk.context, method) => drop(walk.statements(&initializers(class, true), state)),
+        _ => {
+            let state = State::default();
+            walk.called();
+            walk.statements(&initializers(class, false), Some(state));
+        }
+    }
+}
+
+fn self_assignments<'a>(context: &Context<'a>, own: &str, class: Node<'a>, method: &Compiled<'a>) {
+    let mut walk = Walk::new(context, own);
+    walk_method(&mut walk, class, method);
+    let fixed = fixed(context, method);
+    let mut seen = HashSet::new();
+    for store in std::mem::take(&mut walk.found) {
+        let (declaring, name) = &store.field;
+        let Some(kind) = context.resolver.index.get(declaring).and_then(|info| info.fields.iter().find(|field| &field.name == name)).map(|field| field.kind.clone()) else { continue };
+        let suggested = suggest::suggest(context, class, method, fixed, &kind, name);
+        let moved = store.register.is_some_and(|local| !(fixed && first_parameter(context, method, local)));
+        let priority = if store.postfix || moved || suggested.as_ref().is_some_and(|suggested| suggested.unread) { 1 } else { 2 };
+        let line = line_before(context, store.at, store.at.end_byte());
+        if !seen.insert((store.field.clone(), line, priority)) {
+            continue;
+        }
+        let shown = names::field(context, own, &store.qualifying, name);
+        let at = match &suggested {
+            Some(suggested) => place::variable(&method.label, &suggested.name),
+            None => format!("{}@{shown}", place::member(context, own, name)),
+        };
+        let message = format!("Self assignment of field {shown} in {}", method.label);
+        context.report_listed(SELF, store.at, line, message, at, priority, vec![shown, method.label.clone()]);
+    }
+}
+
+/// Whether a local variable is the first parameter of the method, the one in slot 0 of a static method.
+fn first_parameter(context: &Context, method: &Compiled, local: Node) -> bool {
+    let first = method.member.child_by_field_name("parameters").and_then(|list| named_children(list).into_iter().find(|part| part.kind() == "formal_parameter"));
+    first.and_then(super::expose::parameter_name).is_some_and(|name| context.text(name) == context.text(local))
+}
