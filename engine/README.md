@@ -685,7 +685,8 @@ What SpotBugs does, as measured (`tests/fixtures/spotbugs/dead_stores*`, all pri
   read; a class literal is `DLS_DEAD_STORE_OF_CLASS_LITERAL`, medium; `return i++` on an `int` is
   `DLS_DEAD_LOCAL_INCREMENT_IN_RETURN`, medium, high for a parameter.
 - Priority of the rest: medium, high for a parameter and for a variable named as an instance field of the class
-  of an instance method (`DLS_DEAD_LOCAL_STORE_SHADOWS_FIELD`; inherited and static fields do not count), always
+  of an instance method, or as a static field of the class of a static method or initializer
+  (`DLS_DEAD_LOCAL_STORE_SHADOWS_FIELD`; inherited fields do not count), always
   high for a parameter whose value is never read. A new object or array (not one filled in braces) raises it one
   step; it drops one step each for a read of an instance field (not one the store converts), a copy of a variable whose value is a number other
   than `long` or `double`, a `boolean` or a string (a conversion is no copy), a store after which another store
@@ -703,8 +704,35 @@ What SpotBugs does, as measured (`tests/fixtures/spotbugs/dead_stores*`, all pri
   slot (place `?`): a declaration that is the last code of a nested block, a `for` variable whose body is empty, a
   first assignment that is the last code of a branch javac leaves without a jump.
 
+- An assignment whose value is used (`foo(a = x)`, `(r = new R()).run()`, `a = b = x` for `b`) stores after a
+  `dup`: a reference stored so is never reported, any other value counts as neither a constant nor a copy. A read
+  of a field through a cast javac writes no instruction for (to a supertype) is a field read like any other.
+- A dead self assignment `x = x` of a parameter or of a variable named as a field drops one step for being a copy
+  (not both at once) and not for a store that can follow; of any other variable it drops only for a store that
+  can follow.
+
 Known difference, in labs only: when sibling `if` and `else` branches store with the same priority, SpotBugs
 sometimes reports the `else` line (`long` constants).
+
+### Self assignments
+
+`src/java/spotbugs/locals/` rebuilds FindLocalSelfAssignment2: `SA_LOCAL_SELF_ASSIGNMENT` and
+`SA_LOCAL_SELF_ASSIGNMENT_INSTEAD_OF_FIELD`. Neither fires on the seven code bases; they run on the engine in real
+runs and SpotBugs no longer runs the detector. Measured (`tests/fixtures/spotbugs/self_assign*`):
+
+- `x = x;` on a local variable, parameter or pattern variable of a method, constructor, initializer or lambda is
+  reported when the value is discarded, one finding per assignment (two with the same pattern, name, priority and
+  line make one), on the statement's line. A `for` update the loop never reaches is skipped. A `catch` parameter is
+  reported only when the handler reads it later.
+- In instance code (a method, constructor, initializer, or a lambda whose body uses `this`: a field or method of the
+  object, `this`, `super`, an anonymous class, a new inner class), a name the method's own class declares as a field,
+  static or not, makes it `SA_LOCAL_SELF_ASSIGNMENT_INSTEAD_OF_FIELD`; in static code only static fields count.
+  Fields of superclasses and outer classes do not count.
+- High priority in a constructor, and for a parameter that no store instruction writes before the assignment in code
+  order (`++`, and `+=` or `-=` of a small constant on an `int` do not store; a `for` update comes after the body),
+  else medium.
+- Instance initializer blocks and field initializers are reported once per constructor that does not start with
+  `this(...)`, as javac copies them there; static ones in the static initializer.
 
 ### Statement patterns
 

@@ -154,7 +154,7 @@ fn field(context: &Context, layout: &Layout, node: Node) -> Value {
     let found = match node.kind() {
         "identifier" => context.resolver.binding(node, context.text(node)),
         _ => {
-            let object = node.child_by_field_name("object");
+            let object = node.child_by_field_name("object").map(|object| through_casts(context, object));
             let local = object.map(unwrap).is_some_and(|object| object.kind() == "this" || layout.uses.contains_key(&object.id()));
             if !local {
                 return Value::Other;
@@ -175,6 +175,15 @@ fn field(context: &Context, layout: &Layout, node: Node) -> Value {
     match found {
         Some(Binding::Field(_, _, field)) if field.flags & flag::STATIC == 0 => Value::Field,
         _ => Value::Other,
+    }
+}
+
+/// The value under the casts the compiler writes no instruction for.
+fn through_casts<'a>(context: &Context, node: Node<'a>) -> Node<'a> {
+    let node = unwrap(node);
+    match node.child_by_field_name("value").filter(|_| node.kind() == "cast_expression") {
+        Some(inner) if dropped(context, node, inner) => through_casts(context, inner),
+        _ => node,
     }
 }
 
@@ -239,6 +248,13 @@ pub fn used(node: Node) -> bool {
         Some(holder) if holder.kind() == "for_statement" => holder.child_by_field_name("condition").is_some_and(|condition| condition.id() == node.id()),
         _ => true,
     }
+}
+
+/// A reference stored by an assignment whose value is used: the compiled code keeps a copy with `dup` right before
+/// the store, and SpotBugs does not report such a store.
+pub fn duplicated(node: Node, kind: &Option<Type>) -> bool {
+    let reference = kind.as_ref().is_some_and(|kind| !matches!(kind, Type::Primitive(_)));
+    reference && node.kind() == "assignment_expression" && used(node)
 }
 
 /// Whether a value is boxed or unboxed on its way into a variable: a call to `valueOf` or to `intValue` and the like.

@@ -76,7 +76,11 @@ pub fn dead_stores<'a>(context: &Context<'a>, class: Node<'a>) {
         return;
     }
     let Some(own) = context.resolver.scope.names.get(&class.id()) else { return };
-    let fields: HashSet<String> = context.resolver.index.get(own).map(|info| info.fields.iter().filter(|field| field.flags & flag::STATIC == 0).map(|field| field.name.clone()).collect()).unwrap_or_default();
+    let named = |fixed: bool| -> HashSet<String> {
+        let info = context.resolver.index.get(own);
+        info.map(|info| info.fields.iter().filter(|field| (field.flags & flag::STATIC != 0) == fixed).map(|field| field.name.clone()).collect()).unwrap_or_default()
+    };
+    let (fields, statics) = (named(false), named(true));
     let outer = || {
         let nest = crate::java::types::scope::enclosing_types(context.resolver.scope, class);
         nest.get(1).filter(|_| inner(class) && parent(class).is_some_and(|holder| holder.kind() == "class_body")).cloned()
@@ -113,13 +117,12 @@ pub fn dead_stores<'a>(context: &Context<'a>, class: Node<'a>) {
         let label = format!("{owner}.<static initializer for {simple}>()");
         units.push((fixed_blocks, Unit { listed: Vec::new(), label, fixed: true, hidden: 0, compact: false, locked: false }));
     }
-    let none = HashSet::new();
     for (bodies, unit) in units {
         let layout = slots::layout(context, &bodies, &unit.listed, unit.fixed, unit.hidden, unit.locked);
         let cfg = chained(context, &bodies);
         let live = flow::run(context, &layout, &cfg);
         let handlers = flow::handler_lines(context, &bodies);
-        let fields = if unit.fixed { &none } else { &fields };
+        let fields = if unit.fixed { &statics } else { &fields };
         let merged = parent(bodies[0]).is_some_and(|holder| holder.kind() == "static_initializer");
         let body = if merged || unit.locked { class } else { bodies[0] };
         let (label, compact) = (unit.label.as_str(), unit.compact);

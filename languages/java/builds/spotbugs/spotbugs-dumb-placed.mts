@@ -1,5 +1,6 @@
 import type { Placed } from './spotbugs-placed.mts';
 
+const ERROR = 'error';
 const NOTE = 'note';
 const RELATIVE = 'relative';
 
@@ -31,6 +32,14 @@ export const THREAD_PATTERNS: readonly string[] = [
 ];
 
 export const DUMB_PLACED: Readonly<Record<string, Placed>> = {
+  SA_LOCAL_SELF_ASSIGNMENT: {
+    text: 'Self assignment of local variable',
+    levels: { 1: NOTE, 2: NOTE },
+  },
+  SA_LOCAL_SELF_ASSIGNMENT_INSTEAD_OF_FIELD: {
+    text: 'Self assignment of local rather than assignment to field',
+    levels: { 1: ERROR, 2: ERROR },
+  },
   DMI_COLLECTION_OF_URLS: {
     text: 'Maps and sets of URLs can be performance hogs',
     levels: { 1: NOTE },
