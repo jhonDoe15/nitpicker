@@ -70,7 +70,8 @@ pub fn expected(index: &TypeIndex, receiver: &str, declaring: &str, package: &st
         return true;
     }
     let in_time = |name: &str| name.starts_with("java.time") || name.starts_with("org.threeten.bp");
-    if in_time(package) && !in_time(file_package) && method.detail.access & 1 != 0 && !time_allowed(method, receiver) {
+    let inside = |name: &str, prefix: &str| name.strip_prefix(prefix).is_some_and(|rest| rest.is_empty() || rest.starts_with('.'));
+    if in_time(package) && !(inside(file_package, "java.time") || inside(file_package, "org.threeten.bp")) && method.detail.access & 1 != 0 && !time_allowed(method, receiver) {
         return true;
     }
     if simple {

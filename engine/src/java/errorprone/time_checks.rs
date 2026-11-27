@@ -1,5 +1,6 @@
 //! Checks on `java.time` and `TimeUnit` calls: TimeUnitConversionChecker, JavaTimeDefaultTimeZone and the `Duration` pair.
 use super::Context;
+use super::call_consts::package_starts_with;
 use super::fix_helpers::qualify_type;
 use super::fixes::Fix;
 use super::symbol_key::same_symbol as same_variable;
@@ -101,10 +102,6 @@ pub fn time_unit_conversion(context: &Context, call: Node) {
         let fix = replace_with(call, target, context.text(first));
         context.report_fixed("TimeUnitConversionChecker", call, preferred(context, call), CONVERSION, &[fix]);
     }
-}
-
-fn package_starts_with(context: &Context, prefix: &str) -> bool {
-    context.resolver.scope.package.starts_with(prefix)
 }
 
 pub fn java_time_default_time_zone(context: &Context, call: Node) {
