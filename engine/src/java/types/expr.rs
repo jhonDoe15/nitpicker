@@ -133,6 +133,17 @@ fn text_block(text: &str) -> Option<String> {
     Some(cut.join("\n"))
 }
 
+/// JLS 15.25: an `int` constant that the type `small` (`byte`, `short` or `char`) can hold.
+fn fits(value: &Constant, small: &str) -> bool {
+    let Constant::Int(value) = *value else { return false };
+    match small {
+        "byte" => i8::try_from(value).is_ok(),
+        "short" => i16::try_from(value).is_ok(),
+        "char" => u16::try_from(value).is_ok(),
+        _ => false,
+    }
+}
+
 fn widens(from: &str, to: &str) -> bool {
     const ORDER: &[&str] = &["byte", "short", "int", "long", "float", "double"];
     let place = |name: &str| ORDER.iter().position(|known| *known == name);
@@ -597,6 +608,12 @@ impl<'a> Resolver<'a> {
                 Ok(Some(Constant::Bool(_))) | Ok(None) | Err(_) => None,
                 Ok(Some(value)) => Some(value),
             },
+            "ternary_expression" => {
+                let (first, second) = (operand("consequence")?, operand("alternative")?);
+                let same = std::mem::discriminant(&first) == std::mem::discriminant(&second);
+                same.then_some(())?;
+                Some(if self.constant_boolean(expression.field("condition")?)? { first } else { second })
+            }
             "cast_expression" => {
                 let kind = expression.field("type").filter(|kind| kind.kind() == "integral_type" || kind.kind() == "floating_point_type")?;
                 cast(self.file.text_of(kind), operand("value")?)
@@ -1987,6 +2004,18 @@ impl<'a> Resolver<'a> {
                 }
                 (Some("boolean"), Some(_)) | (Some(_), Some("boolean")) => return None,
                 (Some(x), Some(y)) => {
+                    let narrow = |small: &str, other: &Type, field: &'static str| {
+                        *other == Type::Primitive("int") && expression.field(field).and_then(|node| self.constant_number(node)).is_some_and(|value| fits(&value, small))
+                    };
+                    if narrow(x, b, "alternative") {
+                        return Some(Type::Primitive(x));
+                    }
+                    if narrow(y, a, "consequence") {
+                        return Some(Type::Primitive(y));
+                    }
+                    if matches!((x, y), ("byte", "short") | ("short", "byte")) {
+                        return Some(Type::Primitive("short"));
+                    }
                     let wide = if widens(x, y) { y } else { x };
                     return Some(Type::Primitive(if matches!(wide, "byte" | "short" | "char") && x != y { "int" } else { wide }));
                 }
