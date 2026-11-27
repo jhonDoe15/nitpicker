@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkLevels, type CheckLevels } from './check-levels.mts';
+import { ALL_ERRORS_AS_WARNINGS, checkLevels, type CheckLevels } from './check-levels.mts';
 import { narrowedFlags } from './narrowed-flags.mts';
 import { lombokOff, runnerLevels } from './runner-levels.mts';
 
@@ -47,7 +47,7 @@ describe('checkLevels', () => {
       { ...DEFAULTS, FormatString: undefined, FloggerFormatString: undefined },
     ],
     [
-      ['-Xep:SystemOut:ERROR', '-XepAllErrorsAsWarnings'],
+      ['-Xep:SystemOut:ERROR', ALL_ERRORS_AS_WARNINGS],
       500,
       {
         ...DEFAULTS,
@@ -58,7 +58,7 @@ describe('checkLevels', () => {
       },
     ],
     [
-      ['-XepAllErrorsAsWarnings', '-Xep:SystemOut:ERROR'],
+      [ALL_ERRORS_AS_WARNINGS, '-Xep:SystemOut:ERROR'],
       500,
       {
         ...DEFAULTS,
@@ -96,7 +96,7 @@ describe('checkLevels', () => {
   it('is undefined where Error Prone refuses the flags', () => {
     expect(checkLevels(['-Xep:UnicodeDirectionalityCharacters:OFF'])).toBeUndefined();
     expect(checkLevels(['-Xep:UnicodeDirectionalityCharacters:WARN'])).toBeUndefined();
-    expect(checkLevels(['-Xep:NotACheck:OFF'])).toBeDefined();
+    expect(checkLevels(['-Xep:NotACheck:OFF'])?.size).toBe(499);
   });
 });
 

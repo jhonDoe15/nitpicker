@@ -38,8 +38,11 @@ function scriptPattern(pattern: string): RegExp | undefined {
   }
   try {
     return new RegExp(`^(?:${pattern})$`, 'u');
-  } catch {
-    return undefined;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return undefined;
+    }
+    throw error;
   }
 }
 

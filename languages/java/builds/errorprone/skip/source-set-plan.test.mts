@@ -74,7 +74,9 @@ describe('sourceSetPlan', () => {
 
     const answered = new Map(set.sources.map((file) => [file, []]));
 
-    expect(sourceSetPlan(set, ['FallThrough'], answered)).toStrictEqual({ kind: 'none' });
+    expect(sourceSetPlan(set, ['FallThrough'], { mayReport: answered })).toStrictEqual({
+      kind: 'none',
+    });
     expect(
       plannedArguments(set, { kind: 'none' }, ['-Xep:A:OFF']).split('\n').slice(-3),
     ).toStrictEqual(['--errorprone-flag=-Xep:A:OFF', '--sources', '']);
@@ -91,11 +93,9 @@ describe('sourceSetPlan', () => {
       [b, []],
       [c, ['StatementSwitchToExpressionSwitch']],
     ]);
-    const plan = sourceSetPlan(
-      set,
-      ['FallThrough', 'StatementSwitchToExpressionSwitch'],
+    const plan = sourceSetPlan(set, ['FallThrough', 'StatementSwitchToExpressionSwitch'], {
       mayReport,
-    );
+    });
 
     expect(plan).toStrictEqual({ kind: 'narrowed', files: [a], checks: ['FallThrough'] });
     expect(plannedArguments(set, plan, []).split('\n').slice(-4)).toStrictEqual([
@@ -104,11 +104,9 @@ describe('sourceSetPlan', () => {
       a,
       '',
     ]);
-    const everywhere = sourceSetPlan(
-      set,
-      ['FallThrough'],
-      new Map([a, b, c].map((file) => [file, ['FallThrough']])),
-    );
+    const everywhere = sourceSetPlan(set, ['FallThrough'], {
+      mayReport: new Map([a, b, c].map((file) => [file, ['FallThrough']])),
+    });
     expect(plannedArguments(set, everywhere, []).split('\n')).not.toContain(NARROWED);
   });
 
@@ -117,14 +115,12 @@ describe('sourceSetPlan', () => {
     const [a = '', b = '', c = ''] = set.sources;
 
     expect(
-      sourceSetPlan(
-        set,
-        ['FallThrough'],
-        new Map([
+      sourceSetPlan(set, ['FallThrough'], {
+        mayReport: new Map([
           [a, []],
           [c, []],
         ]),
-      ),
+      }),
     ).toStrictEqual({
       kind: 'narrowed',
       files: [b],
@@ -135,15 +131,13 @@ describe('sourceSetPlan', () => {
   it('hands engine checks back for the files they were given back in, and leaves excluded files out', () => {
     const set = setIn(project(), '--errorprone-flag=-XepExcludedPaths:.*/B\\.java');
     const [a = '', , c = ''] = set.sources;
-    const plan = sourceSetPlan(
-      set,
-      [],
-      new Map(),
-      new Map([
+    const plan = sourceSetPlan(set, [], {
+      mayReport: new Map(),
+      handedBack: new Map([
         [a, ['SystemOut']],
         [c, ['MissingBraces']],
       ]),
-    );
+    });
 
     expect(plan).toStrictEqual({ kind: 'narrowed', files: [a], checks: ['SystemOut'] });
   });

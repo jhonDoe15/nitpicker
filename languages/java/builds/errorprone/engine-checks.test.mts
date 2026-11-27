@@ -119,12 +119,9 @@ describe('engineChecksFor', () => {
     );
     const { checks } = engineChecksFor(setOf(head));
 
-    expect(
-      [NULL_AWAY, 'IdentifierName', 'PatternMatchingInstanceof'].filter((check) =>
-        checks.includes(check),
-      ),
-    ).toStrictEqual([]);
-    expect(checks).toContain('SystemOut');
+    const readers = [NULL_AWAY, 'IdentifierName', 'PatternMatchingInstanceof'];
+
+    expect(checks).toStrictEqual(IN_REACH.filter((check) => !readers.includes(check)));
   });
 
   it.each([

@@ -18,7 +18,7 @@ function fixes(now: CheckLevels, kept: ReadonlySet<string>, wanted: CheckLevels)
       : [`-Xep:${check}:${LEVEL_NAMES[level]}`];
   });
   const off = [...now.keys()]
-    .filter((check) => !kept.has(check) && !NOT_DISABLEABLE.has(check))
+    .filter((check) => !(kept.has(check) || NOT_DISABLEABLE.has(check)))
     .map((check) => `-Xep:${check}:OFF`);
   return [...levels, ...off];
 }
@@ -37,6 +37,23 @@ function lombokKeeps(
   );
 }
 
+type Narrowing = {
+  readonly head: readonly string[];
+  readonly kept: ReadonlySet<string>;
+  readonly wanted: CheckLevels;
+};
+
+function nextFlags(
+  { head, kept, wanted }: Narrowing,
+  flags: readonly string[],
+): string[] | undefined {
+  const now = runnerLevels(head, PLAIN, flags);
+  const more = now === undefined ? undefined : fixes(now, kept, wanted);
+  return more !== undefined && more.length === 0 && lombokKeeps(head, flags, kept)
+    ? undefined
+    : [...flags, ...(more ?? [])];
+}
+
 /**
  * The level flags that make a narrowed Error Prone run keep only the planned checks, each at the level the whole run
  * gives it. Turning a check off by name also turns off the checks that carry that name, so the flags are checked
@@ -47,15 +64,16 @@ export function narrowedFlags(
   checks: readonly string[],
   wanted: CheckLevels,
 ): string[] {
-  const kept = new Set(checks);
-  let flags: string[] = [];
-  for (let round = 0; round <= FIX_ROUNDS; round += 1) {
-    const now = runnerLevels(head, PLAIN, flags);
-    const more = now === undefined ? undefined : fixes(now, kept, wanted);
-    if (more !== undefined && more.length === 0 && lombokKeeps(head, flags, kept)) {
+  const narrowing = { head, kept: new Set(checks), wanted };
+  const attempts: string[][] = [[]];
+  for (const flags of attempts) {
+    const next = nextFlags(narrowing, flags);
+    if (next === undefined) {
       return flags;
     }
-    flags = [...flags, ...(more ?? [])];
+    if (attempts.length <= FIX_ROUNDS) {
+      attempts.push(next);
+    }
   }
   throw new Error('a narrowed Error Prone run cannot keep only the planned checks');
 }

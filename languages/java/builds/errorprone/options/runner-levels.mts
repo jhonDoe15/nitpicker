@@ -15,8 +15,7 @@ function nullAwayOn(head: readonly string[]): boolean {
   return !head.includes(TEST_ONLY) && ownPackages(ownClasses(head)).length > 0;
 }
 
-/** The level flags Error Prone's runner passes for a group of files of the source set, the project's flags last. */
-export function runnerFlags(head: readonly string[], group: RunnerGroup): string[] {
+function runnerFlags(head: readonly string[], group: RunnerGroup): string[] {
   return [
     ALL_ERRORS_AS_WARNINGS,
     ...(group.immutableInReach ? [] : ['-Xep:Immutable:OFF']),

@@ -41,8 +41,12 @@ function unknownTurnedOn(head: readonly string[]): string[] {
  * The checks Error Prone's runner would run on the source set that the engine does not run, with the checks the
  * project turns on under names Error Prone does not know, which a check plugin may own.
  */
-export function remainingChecks(set: ArgumentSet, onEngine: readonly string[]): string[] {
-  const levels = sourceSetLevels(set) ?? new Map();
+export function remainingChecks(
+  set: ArgumentSet,
+  onEngine: readonly string[],
+  found: CheckLevels | undefined = sourceSetLevels(set),
+): string[] {
+  const levels: CheckLevels = found ?? new Map();
   const enabled = [...levels.keys()].filter((check) => !quiet(check, levels));
   return [...new Set([...enabled, ...unknownTurnedOn(set.head)])]
     .filter((check) => !onEngine.includes(check))
@@ -73,11 +77,15 @@ function fileChecks(file: string, context: PlanContext): string[] {
  * `lombok.config` that turns off `@SuppressWarnings` gets the runner's Lombok checks off as well, files the project
  * excludes are left out, and every other file is compiled when the processor path brings checks.
  */
+export type EngineAnswer = {
+  readonly mayReport: ReadonlyMap<string, readonly string[]>;
+  readonly handedBack?: ReadonlyMap<string, readonly string[]>;
+};
+
 export function sourceSetPlan(
   set: ArgumentSet,
   remaining: readonly string[],
-  mayReport: ReadonlyMap<string, readonly string[]>,
-  handedBack: ReadonlyMap<string, readonly string[]> = NO_HAND_BACK,
+  { mayReport, handedBack = NO_HAND_BACK }: EngineAnswer,
 ): SourceSetPlan {
   const context = {
     remaining,

@@ -30,12 +30,23 @@ export const QUIET_AT_SUGGESTION: readonly string[] = FACTS.pluginChecks.filter(
   (check) => check !== 'NullAway',
 );
 const ALL: readonly string[] = [...CHECKS.reviewedChecks, ...FACTS.pluginChecks];
-const OFF_BY_DEFAULT: readonly string[] = [...CHECKS.defaultOff, ...CHECKS.enable];
+const ALL_SET: ReadonlySet<string> = new Set(ALL);
+const ERROR = 'ERROR';
+const WARNING = 'WARNING';
+const WARN = 'WARN';
+const OFF = 'OFF';
+const OVERRIDES: Readonly<Record<string, Override>> = {
+  OFF,
+  WARN,
+  ERROR,
+  DEFAULT: 'DEFAULT',
+};
+const OFF_BY_DEFAULT: ReadonlySet<string> = new Set([...CHECKS.defaultOff, ...CHECKS.enable]);
 const ALTERNATIVES: Readonly<Record<string, readonly string[]>> = FACTS.alternativeNames;
 const NAMES = new Map<string, readonly string[]>(
   [...new Set([...ALL, ...Object.keys(ALTERNATIVES)])].map((name) => [
     name,
-    [...(ALL.includes(name) ? [name] : []), ...(ALTERNATIVES[name] ?? [])],
+    [...(ALL_SET.has(name) ? [name] : []), ...(ALTERNATIVES[name] ?? [])],
   ]),
 );
 
@@ -47,15 +58,16 @@ export function knownName(name: string): boolean {
 export function levelFlag(
   flag: string,
 ): { readonly check: string; readonly level: Override } | undefined {
-  const [, check, level] = LEVEL_FLAG.exec(flag) ?? [];
-  return check === undefined ? undefined : { check, level: (level ?? 'DEFAULT') as Override };
+  const [, check, level = 'DEFAULT'] = LEVEL_FLAG.exec(flag) ?? [];
+  const override = OVERRIDES[level];
+  return check === undefined || override === undefined ? undefined : { check, level: override };
 }
 
-export function defaultSeverity(check: string): Severity {
+function defaultSeverity(check: string): Severity {
   if (ERRORS.has(check)) {
-    return 'ERROR';
+    return ERROR;
   }
-  return SUGGESTIONS.has(check) ? 'SUGGESTION' : 'WARNING';
+  return SUGGESTIONS.has(check) ? 'SUGGESTION' : WARNING;
 }
 
 function rewrite(overrides: Map<string, Override>, from: Override, to: Override): void {
@@ -67,9 +79,9 @@ function rewrite(overrides: Map<string, Override>, from: Override, to: Override)
 }
 
 const REWRITES: ReadonlyMap<string, readonly [Override, Override]> = new Map([
-  [ALL_ERRORS_AS_WARNINGS, ['ERROR', 'WARN']],
-  [ENABLE_ALL, ['OFF', 'WARN']],
-  [DISABLE_WARNINGS, ['WARN', 'OFF']],
+  [ALL_ERRORS_AS_WARNINGS, [ERROR, WARN]],
+  [ENABLE_ALL, [OFF, WARN]],
+  [DISABLE_WARNINGS, [WARN, OFF]],
 ]);
 
 function parsed(flags: readonly string[]): Parsed {
@@ -97,21 +109,25 @@ type State = {
   readonly disabled: Set<string>;
 };
 
-function globalState(global: ReadonlySet<string>): State {
+function enabledState(global: ReadonlySet<string>): State {
   const severities = new Map(ALL.map((check) => [check, defaultSeverity(check)]));
-  const disabled = new Set(OFF_BY_DEFAULT);
-  if (global.has(ENABLE_ALL)) {
-    disabled.forEach((check) => severities.set(check, 'WARNING'));
-    disabled.clear();
+  const enableAll = global.has(ENABLE_ALL);
+  for (const check of enableAll ? OFF_BY_DEFAULT : []) {
+    severities.set(check, WARNING);
   }
+  return { severities, disabled: new Set(enableAll ? [] : OFF_BY_DEFAULT) };
+}
+
+function globalState(global: ReadonlySet<string>): State {
+  const { severities, disabled } = enabledState(global);
   for (const check of ALL) {
     const original = defaultSeverity(check);
-    const dropped = global.has(ALL_ERRORS_AS_WARNINGS) && original === 'ERROR';
+    const dropped = global.has(ALL_ERRORS_AS_WARNINGS) && original === ERROR;
     const raised = global.has(SUGGESTIONS_AS_WARNINGS) && original === 'SUGGESTION';
     if ((dropped && !NOT_DISABLEABLE.has(check)) || raised) {
-      severities.set(check, 'WARNING');
+      severities.set(check, WARNING);
     }
-    const offAsWarning = global.has(DISABLE_WARNINGS) && original === 'WARNING';
+    const offAsWarning = global.has(DISABLE_WARNINGS) && original === WARNING;
     if (offAsWarning || (global.has(DISABLE_ALL) && !NOT_DISABLEABLE.has(check))) {
       disabled.add(check);
     }
@@ -119,17 +135,23 @@ function globalState(global: ReadonlySet<string>): State {
   return { severities, disabled };
 }
 
+function severityOf(level: Override, check: string): Severity {
+  if (level === WARN) {
+    return WARNING;
+  }
+  return level === ERROR ? ERROR : defaultSeverity(check);
+}
+
 function applied({ severities, disabled }: State, check: string, level: Override): boolean {
-  if (level === 'OFF') {
+  if (level === OFF) {
     severities.delete(check);
     disabled.add(check);
     return !NOT_DISABLEABLE.has(check);
   }
-  const demoted = level === 'WARN' && NOT_DISABLEABLE.has(check) && !OFF_BY_DEFAULT.includes(check);
-  const severity = { WARN: 'WARNING', ERROR: 'ERROR', DEFAULT: defaultSeverity(check) }[level];
-  severities.set(check, severity as Severity);
+  const demoted = level === WARN && NOT_DISABLEABLE.has(check) && !OFF_BY_DEFAULT.has(check);
+  severities.set(check, severityOf(level, check));
   disabled.delete(check);
-  return !(demoted && defaultSeverity(check) === 'ERROR');
+  return !(demoted && defaultSeverity(check) === ERROR);
 }
 
 /**
@@ -140,12 +162,11 @@ function applied({ severities, disabled }: State, check: string, level: Override
 export function checkLevels(flags: readonly string[]): CheckLevels | undefined {
   const { overrides, global } = parsed(flags);
   const state = globalState(global);
-  for (const [name, level] of overrides) {
-    for (const check of NAMES.get(name) ?? []) {
-      if (!applied(state, check, level)) {
-        return undefined;
-      }
-    }
+  const accepted = [...overrides].every(([name, level]) =>
+    (NAMES.get(name) ?? []).every((check) => applied(state, check, level)),
+  );
+  if (!accepted) {
+    return undefined;
   }
   return new Map(
     ALL.filter((check) => !state.disabled.has(check)).map((check) => [
