@@ -37,6 +37,9 @@ export const SELF_ASSIGNMENTS: readonly string[] = [
 ];
 export const SEQUENCE_ON_CONCURRENT = 'AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION';
 export const UNSYNC_GET = 'UG_SYNC_SET_UNSYNC_GET';
+export const UNCHECKED_READS: readonly string[] = ['RR_NOT_CHECKED', 'SR_NOT_CHECKED'];
+export const UNINITIALIZED_READ = 'UR_UNINIT_READ';
+const VALUE_PATTERNS: readonly string[] = [...UNCHECKED_READS, UNINITIALIZED_READ];
 export const ON_ENGINE: readonly string[] = [
   'CT_CONSTRUCTOR_THROW',
   'EI_EXPOSE_REP',
@@ -109,4 +112,24 @@ export const ON_ENGINE: readonly string[] = [
   ...WAIT_PATTERNS,
   ...START_PATTERNS,
   ...ENUM_PATTERNS,
+  ...VALUE_PATTERNS,
+];
+
+export const LOMBOK_WITHOUT_CLASSES: readonly string[] = [
+  'SING_',
+  'HSM_',
+  'PA_',
+  'MS_SHOULD_BE_FINAL',
+  'MS_PKGPROTECT',
+  'SS_',
+  'DLS_',
+  'IP_PARAMETER_IS_DEAD_BUT_OVERWRITTEN',
+];
+export const LOMBOK_WRITES: readonly string[] = [
+  'AT_',
+  'UG_',
+  'URF_',
+  'UR_',
+  'NM_METHOD_NAMING_CONVENTION',
+  'ME_ENUM_FIELD_SETTER',
 ];

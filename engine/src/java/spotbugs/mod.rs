@@ -37,6 +37,7 @@ mod stores;
 mod tail;
 mod taint;
 mod threads;
+mod values;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver, TYPE_DECLARATIONS};
@@ -75,8 +76,7 @@ impl<'a> Context<'a> {
     /// The context of a file, with its type declarations and the bodies of its anonymous classes.
     pub fn of(resolver: &'a Resolver<'a>, project: &'a JavaProject, elsewhere: &'a nulls::Elsewhere, selected: Option<Vec<String>>) -> (Self, Vec<Node<'a>>) {
         let file = resolver.file;
-        let mut line_starts = vec![0];
-        line_starts.extend(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1));
+        let line_starts = std::iter::once(0).chain(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1)).collect();
         let mut declared = Vec::new();
         walk(file.tree.root_node(), |node| {
             let unnamed = matches!(node.kind(), "object_creation_expression" | "enum_constant") && children(node).iter().any(|part| part.kind() == "class_body");
@@ -85,7 +85,6 @@ impl<'a> Context<'a> {
             }
         });
         let classes = declared.iter().filter_map(|node| Some((resolver.scope.names.get(&node.id())?.clone(), *node))).collect();
-        let out = RefCell::new(Vec::new());
         let context = Context {
             resolver,
             project,
@@ -99,7 +98,7 @@ impl<'a> Context<'a> {
             numbers: &project.numbers,
             line_starts,
             selected,
-            out,
+            out: RefCell::new(Vec::new()),
             compiled: std::cell::OnceCell::new(),
             serial: RefCell::new(Vec::new()),
         };
@@ -276,6 +275,7 @@ impl FileRule for SpotBugs {
             returns::returns(&context, &self.effects);
         }
         catches::catches(&context);
+        values::values(&context, &declared);
         nulls::null_dereference(&context, &declared);
         taint::injections(&context, &declared, &self.taint);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());

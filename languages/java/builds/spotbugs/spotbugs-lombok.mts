@@ -2,29 +2,13 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { ancestorDirectories } from '../../../../shared/filesystem.mts';
 import { zipEntryOf } from '../../../../shared/archives/zip-entry.mts';
+import { LOMBOK_WITHOUT_CLASSES, LOMBOK_WRITES } from './spotbugs-patterns.mts';
 
 export type ProcessorKind = 'none' | 'lombok' | 'other';
 
 const PROCESSOR_SERVICE = 'META-INF/services/javax.annotation.processing.Processor';
 const CONFIG = 'lombok.config';
 const LOMBOK_PROCESSOR = 'lombok.';
-const LOMBOK_WITHOUT_CLASSES: readonly string[] = [
-  'SING_',
-  'HSM_',
-  'PA_',
-  'MS_SHOULD_BE_FINAL',
-  'MS_PKGPROTECT',
-  'SS_',
-  'DLS_',
-  'IP_PARAMETER_IS_DEAD_BUT_OVERWRITTEN',
-];
-const LOMBOK_WRITES: readonly string[] = [
-  'AT_',
-  'UG_',
-  'URF_',
-  'NM_METHOD_NAMING_CONVENTION',
-  'ME_ENUM_FIELD_SETTER',
-];
 const FILE_WRITERS: readonly string[] = [
   'com.google.auto.service.processor.',
   'com.google.auto.value.',
