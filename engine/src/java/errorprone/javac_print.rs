@@ -14,6 +14,13 @@ pub fn printed(file: &SourceFile, node: Node) -> String {
     out
 }
 
+/// An annotation as javac prints it: `@` and the name as written, then `(` and its arguments when it has any.
+pub fn annotation_printed(file: &SourceFile, node: Node) -> String {
+    let mut out = String::new();
+    Printer { file }.annotation(node, &mut out);
+    out
+}
+
 struct Printer<'a> {
     file: &'a SourceFile,
 }
@@ -299,6 +306,19 @@ impl Printer<'_> {
         self.text(node).split_whitespace().collect::<Vec<_>>().join(" ")
     }
 
+    fn annotation(&self, node: Node, out: &mut String) {
+        out.push('@');
+        if let Some(name) = node.child_by_field_name("name") {
+            self.expression(name, out);
+        }
+        let arguments = node.child_by_field_name("arguments").map(named).unwrap_or_default();
+        if !arguments.is_empty() {
+            out.push('(');
+            self.joined(&arguments, ", ", out);
+            out.push(')');
+        }
+    }
+
     fn fallback(&self, node: Node, out: &mut String) {
         out.push_str(&self.collapsed(node));
     }
@@ -373,7 +393,15 @@ impl Printer<'_> {
                     }
                 }
             }
-            "array_initializer" => {
+            "marker_annotation" | "annotation" => self.annotation(node, out),
+            "element_value_pair" => {
+                if let (Some(key), Some(value)) = (node.child_by_field_name("key"), node.child_by_field_name("value")) {
+                    out.push_str(self.text(key));
+                    out.push_str(" = ");
+                    self.expression(value, out);
+                }
+            }
+            "array_initializer" | "element_value_array_initializer" => {
                 out.push('{');
                 self.joined(&named(node), ", ", out);
                 out.push('}');

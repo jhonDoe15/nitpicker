@@ -72,11 +72,13 @@ fn statements(block: Node) -> Vec<Node> {
     crate::engine::source::named_children(block).into_iter().filter(|part| !part.kind().ends_with("comment")).collect()
 }
 
+const STATEMENT_HOLDERS: [&str; 10] = ["block", "constructor_body", "switch_block_statement_group", "labeled_statement", "if_statement", "while_statement", "do_statement", "for_statement", "enhanced_for_statement", "expression_statement"];
+
 /// Whether the code drops the value of a call or `new` expression.
 fn dropped(context: &Context, node: Node) -> bool {
     let Some(holder) = parent(node) else { return false };
     match holder.kind() {
-        "expression_statement" => !parent(holder).is_some_and(|arm| arm.kind() == "switch_rule" && crate::engine::source::ancestor(arm, &["switch_expression", "switch_statement"]).is_some_and(|switch| switch.kind() == "switch_expression")),
+        "expression_statement" => !parent(holder).is_some_and(|arm| arm.kind() == "switch_rule" && crate::engine::source::ancestor(arm, &["switch_expression", "switch_statement"]).is_some_and(|switch| switch.kind() == "switch_expression" && !parent(switch).is_some_and(|used| STATEMENT_HOLDERS.contains(&used.kind())))),
         "field_access" | "method_invocation" if holder.child_by_field_name("object").is_some_and(|object| object.id() == node.id()) => static_member(context, holder),
         "for_statement" => ["update", "init"].iter().any(|field| holder.children_by_field_name(field, &mut holder.walk()).any(|part| part.id() == node.id())),
         "lambda_expression" => {
@@ -99,9 +101,9 @@ fn static_member(context: &Context, holder: Node) -> bool {
 }
 
 /// The class the compiled call is made on: the type of the receiver, `Object` for its methods on an interface.
-fn made_on(context: &Context, call: &Call) -> String {
+pub(super) fn made_on(context: &Context, call: &Call) -> String {
     let receiver = match &call.receiver {
-        Type::Class(name, _) => name.clone(),
+        Type::Class(name, _) => name.split('&').next().unwrap_or(name).to_string(),
         _ => call.declaring.clone(),
     };
     let interface = context.resolver.index.get(&receiver).is_some_and(|info| info.is_interface);
@@ -113,7 +115,7 @@ fn made_on(context: &Context, call: &Call) -> String {
 
 /// A class as a message names it from code of `from`: nothing for the same class, without the package for the
 /// same package or `java.lang`.
-fn relative(from: &str, class: &str) -> String {
+pub(super) fn relative(from: &str, class: &str) -> String {
     let package = names::package_of(class);
     if from == class {
         String::new()
@@ -200,7 +202,7 @@ fn call_of(context: &Context, node: Node) -> Option<Call> {
     }
 }
 
-fn dropped_calls<'a>(context: &Context<'a>) -> Vec<Dropped<'a>> {
+pub(super) fn dropped_calls<'a>(context: &Context<'a>) -> Vec<Dropped<'a>> {
     let mut found = Vec::new();
     crate::engine::source::walk(context.file.tree.root_node(), |node| {
         if !matches!(node.kind(), "method_invocation" | "object_creation_expression") || !dropped(context, node) {

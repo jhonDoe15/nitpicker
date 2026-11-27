@@ -1,0 +1,1 @@
+return fetchJson(new URL(res.headers.location, url).toString(), redirects + 1);

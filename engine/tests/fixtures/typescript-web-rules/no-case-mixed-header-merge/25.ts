@@ -1,0 +1,1 @@
+let headers; headers = { "x-api-key": key, ...this.headers };

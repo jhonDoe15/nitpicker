@@ -144,7 +144,7 @@ describe('engineChecksFor', () => {
     expect(engineChecksFor(setOf(head)).checks).toStrictEqual([]);
   });
 
-  it('leaves every check to Error Prone when an annotation processor runs', () => {
+  it('keeps the checks on the engine when an annotation processor other than Lombok runs', () => {
     const own = classesIn('demo');
     const processor = path.join(path.dirname(own), 'processor');
     mkdirSync(path.join(processor, 'META-INF/services'), { recursive: true });
@@ -152,9 +152,15 @@ describe('engineChecksFor', () => {
       path.join(processor, 'META-INF/services/javax.annotation.processing.Processor'),
       'demo.Processor\n',
     );
-    const head = ['-processorpath', ['/missing.jar', processor].join(path.delimiter)];
+    const head = [
+      ...['-processorpath', ['/missing.jar', processor].join(path.delimiter)],
+      ...[`--own-classes=${own}`, `--processor-output=${own}`],
+    ];
 
-    expect(engineChecksFor(setOf([...head, `--own-classes=${own}`])).checks).toStrictEqual([]);
+    expect(engineChecksFor(setOf(head))).toStrictEqual(
+      engineChecksFor(setOf([`--own-classes=${own}`])),
+    );
+    expect(wholeReason(setOf(head))).toBeUndefined();
   });
 
   it('names a Lombok version outside the compared range as the reason to stay on Error Prone', () => {
@@ -176,7 +182,9 @@ describe('engineChecksFor', () => {
 
     expect(lombokVersions(older)).toStrictEqual(['1.18.30']);
     expect(lombokVersions(['-processorpath', root])).toStrictEqual([]);
-    expect(wholeReason({ head: tested, sources: [] })).toBe('it runs annotation processors');
+    expect(wholeReason({ head: tested, sources: [] })).toBe(
+      'it runs Lombok, which rewrites classes',
+    );
     expect(wholeReason({ head: older, sources: [] })).toBe(
       'it runs Lombok 1.18.30, outside the versions compared with Error Prone (1.18.36 to 1.18.48)',
     );

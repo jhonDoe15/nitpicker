@@ -1,0 +1,1 @@
+const { error } = router.query; const v = decodeURIComponent(error);

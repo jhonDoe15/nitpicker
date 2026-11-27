@@ -1,0 +1,1 @@
+async function load(configPath: string) { return import(configPath); }

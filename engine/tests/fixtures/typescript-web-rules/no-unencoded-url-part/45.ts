@@ -1,0 +1,1 @@
+const url = `${ctx.baseURL}/verify?token=${token}&callbackURL=${ctx.body.callbackURL || "/"}`;

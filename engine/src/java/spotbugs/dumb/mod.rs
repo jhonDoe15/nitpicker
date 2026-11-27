@@ -1,8 +1,8 @@
 //! SpotBugs' DumbMethods, DumbMethodInvocations and URLProblems detectors, one family of patterns per module.
 mod boxing;
 mod calls;
-mod found;
-mod numbers;
+pub(super) mod found;
+pub(super) mod numbers;
 mod threads;
 mod urls;
 

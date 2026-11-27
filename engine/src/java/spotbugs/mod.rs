@@ -2,6 +2,7 @@
 //! SpotBugs 4.9.8 reports on test code: same pattern name, line and message, read from source instead of class files.
 mod attributes;
 mod calls;
+mod casts;
 mod catches;
 mod classes;
 mod concurrent;
@@ -34,8 +35,10 @@ pub mod place;
 mod observed;
 mod statements;
 mod stores;
+mod tail;
 mod taint;
 mod threads;
+mod values;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver, TYPE_DECLARATIONS};
@@ -56,8 +59,7 @@ pub struct Context<'a> {
     pub classes: HashMap<String, Node<'a>>,
     /// Findings that hang on what the whole run stores in a field.
     waiting: RefCell<Vec<known::Waiting>>,
-    /// Every value the file stores in a field, worked out once.
-    pub stores: RefCell<Option<std::rc::Rc<observed::Stores<'a>>>>,
+    pub memo: observed::Memo<'a>,
     /// Classes whose `Class` object the project's code names anywhere.
     pub literals: &'a HashSet<String>,
     pub volatiles: &'a HashSet<(String, String)>,
@@ -67,8 +69,6 @@ pub struct Context<'a> {
     out: RefCell<Vec<Finding>>,
     /// The names the compiler makes up for lambdas and anonymous classes, worked out once.
     compiled: std::cell::OnceCell<crate::java::javac::Names<'a>>,
-    /// How many stores the file makes into each field, worked out once.
-    pub store_counts: std::cell::OnceCell<HashMap<(String, String), usize>>,
     /// SE_BAD_FIELD findings that wait for the classes the whole run knows.
     pub serial: RefCell<Vec<serial::Pending>>,
 }
@@ -77,8 +77,7 @@ impl<'a> Context<'a> {
     /// The context of a file, with its type declarations and the bodies of its anonymous classes.
     pub fn of(resolver: &'a Resolver<'a>, project: &'a JavaProject, elsewhere: &'a nulls::Elsewhere, selected: Option<Vec<String>>) -> (Self, Vec<Node<'a>>) {
         let file = resolver.file;
-        let mut line_starts = vec![0];
-        line_starts.extend(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1));
+        let line_starts = std::iter::once(0).chain(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1)).collect();
         let mut declared = Vec::new();
         walk(file.tree.root_node(), |node| {
             let unnamed = matches!(node.kind(), "object_creation_expression" | "enum_constant") && children(node).iter().any(|part| part.kind() == "class_body");
@@ -87,7 +86,6 @@ impl<'a> Context<'a> {
             }
         });
         let classes = declared.iter().filter_map(|node| Some((resolver.scope.names.get(&node.id())?.clone(), *node))).collect();
-        let out = RefCell::new(Vec::new());
         let context = Context {
             resolver,
             project,
@@ -95,15 +93,14 @@ impl<'a> Context<'a> {
             file,
             classes,
             waiting: RefCell::new(Vec::new()),
-            stores: RefCell::new(None),
+            memo: observed::Memo::default(),
             literals: &project.literals,
             volatiles: &project.volatiles,
             numbers: &project.numbers,
             line_starts,
             selected,
-            out,
+            out: RefCell::new(Vec::new()),
             compiled: std::cell::OnceCell::new(),
-            store_counts: std::cell::OnceCell::new(),
             serial: RefCell::new(Vec::new()),
         };
         (context, declared)
@@ -234,12 +231,14 @@ const DETECTORS: &[Detector] = &[
     attributes::should_be_static as Detector,
     dead::dead_stores as Detector,
     locals::locals as Detector,
+    casts::casts as Detector,
     threads::threads as Detector,
     concurrent::concurrent as Detector,
     idioms::idioms as Detector,
     naming::naming as Detector,
     sequence::sequence as Detector,
     dumb::dumb as Detector,
+    tail::tail as Detector,
 ];
 
 #[derive(Default)]
@@ -278,6 +277,7 @@ impl FileRule for SpotBugs {
         }
         catches::catches(&context);
         resources::resources(&context);
+        values::values(&context, &declared);
         nulls::null_dereference(&context, &declared);
         taint::injections(&context, &declared, &self.taint);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());

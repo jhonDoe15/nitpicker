@@ -7,6 +7,8 @@ public class StringSubject extends Subject {
 
   public void doesNotMatch(String regex) {}
 
+  public void contains(CharSequence string) {}
+
   public void containsMatch(String regex) {}
 
   public void doesNotContainMatch(String regex) {}

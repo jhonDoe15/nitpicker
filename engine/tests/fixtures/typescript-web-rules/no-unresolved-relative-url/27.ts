@@ -1,0 +1,1 @@
+const { location } = res.headers; return fetch(location);

@@ -1,0 +1,1 @@
+function fetchJson(url, redirects) { return fetchJson(res.headers.location, redirects + 1); }

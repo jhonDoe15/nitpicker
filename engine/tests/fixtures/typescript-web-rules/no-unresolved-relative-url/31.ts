@@ -1,0 +1,1 @@
+return Response.redirect(`${pages.error}?error=Configuration`);

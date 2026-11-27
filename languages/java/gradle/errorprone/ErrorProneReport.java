@@ -30,6 +30,7 @@ public final class ErrorProneReport {
   private static final String PROJECT_FLAG = "--errorprone-flag=";
   private static final String SKIP_GENERATED = "--skip-generated";
   private static final String GENERATED_ROOT = "--generated-root=";
+  private static final String PROCESSOR_OUTPUT = "--processor-output=";
   private static final String EXCLUDED_PATHS = PROJECT_FLAG + "-XepExcludedPaths:";
   private static final String PATCH_LOCATION = PROJECT_FLAG + "-XepPatchLocation:";
   private static final String FIX_CHECKS = PROJECT_FLAG + "-XepNitpickerFixChecks:";
@@ -273,7 +274,7 @@ public final class ErrorProneReport {
       } else if (form.matches()) {
         level.put(form.group(1), form.group(2));
       } else if (!line.equals(TEST_ONLY) && !line.equals(NARROWED) && !line.equals(SKIP_GENERATED)
-          && !line.startsWith(GENERATED_ROOT)
+          && !line.startsWith(GENERATED_ROOT) && !line.startsWith(PROCESSOR_OUTPUT)
           && !line.startsWith(OWN_CLASSES) && !line.startsWith(PROJECT_FLAG)) {
         options.add(line);
       }

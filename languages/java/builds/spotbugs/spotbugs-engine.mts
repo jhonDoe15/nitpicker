@@ -9,7 +9,14 @@ import {
   type EngineHooks,
 } from '../../../../shared/engine/engine-run.mts';
 import { fieldOf, listOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
+import { CAST_PATTERNS } from './casts/spotbugs-casts-placed.mts';
 import { INVOCATION_PATTERNS, URL_PATTERNS } from './spotbugs-dumb-placed.mts';
+import {
+  DIVISION_PATTERNS,
+  ENUM_PATTERNS,
+  START_PATTERNS,
+  WAIT_PATTERNS,
+} from './tail/spotbugs-tail-placed.mts';
 import { engineSpotbugsFindingOf, spotbugsResultOf } from './spotbugs-results.mts';
 import {
   type ProcessorKind,
@@ -25,6 +32,8 @@ import {
   SELF_ASSIGNMENTS,
   SEQUENCE_ON_CONCURRENT,
   SHARED_WRITES,
+  UNCHECKED_READS,
+  UNINITIALIZED_READ,
   UNSYNC_GET,
   UTIL_MONITORENTER,
   WRONG_MAP_ITERATOR,
@@ -66,17 +75,24 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   SharedVariableAtomicityDetector: SHARED_WRITES,
   AtomicityProblem: [SEQUENCE_ON_CONCURRENT],
   FindUnsyncGet: [UNSYNC_GET],
+  ReadReturnShouldBeChecked: UNCHECKED_READS,
+  FindUninitializedGet: [UNINITIALIZED_READ],
   ConfusionBetweenInheritedAndOuterMethod: ['IA_AMBIGUOUS_INVOCATION_OF_INHERITED_OR_OUTER_METHOD'],
   IteratorIdioms: ['IT_NO_SUCH_ELEMENT'],
   DefaultEncodingDetector: ['DM_DEFAULT_ENCODING'],
   FindUselessControlFlow: ['UCF_USELESS_CONTROL_FLOW', 'UCF_USELESS_CONTROL_FLOW_NEXT_LINE'],
   URLProblems: URL_PATTERNS,
   DumbMethodInvocations: INVOCATION_PATTERNS,
+  IDivResultCastToDouble: DIVISION_PATTERNS,
+  WaitInLoop: WAIT_PATTERNS,
+  StartInConstructor: START_PATTERNS,
+  MutableEnum: ENUM_PATTERNS,
   DontCatchNullPointerException: ['DCN_NULLPOINTER_EXCEPTION'],
   WrongMapIterator: [WRONG_MAP_ITERATOR],
   BooleanReturnNull: ['NP_BOOLEAN_RETURN_NULL'],
   FindDeadLocalStores: DEAD_STORES,
   FindLocalSelfAssignment2: SELF_ASSIGNMENTS,
+  FindBadCast2: CAST_PATTERNS,
   FindJSR166LockMonitorenter: [
     LOCK_MONITORENTER,
     UTIL_MONITORENTER,

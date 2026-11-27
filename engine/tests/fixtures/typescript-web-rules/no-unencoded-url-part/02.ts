@@ -1,0 +1,1 @@
+const link = `${apiUrl}/items?id=${item.id}`;

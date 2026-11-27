@@ -75,7 +75,7 @@ fn unwritten(context: &Context, key: &str) -> bool {
     if !context.classes.contains_key(class) {
         return false;
     }
-    let counts = context.store_counts.get_or_init(|| super::super::fields::stored(context).into_iter().map(|(key, values)| (key, values.len())).collect());
+    let counts = context.memo.counts.get_or_init(|| super::super::fields::stored(context).into_iter().map(|(key, values)| (key, values.len())).collect());
     counts.get(&(class.to_string(), name.to_string())).copied().unwrap_or(0) == 0
 }
 

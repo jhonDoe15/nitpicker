@@ -318,6 +318,24 @@ Java 21 is not there for code compiled with `--release 17`. With it (javaparser-
 code bases give the same findings as Error Prone; the differences in the table were type questions closed since
 it was measured.
 
+### Error Prone next to annotation processors that only add files
+
+Most annotation processors (AutoValue, MapStruct, Dagger, Immutables, JMH, metamodel generators) only write new
+files, so a source set that runs them keeps its checks on the engine. The Java run lists the sources the build's
+processors wrote (`--processor-output=` in the arguments file) after the source set's own and sets
+`NP_EP_CONTEXT_ROOTS` to their folders: the engine types code against them and reports nothing there. Error Prone
+checks such as `AutoValueConstructorOrderChecker` need them, since class files keep no parameter names.
+
+With `NP_EP_AUDIT_CLASSES` (the build's class folders), the engine compares each top-level and member class of
+the source with its class file (`src/java/errorprone/processor_audit.rs`): fields by name and `static`, methods by
+name, parameter count and `static`, constructors by count and member classes by name, leaving out what javac adds
+itself (synthetic and bridge members, default constructors, enum and record members). A difference, or a class
+without a class file, is a `_Rewritten` row; the source set then goes whole to Error Prone and the log names the
+class and member. Lombok source sets go to Error Prone without the comparison. Not compared: member types,
+annotations and code, and the members of local and anonymous classes; a processor that changes only these is
+not detected. `tests/errorprone_processors.rs` holds an AutoValue and MapStruct project with Error Prone's rows,
+Java shapes javac adds members to, and the Lombok fixture the comparison flags.
+
 ### Error Prone on code Lombok rewrote
 
 Error Prone sees the tree after Lombok has rewritten it. Its findings positioned only on code Lombok generated are
@@ -779,6 +797,89 @@ What SpotBugs does, as measured (`tests/fixtures/spotbugs/unreleased*`):
   `UL_UNRELEASED_LOCK_EXCEPTION_PATH` (priority 2) when only paths through an exception edge do (a `catch` that
   returns counts as such a path). Each pattern at most once per method, on the line of the first such `lock()` call;
   both when one lock leaks on a normal path and another only on exception paths. Lambda bodies count as methods.
+
+### Unchecked reads and uninitialized reads
+
+`src/java/spotbugs/values/` rebuilds ReadReturnShouldBeChecked (`SR_NOT_CHECKED`, `RR_NOT_CHECKED`) and
+FindUninitializedGet (`UR_UNINIT_READ`). Both run on the engine in real runs and SpotBugs no longer runs the
+detectors; Lombok modules keep `UR_UNINIT_READ` on SpotBugs, since the constructors Lombok writes run the field
+initializers too. Measured (`tests/fixtures/spotbugs/values_reads*`, `values_uninit*`):
+
+- A dropped result (a call statement, a `for` update, the body of a lambda returning nothing) of `skip(long)` or
+  `skipBytes(int)` made on a subtype of `InputStream`, `Reader` or `DataInput` is `SR_NOT_CHECKED`; of `read(byte[])`
+  or `read(byte[], int, int)` made on a subtype of `InputStream` or `DataInput`, or `read(char[])` or
+  `read(char[], int, int)` made on a subtype of `Reader`, `RR_NOT_CHECKED`. The class is the one javac names in the
+  call, the type of the receiver, also when it only inherits the method. Nothing on a `ByteArrayInputStream`, no skip
+  on an `ImageInputStream`, and nothing when the receiver's class is not on the class path. A `skip` on a
+  `BufferedInputStream` is priority 1, the rest priority 2. Each called method is reported once per method, on the
+  first call's line.
+- `UR_UNINIT_READ` follows a constructor's code in javac's order: the field initializers and initializer blocks run
+  after the super call in every constructor that does not start with `this(...)` (and in the implicit one), and a
+  `finally` block comes before the `catch` blocks and again, as javac copies it, before each `return`, `break` or
+  `continue` that leaves it. The first read of each field of the class itself through `this` (a name, `this.f`,
+  `Outer.this.f`, `((Own) this).f`) is reported when no store into that field, on any instance and on any path,
+  came earlier. That first read is not reported, and the field is done with, inside a loop javac jumps back in (a
+  loop whose body can reach its end or a `continue`; not `do ... while (false)`, and a `for` update javac drops
+  when it cannot be reached). Labels, pattern variables and the names they hide are no reads. A read javac
+  follows with `ifnonnull` is reported only at priority 1: `f == null` where the condition jumps when false (an
+  `if`, a loop, `?:`, a boolean value, the right side of `&&` or `||` there), `f != null` where it jumps when true
+  (an `assert`, the left side of `||`, under `!`). `f++`, `f += x` and `null == f` are no such reads; constants are
+  inlined. Nothing more is reported after a call made on the class (a method of the class or one it inherits, not
+  one `Object` declares, on any instance whose type is the class), a `super.` call, a `new` of the class itself, or
+  a call of a method named `start` that is not static and not made on an interface. Static calls, lambdas and
+  method references do not count. A constructor with a parameter whose binary class name starts with the class's
+  own (the class, a nested class, `AB` for `A`) is skipped.
+- Priority 1 names the parameter SpotBugs takes as the one meant: of the parameters of the field's erased type the
+  constructor never loads, the one whose name is fewest edits (Levenshtein) from the field's; else, when none or
+  several tie, the only parameter of that type at most two edits from it. javac's hidden parameters (the instance
+  around an inner class, the name and ordinal of an enum constant) count as loaded. Otherwise priority 2, placed on
+  the field.
+- Not measured: the hidden parameters of local classes, an `int` parameter only ever incremented (`iinc`).
+  Anonymous classes and enum constant bodies are not checked yet, though SpotBugs checks their implicit
+  constructors.
+
+### Casts and `instanceof`
+
+`src/java/spotbugs/casts/` rebuilds FindBadCast2: the `BC_*` cast patterns and `NP_NULL_INSTANCEOF`. SpotBugs no
+longer runs the detector. A forward dataflow over each method's control flow graph tracks, per local, the type the
+compiled code has for its value, whether that type is exact, and where the value came from. Measured
+(`tests/fixtures/spotbugs/casts*`, all priorities):
+
+- A value's type is the erased declared type, or for a field the one type every store of the file gives it (stores in
+  code javac drops behind a constant condition do not count). `new` makes an exact type; `Collection.toArray()` an
+  exact `Object[]`. A catch parameter has the types the `try` body can throw that the clause catches, met as the
+  verifier meets classes, counting unchecked exceptions as `RuntimeException` (and `Error`); of a multi-catch only
+  the first type counts. Where two paths meet, a known null takes the other side's type.
+- Nothing is reported for an array element, for the result of a static or private method, for a type variable, for
+  a cast from `Object`, for a cast inside a `try` that catches `ClassCastException`, or for a cast to a type the
+  method already cast the value to.
+- `BC_IMPOSSIBLE_CAST` / `BC_IMPOSSIBLE_DOWNCAST` (a downcast when the target is a subtype), high: the value is of an
+  exact type, a final class, or an array and the target is not one of its supertypes, or the two are unrelated
+  classes, or the target is a final class that does not implement the source interface.
+  `BC_IMPOSSIBLE_DOWNCAST_OF_TOARRAY`, high: a cast of `toArray()` to an array type.
+- `BC_IMPOSSIBLE_INSTANCEOF`, medium (high for an array), and `BC_VACUOUS_INSTANCEOF`, medium, by the same rules;
+  `NP_NULL_INSTANCEOF`, medium, for a value known to be null. The branch an impossible `instanceof` of a local
+  never takes is not followed.
+- `BC_BAD_CAST_TO_ABSTRACT_COLLECTION`: a `Collection` cast to `List`, `Set` or `SortedSet`.
+  `BC_BAD_CAST_TO_CONCRETE_COLLECTION`: a collection or map interface cast to `ArrayList`, `HashMap` and the other
+  JDK classes. `BC_UNCONFIRMED_CAST`: any other downcast or cross cast of a parameter, field, caught exception,
+  merged or new value; `BC_UNCONFIRMED_CAST_OF_RETURN_VALUE`: of the result of an instance method, always low.
+- Priorities, where plain means a parameter of a public method (an interface member, a static initializer):
+  `BC_BAD_CAST_TO_ABSTRACT_COLLECTION` high when plain, else medium; `BC_BAD_CAST_TO_CONCRETE_COLLECTION` from
+  `Collection` the same, from the others one step lower; `BC_UNCONFIRMED_CAST` medium when plain, else low. An
+  earlier `instanceof` to the target lowers a finding two steps, two or more to other types one. An unconfirmed cast
+  drops one step more to an interface or from an abstract class or interface, and one when the target is the only
+  class of the run below an abstract source. A cross cast from a class of the run that no class of the run joins with
+  the target rises two steps from a concrete class, one from an abstract class, to a class, or when the interface
+  has implementors, never above high.
+- The place is the variable the value came from (a parameter or catch parameter keeps its name through copies), the
+  field under the class of the method, the called method or constructor, or the method itself for arrays and for
+  `instanceof` always true or null.
+
+Known differences, all low priority and so not shown: SpotBugs knows the one JDK class below some JDK interfaces
+(`Queue` to `ArrayDeque`, `Runnable` to `Thread`) and drops a step for them; it reports a cast of the result of a
+static method when the method is in a library; and a cross cast from a library class gets no adjustment from the
+engine.
 
 ### Statement patterns
 
@@ -1580,6 +1681,43 @@ runs first gave it one (a field initializer or initializer block before the use,
   constants declared in another source file are not (#2690), nor folded expressions such as `"x" + 1` or
   `cond ? a : b` (#2695, #2696).
 - DM_CONVERT_CASE is priority 3 only, which `-medium` hides.
+
+### Division casts, waits, thread starts and mutable enums
+
+Four small detectors of the long tail (#2535, `src/java/spotbugs/tail/`), labs in `tests/fixtures/spotbugs/tail_*`.
+SpotBugs no longer runs IDivResultCastToDouble, WaitInLoop, StartInConstructor and MutableEnum.
+- ICAST_IDIV_CAST_TO_DOUBLE: an `int` or `long` division (not one javac folds) whose result javac converts to
+  `float` or `double` right away: a cast, an assignment, an argument, a return, the other operand of arithmetic or
+  a comparison, a branch of a `double` conditional or switch. SpotBugs looks at the instruction just before the
+  conversion, so for `(double) (c ? x / y : 1)` only the last branch counts. Priority 2.
+- ICAST_INT_CAST_TO_DOUBLE_PASSED_TO_CEIL and ICAST_INT_CAST_TO_FLOAT_PASSED_TO_ROUND: `Math` or `StrictMath`
+  `ceil(double)` or `round(float)` given an `int` or `long` value (an unboxed one too), converted on the way or by a
+  cast; not when the last instruction of the value pushes a constant (`c ? x : 1`). Priority 1 and 2. A division
+  handed to them is reported only as these. Each of the three once per method, at its first place.
+- WA_NOT_IN_LOOP and WA_AWAIT_NOT_IN_LOOP: only the first `wait(…)` or `await()`/`awaitUninterruptibly()` call of a
+  method counts (`await` written against `Condition` itself; the timed `await` forms are not counted). Reported
+  when no loop around it jumps back over it: a loop body, condition or `for` update holds it, the `for` setup
+  and the iterable of a `for`-each do not, nor a loop the code after the call always leaves (`return`, `throw`,
+  a `break` or `continue` out of it) or a `do` loop whose condition javac folds to `false`. `wait()` and `await` are priority 2, timed `wait` 3 (hidden).
+- NO_NOTIFY_NOT_NOTIFYALL was priority 3 in every lab, so it is never shown; the engine does not report it.
+- SC_START_IN_CTOR: `start()` on a `Thread` or a class below it in a public or protected constructor of a public
+  (or protected member), non-final class; priority 1 when a class of the run extends it, else 3 (hidden) when the
+  next instruction returns (also through `break`, the end of `do … while (false)` or of the last case of a switch
+  without `default`), 2 otherwise (more code follows, a jump out of a `then` branch, a loop, `try` or `synchronized`). Same-priority calls make one finding per constructor.
+  The SARIF place is the called method as javac names it, shown without the package and without the class when
+  it is the constructor's own.
+- ME_MUTABLE_ENUM_FIELD: each public, non-final instance field of a public enum, priority 2, no line.
+- ME_ENUM_FIELD_SETTER: a public instance method of a public enum storing a parameter's value (through casts and
+  locals copied from it) into an instance field of the enum before any jump: conditions, loops, switches,
+  conditional values, `&&`, `||`, `!`, comparisons, `assert`, and leaving a `try`, `catch` or `synchronized`
+  block; `if` and `do` conditions javac folds and empty `try` blocks write none. Static methods count, chained
+  `f = g = p` sets both fields, a nested enum's public fields are left out. Once per method and field, priority 2.
+  A `do` loop and `try`-with-resources are taken as jumps. Known gap: SpotBugs still reports a store after or in a
+  `switch`; the engine takes the switch as a jump. With Lombok this pattern stays in SpotBugs (generated setters).
+
+On the comparison code bases, SARIF results: guava 2 / 0 / 0 (WA_AWAIT_NOT_IN_LOOP), Nacos 1 / 0 / 0
+(ME_ENUM_FIELD_SETTER), commons-lang, jackson-databind, javaparser-core and mybatis-3 0 / 0 / 0. The saved
+Elasticsearch report has one each of the CEIL cast, WA_NOT_IN_LOOP and SC_START_IN_CTOR, not checked here.
 
 ## Names the compiler makes up
 

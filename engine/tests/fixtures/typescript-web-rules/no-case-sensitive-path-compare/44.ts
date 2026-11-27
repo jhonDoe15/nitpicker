@@ -1,0 +1,1 @@
+if (outDirectory.endsWith(build.dir)) {}
