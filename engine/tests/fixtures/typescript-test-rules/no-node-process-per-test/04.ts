@@ -1,0 +1,1 @@
+it('declares an invocation', () => { expect({ command: process.execPath, args: [] }).toBeDefined(); });

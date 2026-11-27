@@ -1,3 +1,5 @@
+import { DUMB_PLACED } from './spotbugs-dumb-placed.mts';
+
 export type Placed = {
   readonly text: string;
   readonly levels: Readonly<Record<number, string>>;
@@ -288,4 +290,5 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     text: 'Exception is caught when Exception is not thrown',
     levels: { 1: NOTE, 2: NOTE },
   },
+  ...DUMB_PLACED,
 };

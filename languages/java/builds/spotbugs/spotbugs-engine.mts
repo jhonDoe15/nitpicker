@@ -9,6 +9,7 @@ import {
   type EngineHooks,
 } from '../../../../shared/engine/engine-run.mts';
 import { fieldOf, listOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
+import { URL_PATTERNS } from './spotbugs-dumb-placed.mts';
 import { engineSpotbugsFindingOf, spotbugsResultOf } from './spotbugs-results.mts';
 import {
   type ProcessorKind,
@@ -21,6 +22,7 @@ import {
   DEAD_STORES,
   LOCK_MONITORENTER,
   ON_ENGINE,
+  SELF_ASSIGNMENTS,
   SEQUENCE_ON_CONCURRENT,
   SHARED_WRITES,
   UNSYNC_GET,
@@ -68,10 +70,12 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   IteratorIdioms: ['IT_NO_SUCH_ELEMENT'],
   DefaultEncodingDetector: ['DM_DEFAULT_ENCODING'],
   FindUselessControlFlow: ['UCF_USELESS_CONTROL_FLOW', 'UCF_USELESS_CONTROL_FLOW_NEXT_LINE'],
+  URLProblems: URL_PATTERNS,
   DontCatchNullPointerException: ['DCN_NULLPOINTER_EXCEPTION'],
   WrongMapIterator: [WRONG_MAP_ITERATOR],
   BooleanReturnNull: ['NP_BOOLEAN_RETURN_NULL'],
   FindDeadLocalStores: DEAD_STORES,
+  FindLocalSelfAssignment2: SELF_ASSIGNMENTS,
   FindJSR166LockMonitorenter: [
     LOCK_MONITORENTER,
     UTIL_MONITORENTER,

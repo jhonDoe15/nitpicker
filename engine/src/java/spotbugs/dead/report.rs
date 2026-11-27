@@ -1,8 +1,6 @@
 //! The findings of one method, with SpotBugs' priorities, names and lines.
 use super::super::{Context, nulls::redundant::line_before, place};
-use super::flow::{Fate, Live};
-use super::slots::{Kind, Layout, Var};
-use super::value::{self, Value};
+use super::{flow::{Fate, Live}, slots::{Kind, Layout, Var}, value::{self, Value}};
 use crate::engine::source::{named_children, parent};
 use crate::java::types::model::Type;
 use std::collections::{BTreeMap, HashSet};
@@ -22,7 +20,7 @@ pub struct Method<'c, 'a> {
     pub live: &'c Live<'a>,
     pub label: &'c str,
     pub body: Node<'a>,
-    /// The instance fields the method's own class declares; none for a static method.
+    /// The fields the method's own class declares: instance fields, or static ones for a static method.
     pub fields: &'c HashSet<String>,
     /// A compact constructor: its parameters are stored into the fields when it ends.
     pub compact: bool,
@@ -37,7 +35,7 @@ struct Found<'a> {
     priority: u8,
 }
 
-/// What the value is that a store writes.
+/// What the value is that a store writes. An assignment whose value is used is stored after a `dup`.
 fn stored(method: &Method, fate: &Fate, var: &Var) -> Value {
     let node = fate.node;
     let value = match node.kind() {
@@ -45,7 +43,8 @@ fn stored(method: &Method, fate: &Fate, var: &Var) -> Value {
         "assignment_expression" if node.child_by_field_name("operator").is_some_and(|operator| method.context.text(operator) == "=") => node.child_by_field_name("right"),
         _ => None,
     };
-    value.map_or(Value::Other, |value| value::of(method.context, method.layout, value, &var.ty))
+    let dup = node.kind() == "assignment_expression" && value::used(node);
+    value.filter(|_| !dup).map_or(Value::Other, |value| value::of(method.context, method.layout, value, &var.ty))
 }
 
 /// The value type of a variable as the flow knows it: what its only initial value is, or its declared type.
@@ -71,19 +70,20 @@ fn returned(node: Node) -> bool {
 }
 
 fn priority(method: &Method, fate: &Fate, var: &Var, value: Value, iinc: bool, shadows: bool) -> u8 {
-    let layout = method.layout;
-    let parameter = var.kind == Kind::Parameter;
-    if parameter && !method.live.read_on_entry(var.slot) {
+    let (layout, parameter) = (method.layout, var.kind == Kind::Parameter);
+    if entry(method, var) {
         return 1;
     }
     let mut priority: i32 = if shadows || parameter { 1 } else { 2 };
+    let copy = matches!(value, Value::Copy(copied) if small(&value_type(method, &layout.vars[copied])));
     match value {
+        Value::Copy(copied) if copied == fate.var => priority += if parameter || shadows { copy && !(shadows && parameter) } else { fate.killed || shared(layout, fate.var) } as i32,
         Value::New => priority -= 1,
         Value::Field => priority += 1,
-        Value::Copy(copied) if small(&value_type(method, &layout.vars[copied])) => priority += 1,
+        Value::Copy(_) => priority += copy as i32,
         _ => {}
     }
-    priority += fate.killed as i32;
+    priority += (fate.killed && value != Value::Copy(fate.var)) as i32;
     priority += (layout.stores.get(&var.slot).copied().unwrap_or(0) >= 4) as i32;
     priority += (iinc && layout.increments.get(&var.slot).copied().unwrap_or(0) >= 2) as i32;
     priority.clamp(1, 5) as u8
@@ -96,12 +96,12 @@ pub fn report(method: &Method) {
     let mut found = Vec::new();
     for fate in &fates {
         let var = &method.layout.vars[fate.var];
-        if skipped(method, var) || !fate.dead || method.handlers.contains(&line(context, fate.node)) {
+        if skipped(method, var) || !fate.dead || method.handlers.contains(&line(context, fate.node)) || (value::duplicated(fate.node, &var.ty) && !entry(method, var)) {
             continue;
         }
         let iinc = matches!(fate.node.kind(), "update_expression" | "assignment_expression") && value::increment(context, method.layout, fate.node);
         let name = name(method, fate, var);
-        let entry = var.kind == Kind::Parameter && !method.live.read_on_entry(var.slot);
+        let entry = entry(method, var);
         let postfix = fate.node.kind() == "update_expression" && !context.text(fate.node).trim_start().starts_with(['+', '-']);
         if iinc && postfix && returned(fate.node) {
             found.push(Found { pattern: RETURN, node: fate.node, name, priority: if var.kind == Kind::Parameter { 1 } else { 2 } });
@@ -123,6 +123,9 @@ pub fn report(method: &Method) {
     overwritten(method, &fates, &mut found);
     emit(method, found);
 }
+
+fn shared(layout: &Layout, var: usize) -> bool { layout.vars.iter().enumerate().any(|(index, other)| index != var && other.slot == layout.vars[var].slot) }
+fn entry(method: &Method, var: &Var) -> bool { var.kind == Kind::Parameter && !method.live.read_on_entry(var.slot) }
 
 /// Stores never reported: to a handler's exception, a resource, a variable of a `switch` pattern, and the
 /// parameters of a compact constructor.

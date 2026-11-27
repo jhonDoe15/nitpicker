@@ -32,7 +32,7 @@ mod derived;
 mod flow;
 mod injection;
 mod jdk;
-mod lines;
+pub mod lines;
 mod sinks;
 mod statics;
 

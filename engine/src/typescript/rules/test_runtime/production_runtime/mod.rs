@@ -72,7 +72,7 @@ fn runtime_sources(context: &Context) -> Vec<String> {
 }
 
 /// Where typescript-estree starts the program: at its first token, after white space, comments and a hashbang.
-fn first_token(text: &str) -> usize {
+pub fn first_token(text: &str) -> usize {
     let mut at = if text.starts_with("#!") { text.find(['\n', '\r', '\u{2028}', '\u{2029}']).unwrap_or(text.len()) } else { 0 };
     loop {
         let rest = &text[at..];
