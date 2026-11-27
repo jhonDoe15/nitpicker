@@ -32,6 +32,7 @@ describe('facts the engine rules get from the project', () => {
     );
 
     expect(settingsOf(rules)).toEqual([
+      'cognitive-complexity.max=15',
       'contract-infrastructure-type.feature=',
       'no-assertion-in-loop.assertion-function-names=[]',
       `no-copied-constant.root=${root}`,
@@ -41,6 +42,7 @@ describe('facts the engine rules get from the project', () => {
       'no-interval-polling-in-tests.fixture=false',
       ...[
         'no-io-in-loop',
+        'no-lookup-per-element',
         'no-remote-call-in-transaction',
         'no-remote-call-under-lock',
         'no-retry-without-idempotency',
