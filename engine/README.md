@@ -401,19 +401,23 @@ the reason in the log when the version is outside the range compared (`TESTED_LO
 Prone (see the list above); the comparison runs the engine with `--lombok` and the class files Error Prone's
 compile wrote, as those runs will.
 
-Measured on 2026-11-27 with the class files (#2583; all ported checks, NullAway off; findings same / only Error
-Prone / only engine / other sentence). Of the findings only from Error Prone, about 70 per version sit on a class
-annotation at the start of a file without a package statement:
+Measured on 2026-11-27 with the class files and the rewrite rows (#2583, #2584; all ported checks, NullAway off;
+findings same / only Error Prone / only engine / other sentence). The findings only from Error Prone sit on a class
+annotation at the start of a file without a package statement, except one `NonCanonicalType` that does not depend on
+Lombok (#2724); the other sentences are Error Prone fixes printed from positions Lombok moved. Lombok 1.18.36 shares
+the annotations it copies from a field to the accessors and constructors it writes, so Error Prone reports a
+`UnnecessarilyFullyQualified` on a written `@lombok.NonNull` at the generated position: the 12 findings only from
+the engine there. The range compared (`TESTED_LOMBOK`) therefore starts at 1.18.38.
 
-| Lombok | Compared | Do not compile alone | Identical | Findings | Inside generated code |
-| --- | ---: | ---: | ---: | --- | ---: |
-| 1.18.36 | 354 | 61 | 268 | 1680 / 80 / 97 / 35 | 989 |
-| 1.18.38 | 355 | 61 | 279 | 1720 / 76 / 82 / 18 | 974 |
-| 1.18.40 | 356 | 61 | 279 | 1725 / 77 / 82 / 18 | 975 |
-| 1.18.42 | 365 | 61 | 288 | 1836 / 77 / 82 / 18 | 975 |
-| 1.18.44 | 367 | 61 | 288 | 1824 / 78 / 83 / 20 | 976 |
-| 1.18.46 | 371 | 61 | 290 | 1831 / 81 / 85 / 20 | 985 |
-| 1.18.48 | 374 | 63 | 290 | 1828 / 85 / 86 / 20 | 985 |
+| Lombok | Compared | Left to Error Prone | Do not compile alone | Identical | Findings | Inside generated code |
+| --- | ---: | ---: | ---: | ---: | --- | ---: |
+| 1.18.36 | 269 | 85 | 61 | 227 | 1254 / 62 / 12 / 10 | 592 |
+| 1.18.38 | 270 | 85 | 61 | 235 | 1269 / 57 / 0 / 10 | 582 |
+| 1.18.40 | 271 | 85 | 61 | 235 | 1274 / 58 / 0 / 10 | 583 |
+| 1.18.42 | 280 | 85 | 61 | 244 | 1385 / 58 / 0 / 10 | 583 |
+| 1.18.44 | 282 | 85 | 61 | 245 | 1373 / 59 / 0 / 12 | 584 |
+| 1.18.46 | 286 | 85 | 61 | 248 | 1380 / 62 / 0 / 12 | 593 |
+| 1.18.48 | 289 | 85 | 63 | 248 | 1377 / 66 / 0 / 12 | 593 |
 
 Error Prone's rows on the 351 files compared in all seven are the same for 1.18.40 and 1.18.42 and for 1.18.44 and
 1.18.46; each other step changes some (16 files from 1.18.36 to 1.18.38, 32 files, most of them `@SuperBuilder`, from 1.18.46 to

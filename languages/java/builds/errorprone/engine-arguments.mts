@@ -17,7 +17,7 @@ const SOURCE = '--source=';
 const PROCESSOR_SERVICE = 'META-INF/services/javax.annotation.processing.Processor';
 const MANIFEST = 'META-INF/MANIFEST.MF';
 const LOMBOK_VERSION = /^Lombok-Version:\s*(\S+)\s*$/mu;
-export const TESTED_LOMBOK = { lowest: '1.18.36', highest: '1.18.48' } as const;
+export const TESTED_LOMBOK = { lowest: '1.18.38', highest: '1.18.48' } as const;
 const JDK_MODULE = /^--(?:add-exports|patch-module)=(?:java|jdk)\./u;
 const PAIRED = ['--add-exports', '--patch-module'];
 
