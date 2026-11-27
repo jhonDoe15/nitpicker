@@ -1,0 +1,164 @@
+[
+ [
+  "complexity.ts",
+  "nitpicker/cognitive-complexity",
+  1,
+  17,
+  "This function has a cognitive complexity of 40; the limit is 15. Move nested branches and conditions into smaller named functions.",
+  1,
+  25
+ ],
+ [
+  "complexity.ts",
+  "nitpicker/cognitive-complexity",
+  114,
+  18,
+  "This function has a cognitive complexity of 16; the limit is 15. Move nested branches and conditions into smaller named functions.",
+  114,
+  23
+ ],
+ [
+  "complexity.ts",
+  "nitpicker/cognitive-complexity",
+  130,
+  38,
+  "This function has a cognitive complexity of 16; the limit is 15. Move nested branches and conditions into smaller named functions.",
+  130,
+  40
+ ],
+ [
+  "complexity.ts",
+  "nitpicker/cognitive-complexity",
+  33,
+  69,
+  "This function has a cognitive complexity of 23; the limit is 15. Move nested branches and conditions into smaller named functions.",
+  33,
+  71
+ ],
+ [
+  "complexity.ts",
+  "nitpicker/cognitive-complexity",
+  51,
+  3,
+  "This function has a cognitive complexity of 23; the limit is 15. Move nested branches and conditions into smaller named functions.",
+  51,
+  9
+ ],
+ [
+  "complexity.ts",
+  "nitpicker/cognitive-complexity",
+  65,
+  3,
+  "This function has a cognitive complexity of 16; the limit is 15. Move nested branches and conditions into smaller named functions.",
+  65,
+  13
+ ],
+ [
+  "complexity.ts",
+  "nitpicker/cognitive-complexity",
+  82,
+  3,
+  "This function has a cognitive complexity of 16; the limit is 15. Move nested branches and conditions into smaller named functions.",
+  82,
+  10
+ ],
+ [
+  "complexity.ts",
+  "nitpicker/cognitive-complexity",
+  97,
+  4,
+  "This function has a cognitive complexity of 16; the limit is 15. Move nested branches and conditions into smaller named functions.",
+  97,
+  19
+ ],
+ [
+  "features/billing/domain/totals.ts",
+  "nitpicker/no-self-recursion",
+  2,
+  48,
+  "'sum' calls itself. domain/ has no loops and no recursion, so a walk over data of unknown depth (a tree) belongs in adapters/: for...of over a worklist, pushing each node's children onto it. Pass domain/ the flat result; flat data uses map, filter, flatMap or Object.fromEntries. An exception fits only when the recursion is bounded and deliberate.",
+  2,
+  51
+ ],
+ [
+  "line-separators.ts",
+  "nitpicker/cognitive-complexity",
+  2,
+  3,
+  "This function has a cognitive complexity of 16; the limit is 15. Move nested branches and conditions into smaller named functions.",
+  2,
+  5
+ ],
+ [
+  "line-separators.ts",
+  "nitpicker/cognitive-complexity",
+  4,
+  3,
+  "This function has a cognitive complexity of 16; the limit is 15. Move nested branches and conditions into smaller named functions.",
+  4,
+  5
+ ],
+ [
+  "recursion.ts",
+  "nitpicker/no-self-recursion",
+  10,
+  31,
+  "'even' and 'odd' call each other. Replace the cycle with a for...of loop over a worklist, or merge them into one function that loops. An exception fits only when the recursion is bounded and deliberate.",
+  10,
+  34
+ ],
+ [
+  "recursion.ts",
+  "nitpicker/no-self-recursion",
+  19,
+  24,
+  "'outer' calls itself. Retry or poll: loop with for...of over attempt numbers. Tree walk (directories, AST, JSON): for...of over a worklist, pushing each node's children onto it (for (const node of pending) { pending.push(...children) }). Flat data: map, filter, flatMap or Object.fromEntries. A component that renders itself in JSX is not reported. An exception fits only when the recursion is bounded and deliberate.",
+  19,
+  29
+ ],
+ [
+  "recursion.ts",
+  "nitpicker/no-self-recursion",
+  2,
+  33,
+  "'walk' calls itself. Retry or poll: loop with for...of over attempt numbers. Tree walk (directories, AST, JSON): for...of over a worklist, pushing each node's children onto it (for (const node of pending) { pending.push(...children) }). Flat data: map, filter, flatMap or Object.fromEntries. A component that renders itself in JSX is not reported. An exception fits only when the recursion is bounded and deliberate.",
+  2,
+  37
+ ],
+ [
+  "recursion.ts",
+  "nitpicker/no-self-recursion",
+  31,
+  34,
+  "'iterating' calls itself. Retry or poll: loop with for...of over attempt numbers. Tree walk (directories, AST, JSON): for...of over a worklist, pushing each node's children onto it (for (const node of pending) { pending.push(...children) }). Flat data: map, filter, flatMap or Object.fromEntries. A component that renders itself in JSX is not reported. An exception fits only when the recursion is bounded and deliberate.",
+  31,
+  43
+ ],
+ [
+  "recursion.ts",
+  "nitpicker/no-self-recursion",
+  55,
+  72,
+  "'retry' calls itself. Retry or poll: loop with for...of over attempt numbers. Tree walk (directories, AST, JSON): for...of over a worklist, pushing each node's children onto it (for (const node of pending) { pending.push(...children) }). Flat data: map, filter, flatMap or Object.fromEntries. A component that renders itself in JSX is not reported. An exception fits only when the recursion is bounded and deliberate.",
+  55,
+  77
+ ],
+ [
+  "recursion.ts",
+  "nitpicker/no-self-recursion",
+  6,
+  22,
+  "'inner' calls itself. Retry or poll: loop with for...of over attempt numbers. Tree walk (directories, AST, JSON): for...of over a worklist, pushing each node's children onto it (for (const node of pending) { pending.push(...children) }). Flat data: map, filter, flatMap or Object.fromEntries. A component that renders itself in JSX is not reported. An exception fits only when the recursion is bounded and deliberate.",
+  6,
+  27
+ ],
+ [
+  "recursion.ts",
+  "nitpicker/no-self-recursion",
+  6,
+  41,
+  "'inner' calls itself. Retry or poll: loop with for...of over attempt numbers. Tree walk (directories, AST, JSON): for...of over a worklist, pushing each node's children onto it (for (const node of pending) { pending.push(...children) }). Flat data: map, filter, flatMap or Object.fromEntries. A component that renders itself in JSX is not reported. An exception fits only when the recursion is bounded and deliberate.",
+  6,
+  52
+ ]
+]
