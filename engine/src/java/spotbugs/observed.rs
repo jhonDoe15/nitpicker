@@ -140,7 +140,7 @@ fn always_before(store: Node, usage: Node, body: Node) -> bool {
 
 /// The values a local variable may hold at a use: the last one always given to it before, and any given after that
 /// on a branch. SpotBugs merges the types of values that meet.
-fn local_values<'t>(context: &Context, usage: Node<'t>, name: &str) -> Vec<Node<'t>> {
+pub fn local_values<'t>(context: &Context, usage: Node<'t>, name: &str) -> Vec<Node<'t>> {
     let Some(body) = ancestor(usage, BODIES) else { return Vec::new() };
     let mut stores: Vec<(Node, Node)> = Vec::new();
     walk(body, |node| {

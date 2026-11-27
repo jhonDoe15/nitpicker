@@ -55,7 +55,7 @@ describe('spotbugsOnEngine', () => {
 
     expect(added.slice(0, 3)).toStrictEqual([
       '-omitVisitors',
-      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,FindHiddenMethod,FindNakedNotify,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,FindDeadLocalStores',
+      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,FindHiddenMethod,FindNakedNotify,ConfusionBetweenInheritedAndOuterMethod,IteratorIdioms,DefaultEncodingDetector,FindUselessControlFlow,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,FindDeadLocalStores',
       '-exclude',
     ]);
     expect(sarifResults(plan).map((result) => fieldOf(result, 'ruleId'))).toStrictEqual([
@@ -144,10 +144,10 @@ describe('spotbugsOnEngine', () => {
 
     expect(added.slice(0, 2)).toStrictEqual([
       '-omitVisitors',
-      'CloneIdiom,ConstructorThrow,FindNakedNotify,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull',
+      'CloneIdiom,ConstructorThrow,FindNakedNotify,ConfusionBetweenInheritedAndOuterMethod,IteratorIdioms,DefaultEncodingDetector,FindUselessControlFlow,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull',
     ]);
     expect(plain[1]).toBe(
-      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,FindHiddenMethod,FindNakedNotify,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,FindDeadLocalStores',
+      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,FindHiddenMethod,FindNakedNotify,ConfusionBetweenInheritedAndOuterMethod,IteratorIdioms,DefaultEncodingDetector,FindUselessControlFlow,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,FindDeadLocalStores',
     );
     expect(started.map(({ argumentList }) => argumentList.includes('--lombok'))).toStrictEqual([
       true,

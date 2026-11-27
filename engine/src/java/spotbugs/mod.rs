@@ -11,6 +11,7 @@ mod expose;
 mod fields;
 mod handlers;
 mod held;
+mod idioms;
 mod flow;
 mod folds;
 mod known;
@@ -219,6 +220,7 @@ const DETECTORS: &[Detector] = &[
     methods::method_patterns as Detector,
     attributes::should_be_static as Detector,
     dead::dead_stores as Detector,
+    idioms::idioms as Detector,
 ];
 
 #[derive(Default)]
