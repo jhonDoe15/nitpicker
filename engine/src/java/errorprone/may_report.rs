@@ -16,24 +16,13 @@ pub enum Gate {
     Types(&'static [&'static str]),
     /// The file holds one of the words, or one of the symbols.
     Text(&'static [&'static str]),
-    /// Every gate holds.
-    All(&'static [Gate]),
 }
 
 const SWITCH: Gate = Gate::Text(&["switch"]);
 const INSTANCEOF: Gate = Gate::Text(&["instanceof"]);
-const ANNOTATED: Gate = Gate::Text(&["@"]);
 const COMPARED: Gate = Gate::Text(&["==", "!="]);
 const NULL: Gate = Gate::Text(&["null"]);
 const TRY: Gate = Gate::Text(&["try"]);
-const CHRONO_FIELDS: &[&str] = &[
-    "NANO_OF_SECOND", "NANO_OF_DAY", "MICRO_OF_SECOND", "MICRO_OF_DAY", "MILLI_OF_SECOND", "MILLI_OF_DAY",
-    "SECOND_OF_MINUTE", "SECOND_OF_DAY", "MINUTE_OF_HOUR", "MINUTE_OF_DAY", "HOUR_OF_AMPM", "CLOCK_HOUR_OF_AMPM",
-    "HOUR_OF_DAY", "CLOCK_HOUR_OF_DAY", "AMPM_OF_DAY", "DAY_OF_WEEK", "ALIGNED_DAY_OF_WEEK_IN_MONTH",
-    "ALIGNED_DAY_OF_WEEK_IN_YEAR", "DAY_OF_MONTH", "DAY_OF_YEAR", "EPOCH_DAY", "ALIGNED_WEEK_OF_MONTH",
-    "ALIGNED_WEEK_OF_YEAR", "MONTH_OF_YEAR", "PROLEPTIC_MONTH", "YEAR_OF_ERA", "YEAR", "ERA", "INSTANT_SECONDS",
-    "OFFSET_SECONDS",
-];
 
 /// The checks of Error Prone 2.50.0 that Java runs enable and the engine does not run, with their preconditions.
 pub const PRECONDITIONS: &[(&str, Gate)] = &[
@@ -75,14 +64,6 @@ pub const PRECONDITIONS: &[(&str, Gate)] = &[
     ("RefactorSwitch", SWITCH),
     ("BadInstanceof", INSTANCEOF),
     ("NewFileSystem", Gate::Text(&["newFileSystem"])),
-    (
-        "InvalidPatternSyntax",
-        Gate::Text(&[
-            "matches", "split", "replaceFirst", "replaceAll", "compile", "onPattern", "doesNotMatch", "containsMatch",
-            "doesNotContainMatch",
-        ]),
-    ),
-    ("TemporalAccessorGetChronoField", Gate::All(&[Gate::Text(&["get", "getLong"]), Gate::Text(CHRONO_FIELDS)])),
     ("AlwaysThrows", Gate::Text(&["put", "of", "parse", "fromHex", "fromString", "plus", "minus"])),
     ("ModifySourceCollectionInStream", Gate::Text(&["stream", "parallelStream"])),
     ("EqualsBrokenForNull", Gate::Text(&["equals"])),
@@ -130,7 +111,6 @@ fn holds(gate: &Gate, text: &str, index: &TypeIndex) -> bool {
         Gate::Always => true,
         Gate::Types(names) => names.iter().any(|name| index.has(name)),
         Gate::Text(entries) => has_any(text, entries),
-        Gate::All(gates) => gates.iter().all(|gate| holds(gate, text, index)),
     }
 }
 

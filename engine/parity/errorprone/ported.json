@@ -550,5 +550,7 @@
  "FormatStringAnnotation",
  "FloggerFormatString",
  "OrphanedFormatString",
- "FloatingPointAssertionWithinEpsilon"
+ "FloatingPointAssertionWithinEpsilon",
+ "InvalidPatternSyntax",
+ "TemporalAccessorGetChronoField"
 ]
