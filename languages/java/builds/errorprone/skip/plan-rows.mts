@@ -3,7 +3,9 @@ import { engineFindingOf } from '../../../../../shared/engine/engine-rows.mts';
 import { fieldOf, listOf, textsOf } from '../../../../../shared/values/readers.mts';
 import type { ArgumentSet } from '../engine-arguments.mts';
 import type { EngineRow } from '../engine-diagnostics.mts';
-import { CANNOT_BE_OFF, LOMBOK_UNSUPPRESSED_OFF, lombokUnsuppressed } from './runner-checks.mts';
+import { NOT_DISABLEABLE } from '../options/check-levels.mts';
+import { lombokUnsuppressed } from './runner-checks.mts';
+import type { SourceSetPlan } from './source-set-plan.mts';
 
 const MAY_REPORT = '_MayReport';
 
@@ -38,21 +40,31 @@ export function rowsOf(
     .filter(({ file }) => !skipped.some((root) => slashed(file).includes(root)));
 }
 
+export type RowContext = {
+  readonly set: ArgumentSet;
+  readonly plan: SourceSetPlan;
+  readonly lombokOff: readonly string[];
+  readonly excluded: (file: string) => boolean;
+};
+
 /**
- * Drops the rows Error Prone's runner would not report: a check it cannot turn off in files it still compiles, where
- * it reports the check itself, and its Lombok checks under a `lombok.config` that turns off `@SuppressWarnings`.
+ * Drops the rows Error Prone's runner would not report or reports itself: rows in files the project excludes, a check
+ * Error Prone still runs in the files it compiles, and its Lombok checks under a `lombok.config` that turns off
+ * `@SuppressWarnings`.
  */
 export function keptRows(
   rows: readonly EngineRow[],
-  set: ArgumentSet,
-  compiled: readonly string[],
+  { set, plan, lombokOff, excluded }: RowContext,
 ): EngineRow[] {
   const unsuppressed = lombokUnsuppressed(set.sources);
+  const compiled = new Set(plan.kind === 'narrowed' ? plan.files : []);
+  const rerun = new Set(plan.kind === 'narrowed' ? plan.checks : []);
   return rows.filter(
     ({ rule, file }) =>
       !(
-        (CANNOT_BE_OFF.includes(rule) && compiled.includes(file)) ||
-        (LOMBOK_UNSUPPRESSED_OFF.includes(rule) && unsuppressed.has(file))
+        excluded(file) ||
+        (compiled.has(file) && (rerun.has(rule) || NOT_DISABLEABLE.has(rule))) ||
+        (lombokOff.includes(rule) && unsuppressed.has(file))
       ),
   );
 }

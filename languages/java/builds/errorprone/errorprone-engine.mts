@@ -21,6 +21,7 @@ import {
 import {
   engineChecksFor,
   NULL_AWAY,
+  sourceSetLevels,
   testOnly,
   wholeReason,
   type EngineChecks,
@@ -30,10 +31,12 @@ import {
   ENGINE_REPORT,
   type EngineDiagnostic,
 } from './engine-diagnostics.mts';
-import { hasCheckPlugins } from './skip/runner-checks.mts';
+import type { CheckLevels } from './options/check-levels.mts';
+import { narrowedFlags } from './options/narrowed-flags.mts';
+import { excludedFile, handedBack } from './options/project-options.mts';
+import { lombokOff } from './options/runner-levels.mts';
 import { keptRows, mayReportOf, rowsOf } from './skip/plan-rows.mts';
 import {
-  checksOff,
   plannedArguments,
   planLine,
   remainingChecks,
@@ -112,35 +115,15 @@ function engineReport(
   return parseJson(readFileSync(report, 'utf8'));
 }
 
-function skipsEngine(set: ArgumentSet, name: string, setting: Setting): boolean {
-  const whole =
-    wholeReason(set.head) ??
-    (hasCheckPlugins(set.head) ? 'its processor path brings checks' : undefined);
-  if (whole !== undefined) {
-    setting.log?.write(`nitpicker: Error Prone compiles ${name} whole: ${whole}\n`);
-  }
-  return whole !== undefined || set.sources.length === 0;
-}
-
-type PlanChecks = {
+type Planned = {
+  readonly set: ArgumentSet;
   readonly plan: SourceSetPlan;
-  readonly remaining: readonly string[];
-  readonly onEngine: readonly string[];
+  readonly levels: CheckLevels;
 };
 
-function writePlan(
-  file: string,
-  set: ArgumentSet,
-  { plan, remaining, onEngine }: PlanChecks,
-): void {
-  writeFileSync(
-    file,
-    plannedArguments(
-      set,
-      plan,
-      checksOff(plan, remaining, onEngine).map((check) => `-Xep:${check}:OFF`),
-    ),
-  );
+function writePlan(file: string, { set, plan, levels }: Planned): void {
+  const flags = plan.kind === 'narrowed' ? narrowedFlags(set.head, plan.checks, levels) : [];
+  writeFileSync(file, plannedArguments(set, plan, flags));
 }
 
 function everyFileRead(report: unknown): unknown {
@@ -151,23 +134,47 @@ function everyFileRead(report: unknown): unknown {
   return report;
 }
 
-function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
+type EngineSet = {
+  readonly set: ArgumentSet;
+  readonly name: string;
+  readonly levels: CheckLevels;
+};
+
+function engineSetOf(file: string, setting: Setting): EngineSet | undefined {
   const text = new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(file));
   const set = argumentSetOf(text);
   const name = path.basename(file, '.args');
-  if (skipsEngine(set, name, setting)) {
+  const levels = sourceSetLevels(set);
+  const whole = wholeReason(set, levels);
+  if (whole !== undefined) {
+    setting.log?.write(`nitpicker: Error Prone compiles ${name} whole: ${whole}\n`);
+  }
+  return whole !== undefined || levels === undefined || set.sources.length === 0
+    ? undefined
+    : { set, name, levels };
+}
+
+function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
+  const engineSet = engineSetOf(file, setting);
+  if (engineSet === undefined) {
     return [];
   }
-  const selected = engineChecksFor(set.head);
-  const remaining = remainingChecks(set, selected.checks);
+  const { set, name, levels } = engineSet;
+  const selected = engineChecksFor(set, levels);
+  const remaining = remainingChecks(set, selected.checks, levels);
   const report = everyFileRead(engineReport({ file, ...set, ...selected, remaining }, setting));
-  const plan = sourceSetPlan(set, remaining, mayReportOf(report));
-  const rows = keptRows(
-    rowsOf(report, selected.checks, generatedRoots(set.head)),
+  const found = rowsOf(report, selected.checks, generatedRoots(set.head));
+  const plan = sourceSetPlan(set, remaining, {
+    mayReport: mayReportOf(report),
+    handedBack: handedBack(set, found, levels),
+  });
+  const rows = keptRows(found, {
     set,
-    plan.kind === 'narrowed' ? plan.files : [],
-  );
-  writePlan(file, set, { plan, remaining, onEngine: selected.checks });
+    plan,
+    lombokOff: lombokOff(set.head, true),
+    excluded: excludedFile(set.head),
+  });
+  writePlan(file, { set, plan, levels });
   setting.log?.write(planLine(name, set, plan));
   return engineDiagnostics(rows);
 }

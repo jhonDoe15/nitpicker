@@ -8,7 +8,6 @@ import {
   hasCheckPlugins,
   immutableInReach,
   lombokUnsuppressed,
-  projectLevels,
 } from './runner-checks.mts';
 
 const projectWith = useTempProjects('nitpicker-errorprone-runner-checks-');
@@ -82,18 +81,5 @@ describe('hasCheckPlugins', () => {
     expect(hasCheckPlugins(['-processorpath', [nullAway, plugin].join(path.delimiter)])).toBe(true);
     expect(hasCheckPlugins(['-processorpath', path.join(root, 'own')])).toBe(true);
     expect(hasCheckPlugins([])).toBe(false);
-  });
-});
-
-describe('projectLevels', () => {
-  it('splits the checks the project turns on from those it turns off, the last flag winning', () => {
-    const head = ['-Xep:A', '-Xep:B:WARN', '-Xep:C:OFF', '-Xep:D:OFF', '-Xep:D:ERROR'].map(
-      (flag) => `--errorprone-flag=${flag}`,
-    );
-
-    expect(projectLevels(head)).toStrictEqual({
-      on: new Set(['A', 'B', 'D']),
-      off: new Set(['C']),
-    });
   });
 });
