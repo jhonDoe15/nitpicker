@@ -2,7 +2,6 @@ import { globSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
-import { ESLint } from 'eslint';
 import { listNativeRules } from './plan/rule-listing.mts';
 import { listedFiles } from './plan/listed-files.mts';
 import { readLayout } from '../../preset/head-policy.mts';
@@ -11,7 +10,7 @@ import { parsedTsconfig } from '../../preset/modules/tsconfig-files.mts';
 import { isInvokedModule } from '../typed/static-checks.mts';
 import { incompatiblePackageMessage } from '../lint-engine/compatibility/incompatible-package.mts';
 import { fieldOf, fieldsOf } from '../../../../shared/values/readers.mts';
-import { nativeConfigFlags } from '../lint-engine/compatibility/native-config.mts';
+import { configResolver } from './plan/configs/config-resolver.mts';
 
 type Settings = Readonly<Record<string, unknown>>;
 
@@ -24,12 +23,22 @@ type GroupSettings = {
 
 type Group = GroupSettings & { readonly files: string[] };
 
+type KeyedSettings = { readonly settings: GroupSettings; readonly key: string };
+
+type Derived = {
+  readonly plain: KeyedSettings;
+  readonly metadata: KeyedSettings;
+  readonly metadataRules: readonly string[];
+  readonly noInlineConfig: boolean;
+};
+
 type Plan = {
   readonly groups: Map<string, Group>;
   readonly noInlineConfig: string[];
   readonly typedPluginRules: Set<string>;
   readonly ruleMessages: Record<string, unknown>;
   readonly metadataProjects: Map<string, boolean>;
+  readonly derived: WeakMap<object, Derived>;
 };
 
 const readTsconfig: (configFile: string) => { readonly options: Settings } = parsedTsconfig;
@@ -65,20 +74,18 @@ async function lintPlan(root: string, globs: readonly string[]) {
 }
 
 async function filePlan(root: string, globs: readonly string[]) {
-  const eslint = new ESLint({
-    cwd: root,
-    overrideConfigFile: wrapperConfigPath,
-    flags: nativeConfigFlags(wrapperConfigPath),
-  });
+  let configOf: ((file: string) => Promise<unknown>) | undefined;
   const plan: Plan = {
     groups: new Map(),
     noInlineConfig: [],
     typedPluginRules: new Set(),
     ruleMessages: {},
     metadataProjects: new Map(),
+    derived: new WeakMap(),
   };
   for (const file of candidateFiles(root, globs)) {
-    const config = await lintedConfig(eslint, file);
+    configOf ??= await configResolver(root, wrapperConfigPath);
+    const config = await configOf(file);
     if (config !== undefined) {
       addFile(plan, { root, file }, config);
     }
@@ -95,21 +102,49 @@ async function filePlan(root: string, globs: readonly string[]) {
 }
 
 function addFile(plan: Plan, { root, file }: { root: string; file: string }, config: unknown) {
+  const derived = derivedConfig(plan, config);
+  const programRules = programRulesOf(derived, path.join(root, file));
+  addToGroup(plan.groups, file, programRules.length === 0 ? derived.plain : derived.metadata);
+  if (derived.noInlineConfig) {
+    plan.noInlineConfig.push(file);
+  }
+}
+
+function programRulesOf({ metadataRules }: Derived, absoluteFile: string) {
+  return metadataRules.length > 0 && DECORATOR.test(readFileSync(absoluteFile, 'utf8'))
+    ? metadataRules
+    : [];
+}
+
+function derivedConfig(plan: Plan, config: unknown): Derived {
+  const key = typeof config === 'object' && config !== null ? config : {};
+  const known = plan.derived.get(key);
+  if (known !== undefined) {
+    return known;
+  }
   const rules = enabledRules(fieldOf(config, 'rules'));
-  const programRules = programRulesOf(plan.metadataProjects, path.join(root, file), config);
-  addToGroup(plan.groups, file, {
+  const metadataRules = metadataRulesOf(plan.metadataProjects, config, rules);
+  const plain: GroupSettings = {
     rules,
     globals: sortedGlobals(fieldOf(fieldOf(config, 'languageOptions'), 'globals')),
     settings: fieldOf(config, 'settings') ?? {},
-    ...(programRules.length === 0 ? {} : { programRules }),
-  });
-  if (fieldOf(fieldOf(config, 'linterOptions'), 'noInlineConfig') === true) {
-    plan.noInlineConfig.push(file);
-  }
+  };
   for (const ruleId of typedRulesOf(config, rules)) {
     plan.typedPluginRules.add(ruleId);
   }
   addRuleMessages(plan.ruleMessages, config, rules);
+  const derived: Derived = {
+    plain: keyed(plain),
+    metadata: keyed({ ...plain, programRules: metadataRules }),
+    metadataRules,
+    noInlineConfig: fieldOf(fieldOf(config, 'linterOptions'), 'noInlineConfig') === true,
+  };
+  plan.derived.set(key, derived);
+  return derived;
+}
+
+function keyed(settings: GroupSettings): KeyedSettings {
+  return { settings, key: JSON.stringify(settings) };
 }
 
 function candidateFiles(root: string, globs: readonly string[]) {
@@ -120,14 +155,6 @@ function candidateFiles(root: string, globs: readonly string[]) {
       exclude: (entry) => entry === 'node_modules' || entry.endsWith('/node_modules'),
     });
   return [...new Set(files.map((file) => file.replaceAll('\\', '/')))].sort();
-}
-
-async function lintedConfig(eslint: ESLint, file: string): Promise<unknown> {
-  if (await eslint.isPathIgnored(file)) {
-    return undefined;
-  }
-  const config: unknown = await eslint.calculateConfigForFile(file);
-  return config;
 }
 
 function enabledRules(rules: unknown = {}): Settings {
@@ -161,8 +188,7 @@ function globalAccess(value: unknown): string {
   return 'readonly';
 }
 
-function addToGroup(groups: Map<string, Group>, file: string, settings: GroupSettings) {
-  const key = JSON.stringify(settings);
+function addToGroup(groups: Map<string, Group>, file: string, { settings, key }: KeyedSettings) {
   const group = groups.get(key) ?? { files: [], ...settings };
   group.files.push(file);
   groups.set(key, group);
@@ -214,8 +240,7 @@ function emitsDecoratorMetadata(projects: Map<string, boolean>, configFile: stri
   return emits;
 }
 
-function programRulesOf(projects: Map<string, boolean>, absoluteFile: string, config: unknown) {
-  const enabled = enabledRules(fieldOf(config, 'rules'));
+function metadataRulesOf(projects: Map<string, boolean>, config: unknown, enabled: Settings) {
   const configured = DECORATOR_METADATA_RULES.filter((ruleId) => ruleId in enabled);
   const configFiles = projectFilesOf(
     fieldOf(fieldOf(config, 'languageOptions'), 'parserOptions') ?? {},
@@ -226,7 +251,7 @@ function programRulesOf(projects: Map<string, boolean>, absoluteFile: string, co
   ) {
     return [];
   }
-  return DECORATOR.test(readFileSync(absoluteFile, 'utf8')) ? configured : [];
+  return configured;
 }
 
 function addRuleMessages(ruleMessages: Record<string, unknown>, config: unknown, rules: Settings) {
