@@ -37,6 +37,12 @@ import { excludedFile, handedBack } from './options/project-options.mts';
 import { lombokOff } from './options/runner-levels.mts';
 import { keptRows, mayReportOf, rowsOf } from './skip/plan-rows.mts';
 import {
+  auditEnvironment,
+  contextFiles,
+  contextRoots,
+  rewrittenOf,
+} from './processors/processor-sources.mts';
+import {
   plannedArguments,
   planLine,
   remainingChecks,
@@ -72,18 +78,31 @@ export function javaHomeOf(java: string): string {
     : '';
 }
 
+type Inputs = {
+  readonly listed: string;
+  readonly lookup: string;
+  readonly modules: string;
+  readonly modulePath: readonly string[];
+};
+
+function writeInputs(file: string, head: readonly string[], sources: readonly string[]): Inputs {
+  const listed = `${file}.engine-sources.txt`;
+  const lookup = `${file}.engine-classpath.txt`;
+  const modules = `${file}.engine-modulepath.txt`;
+  const read = [...sources, ...contextFiles(head, sources)];
+  writeFileSync(listed, read.map((source) => `${source}\n`).join(''));
+  writeFileSync(lookup, lookupEntries(head).join('\n'));
+  const modulePath = modulePathEntries(head);
+  writeFileSync(modules, modulePath.join('\n'));
+  return { listed, lookup, modules, modulePath };
+}
+
 function engineReport(
   { file, head, sources, checks, packages, remaining }: Selected,
   { binary, javaHome, environment, run }: Setting,
 ): unknown {
-  const listed = `${file}.engine-sources.txt`;
-  const lookup = `${file}.engine-classpath.txt`;
-  const modules = `${file}.engine-modulepath.txt`;
+  const { listed, lookup, modules, modulePath } = writeInputs(file, head, sources);
   const report = `${file}.engine-report.json`;
-  writeFileSync(listed, sources.map((source) => `${source}\n`).join(''));
-  writeFileSync(lookup, lookupEntries(head).join('\n'));
-  const modulePath = modulePathEntries(head);
-  writeFileSync(modules, modulePath.join('\n'));
   rmSync(report, { force: true });
   const release = releaseOf(head);
   const encoding = encodingOf(head);
@@ -105,6 +124,7 @@ function engineReport(
         NP_EP_ONLY: checks.join(','),
         NP_EP_MAY_REPORT: remaining.join(','),
         ...(checks.includes(NULL_AWAY) ? { NP_NULLAWAY_PACKAGES: packages.join(',') } : {}),
+        ...auditEnvironment(head, sources),
         NITPICKER_JDK: javaHome,
       },
     },
@@ -154,6 +174,20 @@ function engineSetOf(file: string, setting: Setting): EngineSet | undefined {
     : { set, name, levels };
 }
 
+function unreportedRoots(set: ArgumentSet): string[] {
+  return [...generatedRoots(set.head), ...contextRoots(set.head, set.sources)];
+}
+
+function changedClass(report: unknown, name: string, setting: Setting): boolean {
+  const [rewritten] = rewrittenOf(report);
+  if (rewritten !== undefined) {
+    setting.log?.write(
+      `nitpicker: Error Prone compiles ${name} whole: a class file does not match its source (${rewritten})\n`,
+    );
+  }
+  return rewritten !== undefined;
+}
+
 function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
   const engineSet = engineSetOf(file, setting);
   if (engineSet === undefined) {
@@ -163,7 +197,10 @@ function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
   const selected = engineChecksFor(set, levels);
   const remaining = remainingChecks(set, selected.checks, levels);
   const report = everyFileRead(engineReport({ file, ...set, ...selected, remaining }, setting));
-  const found = rowsOf(report, selected.checks, generatedRoots(set.head));
+  if (changedClass(report, name, setting)) {
+    return [];
+  }
+  const found = rowsOf(report, selected.checks, unreportedRoots(set));
   const plan = sourceSetPlan(set, remaining, {
     mayReport: mayReportOf(report),
     handedBack: handedBack(set, found, levels),

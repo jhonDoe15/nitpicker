@@ -29,7 +29,7 @@ export function argumentSetOf(text: string): ArgumentSet {
     : { head: lines.slice(0, separator), sources: lines.slice(separator + 1).filter(Boolean) };
 }
 
-function valuesAfter(head: readonly string[], prefix: string): string[] {
+export function valuesAfter(head: readonly string[], prefix: string): string[] {
   return head.filter((line) => line.startsWith(prefix)).map((line) => line.slice(prefix.length));
 }
 
