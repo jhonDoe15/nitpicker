@@ -395,6 +395,11 @@ fn ported_rules_report_what_pmd_reports_with_its_messages() {
         assert!(expected.contains(row), "{row:?} is listed as a wrong PMD finding but PMD did not report it");
         assert!(!found.contains(row), "{row:?} copies a wrong PMD finding");
     }
+    for row in &read("coded-pmd-missed.json") {
+        assert!(!expected.contains(row), "{row:?} is listed as missed by PMD but PMD reported it");
+        assert!(found.contains(row), "{row:?} is listed as missed by PMD but the engine does not report it");
+        found.retain(|known| known != row);
+    }
     expected.retain(|row| !wrong.contains(row) && row.1 != "!error");
     let missed: Vec<_> = expected.iter().filter(|row| !found.contains(row)).collect();
     let extra: Vec<_> = found.iter().filter(|row| !expected.contains(row)).collect();
