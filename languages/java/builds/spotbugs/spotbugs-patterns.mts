@@ -1,4 +1,4 @@
-import { URL_PATTERNS } from './spotbugs-dumb-placed.mts';
+import { BOXING_PATTERNS, URL_PATTERNS } from './spotbugs-dumb-placed.mts';
 import { INJECTIONS } from './spotbugs-placed.mts';
 
 export const WRONG_MAP_ITERATOR = 'WMI_WRONG_MAP_ITERATOR';
@@ -80,4 +80,5 @@ export const ON_ENGINE: readonly string[] = [
   'BX_UNBOXING_IMMEDIATELY_REBOXED',
   'REC_CATCH_EXCEPTION',
   ...URL_PATTERNS,
+  ...BOXING_PATTERNS,
 ];

@@ -1367,6 +1367,30 @@ DMI_BLOCKING_METHODS_ON_URL: `equals(Object)` or `hashCode()` called on a receiv
 On the six comparison code bases, SARIF results, same / missed / extra: Nacos 2 / 0 / 0 (two blocking calls),
 the others 0 / 0 / 0.
 
+### String and boxing calls
+
+Eight patterns of DumbMethods (#2532, `src/java/spotbugs/dumb/boxing.rs`), labs in
+`tests/fixtures/spotbugs/boxed_calls*`, all level `note`. Each is reported once per method (the parsing and
+compare patterns once per method and box class), and of two findings the better priority is kept.
+- DM_STRING_CTOR (`new String(String)`), DM_STRING_VOID_CTOR (`new String()`) and DM_BOOLEAN_CTOR (any
+  `new Boolean(…)`): priority 2, on the line of the constructor call, which comes after its arguments.
+- DM_BOXED_PRIMITIVE_FOR_PARSING: `Integer`, `Long`, `Double` or `Float` `.valueOf(String)` unboxed right away to
+  its own primitive: `.intValue()` and the like, a primitive target (`long x = Integer.valueOf(s)` counts), an
+  operand of arithmetic, a comparison with a primitive, a unary operator or an array index. Not `Short`, `Byte`,
+  `Boolean`, `valueOf(s, radix)`, `Integer.valueOf(s).longValue()`, nor a value stored first. Priority 1, on the
+  line of the unboxing call, else of the `valueOf` call; the SARIF place is `Integer.parseInt(String)` and so on.
+- DM_BOXED_PRIMITIVE_TOSTRING: `toString()` on `Integer.valueOf(int)` or on a cast of an `int` to `Integer`,
+  priority 1 (the same with the other boxes is not reported), or on `new Box(primitive)` of any box, priority 2.
+  On the `toString` call's line, placed at `Integer.toString(int)`.
+- DM_BOXED_PRIMITIVE_FOR_COMPARE: `compareTo` of a box whose receiver was boxed from a primitive (`valueOf`, a
+  cast, or a local that holds only such values; not `new`) and whose argument is a primitive or such a value.
+  Priority 1, `Byte` 2, `Boolean` 3; on the `compareTo` call's line, placed at `Integer.compare(int, int)`.
+- DM_NEW_FOR_GETCLASS: `getClass()` right on a `new` object, anonymous classes too, not arrays; priority 2.
+- DM_STRING_TOSTRING (`toString()` on a `String`) is priority 3, which `-medium` hides, so the engine reports none.
+
+On the six comparison code bases, SARIF results, same / missed / extra: Guava 1 / 0 / 0, jackson-databind
+1 / 0 / 0, MyBatis 1 / 0 / 0, the others 0 / 0 / 0. DumbMethods still runs in SpotBugs for its other patterns.
+
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in
