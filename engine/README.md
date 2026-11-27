@@ -1472,6 +1472,82 @@ where the method exists).
 On the six comparison code bases, SARIF results: Nacos 1 / 0 / 0 (a thread passed as a `Runnable`), the others
 0 / 0 / 0.
 
+### Numbers, random values and constant arguments
+
+Seventeen more patterns of DumbMethods (and DM_CONVERT_CASE, which is never shown) and all five of
+DumbMethodInvocations (#2532, `src/java/spotbugs/dumb/numbers/` and `src/java/spotbugs/dumb/calls/`), labs in
+`tests/fixtures/spotbugs/dumb_*`.
+With these DumbMethodInvocations no longer runs in SpotBugs. Every pattern is reported once per method and
+message; of two the better priority is kept, of equal ones the first in the code. Operations sit on the line in
+effect where they run (the one started last by the statement or a call before them), calls on the line of their
+`(`, `new` on the line javac gives it. Findings with the same message but different places are kept apart.
+A local holds the values of the stores that reach a use: the last one that always runs before it, the ones after
+that on a branch, and those later in a loop around the use; where every branch stores (switch, if/else, try) is
+not merged yet (#2691). A field is a known value when the method stored it earlier, or when an initializer that
+runs first gave it one (a field initializer or initializer block before the use, any of them for a constructor).
+- What a value is, as DumbMethods tracks it on the stack: a *signed byte* is anything typed `byte` (element,
+  field, parameter, call, `(byte)` cast, unboxed `Byte`), also through casts that add no instruction, widening to
+  `long` and an `int` local holding only signed bytes; a constant is not one. *Low 8 bits clear* is a shift left
+  by a constant of 8 to 31 after javac masks it (`int`) or of 8 or more (`long`), an and with a constant whose low 8
+  bits are 0, a shift right by 0 of such a value, or a local holding only such values; widening to `long` forgets
+  it. *Nonnegative* is anything typed `char`, an array length, an `int` and with a constant of 0 or more, or an
+  `int` local holding only such values. A constant is treated as low 8 bits clear when it is not 0, not 256 and
+  its low 8 bits are 0. Values in fields are not followed.
+- BIT_IOR_OF_SIGNED_BYTE, BIT_ADD_OF_SIGNED_BYTE: `|` or `+` (also `|=`, `+=`) of a signed byte and a value with
+  low 8 bits clear, either order; priority 1 on `long`, 2 on `int`. `^`, `-`, `* 256` and masked bytes are not.
+- INT_VACUOUS_BIT_OPERATION: `& -1` on an `int`, `| 0` or `^ 0` on an `int` or `long`, the constant written
+  second; `long & -1L` is not reported. The value is named by its local (through a local that only copies
+  another, and an unboxed local), otherwise `File.java:[line N]`; a value read from a field is not reported.
+  Priority 2.
+- INT_BAD_REM_BY_1: `int % 1` (also `%=`); priority 1. `long % 1` and `% -1` are not.
+- INT_VACUOUS_COMPARISON: an `int` `<= Integer.MAX_VALUE`, `> MAX_VALUE`, `>= MIN_VALUE` or `< MIN_VALUE`, the
+  constant on either side; priority 2. `long` comparisons are not looked at.
+- INT_BAD_COMPARISON_WITH_INT_VALUE: an `int` with a `long` constant outside the `int` range; priority 2 for 2^31
+  and -2^31-1, else 1; not for a `byte` value. A constant is printed in hexadecimal when it has at most three
+  different hexadecimal digits, is not a negative value starting `ff`, and for an `int` is 65535 or at least
+  131071 in size, else in decimal (one measured miss, #2692).
+- INT_BAD_COMPARISON_WITH_SIGNED_BYTE: a signed byte with an `int` constant above 127 or below -128, or with 127 by
+  `>` or `<=`; priority 2 below -128, for 127, and for 128 by `>=` or `<`, else 1. `< -128` and `>= -128` are not
+  reported.
+- INT_BAD_COMPARISON_WITH_NONNEGATIVE_VALUE: a nonnegative value with a negative constant (priority 1) or by `< 0`
+  or `>= 0` with the 0 written second (priority 2); `0 > c` is not reported. Bad comparisons are placed at the
+  value's local (a postfix `x++` is not named, `Character.valueOf(c)` is `c`), field or called method, else the
+  method; a local captured by an anonymous class is placed at the variable, not at `val$` (#2693).
+- RV_ABSOLUTE_VALUE_OF_HASHCODE: `Math.abs(int)` or `StrictMath.abs(int)` of `hashCode()` (any receiver, not
+  `super.`, a string constant or a receiver typed by an interface) or `System.identityHashCode`, directly or
+  through a local holding only those; not `Objects.hashCode`,
+  `Objects.hash` or `Arrays.hashCode`. RV_ABSOLUTE_VALUE_OF_RANDOM_INT: the same of `nextInt()` or `nextLong()`
+  written against `java.util.Random` or `java.security.SecureRandom` (not a subclass, `ThreadLocalRandom` or
+  `SplittableRandom`). Priority 1.
+- RV_REM_OF_HASHCODE, RV_REM_OF_RANDOM_INT: `int %` of such a value when the remainder is an array index (read or
+  write) or the index of `get`, `set`, `remove` or `add` written against `List`, `ArrayList` or `LinkedList`, also
+  through a local stored once and read with no branch in between; priority 1. Other uses (a return, a call
+  argument, `Vector`, `subList`) are not reported.
+- DM_NEXTINT_VIA_NEXTDOUBLE: `(int)` of a product with `nextDouble()` written against `java.util.Random` or with
+  `Math.random()`; priority 2. Not through a local, not `nextFloat`, not `(long)`.
+- RV_01_TO_INT: `(int)`, `(short)`, `(byte)` or `(char)` of `nextDouble()` or `nextFloat()` of `java.util.Random`
+  or `Math.random()`, also through a local holding only those; priority 1.
+- DMI_BIGDECIMAL_CONSTRUCTED_FROM_DOUBLE: `new BigDecimal(double)` of a constant whose `Double.toString` has no
+  exponent and at most 8 characters, and that the double does not hold exactly (`0.1`, `123.456`; not `2.5`,
+  `0.1234567`, `1e-4`); priority 2, placed at `java.math.BigDecimal.valueOf(double)`.
+- DMI_LONG_BITS_TO_DOUBLE_INVOKED_ON_INT: `Double.longBitsToDouble` of a value that is not a `long` before
+  widening (also through `(long)`); priority 1, placed at `Double.longBitsToDouble(long)`.
+- DM_INVALID_MIN_MAX: `Math.min(a, Math.max(b, x))` with constants `a < b`, or `Math.max(b, Math.min(a, x))` with
+  `b > a`, constants on either side, the inner call possibly in a local; priority 1. Not `StrictMath`.
+- DMI_CONSTANT_DB_PASSWORD, DMI_EMPTY_DB_PASSWORD: `DriverManager.getConnection(url, user, password)` with a
+  constant password; priority 2.
+- DMI_HARDCODED_ABSOLUTE_FILENAME: the first `String` argument of `new File`, `FileInputStream`,
+  `FileOutputStream`, `FileReader`, `FileWriter` or `RandomAccessFile`, or of `Paths.get` and `Path.of`, a constant
+  starting with `/`, two backslashes or a letter and a colon, but not `/tmp`, `/proc`, `/etc/` or `/dev/`;
+  priority 1 when it holds `/home`, else 2.
+- DMI_USELESS_SUBSTRING, DMI_MISLEADING_SUBSTRING: `substring(0)` written against `String`, or `StringBuilder` and
+  `StringBuffer`; priority 2.
+- Constants of `final` fields are folded from the type index and, for `byte`, `long`, `double` and other fields
+  the index has no value for, from their declaration in the same file, also through a local stored once;
+  constants declared in another source file are not (#2690), nor folded expressions such as `"x" + 1` or
+  `cond ? a : b` (#2695, #2696).
+- DM_CONVERT_CASE is priority 3 only, which `-medium` hides.
+
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in

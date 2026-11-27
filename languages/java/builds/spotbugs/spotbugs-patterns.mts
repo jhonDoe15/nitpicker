@@ -1,4 +1,11 @@
-import { BOXING_PATTERNS, THREAD_PATTERNS, URL_PATTERNS } from './spotbugs-dumb-placed.mts';
+import {
+  BOXING_PATTERNS,
+  INVOCATION_PATTERNS,
+  NUMBER_PATTERNS,
+  CALL_PATTERNS,
+  THREAD_PATTERNS,
+  URL_PATTERNS,
+} from './spotbugs-dumb-placed.mts';
 import { INJECTIONS } from './spotbugs-placed.mts';
 
 export const WRONG_MAP_ITERATOR = 'WMI_WRONG_MAP_ITERATOR';
@@ -87,4 +94,7 @@ export const ON_ENGINE: readonly string[] = [
   ...BOXING_PATTERNS,
   ...THREAD_PATTERNS,
   ...SELF_ASSIGNMENTS,
+  ...NUMBER_PATTERNS,
+  ...CALL_PATTERNS,
+  ...INVOCATION_PATTERNS,
 ];

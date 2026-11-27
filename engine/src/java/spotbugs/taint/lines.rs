@@ -60,6 +60,12 @@ pub fn line(context: &Context, sink: Node) -> usize {
     if sink.kind() != "object_creation_expression" {
         return sink.child_by_field_name("arguments").map_or_else(|| context.line(sink), |arguments| context.line(arguments));
     }
+    after(context, sink)
+}
+
+/// The line in effect when the instruction of an expression runs: the one started last by its statement or by a
+/// call made before it.
+pub fn after(context: &Context, sink: Node) -> usize {
     let (start, mut found) = statement(context, sink);
     let mut last = start;
     let Some(around) = ancestor(sink, STATEMENTS).or_else(|| parent(sink)) else { return found };

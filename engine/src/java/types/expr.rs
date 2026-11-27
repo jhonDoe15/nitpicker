@@ -612,7 +612,7 @@ impl<'a> Resolver<'a> {
 
     /// The value of a constant numeric or `char` expression made of literals, constant fields, casts to primitive
     /// types and the numeric operators.
-    fn constant_number(&self, expression: Node) -> Option<Constant> {
+    pub fn constant_number(&self, expression: Node) -> Option<Constant> {
         let expression = unwrap(expression);
         let operand = |name| expression.field(name).and_then(|operand| self.constant_number(operand));
         match expression.kind() {
