@@ -424,6 +424,7 @@
   "RedundantThrows",
   "RefersToDaggerCodegen",
   "RequiredModifiers",
+  "RestrictedApi",
   "RethrowReflectiveOperationExceptionAsLinkageError",
   "ReturnAtTheEndOfVoidFunction",
   "ReturnFromVoid",
