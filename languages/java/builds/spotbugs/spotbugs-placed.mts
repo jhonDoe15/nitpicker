@@ -1,4 +1,5 @@
 import { CAST_PLACED } from './casts/spotbugs-casts-placed.mts';
+import { EQUALITY_PLACED } from './equality/spotbugs-equality-placed.mts';
 import { DUMB_PLACED } from './spotbugs-dumb-placed.mts';
 import { TAIL_PLACED } from './tail/spotbugs-tail-placed.mts';
 import { VALUES_PLACED } from './values/spotbugs-values-placed.mts';
@@ -149,10 +150,6 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     levels: { 2: NOTE },
     placement: 'arguments',
   },
-  EQ_COMPARETO_USE_OBJECT_EQUALS: {
-    text: 'Class defines compareTo(...) and uses Object.equals()',
-    levels: { 2: NOTE },
-  },
   BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS: {
     text: 'Equals method should not assume anything about the type of its argument',
     levels: { 2: NOTE },
@@ -297,4 +294,5 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   ...CAST_PLACED,
   ...TAIL_PLACED,
   ...VALUES_PLACED,
+  ...EQUALITY_PLACED,
 };

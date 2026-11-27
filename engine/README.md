@@ -1686,6 +1686,54 @@ On the comparison code bases, SARIF results: guava 2 / 0 / 0 (WA_AWAIT_NOT_IN_LO
 (ME_ENUM_FIELD_SETTER), commons-lang, jackson-databind, javaparser-core and mybatis-3 0 / 0 / 0. The saved
 Elasticsearch report has one each of the CEIL cast, WA_NOT_IN_LOOP and SC_START_IN_CTOR, not checked here.
 
+### Comparators and equals operand types
+
+Three whole detectors (#2533): ComparatorIdiom (`src/java/spotbugs/comparators/mod.rs`), FindComparatorProblems
+(`comparators/floating.rs`, `minimum.rs`, `values.rs`, `operands.rs`) and EqualsOperandShouldHaveClassCompatibleWithThis
+(`src/java/spotbugs/equality/incompatible.rs`); SpotBugs no longer runs them. Labs in
+`tests/fixtures/spotbugs/comparator_serial*`, `compare_floating*`, `compare_min*` and `equals_operand*`.
+- SE_COMPARATOR_SHOULD_BE_SERIALIZABLE: a concrete class or record that is a `Comparator` (also through a
+  superclass or interface, library ones too) and not `Serializable`; enums, interfaces and abstract classes are
+  not, nor anonymous and local classes (a member class of an anonymous class is). `@SuppressFBWarnings` for it on
+  any method of the class also hides it. Priority 2 on the class's first line, priority 3 (hidden) when a field,
+  static or not, holds (or is an array of) a non-`Serializable` `Comparator` other than the class itself (a type
+  variable by its bound), or a class that SE_BAD_FIELD would judge unlikely to be serializable from the whole run
+  (the class itself too). `java.util` collections and maps never hide it.
+- The compare methods FindComparatorProblems looks at: instance methods returning `int` named `compare` (any
+  parameters) in a `Comparator`, and `compareTo` with one parameter in a `Comparable`; not `compare(Object, Object)`
+  or `compareTo(Object)`, nor static methods, lambdas or `compare` in a class that is only `Comparable`.
+- CO_COMPARETO_INCORRECT_FLOATING: the same two `float` or `double` operands compared twice in the same order
+  (`a > b` then `a < b`, also `a > b` twice); `b > a` is another pair. A comparison counts only when nothing else of
+  the statement is on the operand stack: not the right side of `+`, an argument after the first or of an instance
+  call, `x += …`, a field store through `this`. Operands are the same when they are the same constant value (also a
+  `final` field given one), local, field read from the same local or `this` (static fields by field, record
+  components as fields), call of the same method (any receiver), or anything computed. One finding per pair,
+  priority 2, on the javac line of its second comparison. Its place is the first of the left and right operands
+  that is a field (fully named under the method's class) or a local (under the first called method, else
+  `Double.compare(double, double)`), else the first called method (bare when it is the class's own), else
+  `Double.compare(double, double)` (`Float.compare(float, float)` for `float`). Unboxing a local is the local;
+  unboxing anything else (a field, an array element, a cast) is a call of `Double.doubleValue()`.
+- CO_COMPARETO_RESULTS_MIN_VALUE: `return Integer.MIN_VALUE` (a constant, a `final` field of the file given it, or a
+  local only ever given it), once per method at the first one, priority 2. Not reported when every path to it passed
+  an `int` branch javac compiles to `if_icmp` that shows a value nonzero: `x == c`, `x > c`, `x >= c` for `c > 0`
+  (and `x < c`, `x <= c`, `x == c` for `c < 0`, `0 < x`), or `x != y`, `x < y`, `x > y` between two values. A value
+  counts only when it comes from an instance field: a read of one, a local only ever given one, arithmetic or a
+  cast on one, `intValue()` of one. Two locals that only ever hold constants are compared as constants, and the
+  branch that cannot be taken is dropped. A literal `0` written second (javac's one-operand branch), `char`, `long`,
+  floating-point and reference tests, `switch` labels and a ternary result do not count.
+- EQ_CHECK_FOR_OPERAND_NOT_COMPATIBLE_WITH_THIS: `equals(Object)` tests its argument with `instanceof`, a cast, an
+  `instanceof` or `switch` pattern, `X.class.isInstance(o)` / `X.class.cast(o)`, or passes it to `equals` of a
+  value whose type is a class (not an interface), for a type that is neither a supertype nor a subtype of the
+  class. A local counts by the value last stored into it above the test, unless that store sits in a branch or loop
+  the test is not in: the argument (also through casts to `Object` and through conditionals whose chosen arms all
+  hold it), or a class literal. Once per type, at its first test; priority 1, or 2 for an interface outside
+  `java.util` and its subpackages when the class is not final (records and enums are); one more (hidden) in an
+  anonymous or local class that only extends `Object`. A `java.util` `List`, `Set` or `Map` against a class of the
+  same kind is compatible. The type is shown without `java.lang.` and without the class's own package.
+
+On the six comparison code bases, SARIF results for the four patterns are exact: Guava 2, MyBatis 1,
+javaparser 1, Nacos 1, commons-lang and jackson 0.
+
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in

@@ -20,8 +20,8 @@ pub struct Shape<'t> {
 }
 
 pub fn class_shape(context: &Context, class: Node) {
-    let [equals, casts] = super::equality::PATTERNS;
-    let wanted = [singletons::PATTERNS, clones::PATTERNS, equals, casts, super::serial::PATTERNS];
+    let [equals, casts, incompatible] = super::equality::PATTERNS;
+    let wanted = [singletons::PATTERNS, clones::PATTERNS, equals, casts, incompatible, super::serial::PATTERNS, super::comparators::PATTERNS];
     if !wanted.iter().any(|patterns| context.wants(patterns)) {
         return;
     }
@@ -44,4 +44,5 @@ pub fn class_shape(context: &Context, class: Node) {
     clones::check(context, &shape);
     super::equality::check(context, &shape);
     super::serial::check(context, &shape);
+    super::comparators::check(context, &shape);
 }

@@ -7,6 +7,7 @@ import {
   THREAD_PATTERNS,
   URL_PATTERNS,
 } from './spotbugs-dumb-placed.mts';
+import { COMPARATOR_PATTERNS } from './equality/spotbugs-equality-placed.mts';
 import { INJECTIONS } from './spotbugs-placed.mts';
 import {
   DIVISION_PATTERNS,
@@ -113,6 +114,7 @@ export const ON_ENGINE: readonly string[] = [
   ...START_PATTERNS,
   ...ENUM_PATTERNS,
   ...VALUE_PATTERNS,
+  ...COMPARATOR_PATTERNS,
 ];
 
 export const LOMBOK_WITHOUT_CLASSES: readonly string[] = [

@@ -7,6 +7,7 @@ mod catches;
 mod classes;
 mod concurrent;
 mod compare;
+mod comparators;
 mod constructors;
 mod dead;
 mod dumb;
@@ -70,6 +71,8 @@ pub struct Context<'a> {
     compiled: std::cell::OnceCell<crate::java::javac::Names<'a>>,
     /// SE_BAD_FIELD findings that wait for the classes the whole run knows.
     pub serial: RefCell<Vec<serial::Pending>>,
+    /// SE_COMPARATOR_SHOULD_BE_SERIALIZABLE findings waiting for the classes the whole run knows.
+    pub comparators: RefCell<Vec<(Finding, Vec<String>)>>,
 }
 
 impl<'a> Context<'a> {
@@ -101,6 +104,7 @@ impl<'a> Context<'a> {
             out: RefCell::new(Vec::new()),
             compiled: std::cell::OnceCell::new(),
             serial: RefCell::new(Vec::new()),
+            comparators: RefCell::new(Vec::new()),
         };
         (context, declared)
     }
@@ -238,6 +242,7 @@ const DETECTORS: &[Detector] = &[
     sequence::sequence as Detector,
     dumb::dumb as Detector,
     tail::tail as Detector,
+    comparators::comparators as Detector,
 ];
 
 #[derive(Default)]
@@ -283,8 +288,9 @@ impl FileRule for SpotBugs {
             let names = self.attributes.names(&project.index, &project.sources);
             self.attributes.note(attributes::gather(&context, names));
         }
-        if context.wants(&["SE_BAD_FIELD"]) {
+        if context.wants(&["SE_BAD_FIELD", "SE_COMPARATOR_SHOULD_BE_SERIALIZABLE"]) {
             self.serial.note(serial::referenced(&context), context.serial.take());
+            self.serial.note_comparators(context.comparators.take());
         }
         out.append(&mut context.out.into_inner());
     }
