@@ -3,6 +3,7 @@ import { CRYPTO_PLACED } from './crypto/spotbugs-crypto-placed.mts';
 import { DUMB_PLACED } from './spotbugs-dumb-placed.mts';
 import { RESOURCE_PLACED } from './resources/spotbugs-resources-placed.mts';
 import { TAIL_PLACED } from './tail/spotbugs-tail-placed.mts';
+import { TLS_PLACED } from './tls/spotbugs-tls-placed.mts';
 import { VALUES_PLACED } from './values/spotbugs-values-placed.mts';
 
 export type Placed = {
@@ -301,4 +302,5 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   ...TAIL_PLACED,
   ...VALUES_PLACED,
   ...CRYPTO_PLACED,
+  ...TLS_PLACED,
 };

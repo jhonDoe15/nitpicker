@@ -5,7 +5,7 @@
 //! BlowfishKeySizeDetector and StaticIvDetector (`material`). TDesUsageDetector only reports
 //! at priority 3. A call is on the line of its `(`; findings with the same pattern and message on one line of a
 //! method are one.
-mod algorithms;
+pub mod algorithms;
 mod hex;
 mod material;
 mod shapes;
@@ -40,10 +40,17 @@ pub const PATTERNS: &[&str] = &[
 ];
 
 const MARKS: &[&str] = &["getInstance", "DigestUtils", "toHexString", "NullCipher", "SymmetricEncryptionConfig", "Encryptor", "MessageDigest", "IvParameterSpec"];
+const CALLS: &[&str] = &["method_invocation", "object_creation_expression", "explicit_constructor_invocation"];
 const CODEC: &str = "org.apache.commons.codec.digest.DigestUtils";
 
 /// The algorithm name use of a call, and the argument or fixed name that gives the name.
-fn algorithm<'t>(context: &Context, node: Node<'t>) -> Option<(Use, Result<Node<'t>, &'static str>)> {
+fn algorithm<'t>(context: &Context, own: &str, node: Node<'t>) -> Option<(Use, Result<Node<'t>, &'static str>)> {
+    if let Some((used, value)) = super::tls::values::configured(context, own, node) {
+        return Some((used, Ok(value)));
+    }
+    if node.kind() != "method_invocation" {
+        return None;
+    }
     let name = context.text(node.child_by_field_name("name")?);
     if !matches!(name, "getInstance" | "getDigest") && !name.starts_with("md") && !name.starts_with("sha") && !name.starts_with("getMd") && !name.starts_with("getSha") {
         return None;
@@ -74,14 +81,15 @@ fn patterns_of(used: Use) -> &'static [&'static str] {
     match used {
         Use::Digest | Use::Signature => &[algorithms::MD5, algorithms::SHA1],
         Use::Cipher | Use::KeyGenerator => &[algorithms::INTEGRITY, algorithms::ECB, algorithms::ORACLE, algorithms::DES, algorithms::RSA],
+        Use::Protocol | Use::ReturnsObjects => super::tls::values::patterns_of(used),
     }
 }
 
 /// The calls of one method that name an algorithm, line by line.
-fn calls<'a>(context: &Context<'a>, method: &Compiled<'a>, fields: &Fields) {
+fn calls<'a>(context: &Context<'a>, own: &str, method: &Compiled<'a>, fields: &Fields) {
     let mut lines: Vec<(usize, Node<'a>, Vec<(Use, Held)>)> = Vec::new();
-    for node in method.nodes.iter().copied().filter(|node| node.kind() == "method_invocation") {
-        let Some((used, given)) = algorithm(context, node) else { continue };
+    for node in method.nodes.iter().copied().filter(|node| CALLS.contains(&node.kind())) {
+        let Some((used, given)) = algorithm(context, own, node) else { continue };
         let value = match given {
             Ok(argument) => held(context, argument),
             Err(fixed) => Held::Text(fixed.to_string()),
@@ -111,11 +119,11 @@ fn calls<'a>(context: &Context<'a>, method: &Compiled<'a>, fields: &Fields) {
 }
 
 pub fn crypto<'a>(context: &Context<'a>, declared: &[Node<'a>], fields: &Fields) {
-    if !context.wants(PATTERNS) {
+    if !context.wants(PATTERNS) && !context.wants(super::tls::values::PATTERNS) {
         return;
     }
     fields.note(context);
-    if !MARKS.iter().any(|mark| context.file.text.contains(mark)) {
+    if !MARKS.iter().chain(super::tls::values::MARKS).any(|mark| context.file.text.contains(mark)) {
         return;
     }
     for class in declared.iter().copied() {
@@ -124,7 +132,7 @@ pub fn crypto<'a>(context: &Context<'a>, declared: &[Node<'a>], fields: &Fields)
         let body = class.child_by_field_name("body").or_else(|| crate::engine::source::children(class).into_iter().find(|part| part.kind() == "class_body"));
         let members = body.map(place::members).unwrap_or_default();
         for method in &methods {
-            calls(context, method, fields);
+            calls(context, &own, method, fields);
         }
         shapes::check(context, &own, class, &members, &methods);
         hex::check(context, &own, class, &methods);

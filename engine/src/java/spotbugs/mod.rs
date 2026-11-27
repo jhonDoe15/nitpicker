@@ -42,6 +42,7 @@ mod stores;
 mod tail;
 mod taint;
 mod threads;
+mod tls;
 mod values;
 
 use super::types::project::JavaProject;
@@ -293,6 +294,7 @@ impl FileRule for SpotBugs {
         taint::injections(&context, &declared, &self.taint);
         floats::floats(&context, &declared, &self.floats);
         crypto::crypto(&context, &declared, &self.crypto);
+        tls::tls(&context, &declared);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
         if context.wants(attributes::PATTERNS) {
             let names = self.attributes.names(&project.index, &project.sources);

@@ -10,6 +10,7 @@ import {
 } from './spotbugs-dumb-placed.mts';
 import { CRYPTO_PATTERNS } from './crypto/spotbugs-crypto-placed.mts';
 import { INJECTIONS } from './spotbugs-placed.mts';
+import { TLS_PATTERNS } from './tls/spotbugs-tls-placed.mts';
 import {
   DIVISION_PATTERNS,
   ENUM_PATTERNS,
@@ -126,6 +127,7 @@ export const ON_ENGINE: readonly string[] = [
   ...CIRCUIT_PATTERNS,
   ...CALENDAR_PATTERNS,
   ...CRYPTO_PATTERNS,
+  ...TLS_PATTERNS,
 ];
 
 export const LOMBOK_WITHOUT_CLASSES: readonly string[] = [

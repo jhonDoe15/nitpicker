@@ -1071,6 +1071,35 @@ Labs: 435 findings same, none missed or extra. On the comparison code bases, SAR
 (WEAK_MESSAGE_DIGEST_MD5, BAD_HEXA_CONVERSION), commons-lang, guava, jackson-databind, javaparser-core and
 mybatis-3 0 / 0 / 0. Elasticsearch could not be built for this run.
 
+### TLS patterns (FindSecBugs)
+
+Eight FindSecBugs patterns of TLS, sockets, mail and LDAP settings (#2534, `src/java/spotbugs/tls/`), labs in
+`tests/fixtures/spotbugs/tls_*`, measured the same way as the crypto patterns and left to the engine the same way.
+
+- WEAK_TRUST_MANAGER and WEAK_HOSTNAME_VERIFIER (priority 2): in a class or interface that is an
+  `X509TrustManager` (directly, through a superclass or a subinterface; `TrustManager` alone does not count), each
+  `checkClientTrusted`, `checkServerTrusted` and `getAcceptedIssuers`, and in a `HostnameVerifier` each `verify`,
+  whose code makes no call and reads no instance field, whatever its parameters. A call is also a `new`, a lambda or
+  method reference, joined strings, boxing, a `for` over a collection, a `switch` on strings or enums, `try` with
+  resources and `assert`; `throw e`, `return null`, static fields, constants and stores to fields are not. A local
+  captured by an anonymous class and `Outer.this` are field reads. On the line of the method's first instruction.
+  Lambdas are not classes and never count.
+- UNENCRYPTED_SOCKET, UNENCRYPTED_SERVER_SOCKET and DEFAULT_HTTP_CLIENT (priority 2): each call of a constructor of
+  `java.net.Socket`, `java.net.ServerSocket` and the no-argument one of Apache HttpClient's `DefaultHttpClient`:
+  `new`, an anonymous class, and a direct subclass's constructors (`super(..)` written or not). The socket message
+  names the class whose code makes the call (the anonymous class for one). Factories are not calls.
+- INSECURE_SMTP_SSL (priority 1, with FindSecBugs' leading space and spelling): each `setSSLOnConnect(true)` in a
+  method that never calls `setSSLCheckServerIdentity(true)`, both written against Commons Email's `Email` itself.
+  The argument must be the constant `true`; a local holding it does not count. A lambda is a method of its own.
+- SSL_CONTEXT (priority 2): `SSLContext.getInstance(protocol)` without a provider, protocol `SSL` in any case.
+- LDAP_ENTRY_POISONING (priority 2): `true` as the flag of `setReturningObjFlag` or the fifth argument of the
+  six-argument `SearchControls` constructor, written against `SearchControls` itself (a direct subclass's
+  `super(..)` counts).
+- SSL_CONTEXT and LDAP_ENTRY_POISONING judge the value as the crypto names are judged: `boolean` constants, locals
+  and fields are followed as strings are. LDAP_ANONYMOUS is priority 3 and never shown.
+
+Labs: all findings and places the same.
+
 ### Lombok
 
 SpotBugs reports nothing inside the members Lombok writes when Lombok marks them with `@lombok.Generated`, which

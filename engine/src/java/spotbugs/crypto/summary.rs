@@ -1,5 +1,5 @@
-//! What the whole run stores in each `String` field, as SpotBugs sums it up before it reads the code: a field holds
-//! a known string when every store of every class gives that string (an initializer, `x = ..`, `this.x = ..`,
+//! What the whole run stores in each `String` or `boolean` field, as SpotBugs sums it up before it reads the code: a
+//! field holds a known value when every store of every class gives that value (an initializer, `x = ..`, `this.x = ..`,
 //! `o.x = ..`, in a constructor, an initializer block, a method or a lambda), measured on test code. A compound
 //! store or a value nobody knows spoils it, and so does the default of an instance field that a constructor not
 //! starting with `this(...)` may leave unset: one that has no initializer, is not set by an initializer block, and
@@ -35,7 +35,8 @@ pub struct Fields {
     waiting: Mutex<Vec<Waiting>>,
 }
 
-const STRING: &str = "java.lang.String";
+/// The field types whose values are followed: strings, and the flags of `super::super::tls::values`.
+const TYPES: &[&str] = &["String", "java.lang.String", "boolean"];
 
 fn writes_in(context: &Context, code: Node, key: &Key) -> bool {
     let mut found = false;
@@ -70,7 +71,7 @@ impl Fields {
             let body = class.child_by_field_name("body").or_else(|| children(*class).into_iter().find(|part| part.kind() == "class_body"));
             let Some(body) = body.filter(|_| class.kind() != "interface_declaration") else { continue };
             for member in super::super::place::members(body).into_iter().filter(|member| member.kind() == "field_declaration") {
-                if !member.child_by_field_name("type").is_some_and(|kind| matches!(context.text(kind), "String" | "java.lang.String")) {
+                if !member.child_by_field_name("type").is_some_and(|kind| TYPES.contains(&context.text(kind))) {
                     continue;
                 }
                 let lombok = lombok_sets(context, *class, member);
@@ -84,7 +85,7 @@ impl Fields {
         }
         let mut stored = Vec::new();
         for (key, values) in field_stores(context).iter() {
-            let typed = context.resolver.index.field(&key.0, &key.1).is_some_and(|(_, field)| field.kind.name() == STRING);
+            let typed = context.resolver.index.field(&key.0, &key.1).is_some_and(|(_, field)| TYPES.contains(&field.kind.name().as_str()));
             if !typed {
                 continue;
             }

@@ -60,6 +60,12 @@ fn held_at(context: &Context, node: Node, depth: usize) -> Held {
     if let Some(text) = context.resolver.constant_string(node) {
         return Held::Text(text);
     }
+    if let Some(value) = context.resolver.constant_number(node).filter(|value| !matches!(value, Constant::Char(_))) {
+        return number_text(value).map_or(Held::Unknown, Held::Text);
+    }
+    if let Some(value) = context.resolver.constant_boolean(node) {
+        return Held::Text(value.to_string());
+    }
     if depth > DEPTH {
         return Held::Unknown;
     }
