@@ -26,6 +26,11 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     levels: { 2: ERROR },
     fieldsUnderMethod: true,
   },
+  NP_ALWAYS_NULL: {
+    text: 'Null pointer dereference',
+    levels: { 1: ERROR },
+    fieldsUnderMethod: true,
+  },
   PREDICTABLE_RANDOM: {
     text: 'Predictable pseudorandom number generator',
     levels: { 2: WARNING },

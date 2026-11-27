@@ -231,6 +231,25 @@ describe('spotbugsResultOf', () => {
     });
   });
 
+  it('names a field of another package with its package, in the file of the method', () => {
+    const result = spotbugsResultOf({
+      file: '/src/p/A.java',
+      rule: 'NP_ALWAYS_NULL',
+      line: 6,
+      message: '',
+      symbol: 'member:q.Base.prot',
+      priority: 1,
+      arguments: ['q.Base.prot', 'p.A.b()'],
+    });
+
+    expect(result.locations[0].physicalLocation.artifactLocation.uri).toBe('p/A.java');
+    expect(result.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'q.Base.prot',
+      kind: 'member',
+      fullyQualifiedName: 'p.A.prot',
+    });
+  });
+
   it('names the class in the place where SpotBugs does', () => {
     const finding = {
       file: '/src/p/K.java',

@@ -475,6 +475,11 @@ and 3.2 GB after a 31 s compile. The null pass runs once per file, a body nothin
 after a glance at its text, and what a method of another file does is worked out only when a call hands it a
 value that matters, then kept for the run.
 
+An `NP_ALWAYS_NULL` finding carries the place and arguments SpotBugs' SARIF gives (#2509): the local variable, or
+for a field the field under the class of the method that reads it, and the name and method; dereferences on one line
+that name the same place are one finding. A
+`CT_CONSTRUCTOR_THROW` finding names its constructor the same way, also for what a field initializer throws.
+
 What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 240 findings of these patterns, all the same):
 
 - Only `@CheckForNull`, or an annotation whose own declaration carries `@CheckForNull` (a nickname, as measured
@@ -684,9 +689,7 @@ the field (a map field for the map-iterator pattern) or the local, and the prior
 block is named once for each constructor that does not start with `this(...)`, or for the static initializer;
 a finding inside a lambda names the lambda's method. A lock finding lists the lock's type and the method, as
 SpotBugs does (#2474): a lock on `this` names the local `this`, one on `Outer.this` the `this$<depth of Outer>`
-field javac reads last (in a constructor of the class just inside `Outer`, the constructor's parameter of that
-name), and SARIF names a lock field under the class of the method that reads it, keeping the field's package in the
-name when it is not the method's. Locks on the same line that name the same place are one finding
+field javac reads last, and SARIF names a lock field under the class of the method that reads it
 (`tests/expected/spotbugs-arguments.json`). `tests/expected/spotbugs-places.json` holds the places
 SpotBugs' SARIF gives for the fixtures, and the SARIF results of real runs match SpotBugs' on all seven code bases.
 
