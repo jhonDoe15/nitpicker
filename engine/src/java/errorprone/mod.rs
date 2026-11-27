@@ -197,7 +197,7 @@ mod symbol_key;
 mod stmt_defects;
 mod junit_asserts;
 mod const_checks;
-mod java_text;
+pub(crate) mod java_text;
 mod call_consts;
 mod auto_value;
 mod tz_data;
