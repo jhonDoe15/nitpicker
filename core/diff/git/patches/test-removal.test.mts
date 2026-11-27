@@ -1,11 +1,23 @@
-import { describe, expect, it } from 'vitest';
+import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { commit, fixtureGit } from '../test-support/git-repository.mts';
+import { writeFiles } from '../test-support/fixture-files.mts';
 import {
   importedTargets,
   isTestFile,
   parseNumstat,
   removedTestTargetsOf,
+  readTestRemoval,
   removesTests,
 } from './test-removal.mts';
+
+const roots: string[] = [];
+
+afterEach(() => {
+  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+});
 
 describe('which files are tests', () => {
   it.each([
@@ -86,6 +98,12 @@ describe('the code a removed test imported', () => {
     expect(removedTestTargetsOf(['app/a.test.ts'], texts, 'app')).toEqual(new Set(['a.ts']));
   });
 
+  it('knows no targets when a removed test imports code outside the project folder', () => {
+    const texts = new Map([['app/a.test.ts', "import '../lib/b.ts';"]]);
+
+    expect(removedTestTargetsOf(['app/a.test.ts'], texts, 'app')).toBeUndefined();
+  });
+
   it('leaves out test data, which no test runner loads as a test', () => {
     const texts = new Map([
       ['tests/a.test.ts', "import { a } from '../a.ts';"],
@@ -117,5 +135,49 @@ describe('the code a removed test imported', () => {
     ],
   ])('knows no targets when a removed test %s', (_name, texts) => {
     expect(removedTestTargetsOf(['a.test.ts'], texts, '')).toBeUndefined();
+  });
+});
+
+describe('reading the removed tests from git', () => {
+  function repository(): { root: string; mergeBaseSha: string; headSha: string } {
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-test-removal-')));
+    roots.push(root);
+    fixtureGit(root, ['init', '-q', '--initial-branch=main']);
+    writeFiles(root, {
+      'app/a.ts': 'export const a = 1;\n',
+      'app/a.test.ts': "import { a } from './a.ts';\nexpect(a).toBe(1);\nexpect(a).toBe(1);\n",
+      'app/b.test.ts': "import { b } from './b.ts';\nexpect(b).toBe(2);\nexpect(b).toBe(2);\n",
+    });
+    commit(root, 'base');
+    writeFiles(root, { 'app/a.test.ts': "import { a } from './a.ts';\n" });
+    fixtureGit(root, ['mv', 'app/b.test.ts', 'app/c.test.ts']);
+    writeFiles(root, { 'app/c.test.ts': "import { b } from './b.ts';\n" });
+    commit(root, 'head');
+    const [mergeBaseSha = '', headSha = ''] = fixtureGit(root, ['rev-parse', 'HEAD~1', 'HEAD'])
+      .trim()
+      .split('\n');
+    return { root, mergeBaseSha, headSha };
+  }
+
+  it('reads the base text of each test that lost lines, renamed ones by their base path', () => {
+    const { root, mergeBaseSha, headSha } = repository();
+
+    expect(
+      readTestRemoval({ repositoryRoot: root, mergeBaseSha, headSha, projectRelativePath: 'app' }),
+    ).toEqual({ testsRemoved: true, removedTestTargets: new Set(['a.ts', 'b.ts']) });
+  });
+
+  it('reports no removal when the tests only grew', () => {
+    const { root, headSha } = repository();
+
+    expect(
+      readTestRemoval({
+        repositoryRoot: root,
+        mergeBaseSha: headSha,
+        headSha,
+        projectRelativePath: 'app',
+        baseProjectRelativePath: 'app',
+      }),
+    ).toEqual({ testsRemoved: false, removedTestTargets: undefined });
   });
 });

@@ -67,4 +67,16 @@ describe('zipEntryOf', () => {
       new Error('not a zip archive: no end of central directory record'),
     );
   });
+
+  it('finds no entry in an empty archive', () => {
+    expect(zipEntryOf(written(zipOf({})), 'a')).toBeUndefined();
+  });
+
+  it('rejects an entry whose header lies past the end of the file', () => {
+    const buffer = zipOf({ 'a.txt': 'text' });
+    const record = buffer.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+    buffer.writeUInt32LE(buffer.length + 100, record + 42);
+
+    expect(() => zipEntryOf(written(buffer), 'a.txt')).toThrow(/zip archive ends before byte/u);
+  });
 });
