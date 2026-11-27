@@ -77,6 +77,11 @@ export const ON_ENGINE: readonly string[] = [
   'NN_NAKED_NOTIFY',
   ...DEAD_STORES,
   'RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN',
+  'IA_AMBIGUOUS_INVOCATION_OF_INHERITED_OR_OUTER_METHOD',
+  'IT_NO_SUCH_ELEMENT',
+  'DM_DEFAULT_ENCODING',
+  'UCF_USELESS_CONTROL_FLOW',
+  'UCF_USELESS_CONTROL_FLOW_NEXT_LINE',
 ];
 const LOMBOK_WRITES: readonly string[] = [
   'SING_',
@@ -100,6 +105,10 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   ConstructorThrow: ['CT_CONSTRUCTOR_THROW'],
   FindHiddenMethod: ['HSM_HIDING_METHOD'],
   FindNakedNotify: ['NN_NAKED_NOTIFY'],
+  ConfusionBetweenInheritedAndOuterMethod: ['IA_AMBIGUOUS_INVOCATION_OF_INHERITED_OR_OUTER_METHOD'],
+  IteratorIdioms: ['IT_NO_SUCH_ELEMENT'],
+  DefaultEncodingDetector: ['DM_DEFAULT_ENCODING'],
+  FindUselessControlFlow: ['UCF_USELESS_CONTROL_FLOW', 'UCF_USELESS_CONTROL_FLOW_NEXT_LINE'],
   DontCatchNullPointerException: ['DCN_NULLPOINTER_EXCEPTION'],
   WrongMapIterator: [WRONG_MAP_ITERATOR],
   BooleanReturnNull: ['NP_BOOLEAN_RETURN_NULL'],
