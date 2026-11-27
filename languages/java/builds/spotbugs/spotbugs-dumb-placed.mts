@@ -19,6 +19,17 @@ export const BOXING_PATTERNS: readonly string[] = [
   'DM_STRING_TOSTRING',
 ];
 
+export const THREAD_PATTERNS: readonly string[] = [
+  'DM_GC',
+  'DM_EXIT',
+  'DM_RUN_FINALIZERS_ON_EXIT',
+  'DMI_THREAD_PASSED_WHERE_RUNNABLE_EXPECTED',
+  'DMI_FUTILE_ATTEMPT_TO_CHANGE_MAXPOOL_SIZE_OF_SCHEDULED_THREAD_POOL_EXECUTOR',
+  'DM_MONITOR_WAIT_ON_CONDITION',
+  'DM_USELESS_THREAD',
+  'DMI_SCHEDULED_THREAD_POOL_EXECUTOR_WITH_ZERO_CORE_THREADS',
+];
+
 export const DUMB_PLACED: Readonly<Record<string, Placed>> = {
   DMI_COLLECTION_OF_URLS: {
     text: 'Maps and sets of URLs can be performance hogs',
@@ -60,5 +71,27 @@ export const DUMB_PLACED: Readonly<Record<string, Placed>> = {
   DM_NEW_FOR_GETCLASS: {
     text: 'Method allocates an object, only to get the class object',
     levels: { 2: NOTE },
+  },
+  DM_GC: {
+    text: 'Explicit garbage collection; extremely dubious except in benchmarking code',
+    levels: { 1: NOTE },
+  },
+  DM_EXIT: { text: 'Method invokes System.exit(...)', levels: { 2: NOTE } },
+  DM_RUN_FINALIZERS_ON_EXIT: {
+    text: 'Method invokes dangerous method runFinalizersOnExit',
+    levels: { 1: 'warning' },
+  },
+  DMI_THREAD_PASSED_WHERE_RUNNABLE_EXPECTED: {
+    text: 'Thread passed where Runnable expected',
+    levels: { 2: NOTE },
+    placement: 'shown',
+  },
+  DMI_FUTILE_ATTEMPT_TO_CHANGE_MAXPOOL_SIZE_OF_SCHEDULED_THREAD_POOL_EXECUTOR: {
+    text: 'Futile attempt to change max pool size of ScheduledThreadPoolExecutor',
+    levels: { 1: 'error' },
+  },
+  DM_MONITOR_WAIT_ON_CONDITION: {
+    text: 'Monitor wait() called on Condition',
+    levels: { 1: 'warning' },
   },
 };

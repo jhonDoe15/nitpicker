@@ -1,5 +1,6 @@
 //! SpotBugs' DumbMethods, DumbMethodInvocations and URLProblems detectors, one family of patterns per module.
 mod boxing;
+mod threads;
 mod urls;
 
 use super::idioms::compiled;
@@ -11,7 +12,7 @@ use tree_sitter::Node;
 pub const URLS: &[&str] = &[urls::COLLECTION, urls::BLOCKING];
 
 pub fn dumb<'a>(context: &Context<'a>, class: Node<'a>) {
-    if !context.wants(URLS) && !context.wants(boxing::PATTERNS) {
+    if !context.wants(URLS) && !context.wants(boxing::PATTERNS) && !context.wants(threads::PATTERNS) {
         return;
     }
     let body = class.child_by_field_name("body").or_else(|| children(class).into_iter().find(|part| part.kind() == "class_body"));
@@ -21,4 +22,5 @@ pub fn dumb<'a>(context: &Context<'a>, class: Node<'a>) {
     let methods = compiled(context, &own, class);
     urls::check(context, &own, class, &members, &methods);
     boxing::check(context, &methods);
+    threads::check(context, &own, &methods);
 }

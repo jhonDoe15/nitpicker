@@ -1391,6 +1391,31 @@ compare patterns once per method and box class), and of two findings the better 
 On the six comparison code bases, SARIF results, same / missed / extra: Guava 1 / 0 / 0, jackson-databind
 1 / 0 / 0, MyBatis 1 / 0 / 0, the others 0 / 0 / 0. DumbMethods still runs in SpotBugs for its other patterns.
 
+### Threads, exits and the collector
+
+Eight patterns of DumbMethods (#2532, `src/java/spotbugs/dumb/threads.rs`), labs in
+`tests/fixtures/spotbugs/thread_calls*` and `finalizers_on_exit` (compiled with `--release 8`, the only JDK
+where the method exists).
+- DM_GC: `System.gc()` or `Runtime.gc()`, priority 1, once per method; not in a method whose name contains `gc`,
+  starts with `test` or is `main` (`performFullGC` and `doGc` are reported).
+- DM_EXIT: `System.exit(int)`, priority 2, once per method; not `Runtime.exit` or `halt`, not in a method whose
+  name contains `exit` in any case or is `main`, and priority 3 (hidden) in a static method or initializer and in
+  a lambda that does not use `this`.
+- DM_RUN_FINALIZERS_ON_EXIT: `System.` or `Runtime.runFinalizersOnExit(…)`, matched by name, priority 1.
+- DMI_THREAD_PASSED_WHERE_RUNNABLE_EXPECTED: an argument declared exactly `java.lang.Thread` (not a subclass, not
+  cast to `Runnable`) for a parameter declared `Runnable` of any method or constructor; priority 2, once per
+  method and called method, placed at the called method.
+- DMI_FUTILE_ATTEMPT_TO_CHANGE_MAXPOOL_SIZE_OF_SCHEDULED_THREAD_POOL_EXECUTOR: `setMaximumPoolSize` on a receiver
+  declared `ScheduledThreadPoolExecutor` itself (not a subclass), priority 1, once per method.
+- DM_MONITOR_WAIT_ON_CONDITION: `wait(…)` on a receiver declared as a class that implements `Condition`; javac
+  writes `Object.wait` for a receiver declared `Condition`, which SpotBugs does not report. Priority 1.
+- DM_USELESS_THREAD is priority 3 only, and DMI_SCHEDULED_THREAD_POOL_EXECUTOR_WITH_ZERO_CORE_THREADS is not
+  reported for `new ScheduledThreadPoolExecutor(0)` or `Executors.newScheduledThreadPool(0)`; the engine reports
+  neither.
+
+On the six comparison code bases, SARIF results: Nacos 1 / 0 / 0 (a thread passed as a `Runnable`), the others
+0 / 0 / 0.
+
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in
