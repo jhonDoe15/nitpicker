@@ -169,5 +169,23 @@
   "This calls `axios.get()` while `navigator.locks.request()` holds a lock, so every waiter queues behind the remote call's latency (lock exhaustion under load). Make the remote call before taking the lock or after releasing it, and keep only the shared-state change under the lock; when the remote side effect must match it, record it in an outbox row and send it from a worker. A fill-once block stays allowed: the call under an `if` that tests the state the block then sets (a token refresh, a cached download), so callers wait for one request instead of each sending their own. An exception fits only when the lock exists to serialize that remote call.",
   16,
   109
+ ],
+ [
+  "p02/src/case-0060.ts",
+  "nitpicker/no-remote-call-in-transaction",
+  21,
+  125,
+  "This calls `gateway.__send()`, which calls `axios.post()` inside the transaction of `dataSource.transaction()`, so a database connection stays held for the remote call's latency and the pool runs dry under load. Make the remote call before the transaction starts or after it commits; when its side effect must match the transaction's outcome, write an outbox row inside the transaction and send it from a worker. An exception fits only when the remote call must see uncommitted state and has a short timeout.",
+  21,
+  143
+ ],
+ [
+  "p02/src/case-0061.ts",
+  "nitpicker/no-remote-call-in-transaction",
+  21,
+  125,
+  "This calls `gateway.send()`, which calls `axios.post()` inside the transaction of `dataSource.transaction()`, so a database connection stays held for the remote call's latency and the pool runs dry under load. Make the remote call before the transaction starts or after it commits; when its side effect must match the transaction's outcome, write an outbox row inside the transaction and send it from a worker. An exception fits only when the remote call must see uncommitted state and has a short timeout.",
+  21,
+  141
  ]
 ]

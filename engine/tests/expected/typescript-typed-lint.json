@@ -2210,5 +2210,41 @@
   "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
   35,
   28
+ ],
+ [
+  "src/edges/underscores.ts",
+  "nitpicker/no-forwarding-method-alias",
+  22,
+  3,
+  "`__total` only forwards its parameters to `sum` and has the same parameter and return types. Call `sum` directly and delete `__total`.",
+  22,
+  10
+ ],
+ [
+  "src/edges/underscores.ts",
+  "nitpicker/no-parameter-mutation",
+  41,
+  3,
+  "`o.__count` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  41,
+  16
+ ],
+ [
+  "src/edges/underscores.ts",
+  "nitpicker/no-parameter-mutation",
+  43,
+  3,
+  "`(r as { __id: string }).__id` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  43,
+  37
+ ],
+ [
+  "src/edges/underscores.ts",
+  "nitpicker/no-parameter-mutation",
+  47,
+  3,
+  "`o.__count` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  47,
+  16
  ]
 ]
