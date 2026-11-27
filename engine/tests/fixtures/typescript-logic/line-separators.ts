@@ -1,0 +1,1 @@
+const f = (a // =>) => {if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}};const g = (a // => ) => {if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}if(a){}};

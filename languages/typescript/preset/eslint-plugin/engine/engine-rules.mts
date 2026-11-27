@@ -20,6 +20,7 @@ import { hasGlobalTrimmer } from '../rules/request-text/global-trimmer.mts';
 const stylesheetSpecifier: RegExp = untypedStylesheetSpecifier;
 
 const TYPED = { needs: 'types' } as const;
+const DEFAULT_COMPLEXITY_LIMIT = 15;
 const EFFECTS: EngineRule = {
   ...TYPED,
   facts: (_filename, _options, { root }) => testSourcesFact(root),
@@ -78,6 +79,10 @@ function optionFacts(...names: readonly string[]): FileFacts {
 }
 
 export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<string, EngineRule>([
+  [
+    'cognitive-complexity',
+    { facts: (_filename, options) => ({ max: String(options[0] ?? DEFAULT_COMPLEXITY_LIMIT) }) },
+  ],
   [
     'contract-infrastructure-type',
     { ...TYPED, facts: (filename) => ({ feature: featureOf(filename) }) },
@@ -191,6 +196,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-secret-in-log', {}],
   ['no-send-without-return', {}],
   ['no-server-or-worker-per-test', { facts: runnerWords('sharedSetupHook') }],
+  ['no-self-recursion', {}],
   ['no-shadowed-spread-key', TYPED],
   ['no-shared-test-state', {}],
   ['no-silent-catch', {}],
