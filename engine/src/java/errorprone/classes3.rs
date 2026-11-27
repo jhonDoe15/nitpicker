@@ -211,6 +211,19 @@ fn member_of_enclosing(context: &Context, own: &str, inner: &str) -> bool {
     false
 }
 
+/// The class a `this` belongs to: the nearest class declaration, or the body of an anonymous class or enum constant.
+fn holder(node: Node) -> Option<Node> {
+    let mut at = parent(node);
+    while let Some(up) = at {
+        let body = up.kind() == "class_body" && parent(up).is_some_and(|holder| matches!(holder.kind(), "object_creation_expression" | "enum_constant"));
+        if body || matches!(up.kind(), "class_declaration" | "enum_declaration" | "record_declaration" | "interface_declaration") {
+            return Some(up);
+        }
+        at = parent(up);
+    }
+    None
+}
+
 pub(super) fn references_outer(context: &Context, class: Node, own: &str) -> bool {
     let index = context.resolver.index;
     let owned = |declaring: &str| declaring == own || index.is_subtype(own, declaring);
@@ -257,7 +270,16 @@ pub(super) fn references_outer(context: &Context, class: Node, own: &str) -> boo
                     found = true;
                 }
             }
+            "this" if parent(node).is_none_or(|above| !matches!(above.kind(), "explicit_constructor_invocation" | "receiver_parameter" | "formal_parameter")) => {
+                found |= holder(node).is_some_and(|holder| holder.id() != class.id());
+            }
             "object_creation_expression" => {
+                let anonymous = children(node).iter().any(|part| part.kind() == "class_body");
+                let first = named_children(node).into_iter().next();
+                let qualified = first.is_some_and(|first| node.child_by_field_name("type").is_some_and(|kind| kind.start_byte() > first.start_byte()) && first.kind() != "type_arguments" && !first.kind().ends_with("annotation"));
+                if anonymous && qualified {
+                    found = true;
+                }
                 if let Some(name) = super::parts::class_of(context, node) {
                     if node.child_by_field_name("object").is_none() && member_of_enclosing(context, own, &name) {
                         found = true;
@@ -306,6 +328,9 @@ pub fn class_can_be_static(context: &Context, node: Node) {
     if outer_decl.kind() == "object_creation_expression" || outer_decl.kind() == "enum_constant" || has_modifier(node, "static") {
         return;
     }
+    if super::compiled::static_class(context, node) {
+        return;
+    }
     let Some(own) = context.resolver.scope.names.get(&node.id()).cloned() else { return };
     if outer_decl.kind() == "class_declaration" && !matches!(parent(outer_decl).map(|up| up.kind()), Some("program" | "class_body" | "interface_body" | "enum_body" | "annotation_type_body" | "block" | "switch_block_statement_group" | "constructor_body")) {
         return;
@@ -318,7 +343,7 @@ pub fn class_can_be_static(context: &Context, node: Node) {
             return;
         }
     }
-    if references_outer(context, node, &own) {
+    if references_outer(context, node, &own) || super::compiled::class(context, &own).is_some_and(|compiled| super::compiled::this_in_members(context, compiled)) {
         return;
     }
     if super::keep::should_keep(context, node, super::keep::CLASSES) {

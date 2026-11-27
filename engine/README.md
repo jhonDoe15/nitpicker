@@ -338,6 +338,17 @@ the corpus below:
   Lombok copies doc comments to, `SynchronizeOnNonFinalField` on `@Synchronized` locks, `ExplicitArrayForVarargs`
   on `@ExtensionMethod` calls, `ReferenceEquality` and `SuppressWarningsWithoutExplanation` in generated `equals`.
 
+With the build's class directories (`--classes`), the engine reads what Lombok wrote from the class files javac
+made (`src/java/types/compiled.rs`): the methods and fields marked `@lombok.Generated`, the member classes Lombok
+wrote whole (builders, with all their methods), the calls and field accesses in that code, and the modifiers it
+changed (`@UtilityClass` makes members static). The type index gets the written methods and classes
+(`src/java/types/compiled_members.rs`), so a call to a builder setter Lombok wrote resolves; Error Prone checks
+count written members (`src/java/errorprone/compiled.rs`): a class whose only member is a Lombok logger is a
+utility class, a private method that only a generated `toString` or delegate calls is used, a member class
+`@UtilityClass` made static is not reported by `ClassCanBeStatic`, and a `this` inside a member class's
+generated code keeps the class around it from being static, as in Error Prone. `tests/fixtures/errorprone-lombok-members`
+comes with its class files. Without class files these differences stay (#2583).
+
 Lombok moves the `@deprecated` and `@param` sections of a field's doc comment to the accessors it writes, and
 Error Prone then reports `EmptyBlockTag` at the field instead of at the tag: one of the rewrites of written code
 (#2584).
@@ -353,7 +364,8 @@ with another sentence, and inside generated code; `ONLY=<file pattern>` runs par
 Lombok version from the `Lombok-Version` line of the jar's manifest and keep a source set on Error Prone with
 the reason in the log when the version is outside the range compared (`TESTED_LOMBOK` in
 `languages/java/builds/errorprone/engine-arguments.mts`). Source sets with Lombok still compile whole on Error
-Prone (see the list above); the comparison runs the engine with `--lombok`, as those runs will.
+Prone (see the list above); the comparison runs the engine with `--lombok` and the class files Error Prone's
+compile wrote, as those runs will.
 
 Measured on 2026-11-27 (all ported checks, NullAway off; findings same / only Error Prone / only engine / other
 sentence):

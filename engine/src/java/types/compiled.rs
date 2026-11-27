@@ -26,6 +26,14 @@ pub struct Access {
     pub line: usize,
 }
 
+/// A call in a method's code: the class the instruction names, the method's name and descriptor.
+#[derive(Clone, Debug)]
+pub struct Call {
+    pub owner: String,
+    pub name: String,
+    pub descriptor: String,
+}
+
 #[derive(Clone, Debug)]
 pub struct CompiledMethod {
     pub name: String,
@@ -38,6 +46,9 @@ pub struct CompiledMethod {
     /// The line of its first instruction.
     pub entry_line: Option<usize>,
     pub accesses: Vec<Access>,
+    pub calls: Vec<Call>,
+    /// Its code loads local 0, which is `this` in an instance method.
+    pub loads_this: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -47,11 +58,21 @@ pub struct CompiledField {
     pub access: u16,
     /// javac wrote a `ConstantValue` for it: a final field set to a compile-time constant.
     pub constant: bool,
+    /// Lombok wrote it: it carries `@lombok.Generated`.
+    pub generated: bool,
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct CompiledClass {
     pub access: u16,
+    /// Lombok wrote the whole class (a builder): it carries `@lombok.Generated`.
+    pub generated: bool,
+    /// For a member class: the access bits its `InnerClasses` entry gives, `static` among them.
+    pub nested: Option<u16>,
+    /// The member classes it declares, by binary name with dots.
+    pub members: Vec<String>,
+    /// The class as the type index reads class files.
+    pub info: Option<super::model::ClassInfo>,
     pub fields: Vec<CompiledField>,
     /// In class-file order.
     pub methods: Vec<CompiledMethod>,
@@ -99,6 +120,7 @@ enum Constant<'a> {
     Utf8(&'a [u8]),
     Class(u16),
     Member(u16, u16),
+    Call(u16, u16),
     Pair(u16, u16),
     Other,
 }
@@ -121,11 +143,17 @@ impl<'a> Pool<'a> {
             _ => None,
         }
     }
-    /// The class, name and descriptor of a field reference.
+    /// The class and name of a field reference.
     fn member(&self, index: u16) -> Option<(String, String)> {
         let Constant::Member(class, pair) = *self.0.get(index as usize)? else { return None };
         let Constant::Pair(name, _) = *self.0.get(pair as usize)? else { return None };
         Some((self.class(class)?, self.text(name)?))
+    }
+    /// A method reference of a class or an interface.
+    fn call(&self, index: u16) -> Option<Call> {
+        let Constant::Call(class, pair) = *self.0.get(index as usize)? else { return None };
+        let Constant::Pair(name, descriptor) = *self.0.get(pair as usize)? else { return None };
+        Some(Call { owner: self.class(class)?, name: self.text(name)?, descriptor: self.text(descriptor)? })
     }
 }
 
@@ -143,6 +171,7 @@ fn pool<'a>(reader: &mut Reader<'a>) -> Option<Pool<'a>> {
             }
             7 => Constant::Class(reader.u2()?),
             9 => Constant::Member(reader.u2()?, reader.u2()?),
+            10 | 11 => Constant::Call(reader.u2()?, reader.u2()?),
             12 => Constant::Pair(reader.u2()?, reader.u2()?),
             8 | 16 | 19 | 20 => {
                 reader.skip(2)?;
@@ -152,7 +181,7 @@ fn pool<'a>(reader: &mut Reader<'a>) -> Option<Pool<'a>> {
                 reader.skip(3)?;
                 Constant::Other
             }
-            3 | 4 | 10 | 11 | 17 | 18 => {
+            3 | 4 | 17 | 18 => {
                 reader.skip(4)?;
                 Constant::Other
             }
@@ -185,6 +214,15 @@ fn skip_annotation(reader: &mut Reader) -> Option<u16> {
         skip_element(reader)?;
     }
     Some(kind)
+}
+
+/// Reads a `RuntimeInvisibleAnnotations` attribute: whether it holds `@lombok.Generated`.
+fn marked(reader: &mut Reader, pool: &Pool) -> Option<bool> {
+    let mut found = false;
+    for _ in 0..reader.u2()? {
+        found |= pool.utf8(skip_annotation(reader)?) == Some(GENERATED);
+    }
+    Some(found)
 }
 
 /// How many bytes the instruction at `pc` takes.
@@ -247,6 +285,11 @@ fn code(reader: &mut Reader, pool: &Pool, method: &mut CompiledMethod) -> Option
                 let (store, is_static) = (opcode == 0xb3 || opcode == 0xb5, opcode <= 0xb3);
                 method.accesses.push(Access { owner, name, store, is_static, line: line_at(&lines, pc) });
             }
+        } else if opcode == 0x2a || (opcode == 0x19 && bytes.get(pc + 1) == Some(&0)) {
+            method.loads_this = true;
+        } else if (0xb6..=0xb9).contains(&opcode) {
+            let index = u16::from_be_bytes([*bytes.get(pc + 1)?, *bytes.get(pc + 2)?]);
+            method.calls.extend(pool.call(index));
         }
         pc += width(bytes, pc)?;
     }
@@ -269,18 +312,23 @@ fn parse(data: &[u8]) -> Option<(String, CompiledClass)> {
     for _ in 0..reader.u2()? {
         let access = reader.u2()?;
         let (name, descriptor) = (pool.text(reader.u2()?)?, pool.text(reader.u2()?)?);
-        let mut constant = false;
+        let (mut constant, mut generated) = (false, false);
         for _ in 0..reader.u2()? {
-            constant |= pool.utf8(reader.u2()?) == Some(b"ConstantValue".as_slice());
+            let attribute = pool.utf8(reader.u2()?).unwrap_or_default();
+            constant |= attribute == b"ConstantValue";
             let size = reader.u4()? as usize;
-            reader.skip(size)?;
+            let end = reader.at + size;
+            if attribute == b"RuntimeInvisibleAnnotations" {
+                generated |= marked(&mut reader, &pool)?;
+            }
+            reader.at = end;
         }
-        class.fields.push(CompiledField { name, descriptor, access, constant });
+        class.fields.push(CompiledField { name, descriptor, access, constant, generated });
     }
     for _ in 0..reader.u2()? {
         let access = reader.u2()?;
         let (name, descriptor) = (pool.text(reader.u2()?)?, pool.text(reader.u2()?)?);
-        let mut method = CompiledMethod { name, descriptor, access, generated: false, line: None, entry_line: None, accesses: Vec::new() };
+        let mut method = CompiledMethod { name, descriptor, access, generated: false, line: None, entry_line: None, accesses: Vec::new(), calls: Vec::new(), loads_this: false };
         for _ in 0..reader.u2()? {
             let attribute = pool.utf8(reader.u2()?).unwrap_or_default();
             let size = reader.u4()? as usize;
@@ -288,14 +336,31 @@ fn parse(data: &[u8]) -> Option<(String, CompiledClass)> {
             if attribute == b"Code" {
                 code(&mut reader, &pool, &mut method)?;
             } else if attribute == b"RuntimeInvisibleAnnotations" {
-                for _ in 0..reader.u2()? {
-                    let kind = skip_annotation(&mut reader)?;
-                    method.generated |= pool.utf8(kind) == Some(GENERATED);
-                }
+                method.generated |= marked(&mut reader, &pool)?;
             }
             reader.at = end;
         }
         class.methods.push(method);
+    }
+    for _ in 0..reader.u2()? {
+        let attribute = pool.utf8(reader.u2()?).unwrap_or_default();
+        let size = reader.u4()? as usize;
+        let end = reader.at + size;
+        if attribute == b"RuntimeInvisibleAnnotations" {
+            class.generated |= marked(&mut reader, &pool)?;
+        } else if attribute == b"InnerClasses" {
+            for _ in 0..reader.u2()? {
+                let (inner, outer) = (pool.class(reader.u2()?), pool.class(reader.u2()?));
+                reader.skip(2)?;
+                let access = reader.u2()?;
+                if inner.as_ref() == Some(&name) {
+                    class.nested = Some(access);
+                } else if outer.as_ref() == Some(&name) {
+                    class.members.extend(inner);
+                }
+            }
+        }
+        reader.at = end;
     }
     Some((name, class))
 }
@@ -318,7 +383,17 @@ pub fn read(directories: &[PathBuf]) -> HashMap<String, CompiledClass> {
     for directory in directories {
         class_files(directory, &mut files);
     }
-    let parsed: Vec<(String, CompiledClass)> = files.par_iter().filter_map(|file| parse(&std::fs::read(file).ok()?)).collect();
+    let parsed: Vec<(String, CompiledClass)> = files
+        .par_iter()
+        .filter_map(|file| {
+            let data = std::fs::read(file).ok()?;
+            let (name, mut class) = parse(&data)?;
+            if class.generated || class.methods.iter().any(|method| method.generated) {
+                class.info = super::classfile::parse(&data);
+            }
+            Some((name, class))
+        })
+        .collect();
     let mut classes = HashMap::new();
     for (name, class) in parsed {
         classes.entry(name).or_insert(class);

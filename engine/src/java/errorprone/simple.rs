@@ -90,7 +90,12 @@ fn mutations<'t>(context: &Context<'t>, declarator: Node<'t>, name: &str) -> (bo
 }
 
 pub fn non_final_static_field(context: &Context, node: Node) {
-    if node.kind() != "field_declaration" || !has_modifier(node, "static") {
+    if node.kind() != "field_declaration" {
+        return;
+    }
+    let class = parent(node).and_then(parent);
+    let compiled = class.and_then(|class| context.resolver.scope.names.get(&class.id())).and_then(|name| super::compiled::class(context, name));
+    if !has_modifier(node, "static") && !super::compiled::static_member(context, compiled, node) {
         return;
     }
     if has_modifier(node, "final") || has_modifier(node, "volatile") {

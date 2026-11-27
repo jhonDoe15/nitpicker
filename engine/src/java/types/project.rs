@@ -81,9 +81,11 @@ fn compiled_members(
             field.flags |= bits.iter().filter(|(access, _)| written.access & access != 0).map(|(_, bit)| bit).sum::<u32>();
             field.is_private = written.access & ACC_PRIVATE != 0;
         }
+        super::compiled_members::add_written(&mut info, class);
         index.put(info);
         binaries.insert(binary, name.clone());
     }
+    super::compiled_members::add_written_classes(index, &compiled, &mut binaries);
     (compiled, binaries)
 }
 
