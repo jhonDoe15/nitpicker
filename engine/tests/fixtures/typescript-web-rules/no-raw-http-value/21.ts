@@ -1,0 +1,1 @@
+const type = req.headers['content-type']; const normal = type.toLowerCase(); if (normal === 'text/html') { run(); }

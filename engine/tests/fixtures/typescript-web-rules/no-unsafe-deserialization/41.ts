@@ -1,0 +1,1 @@
+import { loadAll } from "js-yaml"; export const read = (t: string, each: (d: unknown) => void) => loadAll(t, each);

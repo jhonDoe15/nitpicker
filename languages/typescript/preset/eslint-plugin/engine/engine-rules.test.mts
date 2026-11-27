@@ -55,6 +55,7 @@ describe('facts the engine rules get from the project', () => {
       'no-unhandled-void-promise.runners=[]',
       'no-unknown-in-domain.jsdoc=false',
       expect.stringMatching(/^no-unknown-in-domain\.phrase=./u),
+      'no-unsafe-deserialization.yaml-major=',
       'preserve-error-cause.options={}',
       'report-module-load-effects.common-js-exports=false',
       expect.stringMatching(/^structured-catch-logging\.logger-shapes=/u),
@@ -71,6 +72,7 @@ describe('facts the engine rules get from the project', () => {
       'nitpicker/preserve-error-cause': ['error', { wrap: true }],
       'nitpicker/no-unhandled-void-promise': ['error', { runners: ['vitest'] }],
       'nitpicker/report-module-load-effects': ['error', { commonJsExports: true }],
+      'nitpicker/no-unsafe-deserialization': ['error', { yamlMajor: 3 }],
     };
 
     expect(settingsOf(rules)).toEqual([
@@ -82,6 +84,7 @@ describe('facts the engine rules get from the project', () => {
       'preserve-error-cause.options={"wrap":true}',
       'no-unhandled-void-promise.runners=["vitest"]',
       'report-module-load-effects.common-js-exports=true',
+      'no-unsafe-deserialization.yaml-major=3',
     ]);
   });
 });

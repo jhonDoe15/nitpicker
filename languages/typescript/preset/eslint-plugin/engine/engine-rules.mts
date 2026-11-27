@@ -150,12 +150,14 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-orm-query-logging', {}],
   ['no-orm-schema-sync', {}],
   ['no-parameter-mutation', TYPED],
+  ['no-raw-http-value', {}],
   ['no-remote-call-in-transaction', EFFECTS],
   ['no-remote-call-under-lock', EFFECTS],
   ['no-retry-without-idempotency', EFFECTS],
   ['no-dual-write', EFFECTS],
   ['no-stale-retry-after-conflict', EFFECTS],
   ['no-unchecked-response-json', {}],
+  ['no-unchecked-url-sink', {}],
   ['no-unencoded-url-part', {}],
   ['no-unescaped-filter-value', {}],
   ['no-unescaped-pattern-translation', {}],
@@ -215,6 +217,17 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-unowned-async-assertion', {}],
   ['no-unpaged-listing', {}],
   ['no-unresolved-relative-url', {}],
+  [
+    'no-unsafe-deserialization',
+    {
+      facts: (_filename, options) => ({
+        'yaml-major': String(Reflect.get(Object(options[0]), 'yamlMajor') ?? ''),
+      }),
+    },
+  ],
+  ['no-unstripped-remote-text', {}],
+  ['no-slash-only-redirect-guard', {}],
+  ['no-weak-hash', {}],
   ['no-unversioned-orm-entity', TYPED],
   ['no-wait-for-with-fake-timers', {}],
   [

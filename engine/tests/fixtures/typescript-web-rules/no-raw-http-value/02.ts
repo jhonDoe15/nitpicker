@@ -1,0 +1,1 @@
+if (headers.get('content-type')?.toLowerCase().startsWith('application/json')) { run(); }

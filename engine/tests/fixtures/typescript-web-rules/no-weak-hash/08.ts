@@ -1,0 +1,1 @@
+import crypto from "node:crypto"; export const id = (s) => crypto.createHash("sha384").update(s).digest();

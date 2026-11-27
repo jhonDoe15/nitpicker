@@ -1026,6 +1026,276 @@
   68
  ],
  [
+  "no-raw-http-value/34.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  5,
+  "The `content-type` header value is compared as exact text, but media types, charsets, encodings and schemes are case-insensitive, so `Application/JSON` or `HTTPS` is missed. Lowercase it first (`value.toLowerCase()`), or use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`).",
+  1,
+  63
+ ],
+ [
+  "no-raw-http-value/35.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  5,
+  "The `accept` header value is compared as exact text, but media types, charsets, encodings and schemes are case-insensitive, so `Application/JSON` or `HTTPS` is missed. Lowercase it first (`value.toLowerCase()`), or use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`).",
+  1,
+  43
+ ],
+ [
+  "no-raw-http-value/36.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  47,
+  "The `content-type` header value is compared as exact text, but media types, charsets, encodings and schemes are case-insensitive, so `Application/JSON` or `HTTPS` is missed. Lowercase it first (`value.toLowerCase()`), or use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`).",
+  1,
+  76
+ ],
+ [
+  "no-raw-http-value/37.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  59,
+  "The `x-forwarded-proto` header value is compared as exact text, but media types, charsets, encodings and schemes are case-insensitive, so `Application/JSON` or `HTTPS` is missed. Lowercase it first (`value.toLowerCase()`), or use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`).",
+  1,
+  76
+ ],
+ [
+  "no-raw-http-value/38.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  50,
+  "The `accept-encoding` header value is compared as exact text, but media types, charsets, encodings and schemes are case-insensitive, so `Application/JSON` or `HTTPS` is missed. Lowercase it first (`value.toLowerCase()`), or use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`).",
+  1,
+  76
+ ],
+ [
+  "no-raw-http-value/39.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  1,
+  "The `content-type` header value is compared as exact text, but media types, charsets, encodings and schemes are case-insensitive, so `Application/JSON` or `HTTPS` is missed. Lowercase it first (`value.toLowerCase()`), or use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`).",
+  1,
+  67
+ ],
+ [
+  "no-raw-http-value/40.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  47,
+  "The `content-type` header value is compared as exact text, but media types, charsets, encodings and schemes are case-insensitive, so `Application/JSON` or `HTTPS` is missed. Lowercase it first (`value.toLowerCase()`), or use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`).",
+  1,
+  67
+ ],
+ [
+  "no-raw-http-value/41.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  47,
+  "The `content-type` header value is compared as exact text, but media types, charsets, encodings and schemes are case-insensitive, so `Application/JSON` or `HTTPS` is missed. Lowercase it first (`value.toLowerCase()`), or use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`).",
+  1,
+  76
+ ],
+ [
+  "no-raw-http-value/42.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  59,
+  "The `content-type` header value is compared as exact text, but media types, charsets, encodings and schemes are case-insensitive, so `Application/JSON` or `HTTPS` is missed. Lowercase it first (`value.toLowerCase()`), or use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`).",
+  1,
+  73
+ ],
+ [
+  "no-raw-http-value/43.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  53,
+  "The `accept` header value is compared as exact text, but media types, charsets, encodings and schemes are case-insensitive, so `Application/JSON` or `HTTPS` is missed. Lowercase it first (`value.toLowerCase()`), or use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`).",
+  1,
+  73
+ ],
+ [
+  "no-raw-http-value/44.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  47,
+  "The `content-type` header value is compared as exact text, but media types, charsets, encodings and schemes are case-insensitive, so `Application/JSON` or `HTTPS` is missed. Lowercase it first (`value.toLowerCase()`), or use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`).",
+  1,
+  64
+ ],
+ [
+  "no-raw-http-value/45.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  45,
+  "The `authorization` header value is compared as exact text, but media types, charsets, encodings and schemes are case-insensitive, so `Application/JSON` or `HTTPS` is missed. Lowercase it first (`value.toLowerCase()`), or use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`).",
+  1,
+  72
+ ],
+ [
+  "no-raw-http-value/46.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  53,
+  "The `accept` header is split or matched by hand, which breaks on quoted values, whitespace around separators and quality weights. Use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`). An exception fits only the library that is itself the parser.",
+  1,
+  70
+ ],
+ [
+  "no-raw-http-value/47.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  25,
+  "The `content-type` header is split or matched by hand, which breaks on quoted values, whitespace around separators and quality weights. Use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`). An exception fits only the library that is itself the parser.",
+  1,
+  67
+ ],
+ [
+  "no-raw-http-value/48.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  21,
+  "The `content-type` header is split or matched by hand, which breaks on quoted values, whitespace around separators and quality weights. Use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`). An exception fits only the library that is itself the parser.",
+  1,
+  63
+ ],
+ [
+  "no-raw-http-value/49.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  15,
+  "The `content-type` header is split or matched by hand, which breaks on quoted values, whitespace around separators and quality weights. Use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`). An exception fits only the library that is itself the parser.",
+  1,
+  57
+ ],
+ [
+  "no-raw-http-value/50.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  50,
+  "The `vary` header is split or matched by hand, which breaks on quoted values, whitespace around separators and quality weights. Use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`). An exception fits only the library that is itself the parser.",
+  1,
+  100
+ ],
+ [
+  "no-raw-http-value/51.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  14,
+  "The `accept` header is split or matched by hand, which breaks on quoted values, whitespace around separators and quality weights. Use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`). An exception fits only the library that is itself the parser.",
+  1,
+  47
+ ],
+ [
+  "no-raw-http-value/52.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  17,
+  "The `cookie` header is split or matched by hand, which breaks on quoted values, whitespace around separators and quality weights. Use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`). An exception fits only the library that is itself the parser.",
+  1,
+  49
+ ],
+ [
+  "no-raw-http-value/53.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  15,
+  "The `content-type` header is split or matched by hand, which breaks on quoted values, whitespace around separators and quality weights. Use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`). An exception fits only the library that is itself the parser.",
+  1,
+  67
+ ],
+ [
+  "no-raw-http-value/54.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  14,
+  "The `if-none-match` header is split or matched by hand, which breaks on quoted values, whitespace around separators and quality weights. Use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`). An exception fits only the library that is itself the parser.",
+  1,
+  62
+ ],
+ [
+  "no-raw-http-value/55.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  14,
+  "`headers['Content-Type']` looks the header up by exact text, but Node lowercases the names of the request's `headers` object, so this finds nothing. Read `headers['content-type']`, or use `Headers` and `.get()`, which ignore case.",
+  1,
+  41
+ ],
+ [
+  "no-raw-http-value/56.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  39,
+  "`headers['Content-Type']` looks the header up by exact text, but Node lowercases the names of the request's `headers` object, so this finds nothing. Read `headers['content-type']`, or use `Headers` and `.get()`, which ignore case.",
+  1,
+  66
+ ],
+ [
+  "no-raw-http-value/57.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  38,
+  "`headers['Accept']` looks the header up by exact text, but Node lowercases the names of the request's `headers` object, so this finds nothing. Read `headers['accept']`, or use `Headers` and `.get()`, which ignore case.",
+  1,
+  57
+ ],
+ [
+  "no-raw-http-value/58.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  5,
+  "Cookie name prefixes are case-insensitive, so this exact-case check misses `__host-id`. Lowercase the name first (`name.toLowerCase().startsWith(\"__host-\")`), or use the cookie helper of the framework.",
+  1,
+  31
+ ],
+ [
+  "no-raw-http-value/59.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  5,
+  "Cookie name prefixes are case-insensitive, so this exact-case check misses `__host-id`. Lowercase the name first (`name.toLowerCase().startsWith(\"__host-\")`), or use the cookie helper of the framework.",
+  1,
+  28
+ ],
+ [
+  "no-raw-http-value/60.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  46,
+  "File extensions are case-insensitive, so `PHOTO.PNG` misses this MIME table. Lowercase the extension first (`extname(file).toLowerCase()`), or look it up with the `mime` package.",
+  1,
+  61
+ ],
+ [
+  "no-raw-http-value/61.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  49,
+  "File extensions are case-insensitive, so `PHOTO.PNG` misses this MIME table. Lowercase the extension first (`extname(file).toLowerCase()`), or look it up with the `mime` package.",
+  1,
+  67
+ ],
+ [
+  "no-raw-http-value/62.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  65,
+  "File extensions are case-insensitive, so `PHOTO.PNG` misses this MIME table. Lowercase the extension first (`extname(file).toLowerCase()`), or look it up with the `mime` package.",
+  1,
+  74
+ ],
+ [
+  "no-raw-http-value/67.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  34,
+  "The `accept` header value is compared as exact text, but media types, charsets, encodings and schemes are case-insensitive, so `Application/JSON` or `HTTPS` is missed. Lowercase it first (`value.toLowerCase()`), or use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`).",
+  1,
+  78
+ ],
+ [
   "no-secret-in-log/24.ts",
   "nitpicker/no-secret-in-log",
   1,
@@ -1377,6 +1647,132 @@
   52
  ],
  [
+  "no-slash-only-redirect-guard/19.ts",
+  "nitpicker/no-slash-only-redirect-guard",
+  1,
+  34,
+  "A target that starts with `/` can still be `//host` or `/\\host`, which browsers treat as another site. Resolve it against a fixed origin and compare the origin back (`new URL(value, base).origin === base`), or allow only exact paths.",
+  1,
+  61
+ ],
+ [
+  "no-slash-only-redirect-guard/20.ts",
+  "nitpicker/no-slash-only-redirect-guard",
+  1,
+  37,
+  "A target that starts with `/` can still be `//host` or `/\\host`, which browsers treat as another site. Resolve it against a fixed origin and compare the origin back (`new URL(value, base).origin === base`), or allow only exact paths.",
+  1,
+  64
+ ],
+ [
+  "no-slash-only-redirect-guard/21.ts",
+  "nitpicker/no-slash-only-redirect-guard",
+  1,
+  36,
+  "A target that starts with `/` can still be `//host` or `/\\host`, which browsers treat as another site. Resolve it against a fixed origin and compare the origin back (`new URL(value, base).origin === base`), or allow only exact paths.",
+  1,
+  62
+ ],
+ [
+  "no-slash-only-redirect-guard/22.ts",
+  "nitpicker/no-slash-only-redirect-guard",
+  1,
+  66,
+  "A target that starts with `/` can still be `//host` or `/\\host`, which browsers treat as another site. Resolve it against a fixed origin and compare the origin back (`new URL(value, base).origin === base`), or allow only exact paths.",
+  1,
+  86
+ ],
+ [
+  "no-slash-only-redirect-guard/23.ts",
+  "nitpicker/no-slash-only-redirect-guard",
+  1,
+  30,
+  "A target that starts with `/` can still be `//host` or `/\\host`, which browsers treat as another site. Resolve it against a fixed origin and compare the origin back (`new URL(value, base).origin === base`), or allow only exact paths.",
+  1,
+  54
+ ],
+ [
+  "no-slash-only-redirect-guard/24.ts",
+  "nitpicker/no-slash-only-redirect-guard",
+  1,
+  25,
+  "A target that starts with `/` can still be `//host` or `/\\host`, which browsers treat as another site. Resolve it against a fixed origin and compare the origin back (`new URL(value, base).origin === base`), or allow only exact paths.",
+  1,
+  40
+ ],
+ [
+  "no-slash-only-redirect-guard/25.ts",
+  "nitpicker/no-slash-only-redirect-guard",
+  1,
+  5,
+  "A target that starts with `/` can still be `//host` or `/\\host`, which browsers treat as another site. Resolve it against a fixed origin and compare the origin back (`new URL(value, base).origin === base`), or allow only exact paths.",
+  1,
+  32
+ ],
+ [
+  "no-slash-only-redirect-guard/26.ts",
+  "nitpicker/no-slash-only-redirect-guard",
+  1,
+  6,
+  "A target that starts with `/` can still be `//host` or `/\\host`, which browsers treat as another site. Resolve it against a fixed origin and compare the origin back (`new URL(value, base).origin === base`), or allow only exact paths.",
+  1,
+  26
+ ],
+ [
+  "no-slash-only-redirect-guard/27.ts",
+  "nitpicker/no-slash-only-redirect-guard",
+  1,
+  25,
+  "A target that starts with `/` can still be `//host` or `/\\host`, which browsers treat as another site. Resolve it against a fixed origin and compare the origin back (`new URL(value, base).origin === base`), or allow only exact paths.",
+  1,
+  47
+ ],
+ [
+  "no-slash-only-redirect-guard/28.ts",
+  "nitpicker/no-slash-only-redirect-guard",
+  1,
+  25,
+  "A target that starts with `/` can still be `//host` or `/\\host`, which browsers treat as another site. Resolve it against a fixed origin and compare the origin back (`new URL(value, base).origin === base`), or allow only exact paths.",
+  1,
+  44
+ ],
+ [
+  "no-slash-only-redirect-guard/29.ts",
+  "nitpicker/no-slash-only-redirect-guard",
+  1,
+  86,
+  "A target that starts with `/` can still be `//host` or `/\\host`, which browsers treat as another site. Resolve it against a fixed origin and compare the origin back (`new URL(value, base).origin === base`), or allow only exact paths.",
+  1,
+  114
+ ],
+ [
+  "no-slash-only-redirect-guard/30.ts",
+  "nitpicker/no-slash-only-redirect-guard",
+  1,
+  25,
+  "A target that starts with `/` can still be `//host` or `/\\host`, which browsers treat as another site. Resolve it against a fixed origin and compare the origin back (`new URL(value, base).origin === base`), or allow only exact paths.",
+  1,
+  45
+ ],
+ [
+  "no-slash-only-redirect-guard/31.ts",
+  "nitpicker/no-slash-only-redirect-guard",
+  1,
+  111,
+  "A same-origin pathname can still be `//host`, so redirecting to `pathname + search` can leave the site. Reject a pathname that starts with `//` or a backslash, or redirect to the resolved `URL` after comparing its origin.",
+  1,
+  156
+ ],
+ [
+  "no-unchecked-response-json/03.ts",
+  "nitpicker/no-raw-http-value",
+  1,
+  60,
+  "The `content-type` header value is compared as exact text, but media types, charsets, encodings and schemes are case-insensitive, so `Application/JSON` or `HTTPS` is missed. Lowercase it first (`value.toLowerCase()`), or use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`).",
+  1,
+  109
+ ],
+ [
   "no-unchecked-response-json/17.ts",
   "nitpicker/no-unchecked-response-json",
   1,
@@ -1456,6 +1852,177 @@
   "`res.json()` runs before `res.ok` or the status is checked, so an HTML error page from a proxy fails as an opaque `SyntaxError` and the status is lost; check `res.ok` first, or read `res.text()` and parse it inside `try`.",
   1,
   123
+ ],
+ [
+  "no-unchecked-url-sink/30.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  43,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  53
+ ],
+ [
+  "no-unchecked-url-sink/31.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  20,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  35
+ ],
+ [
+  "no-unchecked-url-sink/32.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  42,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  52
+ ],
+ [
+  "no-unchecked-url-sink/33.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  43,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  58
+ ],
+ [
+  "no-unchecked-url-sink/34.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  47,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  59
+ ],
+ [
+  "no-unchecked-url-sink/35.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  40,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  55
+ ],
+ [
+  "no-unchecked-url-sink/36.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  20,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  36
+ ],
+ [
+  "no-unchecked-url-sink/37.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  55,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  64
+ ],
+ [
+  "no-unchecked-url-sink/38.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  40,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  61
+ ],
+ [
+  "no-unchecked-url-sink/39.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  24,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  36
+ ],
+ [
+  "no-unchecked-url-sink/40.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  23,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  34
+ ],
+ [
+  "no-unchecked-url-sink/41.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  25,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  40
+ ],
+ [
+  "no-unchecked-url-sink/42.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  66,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  69
+ ],
+ [
+  "no-unchecked-url-sink/43.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  66,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  69
+ ],
+ [
+  "no-unchecked-url-sink/44.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  35,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  43
+ ],
+ [
+  "no-unchecked-url-sink/45.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  44,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  60
+ ],
+ [
+  "no-unchecked-url-sink/46.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  37,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  45
+ ],
+ [
+  "no-unchecked-url-sink/47.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  44,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  57
+ ],
+ [
+  "no-unchecked-url-sink/48.tsx",
+  "nitpicker/no-unchecked-url-sink",
+  1,
+  38,
+  "Check the scheme before this runtime URL becomes a link, frame source or navigation target: a `javascript:` or `data:` value runs script when clicked. Use one helper that parses with `URL.parse` and returns the URL only for `http:` and `https:`.",
+  1,
+  46
  ],
  [
   "no-unencoded-url-part/42.ts",
@@ -2095,5 +2662,806 @@
   "`new URL(path)` with one argument throws `Invalid URL` for a path. Pass the base: `new URL(path, base)`.",
   3,
   25
+ ],
+ [
+  "no-unsafe-deserialization/13.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  1,
+  "`node-serialize` rebuilds functions from the data it reads, so a crafted payload runs code. Read the data as JSON, `JSON.parse(text)`, and check it against a schema (zod, valibot) into a typed value. An exception fits only when this process alone writes and reads the data.",
+  1,
+  46
+ ],
+ [
+  "no-unsafe-deserialization/14.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  19,
+  "`node-serialize` rebuilds functions from the data it reads, so a crafted payload runs code. Read the data as JSON, `JSON.parse(text)`, and check it against a schema (zod, valibot) into a typed value. An exception fits only when this process alone writes and reads the data.",
+  1,
+  44
+ ],
+ [
+  "no-unsafe-deserialization/15.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  1,
+  "`funcster` rebuilds functions from the data it reads, so a crafted payload runs code. Read the data as JSON, `JSON.parse(text)`, and check it against a schema (zod, valibot) into a typed value. An exception fits only when this process alone writes and reads the data.",
+  1,
+  33
+ ],
+ [
+  "no-unsafe-deserialization/16.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  47,
+  "`v8.deserialize` trusts its bytes as a structured clone of the writer. Read untrusted input as JSON, `JSON.parse(text)`, and check it against a schema (zod, valibot). An exception fits only when this process alone writes and reads the bytes.",
+  1,
+  68
+ ],
+ [
+  "no-unsafe-deserialization/17.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  63,
+  "`v8.deserialize` trusts its bytes as a structured clone of the writer. Read untrusted input as JSON, `JSON.parse(text)`, and check it against a schema (zod, valibot). An exception fits only when this process alone writes and reads the bytes.",
+  1,
+  74
+ ],
+ [
+  "no-unsafe-deserialization/18.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  54,
+  "`v8.Deserializer` trusts its bytes as a structured clone of the writer. Read untrusted input as JSON, `JSON.parse(text)`, and check it against a schema (zod, valibot). An exception fits only when this process alone writes and reads the bytes.",
+  1,
+  80
+ ],
+ [
+  "no-unsafe-deserialization/19.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  56,
+  "`vm.runInNewContext` runs text as code, and a vm context is not a security boundary. Do not execute data: look the behavior up in a table keyed by name, or read the data as JSON and check it against a schema. A fixed string literal is allowed. An exception fits only when the text is trusted and cannot be a literal.",
+  1,
+  84
+ ],
+ [
+  "no-unsafe-deserialization/20.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  69,
+  "`vm.runInThisContext` runs text as code, and a vm context is not a security boundary. Do not execute data: look the behavior up in a table keyed by name, or read the data as JSON and check it against a schema. A fixed string literal is allowed. An exception fits only when the text is trusted and cannot be a literal.",
+  1,
+  98
+ ],
+ [
+  "no-unsafe-deserialization/21.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  59,
+  "`vm.Script` runs text as code, and a vm context is not a security boundary. Do not execute data: look the behavior up in a table keyed by name, or read the data as JSON and check it against a schema. A fixed string literal is allowed. An exception fits only when the text is trusted and cannot be a literal.",
+  1,
+  78
+ ],
+ [
+  "no-unsafe-deserialization/22.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  55,
+  "`vm.compileFunction` runs text as code, and a vm context is not a security boundary. Do not execute data: look the behavior up in a table keyed by name, or read the data as JSON and check it against a schema. A fixed string literal is allowed. An exception fits only when the text is trusted and cannot be a literal.",
+  1,
+  86
+ ],
+ [
+  "no-unsafe-deserialization/23.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  52,
+  "`vm.runInNewContext` runs text as code, and a vm context is not a security boundary. Do not execute data: look the behavior up in a table keyed by name, or read the data as JSON and check it against a schema. A fixed string literal is allowed. An exception fits only when the text is trusted and cannot be a literal.",
+  1,
+  72
+ ],
+ [
+  "no-unsafe-deserialization/24.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  75,
+  "`DEFAULT_FULL_SCHEMA` lets YAML tags build arbitrary objects and call functions. Load YAML with the default safe schema, `yaml.load(text)` in js-yaml 4 (`JSON_SCHEMA` or `CORE_SCHEMA` for plain data), and check the result against a schema. An exception fits only when you need custom tags.",
+  1,
+  99
+ ],
+ [
+  "no-unsafe-deserialization/25.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  16,
+  "`FULL_SCHEMA` lets YAML tags build arbitrary objects and call functions. Load YAML with the default safe schema, `yaml.load(text)` in js-yaml 4 (`JSON_SCHEMA` or `CORE_SCHEMA` for plain data), and check the result against a schema. An exception fits only when you need custom tags.",
+  1,
+  27
+ ],
+ [
+  "no-unsafe-deserialization/26.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  77,
+  "`evalFunctions: true` compiles functions stored in the document, so a crafted document runs code. Leave it off and store plain data. An exception fits only when you must read stored functions.",
+  1,
+  96
+ ],
+ [
+  "no-unsafe-deserialization/27.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  78,
+  "`noent: true` expands external XML entities, so a crafted document can read local files (XXE). Leave it off, which is the default, and parse the XML as data. An exception fits only when the XML is produced by this process.",
+  1,
+  89
+ ],
+ [
+  "no-unsafe-deserialization/37.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  68,
+  "`v8.deserialize(v8.serialize(value))` copies a value through the structured-clone bytes. Copy it with `structuredClone(value)`, which keeps `Map`, `Set`, `Date` and cycles and parses no bytes. An exception fits only when you need the v8 wire format here.",
+  1,
+  103
+ ],
+ [
+  "no-unsafe-deserialization/38.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  133,
+  "`v8.deserialize(v8.serialize(value))` copies a value through the structured-clone bytes. Copy it with `structuredClone(value)`, which keeps `Map`, `Set`, `Date` and cycles and parses no bytes. An exception fits only when you need the v8 wire format here.",
+  1,
+  151
+ ],
+ [
+  "no-unsafe-deserialization/39.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  115,
+  "`v8.deserialize` trusts its bytes as a structured clone of the writer. Read untrusted input as JSON, `JSON.parse(text)`, and check it against a schema (zod, valibot). An exception fits only when this process alone writes and reads the bytes.",
+  1,
+  143
+ ],
+ [
+  "no-unsafe-deserialization/42.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  1,
+  "`node-serialize` rebuilds functions from the data it reads, so a crafted payload runs code. Read the data as JSON, `JSON.parse(text)`, and check it against a schema (zod, valibot) into a typed value. An exception fits only when this process alone writes and reads the data.",
+  1,
+  39
+ ],
+ [
+  "no-unsafe-deserialization/43.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  58,
+  "`node-serialize` rebuilds functions from the data it reads, so a crafted payload runs code. Read the data as JSON, `JSON.parse(text)`, and check it against a schema (zod, valibot) into a typed value. An exception fits only when this process alone writes and reads the data.",
+  1,
+  82
+ ],
+ [
+  "no-unsafe-deserialization/44.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  37,
+  "`DEFAULT_FULL_SCHEMA` lets YAML tags build arbitrary objects and call functions. Load YAML with the default safe schema, `yaml.load(text)` in js-yaml 4 (`JSON_SCHEMA` or `CORE_SCHEMA` for plain data), and check the result against a schema. An exception fits only when you need custom tags.",
+  1,
+  56
+ ],
+ [
+  "no-unsafe-deserialization/45.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  10,
+  "`DEFAULT_FULL_SCHEMA` lets YAML tags build arbitrary objects and call functions. Load YAML with the default safe schema, `yaml.load(text)` in js-yaml 4 (`JSON_SCHEMA` or `CORE_SCHEMA` for plain data), and check the result against a schema. An exception fits only when you need custom tags.",
+  1,
+  29
+ ],
+ [
+  "no-unsafe-deserialization/46.ts",
+  "nitpicker/no-unsafe-deserialization",
+  1,
+  89,
+  "`vm.runInNewContext` runs text as code, and a vm context is not a security boundary. Do not execute data: look the behavior up in a table keyed by name, or read the data as JSON and check it against a schema. A fixed string literal is allowed. An exception fits only when the text is trusted and cannot be a literal.",
+  1,
+  118
+ ],
+ [
+  "no-unstripped-remote-text/01.ts",
+  "nitpicker/no-unchecked-response-json",
+  2,
+  48,
+  "`res.json()` runs before `res.ok` or the status is checked, so an HTML error page from a proxy fails as an opaque `SyntaxError` and the status is lost; check `res.ok` first, or read `res.text()` and parse it inside `try`.",
+  2,
+  58
+ ],
+ [
+  "no-unstripped-remote-text/06.ts",
+  "nitpicker/no-unchecked-response-json",
+  2,
+  48,
+  "`res.json()` runs before `res.ok` or the status is checked, so an HTML error page from a proxy fails as an opaque `SyntaxError` and the status is lost; check `res.ok` first, or read `res.text()` and parse it inside `try`.",
+  2,
+  58
+ ],
+ [
+  "no-unstripped-remote-text/15.ts",
+  "nitpicker/no-unchecked-response-json",
+  1,
+  48,
+  "`res.json()` runs before `res.ok` or the status is checked, so an HTML error page from a proxy fails as an opaque `SyntaxError` and the status is lost; check `res.ok` first, or read `res.text()` and parse it inside `try`.",
+  1,
+  58
+ ],
+ [
+  "no-unstripped-remote-text/17.ts",
+  "nitpicker/no-unstripped-remote-text",
+  2,
+  47,
+  "Text from a socket message or network response can hold ANSI or control sequences that rewrite earlier terminal lines or hide output. Strip them first with `util.stripVTControlCharacters(text)` or print `JSON.stringify(text)`.",
+  2,
+  59
+ ],
+ [
+  "no-unstripped-remote-text/18.ts",
+  "nitpicker/no-unstripped-remote-text",
+  2,
+  40,
+  "Text from a socket message or network response can hold ANSI or control sequences that rewrite earlier terminal lines or hide output. Strip them first with `util.stripVTControlCharacters(text)` or print `JSON.stringify(text)`.",
+  2,
+  55
+ ],
+ [
+  "no-unstripped-remote-text/19.ts",
+  "nitpicker/no-unchecked-response-json",
+  2,
+  48,
+  "`res.json()` runs before `res.ok` or the status is checked, so an HTML error page from a proxy fails as an opaque `SyntaxError` and the status is lost; check `res.ok` first, or read `res.text()` and parse it inside `try`.",
+  2,
+  58
+ ],
+ [
+  "no-unstripped-remote-text/19.ts",
+  "nitpicker/no-unstripped-remote-text",
+  2,
+  72,
+  "Text from a socket message or network response can hold ANSI or control sequences that rewrite earlier terminal lines or hide output. Strip them first with `util.stripVTControlCharacters(text)` or print `JSON.stringify(text)`.",
+  2,
+  96
+ ],
+ [
+  "no-unstripped-remote-text/20.ts",
+  "nitpicker/no-unstripped-remote-text",
+  2,
+  49,
+  "Text from a socket message or network response can hold ANSI or control sequences that rewrite earlier terminal lines or hide output. Strip them first with `util.stripVTControlCharacters(text)` or print `JSON.stringify(text)`.",
+  2,
+  77
+ ],
+ [
+  "no-unstripped-remote-text/21.ts",
+  "nitpicker/no-unstripped-remote-text",
+  2,
+  59,
+  "Text from a socket message or network response can hold ANSI or control sequences that rewrite earlier terminal lines or hide output. Strip them first with `util.stripVTControlCharacters(text)` or print `JSON.stringify(text)`.",
+  2,
+  71
+ ],
+ [
+  "no-unstripped-remote-text/22.ts",
+  "nitpicker/no-unstripped-remote-text",
+  2,
+  50,
+  "Text from a socket message or network response can hold ANSI or control sequences that rewrite earlier terminal lines or hide output. Strip them first with `util.stripVTControlCharacters(text)` or print `JSON.stringify(text)`.",
+  2,
+  66
+ ],
+ [
+  "no-unstripped-remote-text/23.ts",
+  "nitpicker/no-unstripped-remote-text",
+  2,
+  74,
+  "Text from a socket message or network response can hold ANSI or control sequences that rewrite earlier terminal lines or hide output. Strip them first with `util.stripVTControlCharacters(text)` or print `JSON.stringify(text)`.",
+  2,
+  78
+ ],
+ [
+  "no-unstripped-remote-text/23.ts",
+  "nitpicker/no-unstripped-remote-text",
+  2,
+  80,
+  "Text from a socket message or network response can hold ANSI or control sequences that rewrite earlier terminal lines or hide output. Strip them first with `util.stripVTControlCharacters(text)` or print `JSON.stringify(text)`.",
+  2,
+  84
+ ],
+ [
+  "no-unstripped-remote-text/24.ts",
+  "nitpicker/no-unstripped-remote-text",
+  2,
+  62,
+  "Text from a socket message or network response can hold ANSI or control sequences that rewrite earlier terminal lines or hide output. Strip them first with `util.stripVTControlCharacters(text)` or print `JSON.stringify(text)`.",
+  2,
+  66
+ ],
+ [
+  "no-weak-hash/22.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  80,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  97
+ ],
+ [
+  "no-weak-hash/23.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  80,
+  "sha1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  98
+ ],
+ [
+  "no-weak-hash/24.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  80,
+  "SHA-1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  99
+ ],
+ [
+  "no-weak-hash/25.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  60,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  84
+ ],
+ [
+  "no-weak-hash/26.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  55,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  74
+ ],
+ [
+  "no-weak-hash/27.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  75,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  90
+ ],
+ [
+  "no-weak-hash/28.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  55,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  79
+ ],
+ [
+  "no-weak-hash/29.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  68,
+  "sha1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  86
+ ],
+ [
+  "no-weak-hash/30.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  21,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  56
+ ],
+ [
+  "no-weak-hash/31.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  97,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  108
+ ],
+ [
+  "no-weak-hash/32.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  92,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  103
+ ],
+ [
+  "no-weak-hash/33.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  105,
+  "sha1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  117
+ ],
+ [
+  "no-weak-hash/34.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  105,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  126
+ ],
+ [
+  "no-weak-hash/35.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  115,
+  "sha1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  136
+ ],
+ [
+  "no-weak-hash/36.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  72,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  83
+ ],
+ [
+  "no-weak-hash/37.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  123,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  141
+ ],
+ [
+  "no-weak-hash/38.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  80,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  117
+ ],
+ [
+  "no-weak-hash/39.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  86,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  121
+ ],
+ [
+  "no-weak-hash/40.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  99,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  120
+ ],
+ [
+  "no-weak-hash/41.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  80,
+  "MD5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  111
+ ],
+ [
+  "no-weak-hash/42.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  80,
+  "sha1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  98
+ ],
+ [
+  "no-weak-hash/43.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  72,
+  "sha1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  106
+ ],
+ [
+  "no-weak-hash/44.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  68,
+  "RSA-SHA1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  90
+ ],
+ [
+  "no-weak-hash/45.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  62,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  76
+ ],
+ [
+  "no-weak-hash/46.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  41,
+  "SHA-1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  76
+ ],
+ [
+  "no-weak-hash/47.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  41,
+  "SHA-1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  97
+ ],
+ [
+  "no-weak-hash/48.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  90,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  108
+ ],
+ [
+  "no-weak-hash/49.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  26,
+  "sha1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  58
+ ],
+ [
+  "no-weak-hash/50.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  58,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  87
+ ],
+ [
+  "no-weak-hash/51.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  25,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  45
+ ],
+ [
+  "no-weak-hash/52.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  1,
+  "`md5` only computes MD5 or SHA-1, which are broken hashes. Use `createHash(\"sha256\")` from node:crypto (or sha384, sha512, sha3-256), and hash passwords with `scrypt`, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it.",
+  1,
+  23
+ ],
+ [
+  "no-weak-hash/53.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  1,
+  "`ts-md5` only computes MD5 or SHA-1, which are broken hashes. Use `createHash(\"sha256\")` from node:crypto (or sha384, sha512, sha3-256), and hash passwords with `scrypt`, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it.",
+  1,
+  30
+ ],
+ [
+  "no-weak-hash/54.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  14,
+  "`sha1` only computes MD5 or SHA-1, which are broken hashes. Use `createHash(\"sha256\")` from node:crypto (or sha384, sha512, sha3-256), and hash passwords with `scrypt`, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it.",
+  1,
+  29
+ ],
+ [
+  "no-weak-hash/55.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  60,
+  "MD5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  75
+ ],
+ [
+  "no-weak-hash/56.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  60,
+  "SHA1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  67
+ ],
+ [
+  "no-weak-hash/75.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  89,
+  "HMAC with md5 rests on MD5, which is broken and no longer approved for message authentication. Sign with `createHmac(\"sha256\", key)`; HMAC-SHA1 is accepted where a protocol fixes it (TOTP, OAuth 1.0a). An exception fits only when a protocol you do not control requires HMAC-MD5.",
+  1,
+  109
+ ],
+ [
+  "no-weak-hash/76.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  81,
+  "HMAC with HmacMD5 rests on MD5, which is broken and no longer approved for message authentication. Sign with `createHmac(\"sha256\", key)`; HMAC-SHA1 is accepted where a protocol fixes it (TOTP, OAuth 1.0a). An exception fits only when a protocol you do not control requires HMAC-MD5.",
+  1,
+  103
+ ],
+ [
+  "no-weak-hash/77.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  1,
+  "HMAC with md5 rests on MD5, which is broken and no longer approved for message authentication. Sign with `createHmac(\"sha256\", key)`; HMAC-SHA1 is accepted where a protocol fixes it (TOTP, OAuth 1.0a). An exception fits only when a protocol you do not control requires HMAC-MD5.",
+  1,
+  42
+ ],
+ [
+  "no-weak-hash/78.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  67,
+  "HMAC with md5 rests on MD5, which is broken and no longer approved for message authentication. Sign with `createHmac(\"sha256\", key)`; HMAC-SHA1 is accepted where a protocol fixes it (TOTP, OAuth 1.0a). An exception fits only when a protocol you do not control requires HMAC-MD5.",
+  1,
+  83
+ ],
+ [
+  "no-weak-hash/79.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  24,
+  "SHA-1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  169
+ ],
+ [
+  "no-weak-hash/80.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  39,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  55
+ ],
+ [
+  "no-weak-hash/81.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  104,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  127
+ ],
+ [
+  "no-weak-hash/82.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  111,
+  "sha1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  134
+ ],
+ [
+  "no-weak-hash/83.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  65,
+  "sha1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  101
+ ],
+ [
+  "no-weak-hash/84.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  136,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  162
+ ],
+ [
+  "no-weak-hash/85.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  123,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  144
+ ],
+ [
+  "no-weak-hash/86.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  57,
+  "md5 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  73
+ ],
+ [
+  "no-weak-hash/87.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  10,
+  "`sha1 from @noble/hashes/legacy` only computes MD5 or SHA-1, which are broken hashes. Use `createHash(\"sha256\")` from node:crypto (or sha384, sha512, sha3-256), and hash passwords with `scrypt`, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it.",
+  1,
+  14
+ ],
+ [
+  "no-weak-hash/88.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  10,
+  "`sha1 from @noble/hashes/sha1` only computes MD5 or SHA-1, which are broken hashes. Use `createHash(\"sha256\")` from node:crypto (or sha384, sha512, sha3-256), and hash passwords with `scrypt`, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it.",
+  1,
+  14
+ ],
+ [
+  "no-weak-hash/89.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  10,
+  "`md5 from hash-wasm` only computes MD5 or SHA-1, which are broken hashes. Use `createHash(\"sha256\")` from node:crypto (or sha384, sha512, sha3-256), and hash passwords with `scrypt`, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it.",
+  1,
+  13
+ ],
+ [
+  "no-weak-hash/90.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  58,
+  "SHA1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  76
+ ],
+ [
+  "no-weak-hash/91.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  36,
+  "sha1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  59
+ ],
+ [
+  "no-weak-hash/92.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  68,
+  "sha1WithRSAEncryption is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  103
  ]
 ]

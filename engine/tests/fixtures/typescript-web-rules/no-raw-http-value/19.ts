@@ -1,0 +1,1 @@
+const type = headers.get('content-type'); let copy = type; copy = 'x'; if (copy === 'text/html') { run(); }

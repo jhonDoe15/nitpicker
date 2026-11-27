@@ -1,0 +1,1 @@
+const crypto = require("crypto"); exports.id = (s) => crypto.createHash("md5").update(s).digest();

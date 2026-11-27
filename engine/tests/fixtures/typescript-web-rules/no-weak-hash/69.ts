@@ -1,0 +1,1 @@
+declare function isWeakHash(a: string): boolean; export const weak = isWeakHash("md5");

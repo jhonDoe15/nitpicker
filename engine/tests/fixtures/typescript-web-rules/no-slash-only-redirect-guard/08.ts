@@ -1,0 +1,1 @@
+function f(next) { if (/^\/(?!\/)/.test(next)) { redirect(next); } }

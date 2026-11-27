@@ -1,0 +1,1 @@
+import hmacMd5 from "crypto-js/hmac-md5"; export const sign = (s: string, k: string) => hmacMd5(s, k);

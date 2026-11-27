@@ -1,0 +1,1 @@
+const type = req.headers['Content-Type'];

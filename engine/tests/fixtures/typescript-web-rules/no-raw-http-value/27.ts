@@ -1,0 +1,1 @@
+if (/^__host-/i.test(name)) { run(); }

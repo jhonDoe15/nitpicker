@@ -1,0 +1,1 @@
+export async function id(data) { return crypto.subtle.digest({ name: "SHA-512" }, data); }

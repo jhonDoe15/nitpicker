@@ -1,0 +1,1 @@
+function f(redirectTo) { if (redirectTo.startsWith("/")) { log(redirectTo); } }

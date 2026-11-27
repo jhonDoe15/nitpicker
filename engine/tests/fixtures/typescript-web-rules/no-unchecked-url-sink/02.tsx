@@ -1,0 +1,1 @@
+const a = <a href={`/items/${id}`}>x</a>;

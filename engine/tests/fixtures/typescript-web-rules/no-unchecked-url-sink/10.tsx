@@ -1,0 +1,1 @@
+function F({ model }) { const parsed = URL.parse(model.url); return parsed?.protocol === "https:" && <a href={model.url}>x</a>; }

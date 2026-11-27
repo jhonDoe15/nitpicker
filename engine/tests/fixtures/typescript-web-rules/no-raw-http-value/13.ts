@@ -1,0 +1,1 @@
+const [first] = headers.get('x-forwarded-for').split(',');

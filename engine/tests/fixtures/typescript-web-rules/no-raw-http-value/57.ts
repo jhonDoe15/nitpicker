@@ -1,0 +1,1 @@
+const headers = request.headers; if ('Accept' in headers) { run(); }

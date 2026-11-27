@@ -1,0 +1,1 @@
+export const sums = (s: string) => fileChecksum(s, "sha1");

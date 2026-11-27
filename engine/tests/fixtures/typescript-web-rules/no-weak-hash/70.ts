@@ -1,0 +1,1 @@
+declare const router: { hashChange(s: string): void }; export const go = () => router.hashChange("sha1");

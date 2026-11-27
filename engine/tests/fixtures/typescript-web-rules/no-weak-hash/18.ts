@@ -1,0 +1,1 @@
+import { MD5 } from "other-lib"; export const id = (s) => MD5(s);

@@ -1,0 +1,1 @@
+const type = headers.get('content-type'); const handler = HANDLERS[type];

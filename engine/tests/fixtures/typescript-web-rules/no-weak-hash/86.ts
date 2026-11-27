@@ -1,0 +1,1 @@
+import { createHash } from "node:crypto"; const cfg = { algorithm: "md5" }; export const h = (s: string) => createHash(cfg.algorithm).digest("hex");

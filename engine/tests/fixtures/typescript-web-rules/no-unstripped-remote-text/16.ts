@@ -1,0 +1,1 @@
+import { x } from "node:fs"; const res = await fetch(u); const t = await res.text(); document.title = t; console.log(t);

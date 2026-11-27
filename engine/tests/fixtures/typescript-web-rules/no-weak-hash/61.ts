@@ -1,0 +1,1 @@
+import { createHmac, timingSafeEqual } from "node:crypto"; export const valid = (token: string, data: string, sig: string) => timingSafeEqual(Buffer.from(createHmac("sha1", token).update(data).digest("base64")), Buffer.from(sig));

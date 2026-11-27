@@ -1,0 +1,1 @@
+export const key = (raw: ArrayBuffer) => crypto.subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);

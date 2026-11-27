@@ -1,0 +1,1 @@
+export async function id(data) { return globalThis.crypto.subtle.digest({ name: "SHA-1" }, data); }

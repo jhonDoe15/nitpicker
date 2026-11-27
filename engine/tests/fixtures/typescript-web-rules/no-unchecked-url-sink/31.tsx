@@ -1,0 +1,1 @@
+const a = <a href={model.serverUrl} target="_blank">{model.serverUrl}</a>;

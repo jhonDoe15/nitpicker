@@ -1,0 +1,1 @@
+export const CONFIG = { hashAlgorithm: "md5" };
