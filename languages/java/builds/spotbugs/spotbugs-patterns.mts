@@ -15,6 +15,11 @@ import {
   START_PATTERNS,
   WAIT_PATTERNS,
 } from './tail/spotbugs-tail-placed.mts';
+import {
+  CALENDAR_PATTERNS,
+  CIRCUIT_PATTERNS,
+  FLOAT_PATTERNS,
+} from './tail/spotbugs-tail-logic-placed.mts';
 
 export const WRONG_MAP_ITERATOR = 'WMI_WRONG_MAP_ITERATOR';
 export const LOCK_MONITORENTER = 'JLM_JSR166_LOCK_MONITORENTER';
@@ -116,6 +121,9 @@ export const ON_ENGINE: readonly string[] = [
   ...ENUM_PATTERNS,
   ...VALUE_PATTERNS,
   ...BOUND_PATTERNS,
+  ...FLOAT_PATTERNS,
+  ...CIRCUIT_PATTERNS,
+  ...CALENDAR_PATTERNS,
 ];
 
 export const LOMBOK_WITHOUT_CLASSES: readonly string[] = [
