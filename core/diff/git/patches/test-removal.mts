@@ -69,7 +69,7 @@ export type TestRemoval = {
 };
 
 const IMPORT_SPECIFIER =
-  /(?:\bfrom|\bimport|\brequire|\bmock|\bimportActual|\bdoMock)\s*\(?\s*(['"`])([^'"`\n]+)\1/gu;
+  /(?:\bfrom|\bimport|\brequire|\bmock|\bimportActual|\bdoMock)\s*(?:\(\s*)?(['"`])([^'"`\n]+)\1/gu;
 const RELATIVE_SPECIFIER = /^\.\.?\//u;
 const UNRESOLVABLE_SPECIFIER = /^(?:[#~/]|@\/)|\$\{|(?:^|\/)(?:\.\.?|index(?:\.[^/]*)?)\/?$/u;
 const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'];
