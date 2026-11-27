@@ -8,6 +8,7 @@ import {
   withoutSpotbugsEngineReport,
 } from '../../builds/spotbugs/spotbugs-engine.mts';
 import { declaredProcessorKind } from '../../builds/spotbugs/spotbugs-lombok.mts';
+import { declaredLombokVersion } from '../../builds/spotbugs/spotbugs-lombok-version.mts';
 import { jdkHome } from '../programs/jdk-home.mts';
 import {
   type GeneratedLocation,
@@ -60,12 +61,17 @@ const PROCESSOR_OPTIONS = new Set([
 function processorsOf(
   compiler: CompilerSettings,
   compileClasspath: readonly string[],
-): Pick<SpotbugsEnginePlan, 'processorPath' | 'processors'> {
+): Pick<SpotbugsEnginePlan, 'processorPath' | 'processors' | 'lombokVersion'> {
   if (compiler.proc === 'none') {
     return { processorPath: [], processors: 'none' };
   }
   if (compiler.processorPaths !== undefined && compiler.processorPaths.length > 0) {
-    return { processorPath: [], processors: declaredProcessorKind(compiler.processorPaths) };
+    const lombokVersion = declaredLombokVersion(compiler.processorPaths);
+    return {
+      processorPath: [],
+      processors: declaredProcessorKind(compiler.processorPaths),
+      ...(lombokVersion === undefined ? {} : { lombokVersion }),
+    };
   }
   return { processorPath: [...compileClasspath] };
 }

@@ -16,6 +16,7 @@ import {
   processorKind,
   withoutLombokWrites,
 } from './spotbugs-lombok.mts';
+import { lombokVersionOf, marksGeneratedByDefault } from './spotbugs-lombok-version.mts';
 import {
   DEAD_STORES,
   LOCK_MONITORENTER,
@@ -36,6 +37,7 @@ export type SpotbugsEnginePlan = {
   readonly classes?: readonly string[];
   readonly processorPath: readonly string[];
   readonly processors?: ProcessorKind;
+  readonly lombokVersion?: string;
   readonly javaHome: string;
 };
 
@@ -210,7 +212,11 @@ function usable(plan: SpotbugsEnginePlan, binary: string | undefined): binary is
 
 function processorsOn(plan: SpotbugsEnginePlan): ProcessorKind {
   const processors = plan.processors ?? processorKind(plan.processorPath);
-  if (processors === 'lombok' && !lombokMarksGenerated(plan.sources)) {
+  const version = plan.lombokVersion ?? lombokVersionOf(plan.processorPath);
+  if (
+    processors === 'lombok' &&
+    !lombokMarksGenerated(plan.sources, marksGeneratedByDefault(version))
+  ) {
     return 'other';
   }
   return processors;

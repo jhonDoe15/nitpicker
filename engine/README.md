@@ -744,9 +744,11 @@ the build makes, and finds most sinks by name). Known differences (#2632 for the
 
 ### Lombok
 
-SpotBugs skips the members Lombok writes, because Lombok marks them with `@lombok.Generated` (unless a
-`lombok.config` sets `lombok.addLombokGeneratedAnnotation = false`). What Lombok changes in hand-written code
-matters (`tests/fixtures/spotbugs/lombok`):
+SpotBugs reports nothing inside the members Lombok writes when Lombok marks them with `@lombok.Generated`, which
+Lombok does by default from 1.18.34 on (earlier versions only with `lombok.addLombokGeneratedAnnotation = true` in
+a `lombok.config`). Real runs read the version from the `Lombok-Version` line of the jar's manifest, or from the
+declared processor coordinates, and leave a module whose Lombok does not mark them to SpotBugs alone (#2595).
+What Lombok changes in hand-written code matters (`tests/fixtures/spotbugs/lombok`):
 
 - A constructor parameter marked with Lombok's `@NonNull` makes the constructor start with a null check that
   throws: `CT_CONSTRUCTOR_THROW` on the line of the parameter, after a `this(...)` call that already throws.
