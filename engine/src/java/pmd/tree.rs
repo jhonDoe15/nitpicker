@@ -1645,38 +1645,13 @@ impl<'a, 't> Builder<'a, 't> {
 
     fn number(&mut self, id: u32, node: Node<'t>) {
         let image = self.text(node);
-        let digits: String = image.chars().filter(|c| *c != '_').collect::<String>().to_lowercase();
-        let whole = !node.kind().contains("floating");
-        let long = whole && digits.ends_with('l');
-        let body = digits.trim_end_matches('l');
-        let (as_whole, as_real) = if whole {
-            let parsed = if let Some(hex) = body.strip_prefix("0x") {
-                u64::from_str_radix(hex, 16)
-            } else if let Some(binary) = body.strip_prefix("0b") {
-                u64::from_str_radix(binary, 2)
-            } else if body.len() > 1 && body.starts_with('0') {
-                u64::from_str_radix(&body[1..], 8)
-            } else {
-                body.parse::<u64>()
-            }
-            .unwrap_or(0);
-            let value = if long { parsed as i64 } else { parsed as u32 as i32 as i64 };
-            (value, if long { value as f64 } else { parsed as f64 })
-        } else if let Some(hex) = body.strip_prefix("0x") {
-            let (digits, power) = hex.trim_end_matches(['f', 'd']).split_once('p').unwrap_or((hex, "0"));
-            let (whole, fraction) = digits.split_once('.').unwrap_or((digits, ""));
-            let mantissa = u64::from_str_radix(&format!("{whole}{fraction}"), 16).unwrap_or(0) as f64;
-            let real = mantissa * 2f64.powi(power.parse::<i32>().unwrap_or(0) - 4 * fraction.len() as i32);
-            (real as i64 as i32 as i64, real)
-        } else {
-            let real = body.trim_end_matches(['f', 'd']).parse::<f64>().unwrap_or(0.0);
-            (real as i64 as i32 as i64, real)
-        };
+        let parsed = crate::java::types::constant::literal(image, !node.kind().contains("floating"));
+        let (whole, long, as_whole, as_real) = (parsed.integral, parsed.long, parsed.whole, parsed.real);
         self.set(id, "Image", text(image));
         self.set(id, "IntLiteral", flag(whole && !long));
         self.set(id, "LongLiteral", flag(long));
-        self.set(id, "FloatLiteral", flag(!whole && digits.ends_with('f')));
-        self.set(id, "DoubleLiteral", flag(!whole && !digits.ends_with('f')));
+        self.set(id, "FloatLiteral", flag(parsed.float));
+        self.set(id, "DoubleLiteral", flag(!whole && !parsed.float));
         self.set(id, "ValueAsInt", Value::Whole(as_whole as i32 as i64));
         self.set(id, "ValueAsLong", Value::Whole(as_whole));
         self.set(id, "ValueAsDouble", Value::Real(as_real));

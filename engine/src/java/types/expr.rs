@@ -1,6 +1,7 @@
 //! Static types of expressions, as far as declarations, the index and erased signatures give them.
 use crate::java::fields::Fields;
 use std::rc::Rc;
+use super::constant::{Constant, cast, char_value, infix, literal, unary};
 use super::model::{ClassInfo, Field, Method, OBJECT, Type};
 use std::collections::HashMap;
 use super::scope::{Resolver, class_at, enclosing_type, enclosing_types};
@@ -535,26 +536,81 @@ impl<'a> Resolver<'a> {
             }
             "binary_expression" => {
                 let operator = self.file.text_of(expression.field("operator")?);
-                let left = self.constant_boolean(expression.field("left")?)?;
-                let right = self.constant_boolean(expression.field("right")?)?;
-                match operator {
-                    "&&" | "&" => Some(left && right),
-                    "||" | "|" => Some(left || right),
-                    "^" | "!=" => Some(left != right),
-                    "==" => Some(left == right),
+                let (left, right) = (expression.field("left")?, expression.field("right")?);
+                if let (Some(left), Some(right)) = (self.constant_boolean(left), self.constant_boolean(right)) {
+                    return match operator {
+                        "&&" | "&" => Some(left && right),
+                        "||" | "|" => Some(left || right),
+                        "^" | "!=" => Some(left != right),
+                        "==" => Some(left == right),
+                        _ => None,
+                    };
+                }
+                if !matches!(operator, "<" | "<=" | ">" | ">=" | "==" | "!=") {
+                    return None;
+                }
+                match infix(operator, self.constant_number(left)?, self.constant_number(right)?) {
+                    Ok(Some(Constant::Bool(value))) => Some(value),
                     _ => None,
                 }
             }
+            "identifier" | "field_access" => read(self.constant_field_of(expression)?),
+            _ => None,
+        }
+    }
+
+    /// The field a name or field access reads, when it is a field.
+    fn constant_field_of(&self, expression: Node) -> Option<&Field> {
+        match expression.kind() {
             "identifier" => match self.binding(expression, self.file.text_of(expression))? {
-                Binding::Field(_, _, field) => read(field),
+                Binding::Field(_, _, field) => Some(field),
                 Binding::Local(_) => None,
             },
             "field_access" => {
                 let name = self.file.text_of(expression.field("field")?);
                 match self.receiver(expression.field("object")?)? {
-                    Receiver::Static(owner) | Receiver::Value(Type::Class(owner, _)) => read(self.index.field(&owner, name)?.1),
+                    Receiver::Static(owner) | Receiver::Value(Type::Class(owner, _)) => Some(self.index.field(&owner, name)?.1),
                     _ => None,
                 }
+            }
+            _ => None,
+        }
+    }
+
+    /// The value of a constant numeric or `char` expression made of literals, constant fields, casts to primitive
+    /// types and the numeric operators.
+    fn constant_number(&self, expression: Node) -> Option<Constant> {
+        let expression = unwrap(expression);
+        let operand = |name| expression.field(name).and_then(|operand| self.constant_number(operand));
+        match expression.kind() {
+            "decimal_integer_literal" | "hex_integer_literal" | "octal_integer_literal" | "binary_integer_literal" => {
+                Some(literal(self.file.text_of(expression), true).constant())
+            }
+            "decimal_floating_point_literal" | "hex_floating_point_literal" => Some(literal(self.file.text_of(expression), false).constant()),
+            "character_literal" => {
+                let image = self.file.text_of(expression);
+                (!image.contains("\\u")).then(|| char_value(image)).flatten().map(|code| Constant::Char(code as u16))
+            }
+            "unary_expression" => unary(self.file.text_of(expression.field("operator")?), operand("operand")?).filter(|value| !matches!(value, Constant::Bool(_))),
+            "binary_expression" => match infix(self.file.text_of(expression.field("operator")?), operand("left")?, operand("right")?) {
+                Ok(Some(Constant::Bool(_))) | Ok(None) | Err(_) => None,
+                Ok(Some(value)) => Some(value),
+            },
+            "cast_expression" => {
+                let kind = expression.field("type").filter(|kind| kind.kind() == "integral_type" || kind.kind() == "floating_point_type")?;
+                cast(self.file.text_of(kind), operand("value")?)
+            }
+            "identifier" | "field_access" => {
+                let field = self.constant_field_of(expression)?;
+                let number = field.number?;
+                Some(match &field.kind {
+                    Type::Primitive("int" | "short" | "byte") => Constant::Int(number as i32),
+                    Type::Primitive("char") => Constant::Char(number as u16),
+                    Type::Primitive("long") => Constant::Long(number),
+                    Type::Primitive("float") => Constant::Float(f32::from_bits(number as u32)),
+                    Type::Primitive("double") => Constant::Double(f64::from_bits(number as u64)),
+                    _ => return None,
+                })
             }
             _ => None,
         }
@@ -853,10 +909,25 @@ impl<'a> Resolver<'a> {
         if self.spent() {
             return None;
         }
-        self.in_turn(call, || self.pick_call(call))
+        self.in_turn(call, || self.pick_call(call, Self::select))
     }
 
-    fn pick_call(&self, call: Node) -> Option<Call> {
+    /// `resolve_call`, and when the arguments of unknown type leave several candidates, the one PMD takes: the first
+    /// of the most specific ones, which PMD keeps as a failed choice.
+    pub fn resolve_call_as_pmd(&self, call: Node) -> Option<Call> {
+        if let Some(found) = self.resolve_call(call) {
+            return Some(found);
+        }
+        if self.depth.get() == 0 && self.resolving.borrow().is_empty() && self.busy.borrow().is_empty() {
+            self.work.set(0);
+        }
+        if self.spent() {
+            return None;
+        }
+        self.in_turn(call, || self.pick_call(call, Self::select_as_pmd))
+    }
+
+    fn pick_call(&self, call: Node, select: fn(&Self, Type, &[(&ClassInfo, &Method)], &[Shape]) -> Option<Call>) -> Option<Call> {
         let name = self.file.text_of(call.field("name")?);
         let shapes = self.shapes(call);
         let mut raw = false;
@@ -888,11 +959,11 @@ impl<'a> Resolver<'a> {
             }
             if imported && self.scope.static_single[name].contains(&owner.name()) {
                 candidates = self.scope.static_single[name].iter().flat_map(|from| self.index.methods(from, name)).collect();
-                let chosen = self.select(owner, &candidates, &shapes)?;
+                let chosen = select(self, owner, &candidates, &shapes)?;
                 return Some(Call { receiver: Type::class(&chosen.declaring), ..chosen });
             }
-            let strict = self.select(owner.clone(), &candidates, &shapes);
-            let found = strict.or_else(|| self.loosened(call, &shapes).and_then(|loose| self.select(owner.clone(), &candidates, &loose)));
+            let strict = select(self, owner.clone(), &candidates, &shapes);
+            let found = strict.or_else(|| self.loosened(call, &shapes).and_then(|loose| select(self, owner.clone(), &candidates, &loose)));
             return found.map(|call| Call { raw: raw || (!call.method.is_static && self.index.seen_raw(&owner, &call.declaring)), ..call });
         }
         None
@@ -979,6 +1050,100 @@ impl<'a> Resolver<'a> {
         listed.collect()
     }
 
+    /// `select`, and when arguments of unknown type leave several candidates, PMD's choice: candidates are added in
+    /// order, one that a kept candidate beats is dropped, one that beats kept candidates drops them, and the first
+    /// one left is taken.
+    fn select_as_pmd(&self, owner: Type, candidates: &[(&ClassInfo, &Method)], shapes: &[Shape]) -> Option<Call> {
+        if let Some(found) = self.select(owner.clone(), candidates, shapes) {
+            return Some(found);
+        }
+        if !shapes.iter().any(|shape| matches!(shape, Shape::Unknown)) {
+            return None;
+        }
+        let visible: Vec<(&ClassInfo, &Method)> =
+            candidates.iter().filter(|(class, method)| !method.package_private || class.package == self.scope.package).copied().collect();
+        for phase in 0..3 {
+            let mut kept: Vec<(&ClassInfo, &Method)> = Vec::new();
+            for (class, method) in visible.iter().copied() {
+                let map = self.index.member_map(&owner, &class.name);
+                let formals: Vec<Type> = if method.type_parameters.is_empty() {
+                    method.generic_parameters.iter().map(|generic| generic.substitute(&map)).collect()
+                } else {
+                    method.parameters.clone()
+                };
+                if !self.applicable(method, &formals, shapes, phase) {
+                    continue;
+                }
+                let beats = |first: &Method, second: &Method| {
+                    self.more_specific(first, second, shapes, phase) && !self.more_specific(second, first, shapes, phase)
+                };
+                if kept.iter().any(|(_, existing)| beats(existing, method)) {
+                    continue;
+                }
+                kept.retain(|(_, existing)| !beats(method, existing));
+                kept.push((class, method));
+            }
+            if let Some((class, method)) = kept.first() {
+                return Some(Call { raw: false, receiver: owner, declaring: class.name.clone(), method: (*method).clone() });
+            }
+        }
+        None
+    }
+
+    /// PMD's test of whether `first` is more specific than `second` for the arguments: the first argument whose formal
+    /// types are subtypes decides; with boxing, a formal that is the boxed or unboxed type of a typed argument wins;
+    /// otherwise each formal of `first` has to convert to the one of `second`.
+    fn more_specific(&self, first: &Method, second: &Method, shapes: &[Shape], phase: u8) -> bool {
+        let spread = phase == 2;
+        let at = |method: &Method, place: usize| -> Option<Type> {
+            let last = method.parameters.len().checked_sub(1)?;
+            match method.parameters.get(place.min(last)) {
+                Some(Type::Array(element)) if spread && method.varargs && place >= last => Some((**element).clone()),
+                _ if place > last => None,
+                found => found.cloned(),
+            }
+        };
+        for (place, shape) in shapes.iter().enumerate() {
+            let (Some(si), Some(ti)) = (at(first, place), at(second, place)) else { return false };
+            if si == ti {
+                continue;
+            }
+            if self.assignable(&si, &ti, true) {
+                return true;
+            }
+            if self.assignable(&ti, &si, true) {
+                return false;
+            }
+            if matches!(shape, Shape::Function(..)) {
+                return false;
+            }
+            if let (true, Shape::Typed(argument)) = (phase > 0, shape) {
+                let unboxed = |kind: &Type| match kind {
+                    Type::Primitive(name) => Some(*name),
+                    Type::Class(name, _) => boxed(name),
+                    _ => None,
+                };
+                let primitive = matches!(argument, Type::Primitive(_));
+                if primitive != matches!(si, Type::Primitive(_)) && primitive != matches!(ti, Type::Primitive(_)) && unboxed(argument).is_some() {
+                    if unboxed(argument) == unboxed(&si) {
+                        return true;
+                    }
+                    if unboxed(argument) == unboxed(&ti) {
+                        return false;
+                    }
+                }
+            }
+            if !self.assignable(&si, &ti, phase == 0) {
+                return false;
+            }
+        }
+        if spread && second.parameters.len() == shapes.len() + 1 {
+            let (Some(si), Some(ti)) = (at(first, shapes.len()), at(second, shapes.len())) else { return false };
+            return self.assignable(&si, &ti, false);
+        }
+        true
+    }
+
     fn select(&self, owner: Type, candidates: &[(&ClassInfo, &Method)], shapes: &[Shape]) -> Option<Call> {
         let visible: Vec<(&ClassInfo, &Method)> = candidates
             .iter()
@@ -1035,18 +1200,24 @@ impl<'a> Resolver<'a> {
                 }
                 several => {
                     let exact = typed.as_ref().and_then(|actual| several.iter().find(|(_, method)| method.parameters == *actual));
-                    let spread = |method: &Method, other: &Method| {
-                        let width = method.parameters.len().max(other.parameters.len());
-                        let at = |method: &Method, place: usize| match method.parameters.get(place.min(method.parameters.len() - 1)) {
-                            Some(Type::Array(element)) if place + 1 >= method.parameters.len() => Some((**element).clone()),
-                            other => other.cloned(),
+                    let spread = || {
+                        let beats = |first: &Method, second: &Method| {
+                            self.more_specific(first, second, shapes, phase) && !self.more_specific(second, first, shapes, phase)
                         };
-                        (0..width).all(|place| matches!((at(method, place), at(other, place)), (Some(a), Some(b)) if self.assignable(&a, &b, true)))
+                        let mut kept: Vec<&&(&ClassInfo, &Method)> = Vec::new();
+                        for candidate in several.iter() {
+                            if kept.iter().any(|existing| beats(existing.1, candidate.1)) {
+                                continue;
+                            }
+                            kept.retain(|existing| !beats(candidate.1, existing.1));
+                            kept.push(candidate);
+                        }
+                        kept.first().copied()
                     };
                     let all_spread = phase == 2 && several.iter().all(|(_, method)| method.varargs && !method.parameters.is_empty());
                     exact
                         .or_else(|| several.iter().find(|(_, method)| several.iter().all(|(_, other)| narrower(method, other))))
-                        .or_else(|| several.iter().filter(|_| all_spread).find(|(_, method)| several.iter().all(|(_, other)| spread(method, other))))
+                        .or_else(|| if all_spread { spread() } else { None })
                         .copied()
                 }
             };

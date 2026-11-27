@@ -3,23 +3,7 @@ use super::fold::{Thrown, fold};
 use crate::java::pmd::coded::ctx::{Ctx, Hit};
 use crate::java::pmd::coded::hit;
 
-/// The value of a character literal from its image, where unicode escapes are already replaced.
-pub fn char_value(image: &str) -> Option<u32> {
-    let inner = image.strip_prefix('\'')?.strip_suffix('\'')?;
-    let Some(escape) = inner.strip_prefix('\\') else {
-        return inner.chars().next().map(|value| value as u32);
-    };
-    Some(match escape.chars().next()? {
-        'n' => 10,
-        't' => 9,
-        'r' => 13,
-        'b' => 8,
-        'f' => 12,
-        's' => 32,
-        digit if digit.is_digit(8) => u32::from_str_radix(escape, 8).ok()?,
-        other => other as u32,
-    })
-}
+pub use crate::java::types::constant::char_value;
 
 fn default_value(ctx: &Ctx, primitive: Option<&str>, value: u32) -> Result<bool, Thrown> {
     Ok(match primitive {
