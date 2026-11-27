@@ -177,8 +177,38 @@ pub struct CallFacts {
 }
 
 impl<'a, 't> Machine<'a, 't> {
+    /// The class PMD makes up for a class type it cannot resolve: the written name, without type arguments.
+    fn unresolved_class(&self, id: u32) -> Option<Type> {
+        let node = &self.tree.nodes[id as usize];
+        let written = self.resolver.file.text_of(node.source?);
+        let mut name = String::new();
+        let mut depth = 0;
+        for word in written.split_whitespace().filter(|word| !word.starts_with('@')) {
+            for character in word.chars() {
+                match character {
+                    '<' => depth += 1,
+                    '>' => depth -= 1,
+                    _ if depth == 0 => name.push(character),
+                    _ => {}
+                }
+            }
+        }
+        let plain = !name.is_empty() && name.split('.').all(|part| !part.is_empty() && part.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '$'));
+        plain.then(|| Type::class(&name))
+    }
+
+    /// A class type of a class neither the sources nor the class path hold.
+    pub fn unresolved(&self, kind: &Type) -> bool {
+        let mut kind = kind;
+        while let Type::Array(element) = kind {
+            kind = element;
+        }
+        matches!(kind, Type::Class(name, _) if !name.contains('&') && self.resolver.index.get(name).is_none())
+    }
+
     fn kind_is(&self, kind: &Type, name: &str) -> bool {
         match kind {
+            Type::Class(actual, _) if self.unresolved(kind) => actual == name,
             Type::Class(actual, given) => self.resolver.index.is_subtype_as_pmd(actual, given.is_empty(), name),
             Type::Array(element) => match name.strip_suffix("[]") {
                 Some(inner) => match element.as_ref() {
@@ -231,11 +261,16 @@ impl<'a, 't> Machine<'a, 't> {
             }
             name if TYPE_NODES.contains(&name) => {
                 let source = node.source?;
-                self.resolver.type_node(source).or_else(|| match self.resolver.receiver(source)? {
+                let found = self.resolver.type_node(source).or_else(|| match self.resolver.receiver(source)? {
                     Receiver::Static(name) => Some(Type::class(&name)),
                     Receiver::Value(_) => None,
-                })
+                });
+                found.or_else(|| (name == "ClassType").then(|| self.unresolved_class(id)).flatten())
             }
+            "ArrayAllocation" | "ConstructorCall" | "CastExpression" => self.resolver.type_of(node.source?).or_else(|| {
+                let written = child(&["ArrayType", "ClassType"]).filter(|_| child(&["AnonymousClassDeclaration"]).is_none())?;
+                self.node_type(written).filter(|kind| self.unresolved(kind))
+            }),
             "TypeExpression" | "Annotation" | "PatternExpression" => self.node_type(*node.children.first()?),
             "TypePattern" | "RecordPattern" => self.node_type(child(TYPE_NODES)?),
             "TypeParameter" => Some(child(TYPE_NODES).and_then(|bound| self.node_type(bound)).unwrap_or(Type::class("java.lang.Object"))),

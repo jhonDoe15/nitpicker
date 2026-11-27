@@ -68,7 +68,7 @@ fn candidate(ctx: &Ctx, method: u32) -> Candidate {
         .map(|list| {
             ctx.kids_named(list, "FormalParameter")
                 .filter(|formal| !receiver(ctx, *formal))
-                .map(|formal| ctx.kid(formal, "VariableId").and_then(|id| ctx.type_of(id)).map(|kind| kind.erased()))
+                .map(|formal| ctx.kid(formal, "VariableId").and_then(|id| ctx.type_of(id)).filter(|kind| !ctx.machine.unresolved(kind)).map(|kind| kind.erased()))
                 .collect()
         })
         .unwrap_or_default();
