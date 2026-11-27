@@ -2,6 +2,7 @@
 //! SpotBugs 4.9.8 reports on test code: same pattern name, line and message, read from source instead of class files.
 mod attributes;
 mod calls;
+mod catches;
 mod classes;
 mod concurrent;
 mod compare;
@@ -271,6 +272,7 @@ impl FileRule for SpotBugs {
         if context.wants(returns::PATTERNS) {
             returns::returns(&context, &self.effects);
         }
+        catches::catches(&context);
         nulls::null_dereference(&context, &declared);
         taint::injections(&context, &declared, &self.taint);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());

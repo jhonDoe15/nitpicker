@@ -284,4 +284,8 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     levels: { 2: NOTE },
     placement: 'shown',
   },
+  REC_CATCH_EXCEPTION: {
+    text: 'Exception is caught when Exception is not thrown',
+    levels: { 1: NOTE, 2: NOTE },
+  },
 };

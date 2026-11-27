@@ -15,7 +15,7 @@ use tree_sitter::Node;
 mod captures;
 mod code;
 mod constants;
-mod ends;
+pub(crate) mod ends;
 mod values;
 
 const PATTERN: &str = "NN_NAKED_NOTIFY";
