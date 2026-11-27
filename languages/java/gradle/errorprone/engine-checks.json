@@ -402,6 +402,7 @@
   "RedundantSetterCall",
   "RedundantThrows",
   "RefersToDaggerCodegen",
+  "RequiredModifiers",
   "RethrowReflectiveOperationExceptionAsLinkageError",
   "ReturnAtTheEndOfVoidFunction",
   "ReturnFromVoid",

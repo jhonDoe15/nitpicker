@@ -667,6 +667,7 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["InjectMoreThanOneScopeAnnotationOnClass"], guice::more_than_one_scope_annotation),
     (&["InjectOnMemberAndConstructor"], guice::inject_on_member_and_constructor),
     (&["IncompatibleModifiers"], guice::incompatible_modifiers),
+    (&["RequiredModifiers"], guice::required_modifiers),
     (&["JUnit4SetUpNotRun"], junit_init::set_up_not_run),
     (&["JUnit4TearDownNotRun"], junit_init::tear_down_not_run),
     (&["JUnit4ClassAnnotationNonStatic"], junit_init::class_annotation_non_static),

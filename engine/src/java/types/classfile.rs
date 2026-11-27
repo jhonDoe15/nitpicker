@@ -206,6 +206,8 @@ struct Attributes<'a> {
     held: Vec<u16>,
     /// Constant names listed by `@IncompatibleModifiers`.
     incompatible: Vec<&'a [u8]>,
+    /// Constant names listed by `@RequiredModifiers`: those of `value`, then those of `modifier`.
+    required: [Vec<&'a [u8]>; 2],
     /// Positions of the type parameters with `@ImmutableTypeParameter`.
     strict: Vec<u8>,
     annotations: Vec<&'a [u8]>,
@@ -416,6 +418,16 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                     for _ in 0..reader.u2()? {
                         reader.skip(2)?;
                         enum_names(reader, utf8, &mut found.incompatible)?;
+                    }
+                }
+                if kind == b"Lcom/google/errorprone/annotations/RequiredModifiers;" {
+                    reader.at = begin + 2;
+                    for _ in 0..reader.u2()? {
+                        match utf8(reader.u2()?) {
+                            Some(b"value") => enum_names(reader, utf8, &mut found.required[0])?,
+                            Some(b"modifier") => enum_names(reader, utf8, &mut found.required[1])?,
+                            _ => skip_element(reader)?,
+                        }
                     }
                 }
                 if annotation_name(kind).is_some_and(|name| super::guards::GUARDED_BY.contains(&name.as_str())) {
@@ -993,6 +1005,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         setter_like,
         null_nicknames,
         incompatible: found.incompatible.iter().map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
+        required: found.required.iter().flatten().map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
         class_annotations: found.annotations.iter().filter_map(|kind| annotation_name(kind)).collect(),
         outer_instance: Some(own_inner),
         hidden,

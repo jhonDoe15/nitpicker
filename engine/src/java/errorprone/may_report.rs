@@ -113,7 +113,6 @@ pub const PRECONDITIONS: &[(&str, Gate)] = &[
     ("NullableTypeParameter", ANNOTATED),
     ("NullableWildcard", ANNOTATED),
     ("NullableVoid", ANNOTATED),
-    ("RequiredModifiers", ANNOTATED),
     ("InlineMeValidator", Gate::Text(&["InlineMe"])),
     ("MissingFail", TRY),
     ("TryFailRefactoring", TRY),
