@@ -1,0 +1,1 @@
+async function any() { return (await s3.listObjectsV2({ Bucket }).promise()).KeyCount > 0; }

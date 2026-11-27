@@ -367,5 +367,68 @@
   "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.",
   2,
   102
+ ],
+ [
+  "no-unpaged-listing/13.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  50,
+  "An object-store listing returns one page (1000 keys) and the rest is ignored. Use the paginator (`paginateListObjectsV2`), or loop on `NextContinuationToken` and `IsTruncated`. An existence check passes `MaxKeys: 1`.",
+  1,
+  94
+ ],
+ [
+  "no-unpaged-listing/14.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  41,
+  "An object-store listing returns one page (1000 keys) and the rest is ignored. Use the paginator (`paginateListObjectsV2`), or loop on `NextContinuationToken` and `IsTruncated`. An existence check passes `MaxKeys: 1`.",
+  1,
+  75
+ ],
+ [
+  "no-unpaged-listing/15.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  17,
+  "An object-store listing returns one page (1000 keys) and the rest is ignored. Use the paginator (`paginateListObjectsV2`), or loop on `NextContinuationToken` and `IsTruncated`. An existence check passes `MaxKeys: 1`.",
+  1,
+  45
+ ],
+ [
+  "no-unpaged-listing/16.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  38,
+  "An object-store listing returns one page (1000 keys) and the rest is ignored. Use the paginator (`paginateListObjectsV2`), or loop on `NextContinuationToken` and `IsTruncated`. An existence check passes `MaxKeys: 1`.",
+  1,
+  66
+ ],
+ [
+  "no-unpaged-listing/17.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  67,
+  "An object-store listing returns one page (1000 keys) and the rest is ignored. Use the paginator (`paginateListObjectsV2`), or loop on `NextContinuationToken` and `IsTruncated`. An existence check passes `MaxKeys: 1`.",
+  1,
+  98
+ ],
+ [
+  "no-unpaged-listing/18.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  7,
+  "RediSearch `FT.SEARCH` returns 10 documents by default, so the rest is ignored. Pass `LIMIT: { from: 0, size: n }` and loop on the offset until a page comes back short.",
+  1,
+  35
+ ],
+ [
+  "no-unpaged-listing/19.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  7,
+  "RediSearch `FT.SEARCH` returns 10 documents by default, so the rest is ignored. Pass `LIMIT: { from: 0, size: n }` and loop on the offset until a page comes back short.",
+  1,
+  57
  ]
 ]

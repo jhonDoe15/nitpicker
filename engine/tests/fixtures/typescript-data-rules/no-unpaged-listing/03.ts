@@ -1,0 +1,1 @@
+async function any() { const r = await client.send(new ListObjectsV2Command({ Bucket, Prefix, MaxKeys: 1 })); return r.KeyCount > 0; }

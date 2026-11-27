@@ -1,0 +1,1 @@
+async function none() { const r = await s3.listObjectsV2({ Bucket }).promise(); return r.Contents?.length === 0; }

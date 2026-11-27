@@ -1,0 +1,1 @@
+async function f() { return client.send(new ListObjectsCommand({ Bucket })); }

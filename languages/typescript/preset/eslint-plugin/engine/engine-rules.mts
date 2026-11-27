@@ -141,6 +141,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
       }),
     },
   ],
+  ['no-unpaged-listing', {}],
   ['no-unversioned-orm-entity', TYPED],
   ['no-wait-for-with-fake-timers', {}],
   [

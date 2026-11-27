@@ -1,11 +1,11 @@
-//! The ORM and query rules on the engine against what their ESLint-plugin rules report for the same
+//! The ORM, query and listing rules on the engine against what their ESLint-plugin rules report for the same
 //! files. The expected rows come from `parity/typescript-lint-expected.mts <list> <out> <rules>`.
 use std::path::Path;
 use std::process::Command;
 
 type Row = Vec<serde_json::Value>;
 
-const RULES: [&str; 2] = ["no-eager-relation", "no-many-to-many-cascade-remove"];
+const RULES: [&str; 3] = ["no-eager-relation", "no-many-to-many-cascade-remove", "no-unpaged-listing"];
 
 fn sorted(mut rows: Vec<Row>) -> Vec<Row> {
     rows.sort_by_key(|row| serde_json::to_string(row).expect("text"));
