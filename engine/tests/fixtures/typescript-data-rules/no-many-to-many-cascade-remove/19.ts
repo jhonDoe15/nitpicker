@@ -1,0 +1,2 @@
+import { Entity, EntitySchema, ManyToMany, ManyToOne, OneToMany, OneToOne } from 'typeorm';
+new EntitySchema({ name: 'post', relations: { tags: { type: 'many-to-many', target: 'tag', cascade: true } } });

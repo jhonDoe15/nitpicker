@@ -1,0 +1,2 @@
+import { Cascade, Entity, EntitySchema, ManyToMany, ManyToOne, defineEntity } from '@mikro-orm/core';
+class Order { @OneToMany({ entity: () => Line, mappedBy: 'order', cascade: [Cascade.ALL] }) lines = new Collection<Line>(this); }

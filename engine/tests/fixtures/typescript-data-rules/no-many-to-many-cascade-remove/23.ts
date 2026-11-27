@@ -1,0 +1,2 @@
+import { Cascade, Entity, EntitySchema, ManyToMany, ManyToOne, defineEntity } from '@mikro-orm/core';
+new EntitySchema({ name: 'Post', properties: { tags: { kind: 'm:n', entity: () => Tag, cascade: [Cascade.ALL] } } });

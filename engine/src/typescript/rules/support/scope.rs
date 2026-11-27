@@ -52,6 +52,9 @@ pub struct Scopes<'a, 's> {
     blocks: HashMap<(u32, u32), u32>,
     uses: HashMap<u32, Use>,
     spans: Vec<(u32, u32, ScopeId)>,
+    /// For each of `spans`, the closest span that holds it: scopes nested as the text nests them, which is how
+    /// ESLint scopes a function written inside a parameter decorator.
+    holders: Vec<usize>,
 }
 
 const FUNCTIONS: [&str; 5] = ["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression", "TSDeclareFunction", "TSEmptyBodyFunctionExpression"];
@@ -91,19 +94,34 @@ impl<'a, 's> Scopes<'a, 's> {
                 (span.start, span.end, scope)
             })
             .collect();
-        spans.sort_by_key(|(start, end, _)| (*start, std::cmp::Reverse(*end)));
-        Scopes { semantic, view, identifiers, blocks, uses, spans }
+        spans.sort_by_key(|(start, end, scope)| (*start, std::cmp::Reverse(*end), scoping.scope_ancestors(*scope).count()));
+        let holders = Self::holders(&spans);
+        Scopes { semantic, view, identifiers, blocks, uses, spans, holders }
+    }
+
+    fn holders(spans: &[(u32, u32, ScopeId)]) -> Vec<usize> {
+        let mut holders = Vec::with_capacity(spans.len());
+        let mut open: Vec<usize> = Vec::new();
+        for (index, (start, end, _)) in spans.iter().enumerate() {
+            while open.last().is_some_and(|last| !(spans[*last].0 <= *start && *end <= spans[*last].1)) {
+                open.pop();
+            }
+            holders.push(open.last().copied().unwrap_or(usize::MAX));
+            open.push(index);
+        }
+        holders
     }
 
     fn scope_at(&self, offset: u32) -> ScopeId {
         let scoping = self.semantic.scoping();
-        let index = self.spans.partition_point(|(start, _, _)| *start <= offset);
-        let Some(&(_, _, last)) = index.checked_sub(1).and_then(|at| self.spans.get(at)) else { return scoping.root_scope_id() };
-        let contains = |scope: ScopeId| {
-            let span = self.semantic.nodes().kind(scoping.get_node_id(scope)).span();
-            span.start <= offset && offset < span.end
-        };
-        scoping.scope_ancestors(last).find(|scope| contains(*scope)).unwrap_or_else(|| scoping.root_scope_id())
+        let mut at = self.spans.partition_point(|(start, _, _)| *start <= offset).wrapping_sub(1);
+        while let Some(&(start, end, scope)) = self.spans.get(at) {
+            if start <= offset && offset < end {
+                return scope;
+            }
+            at = self.holders[at];
+        }
+        scoping.root_scope_id()
     }
 
     pub fn variable_named(&self, identifier: Node) -> Option<SymbolId> {
