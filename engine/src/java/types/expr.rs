@@ -2153,6 +2153,11 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    /// The type javac infers for a lambda parameter written without one.
+    pub fn inferred_parameter(&self, lambda: Node, position: usize) -> Option<Type> {
+        self.lambda_parameter(lambda, position)
+    }
+
     fn lambda_parameter(&self, lambda: Node, position: usize) -> Option<Type> {
         if lambda.kind() != "lambda_expression" || self.depth.get() > 40 {
             return None;

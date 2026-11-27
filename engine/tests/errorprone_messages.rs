@@ -72,3 +72,43 @@ fn error_prone_messages_and_suggestions_match_error_prone() {
     let extra: Vec<&Row> = found.iter().filter(|(row, count)| expected.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:#?}, extra {extra:#?}");
 }
+
+/// At a small `MaxDepth` most fixtures nest deep enough: the engine reports where Error Prone does, outside the files
+/// it hands back, whose list is fixed too.
+#[test]
+fn deeply_nested_at_small_depths_reports_where_error_prone_does() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
+    let source = root.join("fixtures").join("errorprone");
+    let listed = std::fs::read_to_string(root.join("expected").join("errorprone-deeply-nested.json")).expect("expected");
+    let cases: BTreeMap<String, serde_json::Value> = serde_json::from_str(&listed).expect("cases");
+    for (depth, case) in cases {
+        let out = std::env::temp_dir().join(format!("nitpicker-engine-deeply-nested-{depth}-{}.json", std::process::id()));
+        let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
+            .arg(&source)
+            .args(["--rules", "_ErrorProne", "--out"])
+            .arg(&out)
+            .env("NP_EP_ONLY", "DeeplyNested")
+            .env("NP_DEEPLY_NESTED_MAX_DEPTH", &depth)
+            .status()
+            .expect("engine runs");
+        assert!(status.success());
+        let report: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&out).expect("report")).expect("json");
+        let _ = std::fs::remove_file(&out);
+        let prefix = format!("{}/", source.display());
+        let findings = report["findings"].as_array().expect("findings");
+        let handed: BTreeSet<String> = handed::handed_back(findings, &prefix).into_iter().map(|(file, _)| file).collect();
+        let wanted: BTreeSet<String> = serde_json::from_value(case["handed"].clone()).expect("handed");
+        assert_eq!(handed, wanted, "files handed back at depth {depth}");
+        let found: BTreeSet<(String, i64, i64)> = findings
+            .iter()
+            .filter(|finding| finding["rule"] == "DeeplyNested")
+            .map(|finding| {
+                let file = finding["file"].as_str().expect("file");
+                (file.strip_prefix(&prefix).unwrap_or(file).to_string(), finding["line"].as_i64().expect("line"), finding["column"].as_i64().expect("column"))
+            })
+            .collect();
+        let rows: BTreeSet<(String, i64, i64)> = serde_json::from_value(case["rows"].clone()).expect("rows");
+        let expected: BTreeSet<(String, i64, i64)> = rows.into_iter().filter(|(file, ..)| !handed.contains(file)).collect();
+        assert_eq!(found, expected, "rows at depth {depth}");
+    }
+}

@@ -324,6 +324,7 @@ mod truth_checks;
 mod three_letter_zones;
 mod wakelock;
 mod may_report;
+mod deep;
 mod restricted;
 mod reach;
 mod reach_checks;
@@ -1036,6 +1037,7 @@ const CHECKS: &[(&[&str], Check)] = &[
 /// leave the resolver with answers found in a different order.
 const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["FloggerRequiredModifiers"], flogger_modifiers::flogger_required_modifiers),
+    (&["DeeplyNested"], deep::deeply_nested),
     (&["StronglyTypeByteString"], strong_byte_string::strongly_type_byte_string),
     (&["UnnecessaryBoxedVariable"], boxed::unnecessary_boxed_variable),
     (&["UnusedMethod"], unused_methods::unused_method),
@@ -1198,7 +1200,7 @@ impl FileRule for ErrorProne {
         }
         if let Ok(asked) = std::env::var("NP_EP_MAY_REPORT") {
             let asked: Vec<&str> = asked.split(',').filter(|name| !name.is_empty()).collect();
-            let found = may_report::may_report(&asked, &file.text, file.tree.root_node(), &project.index);
+            let found = may_report::may_report(&asked, &file.text, &project.index);
             out.push(Finding {
                 file: file.path.clone(),
                 line: 1,
