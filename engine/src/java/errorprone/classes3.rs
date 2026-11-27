@@ -87,7 +87,7 @@ pub fn try_with_resources_variable(context: &Context, node: Node) {
     let resources = node.child_by_field_name("resources").map(named_children).unwrap_or_default();
     for resource in resources {
         let (Some(name), Some(value)) = (resource.child_by_field_name("name"), resource.child_by_field_name("value")) else { continue };
-        if resource.child_by_field_name("type").is_none() || value.kind() != "identifier" || !considered_final(context, value) {
+        if resource.child_by_field_name("type").is_none() || !(value.kind() == "this" || (value.kind() == "identifier" && considered_final(context, value))) {
             continue;
         }
         let used = context.text(value);
