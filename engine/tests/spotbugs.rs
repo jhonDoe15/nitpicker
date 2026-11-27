@@ -42,7 +42,8 @@ fn found_findings(case: &Path, name: &str, key: &str) -> Vec<(Row, Vec<String>)>
             let file = text(finding, "file");
             let file = format!("{name}/{}", file.strip_prefix(&prefix).unwrap_or(&file));
             let listed = finding["arguments"].as_array().map(|listed| listed.iter().filter_map(|argument| argument.as_str().map(String::from)).collect());
-            ((file, text(finding, "rule"), finding["line"].as_u64().expect("line"), finding[key].as_str().unwrap_or_default().to_string()), listed.unwrap_or_default())
+            let shown = finding[key].as_str().map(String::from).or_else(|| finding[key].as_u64().map(|number| number.to_string()));
+            ((file, text(finding, "rule"), finding["line"].as_u64().expect("line"), shown.unwrap_or_default()), listed.unwrap_or_default())
         })
         .collect()
 }
@@ -61,7 +62,7 @@ fn patterns_report_what_spotbugs_reports() {
     let missed: Vec<&Row> = expected.difference(&found).collect();
     let extra: Vec<&Row> = found.difference(&expected).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(expected.iter().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 54);
+    assert_eq!(expected.iter().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 55);
 }
 
 /// SpotBugs names the variable a stored value came from; `tests/expected/spotbugs-variables.json` holds the names
@@ -131,6 +132,28 @@ fn locks_list_the_arguments_spotbugs_sarif_lists() {
         let case = root.join("fixtures").join("spotbugs").join(name);
         let listed = found_findings(&case, name, "symbol").into_iter().filter(|(row, _)| row.1.starts_with("JLM_JSR166_"));
         found.extend(listed.map(|((file, rule, line, _), listed)| (file, rule, line, listed)));
+    }
+    found.sort();
+    assert_eq!(found, expected);
+}
+
+/// FindSecBugs reports a sink at priority 1 for a tainted value and 2 for an unknown one:
+/// `tests/expected/spotbugs-taint.json` holds file, line and priority of each PATH_TRAVERSAL_IN finding it made on
+/// the compiled `taint_*` fixtures.
+#[test]
+fn taint_sinks_have_the_priority_findsecbugs_gives() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
+    let mut expected: Vec<(String, u64, u64)> = serde_json::from_str(&std::fs::read_to_string(root.join("expected").join("spotbugs-taint.json")).expect("expected")).expect("rows");
+    expected.sort();
+    let mut found = Vec::new();
+    for case in std::fs::read_dir(root.join("fixtures").join("spotbugs")).expect("fixtures") {
+        let case = case.expect("entry").path();
+        let name = case.file_name().and_then(|name| name.to_str()).expect("name").to_string();
+        if !name.starts_with("taint_") {
+            continue;
+        }
+        let listed = found_listed(&case, &name, "priority").into_iter().filter(|row| row.1 == "PATH_TRAVERSAL_IN");
+        found.extend(listed.map(|(file, _, line, priority)| (file, line, priority.parse().expect("priority"))));
     }
     found.sort();
     assert_eq!(found, expected);
