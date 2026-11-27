@@ -1,0 +1,1 @@
+export const find = (table) => pool.query(`SELECT * FROM ${table} WHERE active = 1`);

@@ -1,0 +1,1 @@
+export const get = (url, init) => fetch(url, { ...init, method: "GET" });

@@ -1,0 +1,1 @@
+import { Pool, Client } from "pg"; export const pool = new Pool({ max: 10 }); pool.on("connect", (client) => client.query("SET statement_timeout = 30000"));

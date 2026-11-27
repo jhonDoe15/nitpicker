@@ -1,0 +1,10 @@
+declare const id: string;
+const a = "WHERE " + 1e21 + " = " + id;
+const b = "WHERE " + 1e-7 + " = " + id;
+const c = "WHERE " + 123456789012345678901 + " = " + id;
+const d = "WHERE " + 0.000001 + " = " + id;
+const e = "WHERE " + 1.5e300 + " = " + id;
+const f = "WHERE " + 2e20 + " = " + id;
+const g = `SELECT * FROM t WHERE x = ${0.1+0.2}${id}`;
+const h = "WHERE " + 5e-324 + " = " + id;
+const i = "WHERE " + -0 + " = " + id;

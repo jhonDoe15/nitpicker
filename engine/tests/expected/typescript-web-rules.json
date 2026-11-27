@@ -108,6 +108,105 @@
   84
  ],
  [
+  "no-case-mixed-header-merge/01.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  64
+ ],
+ [
+  "no-case-mixed-header-merge/02.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  58
+ ],
+ [
+  "no-case-mixed-header-merge/03.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  82
+ ],
+ [
+  "no-case-mixed-header-merge/04.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  73
+ ],
+ [
+  "no-case-mixed-header-merge/05.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  105
+ ],
+ [
+  "no-case-mixed-header-merge/06.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  127
+ ],
+ [
+  "no-case-mixed-header-merge/07.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  118,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  193
+ ],
+ [
+  "no-case-mixed-header-merge/08.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  42,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  114
+ ],
+ [
+  "no-case-mixed-header-merge/09.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  91
+ ],
+ [
+  "no-case-mixed-header-merge/10.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  74
+ ],
+ [
+  "no-case-mixed-header-merge/12.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  90
+ ],
+ [
   "no-case-mixed-header-merge/16.ts",
   "nitpicker/no-case-mixed-header-merge",
   1,
@@ -115,6 +214,15 @@
   "Object keys are case-sensitive but header names are not: a caller header spread next to a literal header name in another case is sent twice and the override does not happen. Merge with `new Headers(headers)` and `merged.set(name, value)`, or lowercase every key first.",
   1,
   77
+ ],
+ [
+  "no-case-mixed-header-merge/16.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  94
  ],
  [
   "no-case-mixed-header-merge/17.ts",
@@ -126,6 +234,15 @@
   89
  ],
  [
+  "no-case-mixed-header-merge/17.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  94
+ ],
+ [
   "no-case-mixed-header-merge/18.ts",
   "nitpicker/no-case-mixed-header-merge",
   1,
@@ -135,6 +252,15 @@
   77
  ],
  [
+  "no-case-mixed-header-merge/18.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  102
+ ],
+ [
   "no-case-mixed-header-merge/19.ts",
   "nitpicker/no-case-mixed-header-merge",
   1,
@@ -142,6 +268,15 @@
   "Object keys are case-sensitive but header names are not: a caller header spread next to a literal header name in another case is sent twice and the override does not happen. Merge with `new Headers(headers)` and `merged.set(name, value)`, or lowercase every key first.",
   1,
   75
+ ],
+ [
+  "no-case-mixed-header-merge/19.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  97
  ],
  [
   "no-case-mixed-header-merge/20.ts",
@@ -324,6 +459,141 @@
   38
  ],
  [
+  "no-directory-passing-existence-check/19.ts",
+  "nitpicker/no-directory-passing-existence-check",
+  2,
+  65,
+  "An existence check is true for a directory, so this read throws EISDIR when a folder has the expected name. Check `statSync(path, { throwIfNoEntry: false })?.isFile()` instead, or read inside a `try` that handles `ENOENT` and `EISDIR`.",
+  2,
+  98
+ ],
+ [
+  "no-directory-passing-existence-check/20.ts",
+  "nitpicker/no-directory-passing-existence-check",
+  2,
+  52,
+  "An existence check is true for a directory, so this read throws EISDIR when a folder has the expected name. Check `statSync(path, { throwIfNoEntry: false })?.isFile()` instead, or read inside a `try` that handles `ENOENT` and `EISDIR`.",
+  2,
+  95
+ ],
+ [
+  "no-directory-passing-existence-check/21.ts",
+  "nitpicker/no-directory-passing-existence-check",
+  2,
+  48,
+  "An existence check is true for a directory, so this read throws EISDIR when a folder has the expected name. Check `statSync(path, { throwIfNoEntry: false })?.isFile()` instead, or read inside a `try` that handles `ENOENT` and `EISDIR`.",
+  2,
+  87
+ ],
+ [
+  "no-directory-passing-existence-check/22.ts",
+  "nitpicker/no-directory-passing-existence-check",
+  2,
+  45,
+  "An existence check is true for a directory, so this read throws EISDIR when a folder has the expected name. Check `statSync(path, { throwIfNoEntry: false })?.isFile()` instead, or read inside a `try` that handles `ENOENT` and `EISDIR`.",
+  2,
+  83
+ ],
+ [
+  "no-directory-passing-existence-check/23.ts",
+  "nitpicker/no-directory-passing-existence-check",
+  2,
+  42,
+  "An existence check is true for a directory, so this read throws EISDIR when a folder has the expected name. Check `statSync(path, { throwIfNoEntry: false })?.isFile()` instead, or read inside a `try` that handles `ENOENT` and `EISDIR`.",
+  2,
+  76
+ ],
+ [
+  "no-directory-passing-existence-check/24.ts",
+  "nitpicker/no-directory-passing-existence-check",
+  2,
+  74,
+  "An existence check is true for a directory, so this read throws EISDIR when a folder has the expected name. Check `statSync(path, { throwIfNoEntry: false })?.isFile()` instead, or read inside a `try` that handles `ENOENT` and `EISDIR`.",
+  2,
+  111
+ ],
+ [
+  "no-directory-passing-existence-check/25.ts",
+  "nitpicker/no-directory-passing-existence-check",
+  2,
+  79,
+  "An existence check is true for a directory, so this read throws EISDIR when a folder has the expected name. Check `statSync(path, { throwIfNoEntry: false })?.isFile()` instead, or read inside a `try` that handles `ENOENT` and `EISDIR`.",
+  2,
+  105
+ ],
+ [
+  "no-directory-passing-existence-check/26.ts",
+  "nitpicker/no-directory-passing-existence-check",
+  2,
+  65,
+  "An existence check is true for a directory, so this read throws EISDIR when a folder has the expected name. Check `statSync(path, { throwIfNoEntry: false })?.isFile()` instead, or read inside a `try` that handles `ENOENT` and `EISDIR`.",
+  2,
+  86
+ ],
+ [
+  "no-directory-passing-existence-check/27.ts",
+  "nitpicker/no-directory-passing-existence-check",
+  2,
+  59,
+  "An existence check is true for a directory, so this read throws EISDIR when a folder has the expected name. Check `statSync(path, { throwIfNoEntry: false })?.isFile()` instead, or read inside a `try` that handles `ENOENT` and `EISDIR`.",
+  2,
+  80
+ ],
+ [
+  "no-directory-passing-existence-check/28.ts",
+  "nitpicker/no-directory-passing-existence-check",
+  2,
+  65,
+  "An existence check is true for a directory, so this read throws EISDIR when a folder has the expected name. Check `statSync(path, { throwIfNoEntry: false })?.isFile()` instead, or read inside a `try` that handles `ENOENT` and `EISDIR`.",
+  2,
+  103
+ ],
+ [
+  "no-directory-passing-existence-check/29.ts",
+  "nitpicker/no-directory-passing-existence-check",
+  2,
+  67,
+  "An existence check is true for a directory, so this read throws EISDIR when a folder has the expected name. Check `statSync(path, { throwIfNoEntry: false })?.isFile()` instead, or read inside a `try` that handles `ENOENT` and `EISDIR`.",
+  2,
+  93
+ ],
+ [
+  "no-directory-passing-existence-check/30.ts",
+  "nitpicker/no-directory-passing-existence-check",
+  2,
+  40,
+  "An existence check is true for a directory, so this read throws EISDIR when a folder has the expected name. Check `statSync(path, { throwIfNoEntry: false })?.isFile()` instead, or read inside a `try` that handles `ENOENT` and `EISDIR`.",
+  2,
+  77
+ ],
+ [
+  "no-directory-passing-existence-check/31.ts",
+  "nitpicker/no-directory-passing-existence-check",
+  2,
+  64,
+  "An existence check is true for a directory, so this read throws EISDIR when a folder has the expected name. Check `statSync(path, { throwIfNoEntry: false })?.isFile()` instead, or read inside a `try` that handles `ENOENT` and `EISDIR`.",
+  2,
+  90
+ ],
+ [
+  "no-directory-passing-existence-check/32.ts",
+  "nitpicker/no-directory-passing-existence-check",
+  2,
+  51,
+  "An existence check is true for a directory, so this read throws EISDIR when a folder has the expected name. Check `statSync(path, { throwIfNoEntry: false })?.isFile()` instead, or read inside a `try` that handles `ENOENT` and `EISDIR`.",
+  2,
+  74
+ ],
+ [
+  "no-disabled-tls-verification/04.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  48,
+  "pg Pool has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  99
+ ],
+ [
   "no-disabled-tls-verification/28.ts",
   "nitpicker/no-disabled-tls-verification",
   63,
@@ -358,6 +628,15 @@
   "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
   1,
   109
+ ],
+ [
+  "no-disabled-tls-verification/31.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  48,
+  "pg Pool has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  114
  ],
  [
   "no-disabled-tls-verification/32.ts",
@@ -520,6 +799,15 @@
   "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
   1,
   93
+ ],
+ [
+  "no-disabled-tls-verification/49.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  50,
+  "got() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  98
  ],
  [
   "no-disabled-tls-verification/50.ts",
@@ -1042,6 +1330,15 @@
   "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
   2,
   48
+ ],
+ [
+  "no-error-response-without-status/38.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  43,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  53
  ],
  [
   "no-error-response-without-status/44.ts",
@@ -1645,6 +1942,159 @@
   "`new TextDecoder()` without `fatal: true` replaces invalid UTF-8 with U+FFFD, so this text is parsed, compared or written from corrupted data with no error. Use `new TextDecoder('utf-8', { fatal: true })`.",
   2,
   55
+ ],
+ [
+  "no-non-latin1-header-value/06.ts",
+  "nitpicker/no-btoa-on-runtime-text",
+  1,
+  25,
+  "`btoa` throws for any character above U+00FF, so a name, password or JSON with an accented letter, emoji or CJK text fails. Encode to UTF-8 bytes first: `Buffer.from(text, \"utf8\").toString(\"base64\")` or `new TextEncoder().encode(text)` with a bytes-to-base64 step.",
+  1,
+  35
+ ],
+ [
+  "no-non-latin1-header-value/07.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  1,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  80
+ ],
+ [
+  "no-non-latin1-header-value/08.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  1,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  82
+ ],
+ [
+  "no-non-latin1-header-value/15.ts",
+  "nitpicker/no-non-latin1-header-value",
+  1,
+  131,
+  "Header values throw for a character above U+00FF, so a file path, route, user name or JSON with non-English text fails. Encode the value (`encodeURIComponent`, `encodeURI` or base64) and decode it on the other side.",
+  1,
+  135
+ ],
+ [
+  "no-non-latin1-header-value/16.ts",
+  "nitpicker/no-non-latin1-header-value",
+  1,
+  30,
+  "Header values throw for a character above U+00FF, so a file path, route, user name or JSON with non-English text fails. Encode the value (`encodeURIComponent`, `encodeURI` or base64) and decode it on the other side.",
+  1,
+  43
+ ],
+ [
+  "no-non-latin1-header-value/17.ts",
+  "nitpicker/no-non-latin1-header-value",
+  1,
+  30,
+  "Header values throw for a character above U+00FF, so a file path, route, user name or JSON with non-English text fails. Encode the value (`encodeURIComponent`, `encodeURI` or base64) and decode it on the other side.",
+  1,
+  54
+ ],
+ [
+  "no-non-latin1-header-value/18.ts",
+  "nitpicker/no-non-latin1-header-value",
+  1,
+  57,
+  "Header values throw for a character above U+00FF, so a file path, route, user name or JSON with non-English text fails. Encode the value (`encodeURIComponent`, `encodeURI` or base64) and decode it on the other side.",
+  1,
+  77
+ ],
+ [
+  "no-non-latin1-header-value/18.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  1,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  82
+ ],
+ [
+  "no-non-latin1-header-value/19.ts",
+  "nitpicker/no-non-latin1-header-value",
+  1,
+  51,
+  "Header values throw for a character above U+00FF, so a file path, route, user name or JSON with non-English text fails. Encode the value (`encodeURIComponent`, `encodeURI` or base64) and decode it on the other side.",
+  1,
+  68
+ ],
+ [
+  "no-non-latin1-header-value/20.ts",
+  "nitpicker/no-non-latin1-header-value",
+  1,
+  23,
+  "Header values throw for a character above U+00FF, so a file path, route, user name or JSON with non-English text fails. Encode the value (`encodeURIComponent`, `encodeURI` or base64) and decode it on the other side.",
+  1,
+  46
+ ],
+ [
+  "no-non-latin1-header-value/21.ts",
+  "nitpicker/no-non-latin1-header-value",
+  1,
+  28,
+  "Header values throw for a character above U+00FF, so a file path, route, user name or JSON with non-English text fails. Encode the value (`encodeURIComponent`, `encodeURI` or base64) and decode it on the other side.",
+  1,
+  37
+ ],
+ [
+  "no-non-latin1-header-value/22.ts",
+  "nitpicker/no-non-latin1-header-value",
+  1,
+  24,
+  "Header values throw for a character above U+00FF, so a file path, route, user name or JSON with non-English text fails. Encode the value (`encodeURIComponent`, `encodeURI` or base64) and decode it on the other side.",
+  1,
+  38
+ ],
+ [
+  "no-non-latin1-header-value/23.ts",
+  "nitpicker/no-non-latin1-header-value",
+  1,
+  32,
+  "Header values throw for a character above U+00FF, so a file path, route, user name or JSON with non-English text fails. Encode the value (`encodeURIComponent`, `encodeURI` or base64) and decode it on the other side.",
+  1,
+  40
+ ],
+ [
+  "no-non-latin1-header-value/23.ts",
+  "nitpicker/no-non-latin1-header-value",
+  1,
+  52,
+  "Header values throw for a character above U+00FF, so a file path, route, user name or JSON with non-English text fails. Encode the value (`encodeURIComponent`, `encodeURI` or base64) and decode it on the other side.",
+  1,
+  73
+ ],
+ [
+  "no-non-latin1-header-value/24.ts",
+  "nitpicker/no-non-latin1-header-value",
+  1,
+  35,
+  "Header values throw for a character above U+00FF, so a file path, route, user name or JSON with non-English text fails. Encode the value (`encodeURIComponent`, `encodeURI` or base64) and decode it on the other side.",
+  1,
+  43
+ ],
+ [
+  "no-non-latin1-header-value/25.ts",
+  "nitpicker/no-non-latin1-header-value",
+  1,
+  24,
+  "Header values throw for a character above U+00FF, so a file path, route, user name or JSON with non-English text fails. Encode the value (`encodeURIComponent`, `encodeURI` or base64) and decode it on the other side.",
+  1,
+  49
+ ],
+ [
+  "no-non-latin1-header-value/26.ts",
+  "nitpicker/no-non-latin1-header-value",
+  1,
+  39,
+  "Header values throw for a character above U+00FF, so a file path, route, user name or JSON with non-English text fails. Encode the value (`encodeURIComponent`, `encodeURI` or base64) and decode it on the other side.",
+  1,
+  53
  ],
  [
   "no-raw-http-value/34.ts",
@@ -2394,6 +2844,330 @@
   156
  ],
  [
+  "no-sql-string-building/27.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  40,
+  "SQL text built by concatenation lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  78
+ ],
+ [
+  "no-sql-string-building/28.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  40,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  78
+ ],
+ [
+  "no-sql-string-building/29.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  42,
+  "SQL text built by concatenation lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  91
+ ],
+ [
+  "no-sql-string-building/30.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  43,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  81
+ ],
+ [
+  "no-sql-string-building/31.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  41,
+  "SQL text built by concatenation lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  79
+ ],
+ [
+  "no-sql-string-building/32.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  48,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  86
+ ],
+ [
+  "no-sql-string-building/33.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  38,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  76
+ ],
+ [
+  "no-sql-string-building/34.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  52,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  90
+ ],
+ [
+  "no-sql-string-building/35.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  45,
+  "SQL text built by concatenation lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  83
+ ],
+ [
+  "no-sql-string-building/36.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  48,
+  "SQL text built by concatenation lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  84
+ ],
+ [
+  "no-sql-string-building/37.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  37,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  82
+ ],
+ [
+  "no-sql-string-building/38.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  45,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  97
+ ],
+ [
+  "no-sql-string-building/39.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  59,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  97
+ ],
+ [
+  "no-sql-string-building/40.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  68,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  106
+ ],
+ [
+  "no-sql-string-building/41.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  57,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  95
+ ],
+ [
+  "no-sql-string-building/42.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  38,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  76
+ ],
+ [
+  "no-sql-string-building/43.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  29,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  67
+ ],
+ [
+  "no-sql-string-building/44.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  29,
+  "SQL text built by concatenation lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  67
+ ],
+ [
+  "no-sql-string-building/45.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  32,
+  "SQL text built by concatenation lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  61
+ ],
+ [
+  "no-sql-string-building/46.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  34,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  74
+ ],
+ [
+  "no-sql-string-building/47.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  43,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  84
+ ],
+ [
+  "no-sql-string-building/48.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  40,
+  "SQL text built by a string method lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  84
+ ],
+ [
+  "no-sql-string-building/49.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  40,
+  "SQL text built by a string method lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  88
+ ],
+ [
+  "no-sql-string-building/50.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  76,
+  "SQL text built by a string method lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  123
+ ],
+ [
+  "no-sql-string-building/51.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  40,
+  "SQL text built by a string method lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  93
+ ],
+ [
+  "no-sql-string-building/52.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  83,
+  "SQL text built by concatenation lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  118
+ ],
+ [
+  "no-sql-string-building/53.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  90,
+  "SQL text built by concatenation lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  120
+ ],
+ [
+  "no-sql-string-building/54.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  101,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  149
+ ],
+ [
+  "no-sql-string-building/54.ts",
+  "nitpicker/no-sql-string-building",
+  1,
+  51,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  1,
+  81
+ ],
+ [
+  "no-sql-string-building/55.ts",
+  "nitpicker/no-sql-string-building",
+  4,
+  11,
+  "SQL text built by concatenation lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  4,
+  56
+ ],
+ [
+  "no-sql-string-building/55.ts",
+  "nitpicker/no-sql-string-building",
+  5,
+  11,
+  "SQL text built by concatenation lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  5,
+  43
+ ],
+ [
+  "no-sql-string-building/55.ts",
+  "nitpicker/no-sql-string-building",
+  7,
+  11,
+  "SQL text built by concatenation lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  7,
+  39
+ ],
+ [
+  "no-sql-string-building/55.ts",
+  "nitpicker/no-sql-string-building",
+  8,
+  11,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  8,
+  54
+ ],
+ [
+  "no-sql-string-building/57.ts",
+  "nitpicker/no-sql-string-building",
+  2,
+  4510,
+  "SQL text built by a template literal lets a runtime value change the statement (SQL injection). Use a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way.",
+  2,
+  4521
+ ],
+ [
+  "no-unchecked-response-json/01.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  43,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  53
+ ],
+ [
+  "no-unchecked-response-json/02.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  43,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  53
+ ],
+ [
   "no-unchecked-response-json/03.ts",
   "nitpicker/no-raw-http-value",
   1,
@@ -2401,6 +3175,87 @@
   "The `content-type` header value is compared as exact text, but media types, charsets, encodings and schemes are case-insensitive, so `Application/JSON` or `HTTPS` is missed. Lowercase it first (`value.toLowerCase()`), or use a parser: the `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework helper (`req.accepts`, `req.is`, `c.req.parseBody`).",
   1,
   109
+ ],
+ [
+  "no-unchecked-response-json/03.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  43,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  53
+ ],
+ [
+  "no-unchecked-response-json/04.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  43,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  53
+ ],
+ [
+  "no-unchecked-response-json/05.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  43,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  53
+ ],
+ [
+  "no-unchecked-response-json/06.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  43,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  53
+ ],
+ [
+  "no-unchecked-response-json/07.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  43,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  53
+ ],
+ [
+  "no-unchecked-response-json/08.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  43,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  53
+ ],
+ [
+  "no-unchecked-response-json/09.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  26,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  36
+ ],
+ [
+  "no-unchecked-response-json/15.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  43,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  53
+ ],
+ [
+  "no-unchecked-response-json/16.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  43,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  53
  ],
  [
   "no-unchecked-response-json/17.ts",
@@ -2412,6 +3267,15 @@
   60
  ],
  [
+  "no-unchecked-response-json/17.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  29
+ ],
+ [
   "no-unchecked-response-json/18.ts",
   "nitpicker/no-unchecked-response-json",
   1,
@@ -2419,6 +3283,15 @@
   "`res.json()` runs before `res.ok` or the status is checked, so an HTML error page from a proxy fails as an opaque `SyntaxError` and the status is lost; check `res.ok` first, or read `res.text()` and parse it inside `try`.",
   1,
   78
+ ],
+ [
+  "no-unchecked-response-json/18.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  43,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  53
  ],
  [
   "no-unchecked-response-json/19.ts",
@@ -2430,6 +3303,15 @@
   85
  ],
  [
+  "no-unchecked-response-json/19.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  43,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  53
+ ],
+ [
   "no-unchecked-response-json/20.ts",
   "nitpicker/no-unchecked-response-json",
   1,
@@ -2437,6 +3319,15 @@
   "`res.json()` runs before `res.ok` or the status is checked, so an HTML error page from a proxy fails as an opaque `SyntaxError` and the status is lost; check `res.ok` first, or read `res.text()` and parse it inside `try`.",
   1,
   83
+ ],
+ [
+  "no-unchecked-response-json/20.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  43,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  64
  ],
  [
   "no-unchecked-response-json/21.ts",
@@ -2448,6 +3339,15 @@
   57
  ],
  [
+  "no-unchecked-response-json/21.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  39,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  49
+ ],
+ [
   "no-unchecked-response-json/22.ts",
   "nitpicker/no-unchecked-response-json",
   1,
@@ -2455,6 +3355,15 @@
   "`res.json()` runs before `res.ok` or the status is checked, so an HTML error page from a proxy fails as an opaque `SyntaxError` and the status is lost; check `res.ok` first, or read `res.text()` and parse it inside `try`.",
   1,
   61
+ ],
+ [
+  "no-unchecked-response-json/22.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  26,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  36
  ],
  [
   "no-unchecked-response-json/23.ts",
@@ -2466,6 +3375,15 @@
   72
  ],
  [
+  "no-unchecked-response-json/23.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  26,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  36
+ ],
+ [
   "no-unchecked-response-json/24.ts",
   "nitpicker/no-unchecked-response-json",
   1,
@@ -2475,6 +3393,15 @@
   84
  ],
  [
+  "no-unchecked-response-json/24.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  43,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  53
+ ],
+ [
   "no-unchecked-response-json/25.ts",
   "nitpicker/no-unchecked-response-json",
   1,
@@ -2482,6 +3409,51 @@
   "`res.json()` runs before `res.ok` or the status is checked, so an HTML error page from a proxy fails as an opaque `SyntaxError` and the status is lost; check `res.ok` first, or read `res.text()` and parse it inside `try`.",
   1,
   123
+ ],
+ [
+  "no-unchecked-response-json/25.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  43,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  53
+ ],
+ [
+  "no-unchecked-response-json/r-01.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  17,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  27
+ ],
+ [
+  "no-unchecked-response-json/r-02.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  17,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  27
+ ],
+ [
+  "no-unchecked-response-json/r-03.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  17,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  27
+ ],
+ [
+  "no-unchecked-response-json/r-04.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  49,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  57
  ],
  [
   "no-unchecked-url-sink/30.tsx",
@@ -4140,6 +5112,42 @@
   156
  ],
  [
+  "no-unresolved-relative-url/11.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  1,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  25
+ ],
+ [
+  "no-unresolved-relative-url/12.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  1,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  24
+ ],
+ [
+  "no-unresolved-relative-url/13.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  1,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  42
+ ],
+ [
+  "no-unresolved-relative-url/20.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  84,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  97
+ ],
+ [
   "no-unresolved-relative-url/22.ts",
   "nitpicker/no-unresolved-relative-url",
   1,
@@ -4190,6 +5198,15 @@
   1,
   42,
   "A `Location` header may be a path (`/v2/file`). Resolve it against the request URL first: `new URL(location, requestUrl)`.",
+  1,
+  57
+ ],
+ [
+  "no-unresolved-relative-url/27.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  42,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
   1,
   57
  ],
@@ -4527,6 +5544,24 @@
   58
  ],
  [
+  "no-unstripped-remote-text/01.ts",
+  "nitpicker/require-http-timeout",
+  2,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  2,
+  27
+ ],
+ [
+  "no-unstripped-remote-text/04.ts",
+  "nitpicker/require-http-timeout",
+  2,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  2,
+  27
+ ],
+ [
   "no-unstripped-remote-text/06.ts",
   "nitpicker/no-unchecked-response-json",
   2,
@@ -4536,6 +5571,33 @@
   58
  ],
  [
+  "no-unstripped-remote-text/06.ts",
+  "nitpicker/require-http-timeout",
+  2,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  2,
+  27
+ ],
+ [
+  "no-unstripped-remote-text/07.ts",
+  "nitpicker/require-http-timeout",
+  2,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  2,
+  27
+ ],
+ [
+  "no-unstripped-remote-text/08.ts",
+  "nitpicker/require-http-timeout",
+  2,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  2,
+  27
+ ],
+ [
   "no-unstripped-remote-text/15.ts",
   "nitpicker/no-unchecked-response-json",
   1,
@@ -4543,6 +5605,24 @@
   "`res.json()` runs before `res.ok` or the status is checked, so an HTML error page from a proxy fails as an opaque `SyntaxError` and the status is lost; check `res.ok` first, or read `res.text()` and parse it inside `try`.",
   1,
   58
+ ],
+ [
+  "no-unstripped-remote-text/15.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  27
+ ],
+ [
+  "no-unstripped-remote-text/16.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  48,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  56
  ],
  [
   "no-unstripped-remote-text/17.ts",
@@ -4581,6 +5661,15 @@
   96
  ],
  [
+  "no-unstripped-remote-text/19.ts",
+  "nitpicker/require-http-timeout",
+  2,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  2,
+  27
+ ],
+ [
   "no-unstripped-remote-text/20.ts",
   "nitpicker/no-unstripped-remote-text",
   2,
@@ -4608,6 +5697,15 @@
   66
  ],
  [
+  "no-unstripped-remote-text/22.ts",
+  "nitpicker/require-http-timeout",
+  2,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  2,
+  27
+ ],
+ [
   "no-unstripped-remote-text/23.ts",
   "nitpicker/no-unstripped-remote-text",
   2,
@@ -4626,6 +5724,15 @@
   84
  ],
  [
+  "no-unstripped-remote-text/23.ts",
+  "nitpicker/require-http-timeout",
+  2,
+  19,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  2,
+  27
+ ],
+ [
   "no-unstripped-remote-text/24.ts",
   "nitpicker/no-unstripped-remote-text",
   2,
@@ -4633,6 +5740,15 @@
   "Text from a socket message or network response can hold ANSI or control sequences that rewrite earlier terminal lines or hide output. Strip them first with `util.stripVTControlCharacters(text)` or print `JSON.stringify(text)`.",
   2,
   66
+ ],
+ [
+  "no-unstripped-remote-text/r-type-parameter.ts",
+  "nitpicker/require-http-timeout",
+  2,
+  41,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  2,
+  49
  ],
  [
   "no-untrimmed-request-text/07.ts",
@@ -5560,5 +6676,419 @@
   "sha1WithRSAEncryption is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
   1,
   103
+ ],
+ [
+  "require-client-timeout/39.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  60,
+  "S3 has no request timeout, so a call that never answers holds this code for good. Set it once for the client: `requestHandler: { connectionTimeout: 5_000, requestTimeout: 30_000, throwOnRequestTimeout: true }`. An exception fits only when this client is meant to wait without a limit.",
+  1,
+  70
+ ],
+ [
+  "require-client-timeout/40.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  65,
+  "pg Pool has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  86
+ ],
+ [
+  "require-client-timeout/41.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  42,
+  "pg Pool has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  73
+ ],
+ [
+  "require-client-timeout/42.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  56,
+  "pg Pool has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  103
+ ],
+ [
+  "require-client-timeout/43.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  92,
+  "pg Pool has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  134
+ ],
+ [
+  "require-client-timeout/44.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  49,
+  "Knex has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  151
+ ],
+ [
+  "require-client-timeout/45.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  66,
+  "S3Client has no request timeout, so a call that never answers holds this code for good. Set it once for the client: `requestHandler: { connectionTimeout: 5_000, requestTimeout: 30_000, throwOnRequestTimeout: true }`. An exception fits only when this client is meant to wait without a limit.",
+  1,
+  103
+ ],
+ [
+  "require-client-timeout/46.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  66,
+  "S3Client has no request timeout, so a call that never answers holds this code for good. Set it once for the client: `requestHandler: { connectionTimeout: 5_000, requestTimeout: 30_000, throwOnRequestTimeout: true }`. An exception fits only when this client is meant to wait without a limit.",
+  1,
+  80
+ ],
+ [
+  "require-client-timeout/47.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  127,
+  "S3Client has no request timeout, so a call that never answers holds this code for good. Set it once for the client: `requestHandler: { connectionTimeout: 5_000, requestTimeout: 30_000, throwOnRequestTimeout: true }`. An exception fits only when this client is meant to wait without a limit.",
+  1,
+  210
+ ],
+ [
+  "require-client-timeout/48.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  66,
+  "S3Client has no request timeout, so a call that never answers holds this code for good. Set it once for the client: `requestHandler: { connectionTimeout: 5_000, requestTimeout: 30_000, throwOnRequestTimeout: true }`. An exception fits only when this client is meant to wait without a limit.",
+  1,
+  121
+ ],
+ [
+  "require-client-timeout/49.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  69,
+  "LambdaClient has no request timeout, so a call that never answers holds this code for good. Set it once for the client: `requestHandler: { connectionTimeout: 5_000, requestTimeout: 30_000, throwOnRequestTimeout: true }`. An exception fits only when this client is meant to wait without a limit.",
+  1,
+  96
+ ],
+ [
+  "require-client-timeout/50.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  56,
+  "pg Pool has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  112
+ ],
+ [
+  "require-client-timeout/51.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  56,
+  "pg Pool has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  66
+ ],
+ [
+  "require-client-timeout/52.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  58,
+  "pg Client has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  94
+ ],
+ [
+  "require-client-timeout/53.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  56,
+  "pg Pool has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  129
+ ],
+ [
+  "require-client-timeout/54.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  70,
+  "pg Pool has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  89
+ ],
+ [
+  "require-client-timeout/55.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  49,
+  "pg Pool has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  70
+ ],
+ [
+  "require-client-timeout/56.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  53,
+  "postgres() has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  78
+ ],
+ [
+  "require-client-timeout/57.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  53,
+  "postgres() has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  118
+ ],
+ [
+  "require-client-timeout/58.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  72,
+  "TypeORM has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  128
+ ],
+ [
+  "require-client-timeout/59.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  121,
+  "TypeORM has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  168
+ ],
+ [
+  "require-client-timeout/60.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  16,
+  "TypeORM has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  87
+ ],
+ [
+  "require-client-timeout/61.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  72,
+  "Sequelize has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  126
+ ],
+ [
+  "require-client-timeout/62.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  58,
+  "Sequelize has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  92
+ ],
+ [
+  "require-client-timeout/63.ts",
+  "nitpicker/require-client-timeout",
+  1,
+  49,
+  "Knex has no statement timeout, so a stuck query holds this request and its pool connection for good. Set one where the client is built: `statement_timeout: 30_000` in the pg options, TypeORM `extra`, Sequelize `dialectOptions`, or the Knex and postgres.js `connection`. An exception fits only when this client is meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.",
+  1,
+  94
+ ],
+ [
+  "require-http-timeout/27.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  29,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  39
+ ],
+ [
+  "require-http-timeout/28.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  29,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  70
+ ],
+ [
+  "require-http-timeout/29.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  29,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  50
+ ],
+ [
+  "require-http-timeout/30.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  29,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  50
+ ],
+ [
+  "require-http-timeout/31.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  52,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  64
+ ],
+ [
+  "require-http-timeout/32.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  64,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  83
+ ],
+ [
+  "require-http-timeout/33.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  29,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  62
+ ],
+ [
+  "require-http-timeout/34.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  61,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  71
+ ],
+ [
+  "require-http-timeout/35.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  61,
+  "fetch() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  71
+ ],
+ [
+  "require-http-timeout/36.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  56,
+  "axios.get() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  70
+ ],
+ [
+  "require-http-timeout/37.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  56,
+  "axios.get() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  87
+ ],
+ [
+  "require-http-timeout/38.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  63,
+  "axios.post() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  84
+ ],
+ [
+  "require-http-timeout/39.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  56,
+  "axios() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  70
+ ],
+ [
+  "require-http-timeout/40.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  56,
+  "axios.get() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  86
+ ],
+ [
+  "require-http-timeout/41.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  50,
+  "axios.create() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  95
+ ],
+ [
+  "require-http-timeout/42.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  56,
+  "axios.get() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  70
+ ],
+ [
+  "require-http-timeout/43.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  64,
+  "http.request() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  125
+ ],
+ [
+  "require-http-timeout/44.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  59,
+  "http.request() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  110
+ ],
+ [
+  "require-http-timeout/45.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  52,
+  "got() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  60
+ ],
+ [
+  "require-http-timeout/46.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  52,
+  "got() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  89
+ ],
+ [
+  "require-http-timeout/47.ts",
+  "nitpicker/require-http-timeout",
+  1,
+  46,
+  "got() has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.",
+  1,
+  91
  ]
 ]

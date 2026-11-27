@@ -1,0 +1,1 @@
+const run = pool.query; export const find = (id) => run(`select * from users where id = ${id}`);

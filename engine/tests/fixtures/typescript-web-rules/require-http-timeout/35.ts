@@ -1,0 +1,1 @@
+import { fetch } from "undici"; export const get = (url) => fetch(url);

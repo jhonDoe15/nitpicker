@@ -1,0 +1,1 @@
+export const get = (url, signal) => fetch(url, { method: "GET", signal });

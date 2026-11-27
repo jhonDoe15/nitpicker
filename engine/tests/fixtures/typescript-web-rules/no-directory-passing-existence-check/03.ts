@@ -1,0 +1,1 @@
+if (fs.existsSync(options.file)) { fs.readdirSync(options.file); }

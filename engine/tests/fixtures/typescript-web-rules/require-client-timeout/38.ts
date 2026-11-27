@@ -1,0 +1,1 @@
+import knex from "knex"; import { setTimeouts } from "./db.js"; export const db = knex({ client: "pg", connection: process.env.URL, pool: { afterCreate: setTimeouts } });

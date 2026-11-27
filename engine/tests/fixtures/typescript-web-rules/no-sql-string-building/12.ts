@@ -1,0 +1,1 @@
+export const page = (items) => pool.query(`SELECT * FROM users LIMIT ${items.length}`);

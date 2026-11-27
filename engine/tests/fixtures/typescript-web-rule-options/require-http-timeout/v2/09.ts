@@ -1,0 +1,1 @@
+export const get = (request) => fetch(new Request(request, { signal: AbortSignal.timeout(5000) }));

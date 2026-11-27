@@ -1,0 +1,1 @@
+export const find = (filters) => { const clause = `AND name = '${filters.name}'`; return pool.query(`SELECT * FROM users WHERE active = 1 ${clause}`); };

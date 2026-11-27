@@ -1,0 +1,1 @@
+export const find = (id) => cache.get(`user:${id}`);

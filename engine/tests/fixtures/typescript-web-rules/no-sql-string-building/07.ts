@@ -1,0 +1,1 @@
+const TABLE = "users"; export const find = (id) => pool.query(`SELECT * FROM ${TABLE} WHERE id = $1`, [id]);

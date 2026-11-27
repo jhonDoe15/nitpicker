@@ -1,0 +1,1 @@
+export const find = (name) => pool.query("SELECT * FROM users WHERE name = '" + name + "'");

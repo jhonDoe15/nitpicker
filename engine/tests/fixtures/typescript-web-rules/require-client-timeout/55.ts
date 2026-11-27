@@ -1,0 +1,1 @@
+import Pool from "pg-pool"; export const pool = new Pool({ max: 10 });

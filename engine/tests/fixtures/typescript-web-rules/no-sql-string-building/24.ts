@@ -1,0 +1,1 @@
+export const query = (client, text) => client.query(text);

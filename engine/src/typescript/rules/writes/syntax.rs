@@ -68,8 +68,35 @@ pub fn static_key(property: Node) -> Option<String> {
     }
 }
 
+/// `String(number)`: the shortest digits that read back as the number, in exponent form below 1e-6 and from 1e21 up.
 pub fn js_number(number: f64) -> String {
-    if number.fract() == 0.0 && number.abs() < 1e21 { format!("{}", number as i64) } else { number.to_string() }
+    if number.is_nan() {
+        return "NaN".to_string();
+    }
+    if number.is_infinite() {
+        return if number > 0.0 { "Infinity" } else { "-Infinity" }.to_string();
+    }
+    if number == 0.0 {
+        return "0".to_string();
+    }
+    let sign = if number < 0.0 { "-" } else { "" };
+    let scientific = format!("{:e}", number.abs());
+    let (mantissa, exponent) = scientific.split_once('e').unwrap_or((&scientific, "0"));
+    let digits: String = mantissa.chars().filter(char::is_ascii_digit).collect();
+    let point = exponent.parse::<i32>().unwrap_or(0) + 1;
+    let count = digits.len() as i32;
+    let text = if !(-5..=21).contains(&point) {
+        let rest = if digits.len() > 1 { format!(".{}", &digits[1..]) } else { String::new() };
+        let power = point - 1;
+        format!("{}{rest}e{}{power}", &digits[..1], if power < 0 { "" } else { "+" })
+    } else if point <= 0 {
+        format!("0.{}{digits}", "0".repeat(point.unsigned_abs() as usize))
+    } else if point >= count {
+        format!("{digits}{}", "0".repeat((point - count) as usize))
+    } else {
+        format!("{}.{}", &digits[..point as usize], &digits[point as usize..])
+    };
+    format!("{sign}{text}")
 }
 
 /// `constantInitializer`: the initializer of the `const` the identifier names (its first definition).
