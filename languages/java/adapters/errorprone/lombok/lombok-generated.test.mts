@@ -19,34 +19,27 @@ function dropped(text: string, marker: string, message: string): boolean {
 }
 
 describe('Lombok generated code', () => {
-  it('keeps every finding on a method whose annotation is not Lombok, under import lombok.*', () => {
+  it('leaves Error Prone checks to the runner, which drops what sits only on generated trees', () => {
     const text = [
       'import lombok.*;',
       '@Getter class Wild {',
-      '  @Deprecated private int legacy() { return 1; }',
-      '  @Override public String toString() { return "w"; }',
+      '  @SneakyThrows private int legacy() { return 1; }',
       '}',
     ].join('\n');
     expect([
-      dropped(text, '@Deprecated', STATIC),
-      dropped(text, '@Deprecated', SEMICOLON),
-      dropped(text, '@Override', SEMICOLON),
+      dropped(text, '@SneakyThrows', STATIC),
       dropped(text, '@Getter', SEMICOLON),
-    ]).toStrictEqual([false, false, false, true]);
+    ]).toStrictEqual([false, false]);
   });
 
-  it('keeps a declaration finding that starts at a Lombok annotation', () => {
-    const text =
-      'import lombok.SneakyThrows;\nclass A {\n  @SneakyThrows private int helper() { return 2; }\n}';
-    expect(dropped(text, '@SneakyThrows', STATIC)).toBe(false);
-  });
-
-  it('drops a check that only reaches a Lombok annotation through the code Lombok generates there', () => {
-    const text = 'import lombok.Data;\n@Data\nclass A {\n  @lombok.Builder.Default int b = 1;\n}';
+  it('drops NullAway on passed or returned @Nullable values only at a Lombok annotation', () => {
+    const text = 'import lombok.*;\n@Data\nclass A {\n  @Deprecated String name;\n}';
+    const returned =
+      '[NullAway] returning @Nullable expression from method with @NonNull return type';
     expect([
-      dropped(text, '@Data', SEMICOLON),
-      dropped(text, '@lombok.Builder', SEMICOLON),
-    ]).toStrictEqual([true, true]);
+      dropped(text, '@Data', returned),
+      dropped(text, '@Deprecated', NULLABLE_ARGUMENT),
+    ]).toStrictEqual([true, false]);
   });
 
   it('keeps NullAway field initialization at @Data and drops NullAway on generated arguments', () => {
@@ -54,21 +47,6 @@ describe('Lombok generated code', () => {
     expect([
       dropped(text, '@Data', FIELD_INIT),
       dropped(text, '@Data', NULLABLE_ARGUMENT),
-    ]).toStrictEqual([false, true]);
-  });
-
-  it('keeps a utility class finding at a logger annotation and drops it at @FieldNameConstants', () => {
-    const text = [
-      'import lombok.experimental.FieldNameConstants;',
-      'import lombok.extern.slf4j.Slf4j;',
-      '@Slf4j class Util { static int one() { return 1; } }',
-      '@FieldNameConstants class Named { int a; }',
-    ].join('\n');
-    const utility =
-      '[PrivateConstructorForUtilityClass] Classes which are not intended to be instantiated';
-    expect([
-      dropped(text, '@Slf4j', utility),
-      dropped(text, '@FieldNameConstants', utility),
     ]).toStrictEqual([false, true]);
   });
 

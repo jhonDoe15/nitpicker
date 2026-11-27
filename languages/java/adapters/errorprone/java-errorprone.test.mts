@@ -112,7 +112,7 @@ describe('readErrorProneFindings', () => {
     ]);
   });
 
-  it('drops what Lombok generates at its annotations and keeps the findings in written code', () => {
+  it('drops NullAway on the arguments Lombok generates at its annotations and keeps written code', () => {
     const source = [
       'package demo;',
       'import lombok.*;',
@@ -130,7 +130,7 @@ describe('readErrorProneFindings', () => {
           file,
           line: 3,
           position: source.indexOf('@Data'),
-          message: '[UnnecessarySemicolon] Unnecessary semicolon',
+          message: "[NullAway] passing @Nullable parameter 'x' where @NonNull is required",
         },
         {
           file,

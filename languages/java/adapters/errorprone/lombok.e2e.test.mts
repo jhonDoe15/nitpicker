@@ -73,6 +73,40 @@ public class Wild {
   }
 }
 `,
+  'src/main/java/shop/Ledger.java': `package shop;
+
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
+public class Ledger {
+  /**
+   * The owner.
+   *
+   * @param owner who keeps the ledger
+   * @return who keeps the ledger
+   */
+  @Getter private final String owner;
+
+  /** @deprecated */
+  @Getter @Deprecated private final int legacy;
+}
+`,
+  'src/main/java/shop/Counter.java': `package shop;
+
+import lombok.Synchronized;
+
+public class Counter {
+  private Object lock = new Object();
+  private int count;
+
+  @Synchronized("lock")
+  public int next() {
+    count++;
+    return count;
+  }
+}
+`,
   'src/test/java/shop/BasketTest.java': `package shop;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
