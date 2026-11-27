@@ -949,8 +949,13 @@ impl<'a> Resolver<'a> {
         let name = self.file.text_of(call.field("name")?);
         let shapes = self.shapes(call);
         let mut raw = false;
+        let qualified_super = children(call).iter().any(|part| part.kind() == "super");
         let owners: Vec<Type> = match call.field("object") {
             Some(object) => match self.receiver(object)? {
+                Receiver::Static(owner) if qualified_super => match self.index.get(&owner) {
+                    Some(info) if info.is_interface => vec![Type::class(&owner)],
+                    _ => vec![self.type_of_super(&owner)?],
+                },
                 Receiver::Value(owner @ Type::Class(..)) => {
                     raw = self.raw(&owner);
                     vec![owner]
