@@ -327,6 +327,7 @@ mod no_allocation;
 mod must_be_closed;
 mod must_be_closed_fix;
 mod processor_audit;
+mod lombok_rewrites;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -374,15 +375,11 @@ impl Context<'_> {
         if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == check)) || self.skipped(check) {
             return;
         }
-        let line = self.line_starts.partition_point(|start| *start <= offset) - 1;
-        let mut column = 0usize;
-        for character in self.file.text[self.line_starts[line]..offset].chars() {
-            column = if character == '\t' { column / 8 * 8 + 8 } else { column + character.len_utf16() };
-        }
+        let (line, column) = self.line_column(offset);
         self.out.borrow_mut().push(Finding {
             file: self.file.path.clone(),
-            line: line + 1,
-            column: column + 1,
+            line,
+            column,
             rule: check.to_string(),
             message: format!("[{check}] {message}"),
             symbol: None,
@@ -455,6 +452,15 @@ impl Context<'_> {
             });
         }
         names
+    }
+    /// javac's line and column of a byte offset, from one: UTF-16 units, a tab moves to the next multiple of eight.
+    pub fn line_column(&self, offset: usize) -> (usize, usize) {
+        let line = self.line_of(offset);
+        let mut column = 0usize;
+        for character in self.file.text[self.line_starts[line]..offset].chars() {
+            column = if character == '\t' { column / 8 * 8 + 8 } else { column + character.len_utf16() };
+        }
+        (line + 1, column + 1)
     }
     /// The line of a byte offset, from zero.
     pub fn line_of(&self, offset: usize) -> usize {
@@ -1046,6 +1052,9 @@ const MAY_REPORT: &str = "_MayReport";
 /// The row for a class an annotation processor changed (`NP_EP_AUDIT_CLASSES`): the class file the build wrote for it
 /// has members its source does not explain.
 const REWRITTEN: &str = "_Rewritten";
+/// The row for a place where Lombok rewrites written code in a way the engine does not model (`lombok_rewrites`):
+/// Error Prone has to check that file.
+const LOMBOK_REWRITE: &str = "_LombokRewrite";
 /// Checks whose findings nitpicker drops inside classes with certain annotations; their rows carry the annotations.
 const CLASS_EXEMPTED: &[&str] = &["IdentifierName", "PrivateConstructorForUtilityClass"];
 const CLASS_KINDS: &[&str] = &[
@@ -1117,7 +1126,21 @@ impl FileRule for ErrorProne {
         for (_, check) in FILE_CHECKS.iter().filter(|(names, _)| wanted(names)) {
             check(&context, file.tree.root_node());
         }
+        let rewrites = if project.index.lombok { lombok_rewrites::rewrites(&context, file.tree.root_node()) } else { Vec::new() };
+        let places: Vec<(usize, usize)> = rewrites.iter().map(|rewrite| context.line_column(rewrite.at)).collect();
         let mut found = context.out.into_inner();
+        for (rewrite, (line, column)) in rewrites.into_iter().zip(places) {
+            found.push(Finding {
+                file: file.path.clone(),
+                line,
+                column,
+                rule: LOMBOK_REWRITE.to_string(),
+                message: rewrite.feature.to_string(),
+                symbol: None,
+                priority: None,
+                arguments: None,
+            });
+        }
         if twice_analyzed(file) {
             found = found.into_iter().flat_map(|finding| [finding.clone(), finding]).collect();
         }

@@ -82,14 +82,23 @@ def compare(work, checks):
         if engine is None or engine.get('syntaxErrorFiles'):
             status['engine could not parse'] += 1
             continue
+        rewrites = collections.Counter(f['message'] for f in engine['findings'] if f['rule'] == '_LombokRewrite')
+        if rewrites:
+            status['sent to Error Prone (a Lombok rewrite the engine does not model)'] += 1
+            for feature in rewrites:
+                status['  rewrite: ' + feature] += 1
+            continue
         status['compared'] += 1
+        crashed_path = os.path.join(folder, 'crashed.txt')
+        off = set(open(crashed_path).read().strip().split(',')) if os.path.exists(crashed_path) else set()
+        checks_here = checks - off
         key = lambda f: (f['check'], f['line'], f['col'], f['message'], f.get('suggest', ''))
-        theirs = collections.Counter(key(f) for f in ep['findings'] if f['check'] in checks)
-        generated = collections.Counter(key(f) for f in ep['findings'] if f['check'] in checks and f.get('generated'))
-        shared = collections.Counter(key(f) for f in ep['findings'] if f['check'] in checks and f.get('shared'))
+        theirs = collections.Counter(key(f) for f in ep['findings'] if f['check'] in checks_here)
+        generated = collections.Counter(key(f) for f in ep['findings'] if f['check'] in checks_here and f.get('generated'))
+        shared = collections.Counter(key(f) for f in ep['findings'] if f['check'] in checks_here and f.get('shared'))
         places = {k[1:3] for k in generated}
         ours = collections.Counter((f['rule'], f['line'], f['column'], f['message'].split('\n')[0],
-                                    suggestion(f['message'])) for f in engine['findings'] if f['rule'] in checks)
+                                    suggestion(f['message'])) for f in engine['findings'] if f['rule'] in checks_here)
         rows[name] = sorted('%s:%d:%d %s %s' % k for k in theirs.elements())
         inside = lambda counter: collections.Counter({k: v for k, v in counter.items() if k[1:3] in places})
         if inside(ours):
