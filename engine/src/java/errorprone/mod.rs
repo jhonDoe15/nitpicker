@@ -10,6 +10,7 @@ mod jdk_parse;
 mod jdk_values;
 mod always_throws;
 mod sun_api;
+mod ast_helpers;
 mod record_components;
 mod modify_source;
 mod type_shadowing;
@@ -908,6 +909,7 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["InvalidPatternSyntax"], misc_defect_calls::invalid_pattern_syntax),
     (&["TemporalAccessorGetChronoField"], temporal_fields::temporal_accessor_get_chrono_field),
     (&["SunApi"], sun_api::sun_api),
+    (&["ASTHelpersSuggestions"], ast_helpers::ast_helpers_suggestions),
     (&["RecordComponentAccessorAnnotationConflict"], record_components::record_component_accessor_annotation_conflict),
     (&["ModifySourceCollectionInStream"], modify_source::modify_source_collection_in_stream),
     (&["TypeNameShadowing"], type_shadowing::type_name_shadowing),

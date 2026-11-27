@@ -567,5 +567,6 @@
  "MissingFail",
  "TryFailRefactoring",
  "AssertThrowsMinimizer",
- "InlineMeValidator"
+ "InlineMeValidator",
+ "ASTHelpersSuggestions"
 ]

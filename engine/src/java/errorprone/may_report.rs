@@ -85,7 +85,6 @@ pub const PRECONDITIONS: &[(&str, Gate)] = &[
             "com.google.errorprone.BugCheckerRefactoringTestHelper",
         ]),
     ),
-    ("ASTHelpersSuggestions", Gate::Types(&["com.google.errorprone.util.ASTHelpers"])),
     ("StatementSwitchToExpressionSwitch", SWITCH),
     ("RefactorSwitch", SWITCH),
     ("BadInstanceof", INSTANCEOF),
