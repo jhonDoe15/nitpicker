@@ -15,10 +15,10 @@ public class X {
     void chr(char k) { int v = f; switch (k) { case 'a' -> {} default -> {} } f = v; }
     void pat(Object k) { int v = f; switch (k) { case String t -> {} default -> {} } f = v; }
     void pat2(S k) { int v = f; switch (k) { case S1 t -> {} case S2 t -> {} } f = v; }
-    void inst(Object k) { int v = f; if (k instanceof String t) { } f = v; }
+    void inst(Object k) { int v = f; if (k instanceof String t && t == null) { } f = v; }
     void bx() { int v = f; Integer i = 1; f = v; }
     void bx2() { int v = f; int i = boxed; f = v; }
-    void bx3() { int v = f; boxed++; f = v; }
+    void bx3() { int v = f; boxed = 1; f = v; }
     void bx4() { int v = f; boxed = boxed; f = v; }
     void bx5() { boxed = boxed; }
     void bx6() { f = boxed; g = g; }
@@ -33,7 +33,7 @@ public class X {
     void cmp(Object o) { int v = f; boolean b = o == null; f = v; }
     void lng() { long l = 1; int v = f; l++; f = v; }
     void cls() { int v = f; Class<?> c = String.class; f = v; }
-    void tw() { int v = f; try (AutoCloseable a = null) { } catch (Exception x) { } f = v; }
+    void tw(AutoCloseable a0) { int v = f; try (AutoCloseable a = a0) { } catch (Exception x) { } f = v; }
     void tw2() { try (AutoCloseable a = null) { f = f; } catch (Exception x) { } }
     void thrw() { int v = f; try { throw new RuntimeException(); } catch (RuntimeException x) { } f = v; }
     void ins(Object o) { int v = f; boolean b = o instanceof String; f = v; }

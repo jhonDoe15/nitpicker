@@ -101,6 +101,11 @@ impl<'c, 'a> Walk<'c, 'a> {
                 Some(state)
             }
             "if_statement" => {
+                match self.constant(field("condition")) {
+                    Some(true) => return field("consequence").and_then(|part| self.statement(part, Some(state))),
+                    Some(false) => return field("alternative").map_or(Some(state.clone()), |part| self.statement(part, Some(state))),
+                    None => {}
+                }
                 self.condition(field("condition"), &mut state);
                 let then = field("consequence").and_then(|part| self.statement(part, Some(state.clone())));
                 let otherwise = match field("alternative") {

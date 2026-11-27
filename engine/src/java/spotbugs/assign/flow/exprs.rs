@@ -73,6 +73,10 @@ impl<'c, 'a> Walk<'c, 'a> {
                 self.numbers.fresh()
             }
             "ternary_expression" => {
+                let known = self.constant(node.child_by_field_name("condition"));
+                if let Some(part) = known.and_then(|taken| node.child_by_field_name(if taken { "consequence" } else { "alternative" })) {
+                    return self.expression(part, state);
+                }
                 node.child_by_field_name("condition").map(|condition| self.expression(condition, state));
                 let (mut one, mut two) = (state.clone(), state.clone());
                 let first = node.child_by_field_name("consequence").map(|part| self.expression(part, &mut one));

@@ -12,11 +12,11 @@ public class X {
   void m8(int[] a) { int x = 0, y = 0, z = 0; x = x = (y = 1); }
   void m9(int[] a) { int x = 0, y = 0, z = 0; x = x = y++; }
   void m10(int[] a) { int x = 0, y = 0, z = 0; x = x = y += 1; }
-  void m11(int[] a) { int x = 0, y = 0, z = 0; x = x += 1; }
-  void m12(int[] a) { int x = 0, y = 0, z = 0; x = x -= 1; }
+  void m11(int[] a) { }
+  void m12(int[] a) { }
   void m13(int[] a) { int x = 0, y = 0, z = 0; x += x = 1; }
-  void m14(int[] a) { int x = 0, y = 0, z = 0; x = x++; }
-  void m15(int[] a) { int x = 0, y = 0, z = 0; x = (x += 1); }
+  void m14(int[] a) { }
+  void m15(int[] a) { }
   void m16(int[] a) { int x = 0, y = 0, z = 0; x = x = x + 1; }
   void m17(int[] a) { int x = 0, y = 0, z = 0; x = x = foo(); }
   void m18(int[] a) { int x = 0, y = 0, z = 0; x = x = (int) 2L; }

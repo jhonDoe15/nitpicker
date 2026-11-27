@@ -2,12 +2,12 @@ package p;
 import java.util.*;
 import java.util.function.*;
 public class X<K> {
-    String s; K k; List<K> lk; int[] ia;
-    class In { String t; In(String a, K kk, X<K> o) { t = t; k = k; } }
+    String s; K k; List<K> lk; int[] ia; Object r0() { return new Object[] { k, ia, s }; }
+    class In { String t; Object r() { return t; } In(String a, K kk, X<K> o) { t = t; k = k; } }
     X(String a, String b, K c) { Runnable r = () -> { s = s; String q = b; }; Runnable r2 = () -> { s = s; String q = a + b; }; }
     void cap(String p1, String p2, String p3) {
-        class Loc { String t; Loc(String z) { t = t; } void m(String w) { t = t; } }
-        new Object() { String t; { t = t; } void m(String w) { t = t; p1.length(); } };
+        class Loc { String t; Object r() { return t; } Loc(String z) { t = t; } void m(String w) { t = t; } }
+        new Object() { String t = ""; Object r() { return t; } { t = t; } void m(String w) { t = t; p1.length(); } };
         Function<String,String> f = (u) -> { String x = p3 + p1 + p2; s = s; return u; };
         BiFunction<String,String,String> g = (u, v) -> { s = s; return p2; };
     }
@@ -25,7 +25,7 @@ public class X<K> {
     void far3(String sss) { sss.length(); s = s; }
     void far4(String abcdef) { abcdef.length(); s = s; }
     void far5(String sxyz) { sxyz.length(); s = s; }
-    enum E { A { void m(String z) { f = f; } }; String f; E() { f = f; } }
+    enum E { A { void m(String z) { f = f; } }; String f = ""; E() { f = f; } }
     interface J { default void d(String a) { } }
     static <T extends Number> void bnd(T a, Number b, Integer c) { }
 }

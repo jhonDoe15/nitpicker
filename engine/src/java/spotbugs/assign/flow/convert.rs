@@ -65,6 +65,19 @@ impl<'c, 'a> Walk<'c, 'a> {
         }
     }
 
+    /// The value of a condition javac knows while compiling: it writes only the branch taken.
+    pub fn constant(&self, node: Option<Node<'a>>) -> Option<bool> {
+        let node = unwrap(node?);
+        match self.context.resolver.constant_number(node) {
+            Some(crate::java::types::constant::Constant::Bool(value)) => Some(value),
+            _ => match self.context.text(node) {
+                "true" => Some(true),
+                "false" => Some(false),
+                _ => None,
+            },
+        }
+    }
+
     /// The variables patterns in the node bind.
     pub fn bind(&mut self, node: Node<'a>, state: &mut State) {
         let mut names = Vec::new();
