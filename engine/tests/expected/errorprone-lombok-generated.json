@@ -1,0 +1,13 @@
+[
+["shop/Basket.java", "RedundantNullCheck", 9, 17],
+["shop/Basket.java", "UnnecessarilyFullyQualified", 9, 17],
+["shop/Item.java", "UnnecessarilyFullyQualified", 11, 11],
+["shop/Item.java", "UnnecessarySemicolon", 7, 1],
+["shop/Item.java", "UnnecessarySemicolon", 7, 1],
+["shop/Item.java", "UnnecessarySemicolon", 12, 3],
+["shop/Item.java", "UnnecessarySemicolon", 12, 3],
+["shop/Item.java", "UnnecessarySemicolon", 12, 3],
+["shop/Price.java", "UnnecessarySemicolon", 7, 3],
+["shop/Price.java", "UnnecessarySemicolon", 7, 3],
+["shop/Price.java", "UnnecessarySemicolon", 7, 3]
+]

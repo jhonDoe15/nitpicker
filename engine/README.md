@@ -318,6 +318,43 @@ Java 21 is not there for code compiled with `--release 17`. With it (javaparser-
 code bases give the same findings as Error Prone; the differences in the table were type questions closed since
 it was measured.
 
+### Error Prone on code Lombok rewrote
+
+Error Prone sees the tree after Lombok has rewritten it. Its findings positioned only on code Lombok generated are
+known differences, which the engine never reports: nobody can fix them, and checks that scan a whole class or
+file get past the `@SuppressWarnings("all")` Lombok puts on what it writes (the maintainers decided this in #2585).
+A finding is inside generated code when only trees a plain parse of the file does not give sit at its position
+(`parity/errorprone/ErrorProneRun.java` marks it `generated`; `shared` when a written tree has its preferred
+position there too, which the comparison keeps). Lombok places what it writes at the annotation that asks for
+it, so a finding on a written Lombok annotation itself (none in the corpus) counts as generated. The kinds; the
+first three are in `tests/fixtures/errorprone-lombok` (`tests/errorprone_lombok.rs`), the others were seen only in
+the corpus below:
+
+- `UnnecessarySemicolon` on a Lombok annotation, once per member it writes: the check reads the tokens between a
+  generated member, which sits at the annotation, and the next one, and finds the fields' semicolons.
+- `UnnecessarilyFullyQualified` on names Lombok writes in full (`java.lang.Object`, `lombok.Builder.Default`).
+- `RedundantNullCheck` on the null check Lombok's `@NonNull` writes into a method that has a non-null parameter.
+- Rarer, on Lombok's own test sources: `MultiVariableDeclaration` and `EmptyBlockTag` in builders and accessors
+  Lombok copies doc comments to, `SynchronizeOnNonFinalField` on `@Synchronized` locks, `ExplicitArrayForVarargs`
+  on `@ExtensionMethod` calls, `ReferenceEquality` and `SuppressWarningsWithoutExplanation` in generated `equals`.
+
+Lombok moves the `@deprecated` and `@param` sections of a field's doc comment to the accessors it writes, and
+Error Prone then reports `EmptyBlockTag` at the field instead of at the tag: one of the rewrites of written code
+(#2584).
+
+`parity/errorprone/lombok/corpus.sh <work folder> <Lombok version>...` compares the engine with Error Prone on
+Lombok's own transformation test sources (`test/transform/resource/before`, fetched with the release, not kept
+here): each file compiled alone with javac 21, its `//CONF:` lines as a `lombok.config` (its `//version`
+lines are not followed: a file that does not compile on 21 is counted as such), Lombok on the processor
+path, the libraries of Lombok's own tests and its stubs on the class path, and Error Prone with the preset's
+`checks.json` (NullAway off). A check that crashes is switched off and the file compiled again, as Java runs do.
+It prints a table per version: files compared, findings the same, only from Error Prone, only from the engine,
+with another sentence, and inside generated code; `ONLY=<file pattern>` runs part of the files. Real runs read the
+Lombok version from the `Lombok-Version` line of the jar's manifest and keep a source set on Error Prone with
+the reason in the log when the version is outside the range compared (`TESTED_LOMBOK` in
+`languages/java/builds/errorprone/engine-arguments.mts`). Source sets with Lombok still compile whole on Error
+Prone (see the list above); the comparison runs the engine with `--lombok`, as those runs will.
+
 
 ## SpotBugs patterns
 
