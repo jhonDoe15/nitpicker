@@ -8,6 +8,18 @@ export type ProcessorKind = 'none' | 'lombok' | 'other';
 const PROCESSOR_SERVICE = 'META-INF/services/javax.annotation.processing.Processor';
 const CONFIG = 'lombok.config';
 const LOMBOK_PROCESSOR = 'lombok.';
+const LOMBOK_WRITES: readonly string[] = [
+  'SING_',
+  'HSM_',
+  'PA_',
+  'MS_SHOULD_BE_FINAL',
+  'MS_PKGPROTECT',
+  'SS_',
+  'DLS_',
+  'IP_PARAMETER_IS_DEAD_BUT_OVERWRITTEN',
+  'AT_',
+  'UG_',
+];
 const FILE_WRITERS: readonly string[] = [
   'com.google.auto.service.processor.',
   'com.google.auto.value.',
@@ -272,4 +284,8 @@ function markedIn(directory: string): Marked {
 export function lombokMarksGenerated(sources: readonly string[]): boolean {
   const directories = new Set(sources.map((source) => path.dirname(path.resolve(source))));
   return [...directories].every((directory) => markedIn(directory) === true);
+}
+
+export function withoutLombokWrites(patterns: readonly string[]): readonly string[] {
+  return patterns.filter((pattern) => !LOMBOK_WRITES.some((prefix) => pattern.startsWith(prefix)));
 }

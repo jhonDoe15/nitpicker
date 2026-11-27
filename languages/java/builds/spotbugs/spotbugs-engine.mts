@@ -10,7 +10,12 @@ import {
 } from '../../../../shared/engine/engine-run.mts';
 import { fieldOf, listOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import { engineSpotbugsFindingOf, spotbugsResultOf } from './spotbugs-results.mts';
-import { type ProcessorKind, lombokMarksGenerated, processorKind } from './spotbugs-lombok.mts';
+import {
+  type ProcessorKind,
+  lombokMarksGenerated,
+  processorKind,
+  withoutLombokWrites,
+} from './spotbugs-lombok.mts';
 
 export type SpotbugsEnginePlan = {
   readonly reportDir: string;
@@ -39,6 +44,13 @@ const DEAD_STORES: readonly string[] = [
   'DLS_DEAD_LOCAL_INCREMENT_IN_RETURN',
   'IP_PARAMETER_IS_DEAD_BUT_OVERWRITTEN',
 ];
+const SHARED_WRITES: readonly string[] = [
+  'AT_STALE_THREAD_WRITE_OF_PRIMITIVE',
+  'AT_NONATOMIC_64BIT_PRIMITIVE',
+  'AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE',
+];
+const SEQUENCE_ON_CONCURRENT = 'AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION';
+const UNSYNC_GET = 'UG_SYNC_SET_UNSYNC_GET';
 export const ON_ENGINE: readonly string[] = [
   'CT_CONSTRUCTOR_THROW',
   'EI_EXPOSE_REP',
@@ -77,20 +89,14 @@ export const ON_ENGINE: readonly string[] = [
   'NN_NAKED_NOTIFY',
   ...DEAD_STORES,
   'RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN',
+  ...SHARED_WRITES,
+  SEQUENCE_ON_CONCURRENT,
+  UNSYNC_GET,
   'IA_AMBIGUOUS_INVOCATION_OF_INHERITED_OR_OUTER_METHOD',
   'IT_NO_SUCH_ELEMENT',
   'DM_DEFAULT_ENCODING',
   'UCF_USELESS_CONTROL_FLOW',
   'UCF_USELESS_CONTROL_FLOW_NEXT_LINE',
-];
-const LOMBOK_WRITES: readonly string[] = [
-  'SING_',
-  'HSM_',
-  'PA_',
-  'MS_SHOULD_BE_FINAL',
-  'MS_PKGPROTECT',
-  'SS_',
-  ...DEAD_STORES,
 ];
 const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   MultipleInstantiationsOfSingletons: [
@@ -105,6 +111,9 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   ConstructorThrow: ['CT_CONSTRUCTOR_THROW'],
   FindHiddenMethod: ['HSM_HIDING_METHOD'],
   FindNakedNotify: ['NN_NAKED_NOTIFY'],
+  SharedVariableAtomicityDetector: SHARED_WRITES,
+  AtomicityProblem: [SEQUENCE_ON_CONCURRENT],
+  FindUnsyncGet: [UNSYNC_GET],
   ConfusionBetweenInheritedAndOuterMethod: ['IA_AMBIGUOUS_INVOCATION_OF_INHERITED_OR_OUTER_METHOD'],
   IteratorIdioms: ['IT_NO_SUCH_ELEMENT'],
   DefaultEncodingDetector: ['DM_DEFAULT_ENCODING'],
@@ -259,9 +268,7 @@ export function withoutSpotbugsEngineReport(reportDir: string): void {
 }
 
 function enginePatterns(lombok: boolean): readonly string[] {
-  return lombok
-    ? ON_ENGINE.filter((pattern) => !LOMBOK_WRITES.some((prefix) => pattern.startsWith(prefix)))
-    : ON_ENGINE;
+  return lombok ? withoutLombokWrites(ON_ENGINE) : ON_ENGINE;
 }
 
 export function spotbugsOnEngine(
