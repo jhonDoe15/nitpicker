@@ -43,13 +43,12 @@ describe('fileElements', () => {
       tool: 'checkstyle',
       rule: ROW.source,
       path: 'p/A.java',
-      identity: expect.any(String),
       message: ROW.message,
       classification: 'enforceable',
     };
     expect(ingestCheckstyle(xml, { root: '/' }).findings).toEqual([
-      { ...finding, location: { line: 3, column: 7 } },
-      { ...finding, location: { line: 1 } },
+      { ...finding, identity: 'checkstyle:8b1ed308e6a54ee6', location: { line: 3, column: 7 } },
+      { ...finding, identity: 'checkstyle:8b1ed308e6a54ee6#2', location: { line: 1 } },
     ]);
     expect(reportBody(xml).split('\n').slice(-2)).toEqual(['<file name="/p/B.java">', '</file>']);
   });

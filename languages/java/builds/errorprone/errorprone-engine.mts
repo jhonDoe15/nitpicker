@@ -119,20 +119,33 @@ function skipsEngine(set: ArgumentSet, name: string, setting: Setting): boolean 
   return whole !== undefined || set.sources.length === 0;
 }
 
+type PlanChecks = {
+  readonly plan: SourceSetPlan;
+  readonly remaining: readonly string[];
+  readonly onEngine: readonly string[];
+};
+
 function writePlan(
   file: string,
   set: ArgumentSet,
-  plan: SourceSetPlan,
-  checks: { readonly remaining: readonly string[]; readonly onEngine: readonly string[] },
+  { plan, remaining, onEngine }: PlanChecks,
 ): void {
   writeFileSync(
     file,
     plannedArguments(
       set,
       plan,
-      checksOff(plan, checks.remaining, checks.onEngine).map((check) => `-Xep:${check}:OFF`),
+      checksOff(plan, remaining, onEngine).map((check) => `-Xep:${check}:OFF`),
     ),
   );
+}
+
+function everyFileRead(report: unknown): unknown {
+  const unparsed = textsOf(fieldOf(report, 'syntaxErrorFiles'));
+  if (unparsed.length > 0) {
+    throw new Error(`it could not read ${unparsed[0] ?? ''}`);
+  }
+  return report;
 }
 
 function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
@@ -144,18 +157,14 @@ function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
   }
   const selected = engineChecksFor(set.head);
   const remaining = remainingChecks(set, selected.checks);
-  const report = engineReport({ file, ...set, ...selected, remaining }, setting);
-  const unparsed = textsOf(fieldOf(report, 'syntaxErrorFiles'));
-  if (unparsed.length > 0) {
-    throw new Error(`it could not read ${unparsed[0] ?? ''}`);
-  }
+  const report = everyFileRead(engineReport({ file, ...set, ...selected, remaining }, setting));
   const plan = sourceSetPlan(set, remaining, mayReportOf(report));
   const rows = keptRows(
     rowsOf(report, selected.checks, generatedRoots(set.head)),
     set,
     plan.kind === 'narrowed' ? plan.files : [],
   );
-  writePlan(file, set, plan, { remaining, onEngine: selected.checks });
+  writePlan(file, set, { plan, remaining, onEngine: selected.checks });
   setting.log?.write(planLine(name, set, plan));
   return engineDiagnostics(rows);
 }

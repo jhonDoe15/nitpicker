@@ -6,6 +6,7 @@ export type Placed = {
   readonly fieldsUnderMethod?: true;
 };
 
+const RELATIVE = 'relative';
 const NAMED_PLACEMENT: Readonly<Record<NonNullable<Placed['placement']>, boolean>> = {
   arguments: false,
   relative: true,
@@ -75,7 +76,7 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION: {
     text: 'Sequence of calls to concurrent abstraction may not be atomic',
     levels: { 2: WARNING },
-    placement: 'relative',
+    placement: RELATIVE,
   },
   UG_SYNC_SET_UNSYNC_GET: {
     text: 'Unsynchronized get method, synchronized set method',
@@ -154,7 +155,7 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   HSM_HIDING_METHOD: {
     text: 'Method hiding should be avoided.',
     levels: { 2: ERROR },
-    placement: 'relative',
+    placement: RELATIVE,
   },
   NN_NAKED_NOTIFY: { text: 'Naked notify', levels: { 2: WARNING } },
   IA_AMBIGUOUS_INVOCATION_OF_INHERITED_OR_OUTER_METHOD: {
@@ -169,7 +170,7 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   DM_DEFAULT_ENCODING: {
     text: 'Reliance on default encoding',
     levels: { 1: NOTE },
-    placement: 'relative',
+    placement: RELATIVE,
   },
   UCF_USELESS_CONTROL_FLOW: { text: 'Useless control flow', levels: { 2: NOTE } },
   UCF_USELESS_CONTROL_FLOW_NEXT_LINE: {

@@ -78,7 +78,12 @@ export function entryHolds(entry: string, name: string): boolean {
     return false;
   }
   if (statSync(entry).isDirectory()) {
-    return existsSync(path.join(entry, name));
+    const base = path.resolve(entry);
+    const full = path.resolve(base, name);
+    if (!full.startsWith(base + path.sep)) {
+      return false;
+    }
+    return existsSync(full);
   }
   const read = readZipOrFailure(entry);
   return read.kind !== 'zip' || read.zip.names.has(name);
