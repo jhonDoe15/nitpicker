@@ -1,14 +1,13 @@
-import { NULL_AWAY } from '../engine-checks.mts';
-import { ownClasses, ownPackages, type ArgumentSet } from '../engine-arguments.mts';
+import { sourceSetLevels } from '../engine-checks.mts';
+import { projectFlags, type ArgumentSet } from '../engine-arguments.mts';
 import {
-  CANNOT_BE_OFF,
-  ENABLED_CHECKS,
-  IMMUTABLE,
-  immutableInReach,
-  LOMBOK_UNSUPPRESSED_OFF,
-  lombokUnsuppressed,
-  projectLevels,
-} from './runner-checks.mts';
+  knownName,
+  levelFlag,
+  QUIET_AT_SUGGESTION,
+  type CheckLevels,
+} from '../options/check-levels.mts';
+import { lombokOff } from '../options/runner-levels.mts';
+import { lombokUnsuppressed } from './runner-checks.mts';
 
 /**
  * What Error Prone still does for a source set once the engine has run its checks: nothing, or a run of only the
@@ -23,35 +22,45 @@ export type SourceSetPlan =
     };
 
 export const NARROWED = '--narrowed';
-const TEST_ONLY = '--test-only';
 const SHOWN_CHECKS = 5;
 
-/** The checks Error Prone's runner would run on the source set that the engine does not run. */
+function quiet(check: string, levels: CheckLevels): boolean {
+  return QUIET_AT_SUGGESTION.includes(check) && levels.get(check) === 'SUGGESTION';
+}
+
+function unknownTurnedOn(head: readonly string[]): string[] {
+  return projectFlags(head)
+    .flatMap((flag) => levelFlag(flag) ?? [])
+    .filter(({ check, level }) => level !== 'OFF' && !knownName(check))
+    .map(({ check }) => check);
+}
+
+/**
+ * The checks Error Prone's runner would run on the source set that the engine does not run, with the checks the
+ * project turns on under names Error Prone does not know, which a check plugin may own.
+ */
 export function remainingChecks(set: ArgumentSet, onEngine: readonly string[]): string[] {
-  const { on, off } = projectLevels(set.head);
-  const nullAway =
-    !set.head.includes(TEST_ONLY) && ownPackages(ownClasses(set.head)).length > 0
-      ? [NULL_AWAY]
-      : [];
-  const immutable = immutableInReach(set.head, set.sources);
-  const enabled = [...ENABLED_CHECKS, ...nullAway, ...on].filter(
-    (check) => !off.has(check) && (check !== IMMUTABLE || immutable || on.has(IMMUTABLE)),
-  );
-  return [...new Set(enabled)].filter((check) => !onEngine.includes(check)).toSorted();
+  const levels = sourceSetLevels(set) ?? new Map();
+  const enabled = [...levels.keys()].filter((check) => !quiet(check, levels));
+  return [...new Set([...enabled, ...unknownTurnedOn(set.head)])]
+    .filter((check) => !onEngine.includes(check))
+    .toSorted();
 }
 
 type PlanContext = {
   readonly remaining: readonly string[];
-  readonly mayReport: ReadonlyMap<string, readonly string[]>;
   readonly wanted: ReadonlySet<string>;
+  readonly mayReport: ReadonlyMap<string, readonly string[]>;
   readonly unsuppressed: ReadonlySet<string>;
+  readonly lombokOff: readonly string[];
 };
 
 function fileChecks(file: string, context: PlanContext): string[] {
-  return (context.mayReport.get(file) ?? context.remaining).filter(
-    (check) =>
-      context.wanted.has(check) &&
-      !(context.unsuppressed.has(file) && LOMBOK_UNSUPPRESSED_OFF.includes(check)),
+  const answer = context.mayReport.get(file);
+  const asked =
+    answer === undefined ? context.remaining : answer.filter((check) => context.wanted.has(check));
+  return asked.filter(
+    (check) => !(context.unsuppressed.has(file) && context.lombokOff.includes(check)),
   );
 }
 
@@ -67,9 +76,10 @@ export function sourceSetPlan(
 ): SourceSetPlan {
   const context = {
     remaining,
-    mayReport,
     wanted: new Set(remaining),
+    mayReport,
     unsuppressed: lombokUnsuppressed(set.sources),
+    lombokOff: lombokOff(set.head, true),
   };
   const files = set.sources.filter((file) => fileChecks(file, context).length > 0);
   if (files.length === 0) {
@@ -77,21 +87,6 @@ export function sourceSetPlan(
   }
   const checks = [...new Set(files.flatMap((file) => fileChecks(file, context)))].toSorted();
   return { kind: 'narrowed', files, checks };
-}
-
-/**
- * The checks a narrowed run turns off: every one the runner may run and the plan does not need, except those Error
- * Prone cannot turn off. Immutable is among them when the runner would not run it on the whole source set.
- */
-export function checksOff(
-  plan: SourceSetPlan,
-  remaining: readonly string[],
-  onEngine: readonly string[],
-): string[] {
-  const kept = plan.kind === 'narrowed' ? plan.checks : [];
-  return [...new Set([...ENABLED_CHECKS, NULL_AWAY, ...onEngine, ...remaining])].filter(
-    (check) => !(kept.includes(check) || CANNOT_BE_OFF.includes(check)),
-  );
 }
 
 /** The arguments file for the plan: no sources, or the narrowed sources compiled against the build's classes. */

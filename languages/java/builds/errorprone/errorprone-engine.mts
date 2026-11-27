@@ -21,6 +21,7 @@ import {
 import {
   engineChecksFor,
   NULL_AWAY,
+  sourceSetLevels,
   testOnly,
   wholeReason,
   type EngineChecks,
@@ -30,10 +31,10 @@ import {
   ENGINE_REPORT,
   type EngineDiagnostic,
 } from './engine-diagnostics.mts';
-import { hasCheckPlugins } from './skip/runner-checks.mts';
+import { narrowedFlags } from './options/narrowed-flags.mts';
+import { lombokOff } from './options/runner-levels.mts';
 import { keptRows, mayReportOf, rowsOf } from './skip/plan-rows.mts';
 import {
-  checksOff,
   plannedArguments,
   planLine,
   remainingChecks,
@@ -113,34 +114,17 @@ function engineReport(
 }
 
 function skipsEngine(set: ArgumentSet, name: string, setting: Setting): boolean {
-  const whole =
-    wholeReason(set.head) ??
-    (hasCheckPlugins(set.head) ? 'its processor path brings checks' : undefined);
+  const whole = wholeReason(set);
   if (whole !== undefined) {
     setting.log?.write(`nitpicker: Error Prone compiles ${name} whole: ${whole}\n`);
   }
   return whole !== undefined || set.sources.length === 0;
 }
 
-type PlanChecks = {
-  readonly plan: SourceSetPlan;
-  readonly remaining: readonly string[];
-  readonly onEngine: readonly string[];
-};
-
-function writePlan(
-  file: string,
-  set: ArgumentSet,
-  { plan, remaining, onEngine }: PlanChecks,
-): void {
-  writeFileSync(
-    file,
-    plannedArguments(
-      set,
-      plan,
-      checksOff(plan, remaining, onEngine).map((check) => `-Xep:${check}:OFF`),
-    ),
-  );
+function writePlan(file: string, set: ArgumentSet, plan: SourceSetPlan): void {
+  const levels = sourceSetLevels(set) ?? new Map();
+  const flags = plan.kind === 'narrowed' ? narrowedFlags(set.head, plan.checks, levels) : [];
+  writeFileSync(file, plannedArguments(set, plan, flags));
 }
 
 function everyFileRead(report: unknown): unknown {
@@ -158,16 +142,17 @@ function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
   if (skipsEngine(set, name, setting)) {
     return [];
   }
-  const selected = engineChecksFor(set.head);
+  const selected = engineChecksFor(set);
   const remaining = remainingChecks(set, selected.checks);
   const report = everyFileRead(engineReport({ file, ...set, ...selected, remaining }, setting));
+  const found = rowsOf(report, selected.checks, generatedRoots(set.head));
   const plan = sourceSetPlan(set, remaining, mayReportOf(report));
-  const rows = keptRows(
-    rowsOf(report, selected.checks, generatedRoots(set.head)),
+  const rows = keptRows(found, {
     set,
-    plan.kind === 'narrowed' ? plan.files : [],
-  );
-  writePlan(file, set, { plan, remaining, onEngine: selected.checks });
+    plan,
+    lombokOff: lombokOff(set.head, true),
+  });
+  writePlan(file, set, plan);
   setting.log?.write(planLine(name, set, plan));
   return engineDiagnostics(rows);
 }

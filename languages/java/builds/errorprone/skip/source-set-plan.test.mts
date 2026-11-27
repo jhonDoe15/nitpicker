@@ -5,7 +5,6 @@ import { useTempProjects } from '../../../../../shared/test-support/temp-project
 import { argumentSetOf } from '../engine-arguments.mts';
 import { ENABLED_CHECKS, IMMUTABLE } from './runner-checks.mts';
 import {
-  checksOff,
   NARROWED,
   plannedArguments,
   planLine,
@@ -131,21 +130,5 @@ describe('sourceSetPlan', () => {
       files: [b],
       checks: ['FallThrough'],
     });
-  });
-
-  it('turns off every check the plan does not need, except the one Error Prone refuses to turn off', () => {
-    const plan = { kind: 'narrowed', files: [], checks: ['FallThrough'] } as const;
-    const off = checksOff(
-      plan,
-      ['FallThrough', 'Extra'],
-      ['UnicodeDirectionalityCharacters', 'SystemOut'],
-    );
-
-    expect(off).toStrictEqual(
-      [...new Set([...ENABLED_CHECKS, 'NullAway', 'SystemOut', 'Extra'])].filter(
-        (check) => !['FallThrough', 'UnicodeDirectionalityCharacters'].includes(check),
-      ),
-    );
-    expect(off.includes(IMMUTABLE)).toBe(true);
   });
 });
