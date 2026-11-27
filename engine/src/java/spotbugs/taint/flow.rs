@@ -333,6 +333,7 @@ impl<'s, 'c, 'a> Flow<'s, 'c, 'a> {
             "assignment_expression" => self.assign(node, &operator, copy, state),
             "method_invocation" => calls::invoke(self, node, copy, state),
             "object_creation_expression" => calls::create(self, node, copy, state),
+            "explicit_constructor_invocation" => calls::delegate(self, node, copy),
             _ => Value::UNKNOWN,
         };
         self.values.insert((node.id(), copy), value);

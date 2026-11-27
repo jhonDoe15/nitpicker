@@ -175,3 +175,10 @@ java.lang.ClassLoader	getSystemResource	java.lang.String	safe
 java.net.URL	getFile		this	
 java.net.URL	getPath		this	
 java.net.URL	<init>	java.lang.String	arg0	
+java.lang.Class	getResource	java.lang.String	safe	
+java.net.URL	<init>	java.net.URL,java.lang.String	arg0+arg1	
+java.net.URL	toURI		this	
+java.net.URI	toURL		this	
+java.net.URI	<init>	java.lang.String	arg0	
+java.net.URI	create	java.lang.String	arg0	
+java.util.Iterator	next		this	

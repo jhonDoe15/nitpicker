@@ -23,6 +23,17 @@ export function placesByArguments(placed: Placed): boolean {
 const ERROR = 'error';
 const WARNING = 'warning';
 const NOTE = 'note';
+const INJECTION_LEVELS = { 1: WARNING, 2: WARNING };
+
+export const INJECTIONS: readonly string[] = [
+  'PATH_TRAVERSAL_IN',
+  'PATH_TRAVERSAL_OUT',
+  'SQL_INJECTION_JDBC',
+  'SQL_INJECTION_SPRING_JDBC',
+  'SQL_INJECTION_JPA',
+  'COMMAND_INJECTION',
+  'LDAP_INJECTION',
+];
 
 export const PLACED: Readonly<Record<string, Placed>> = {
   DCN_NULLPOINTER_EXCEPTION: { text: 'NullPointerException caught', levels: { 2: NOTE } },
@@ -212,4 +223,14 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     levels: { 2: NOTE },
     placement: 'shown',
   },
+  PATH_TRAVERSAL_IN: { text: 'Potential Path Traversal (file read)', levels: INJECTION_LEVELS },
+  PATH_TRAVERSAL_OUT: { text: 'Potential Path Traversal (file write)', levels: INJECTION_LEVELS },
+  SQL_INJECTION_JDBC: { text: 'Potential JDBC Injection', levels: INJECTION_LEVELS },
+  SQL_INJECTION_SPRING_JDBC: {
+    text: 'Potential JDBC Injection (Spring JDBC)',
+    levels: INJECTION_LEVELS,
+  },
+  SQL_INJECTION_JPA: { text: 'Potential SQL/JPQL Injection (JPA)', levels: INJECTION_LEVELS },
+  COMMAND_INJECTION: { text: 'Potential Command Injection', levels: INJECTION_LEVELS },
+  LDAP_INJECTION: { text: 'Potential LDAP Injection', levels: INJECTION_LEVELS },
 };

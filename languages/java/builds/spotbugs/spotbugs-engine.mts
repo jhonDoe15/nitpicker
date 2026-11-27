@@ -9,6 +9,7 @@ import {
   type EngineHooks,
 } from '../../../../shared/engine/engine-run.mts';
 import { fieldOf, listOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
+import { INJECTIONS } from './spotbugs-placed.mts';
 import { engineSpotbugsFindingOf, spotbugsResultOf } from './spotbugs-results.mts';
 import {
   type ProcessorKind,
@@ -32,7 +33,6 @@ const EXCLUDE_FILE = 'spotbugs-engine-exclude.xml';
 const SOURCES_FILE = 'spotbugs-engine-sources.txt';
 const CLASSPATH_FILE = 'spotbugs-engine-classpath.txt';
 const REPORT_FILE = 'spotbugs-engine-report.json';
-const SPOTBUGS_RULES = '_SpotBugs';
 const WRONG_MAP_ITERATOR = 'WMI_WRONG_MAP_ITERATOR';
 const LOCK_MONITORENTER = 'JLM_JSR166_LOCK_MONITORENTER';
 const UTIL_MONITORENTER = 'JLM_JSR166_UTILCONCURRENT_MONITORENTER';
@@ -97,6 +97,7 @@ export const ON_ENGINE: readonly string[] = [
   'DM_DEFAULT_ENCODING',
   'UCF_USELESS_CONTROL_FLOW',
   'UCF_USELESS_CONTROL_FLOW_NEXT_LINE',
+  ...INJECTIONS,
 ];
 const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   MultipleInstantiationsOfSingletons: [
@@ -209,7 +210,7 @@ function engineReport(
       '--files',
       sources,
       '--rules',
-      SPOTBUGS_RULES,
+      '_SpotBugs',
       '--classpath',
       lookup,
       ...(lombok ? ['--lombok'] : []),

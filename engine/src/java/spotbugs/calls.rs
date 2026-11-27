@@ -18,7 +18,7 @@ fn object(kind: &Type) -> bool {
 
 /// The class a call names in the compiled code: the type of the object, the class made, or the class around
 /// the call that has the method.
-fn owner(context: &Context, call: Node, by: &str) -> Option<String> {
+pub(crate) fn owner(context: &Context, call: Node, by: &str) -> Option<String> {
     let resolver = context.resolver;
     let index = resolver.index;
     match call.kind() {

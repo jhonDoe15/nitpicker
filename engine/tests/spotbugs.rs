@@ -62,7 +62,7 @@ fn patterns_report_what_spotbugs_reports() {
     let missed: Vec<&Row> = expected.difference(&found).collect();
     let extra: Vec<&Row> = found.difference(&expected).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(expected.iter().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 60);
+    assert_eq!(expected.iter().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 66);
 }
 
 /// SpotBugs names the variable a stored value came from; `tests/expected/spotbugs-variables.json` holds the names
@@ -138,8 +138,18 @@ fn locks_list_the_arguments_spotbugs_sarif_lists() {
 }
 
 /// FindSecBugs reports a sink at priority 1 for a tainted value and 2 for an unknown one:
-/// `tests/expected/spotbugs-taint.json` holds file, line and priority of each PATH_TRAVERSAL_IN finding it made on
-/// the compiled `taint_*` fixtures.
+/// `tests/expected/spotbugs-taint.json` holds file, line and priority of each path, SQL, command and LDAP injection
+/// finding it made on the compiled `taint_*` fixtures.
+const INJECTIONS: &[&str] = &[
+    "PATH_TRAVERSAL_IN",
+    "PATH_TRAVERSAL_OUT",
+    "SQL_INJECTION_JDBC",
+    "SQL_INJECTION_SPRING_JDBC",
+    "SQL_INJECTION_JPA",
+    "COMMAND_INJECTION",
+    "LDAP_INJECTION",
+];
+
 #[test]
 fn taint_sinks_have_the_priority_findsecbugs_gives() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
@@ -152,9 +162,72 @@ fn taint_sinks_have_the_priority_findsecbugs_gives() {
         if !name.starts_with("taint_") {
             continue;
         }
-        let listed = found_listed(&case, &name, "priority").into_iter().filter(|row| row.1 == "PATH_TRAVERSAL_IN");
+        let listed = found_listed(&case, &name, "priority").into_iter().filter(|row| INJECTIONS.contains(&row.1.as_str()));
         found.extend(listed.map(|(file, _, line, priority)| (file, line, priority.parse().expect("priority"))));
     }
     found.sort();
     assert_eq!(found, expected);
+}
+
+/// The JVM type names of a method descriptor's parameters, as `injection-sinks.tsv` writes them.
+fn descriptor_parameters(descriptor: &str) -> Vec<String> {
+    let listed = descriptor.trim_start_matches('(').split(')').next().unwrap_or_default();
+    let mut found = Vec::new();
+    let mut chars = listed.chars().peekable();
+    while chars.peek().is_some() {
+        let mut arrays = 0;
+        while chars.peek() == Some(&'[') {
+            chars.next();
+            arrays += 1;
+        }
+        let name = match chars.next() {
+            Some('L') => chars.by_ref().take_while(|part| *part != ';').collect::<String>().replace('/', "."),
+            Some(code) => {
+                let names = [('I', "int"), ('J', "long"), ('Z', "boolean"), ('B', "byte"), ('C', "char"), ('S', "short"), ('F', "float"), ('D', "double")];
+                names.iter().find(|(known, _)| *known == code).map(|(_, name)| name.to_string()).unwrap_or_default()
+            }
+            None => break,
+        };
+        found.push(format!("{name}{}", "[]".repeat(arrays)));
+    }
+    found
+}
+
+/// nitpicker hands FindSecBugs sink files of its own; each of their sinks is a row of the engine's sink table. A
+/// position in those files counts from the last parameter.
+#[test]
+fn sink_files_nitpicker_hands_findsecbugs_are_in_the_sink_table() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let table = std::fs::read_to_string(root.join("src/java/spotbugs/taint/injection-sinks.tsv")).expect("table");
+    let rows: BTreeSet<(String, String, String, String, String)> = table
+        .lines()
+        .filter(|line| !line.starts_with('#') && !line.is_empty())
+        .filter_map(|line| match line.split('\t').collect::<Vec<_>>()[..] {
+            [pattern, owner, name, parameters, positions] => Some((pattern.into(), owner.into(), name.into(), parameters.into(), positions.into())),
+            _ => None,
+        })
+        .collect();
+    let security = root.join("../languages/java/gradle/security");
+    let files = [("path-sinks.txt", "PATH_TRAVERSAL_IN"), ("jakarta-sinks.txt", "SQL_INJECTION_JPA"), ("spring-jdbc-sinks.txt", "SQL_INJECTION_SPRING_JDBC")];
+    let mut missing = Vec::new();
+    let mut checked = 0;
+    for (file, pattern) in files {
+        for line in std::fs::read_to_string(security.join(file)).expect("sinks").lines().filter(|line| !line.trim().is_empty()) {
+            let (call, positions) = line.rsplit_once(':').expect("positions");
+            let (owner, method) = call.split_once('.').expect("method");
+            let (name, descriptor) = method.split_at(method.find('(').expect("descriptor"));
+            let parameters = descriptor_parameters(descriptor);
+            let counted: Vec<usize> = positions.split(',').map(|position| position.parse().expect("position")).collect();
+            assert!(counted.iter().all(|position| *position < parameters.len()), "position beyond the parameters: {line}");
+            let mut indexes: Vec<usize> = counted.iter().map(|position| parameters.len() - 1 - position).collect();
+            indexes.sort();
+            let listed = indexes.iter().map(usize::to_string).collect::<Vec<_>>().join(",");
+            let row = (pattern.to_string(), owner.replace('/', "."), name.to_string(), parameters.join(","), listed);
+            checked += 1;
+            if !rows.contains(&row) {
+                missing.push(row);
+            }
+        }
+    }
+    assert!(checked > 0 && missing.is_empty(), "checked {checked}, missing {missing:?}");
 }
