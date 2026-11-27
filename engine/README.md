@@ -419,7 +419,7 @@ the engine there. The range compared (`TESTED_LOMBOK`) therefore starts at 1.18.
 | 1.18.46 | 286 | 85 | 61 | 248 | 1380 / 62 / 0 / 12 | 593 |
 | 1.18.48 | 289 | 85 | 63 | 248 | 1377 / 66 / 0 / 12 | 593 |
 
-Error Prone's rows on the 351 files compared in all seven are the same for 1.18.40 and 1.18.42 and for 1.18.44 and
+Error Prone's own rows on the 351 files that compile alone in all seven (rewrite rows aside) are the same for 1.18.40 and 1.18.42 and for 1.18.44 and
 1.18.46; each other step changes some (16 files from 1.18.36 to 1.18.38, 32 files, most of them `@SuperBuilder`, from 1.18.46 to
 1.18.48).
 
