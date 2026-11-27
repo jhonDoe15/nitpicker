@@ -163,21 +163,21 @@
  ],
  [
   "no-assertion-in-loop/19.ts",
-  "nitpicker/no-unowned-async-assertion",
-  1,
-  46,
-  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
-  1,
-  86
- ],
- [
-  "no-assertion-in-loop/19.ts",
   "nitpicker/no-assertion-in-loop",
   1,
   65,
   "This assertion sits in a `forEach` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
   1,
   74
+ ],
+ [
+  "no-assertion-in-loop/19.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  46,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  86
  ],
  [
   "no-assertion-in-loop/20.ts",
@@ -414,6 +414,69 @@
   47
  ],
  [
+  "no-copy-pasted-tests/06.ts",
+  "nitpicker/no-copy-pasted-tests",
+  3,
+  1,
+  "This test repeats the body of 2 others and differs only in its literals. Put the cases in one table and give each case its own test with it.each.",
+  3,
+  3
+ ],
+ [
+  "no-copy-pasted-tests/07.ts",
+  "nitpicker/no-copy-pasted-tests",
+  3,
+  1,
+  "This test repeats the body of 4 others and differs only in its literals. Put the cases in one table and give each case its own test with it.each.",
+  3,
+  3
+ ],
+ [
+  "no-copy-pasted-tests/07.ts",
+  "nitpicker/no-copy-pasted-tests",
+  4,
+  1,
+  "This test repeats the body of 4 others and differs only in its literals. Put the cases in one table and give each case its own test with it.each.",
+  4,
+  3
+ ],
+ [
+  "no-copy-pasted-tests/07.ts",
+  "nitpicker/no-copy-pasted-tests",
+  5,
+  1,
+  "This test repeats the body of 4 others and differs only in its literals. Put the cases in one table and give each case its own test with it.each.",
+  5,
+  3
+ ],
+ [
+  "no-copy-pasted-tests/08.ts",
+  "nitpicker/no-copy-pasted-tests",
+  4,
+  1,
+  "This test repeats the body of 2 others and differs only in its literals. Put the cases in one table and give each case its own test with it.each.",
+  4,
+  3
+ ],
+ [
+  "no-copy-pasted-tests/09.ts",
+  "nitpicker/no-copy-pasted-tests",
+  3,
+  1,
+  "This test repeats the body of 2 others and differs only in its literals. Put the cases in one table and give each case its own test with it.each.",
+  3,
+  5
+ ],
+ [
+  "no-copy-pasted-tests/10.ts",
+  "nitpicker/no-copy-pasted-tests",
+  3,
+  1,
+  "This test repeats the body of 2 others and differs only in its literals. Put the cases in one table and give each case its own test with it.each.",
+  3,
+  3
+ ],
+ [
   "no-shared-test-state/01.ts",
   "nitpicker/no-shared-test-state",
   1,
@@ -559,6 +622,15 @@
  ],
  [
   "no-switched-off-tests/r-lone-surrogate.ts",
+  "nitpicker/no-copy-pasted-tests",
+  3,
+  1,
+  "This test repeats the body of 2 others and differs only in its literals. Put the cases in one table and give each case its own test with it.each.",
+  3,
+  46
+ ],
+ [
+  "no-switched-off-tests/r-lone-surrogate.ts",
   "nitpicker/no-switched-off-tests",
   1,
   4,
@@ -622,21 +694,21 @@
  ],
  [
   "no-unowned-async-assertion/05.ts",
-  "nitpicker/no-unowned-async-assertion",
-  1,
-  56,
-  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
-  1,
-  101
- ],
- [
-  "no-unowned-async-assertion/05.ts",
   "nitpicker/no-assertion-in-loop",
   1,
   75,
   "This assertion sits in a `map` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
   1,
   84
+ ],
+ [
+  "no-unowned-async-assertion/05.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  56,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  101
  ],
  [
   "no-unowned-async-assertion/06.ts",
@@ -1015,5 +1087,68 @@
   "This assertion sits in a `map` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
   1,
   111
+ ],
+ [
+  "no-test-helpers-in-source/a.test-support.js",
+  "nitpicker/no-test-helpers-in-source",
+  1,
+  1,
+  "This looks like a test helper (a.test-support.js), but it sits in production source, so it is mutation-tested and shipped. Tests in this project live under test/, so move it to a test-support/ folder there (test/test-support/). An exception fits only when it is real production code.",
+  2,
+  1
+ ],
+ [
+  "no-test-helpers-in-source/db.test-helpers.ts",
+  "nitpicker/no-test-helpers-in-source",
+  1,
+  1,
+  "This looks like a test helper (db.test-helpers.ts), but it sits in production source, so it is mutation-tested and shipped. Tests in this project live under test/, so move it to a test-support/ folder there (test/test-support/). An exception fits only when it is real production code.",
+  2,
+  1
+ ],
+ [
+  "no-test-helpers-in-source/fixtures.ts",
+  "nitpicker/no-test-helpers-in-source",
+  1,
+  1,
+  "This looks like a test helper (fixtures.ts), but it sits in production source, so it is mutation-tested and shipped. Tests in this project live under test/, so move it to a test-support/ folder there (test/test-support/). An exception fits only when it is real production code.",
+  2,
+  1
+ ],
+ [
+  "no-test-helpers-in-source/my-fixtures.tsx",
+  "nitpicker/no-test-helpers-in-source",
+  1,
+  1,
+  "This looks like a test helper (my-fixtures.tsx), but it sits in production source, so it is mutation-tested and shipped. Tests in this project live under test/, so move it to a test-support/ folder there (test/test-support/). An exception fits only when it is real production code.",
+  2,
+  1
+ ],
+ [
+  "no-test-helpers-in-source/test-helpers.ts",
+  "nitpicker/no-test-helpers-in-source",
+  3,
+  1,
+  "This looks like a test helper (test-helpers.ts), but it sits in production source, so it is mutation-tested and shipped. Tests in this project live under test/, so move it to a test-support/ folder there (test/test-support/). An exception fits only when it is real production code.",
+  4,
+  1
+ ],
+ [
+  "no-test-helpers-in-source/test-utils.ts",
+  "nitpicker/no-test-helpers-in-source",
+  1,
+  1,
+  "This looks like a test helper (test-utils.ts), but it sits in production source, so it is mutation-tested and shipped. Tests in this project live under test/, so move it to a test-support/ folder there (test/test-support/). An exception fits only when it is real production code.",
+  2,
+  1
+ ],
+ [
+  "no-copy-pasted-tests/12.ts",
+  "nitpicker/no-copy-pasted-tests",
+  4,
+  3,
+  "This test repeats the body of 2 others and differs only in its literals. Put the cases in one table and give each case its own test with it.each.",
+  4,
+  5
  ]
 ]

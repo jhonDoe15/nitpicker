@@ -1,11 +1,21 @@
 //! The test-quality and test-assertion rules on the engine against what their ESLint-plugin rules report for the same
-//! files. The expected rows come from `parity/typescript-lint-expected.mts <list> <out> <rules>`.
+//! files. The expected rows come from `parity/typescript-lint-expected.mts <list> <out> <rules>`, run from the folder of
+//! `no-test-helpers-in-source` for that rule, so the paths it sees are the file names.
 use std::path::Path;
 use std::process::Command;
 
 type Row = Vec<serde_json::Value>;
 
-const RULES: [&str; 4] = ["no-assertion-in-loop", "no-shared-test-state", "no-switched-off-tests", "no-unowned-async-assertion"];
+const RULES: [&str; 6] = [
+    "no-assertion-in-loop",
+    "no-copy-pasted-tests",
+    "no-shared-test-state",
+    "no-switched-off-tests",
+    "no-test-helpers-in-source",
+    "no-unowned-async-assertion",
+];
+/// Its files are named as the rule would see them relative to the project: the caller gives that path as a setting.
+const PATH_RULE: &str = "no-test-helpers-in-source";
 
 fn sorted(mut rows: Vec<Row>) -> Vec<Row> {
     rows.sort_by_key(|row| serde_json::to_string(row).expect("text"));
@@ -18,7 +28,8 @@ fn listed(fixtures: &Path) -> Vec<String> {
         let mut names: Vec<String> =
             std::fs::read_dir(fixtures.join(rule)).expect("rule fixtures").map(|entry| entry.expect("entry").file_name().to_string_lossy().into_owned()).collect();
         names.sort();
-        lines.extend(names.iter().map(|name| format!("{}\t{rule}/{name}", fixtures.join(rule).join(name).display())));
+        let setting = |name: &str| if rule == PATH_RULE { format!("\t{rule}.path={name}") } else { String::new() };
+        lines.extend(names.iter().map(|name| format!("{}\t{rule}/{name}{}", fixtures.join(rule).join(name).display(), setting(name))));
     }
     lines
 }

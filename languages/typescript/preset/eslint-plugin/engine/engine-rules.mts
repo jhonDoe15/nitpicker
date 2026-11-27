@@ -11,6 +11,8 @@ import {
 } from '../rules/test-runtime/assertions/test-must-use-production-runtime.mts';
 import { vocabularyOf } from '../rules/runner-apis/runner-option.mts';
 import { readLayout } from '../rules/typed/policy-views.mts';
+import type { RunnerVocabulary } from '../../test-runner/vocabulary/typed-vocabulary.mts';
+import path from 'node:path';
 import { featureOf } from '../rules/contracts/contract-infrastructure-type.mts';
 import { testSourcesFact } from './test-sources-fact.mts';
 
@@ -51,6 +53,23 @@ export type EngineRule = {
   readonly needs?: 'types';
 };
 
+function testRootOf(options: readonly unknown[]): string {
+  const root: unknown = Reflect.get(Object(options[0]), 'testRoot');
+  return typeof root === 'string' ? root : 'test';
+}
+
+function runnerWords(...words: readonly (keyof RunnerVocabulary)[]): FileFacts {
+  return (_filename, options) => {
+    const vocabulary = vocabularyOf({ options });
+    return Object.fromEntries(
+      words.map((word) => [
+        word.replaceAll(/[A-Z]/gu, (upper) => `-${upper.toLowerCase()}`),
+        vocabulary[word],
+      ]),
+    );
+  };
+}
+
 export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<string, EngineRule>([
   [
     'contract-infrastructure-type',
@@ -84,6 +103,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
       },
     },
   ],
+  ['no-copy-pasted-tests', { facts: runnerWords('eachCase') }],
   ['no-dropped-delegate-result', TYPED],
   ['no-eager-relation', {}],
   ['no-empty-every-signal', TYPED],
@@ -134,6 +154,16 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-silent-catch', {}],
   ['no-string-as-regex', TYPED],
   ['no-swapped-arguments', TYPED],
+  [
+    'no-test-helpers-in-source',
+    {
+      facts: (filename, options, { root }) => ({
+        path: path.relative(root, filename),
+        colocated: String(Reflect.get(Object(options[0]), 'colocated') === true),
+        'test-root': testRootOf(options),
+      }),
+    },
+  ],
   ['no-switched-off-tests', {}],
   [
     'no-unhandled-void-promise',
