@@ -1,14 +1,13 @@
 import { existsSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { findEngine } from '../../../../shared/engine/engine-binary.mts';
-import { engineFindingOf } from '../../../../shared/engine/engine-rows.mts';
 import {
   runEngineSync,
   type EngineCall,
   type EngineEnvironment as Environment,
   type EngineHooks,
 } from '../../../../shared/engine/engine-run.mts';
-import { fieldOf, listOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import {
   argumentSetOf,
   generatedRoots,
@@ -23,6 +22,8 @@ import {
   ENGINE_REPORT,
   type EngineDiagnostic,
 } from './engine-diagnostics.mts';
+import { keptRows, rowsOf } from './skip/plan-rows.mts';
+import { CANNOT_BE_OFF } from './skip/runner-checks.mts';
 
 export type ErrorProneEnginePlan = {
   readonly reportDir: string;
@@ -81,18 +82,6 @@ function engineReport(
   return parseJson(readFileSync(report, 'utf8'));
 }
 
-function reportedRows(report: unknown, checks: readonly string[], head: readonly string[]) {
-  const wanted = new Set(checks);
-  const skipped = generatedRoots(head).map((root) => `${root.split(path.sep).join('/')}/`);
-  return listOf(fieldOf(report, 'findings'))
-    .map(engineFindingOf)
-    .filter(({ rule }) => wanted.has(rule))
-    .filter(({ file: source }) => {
-      const slashed = source.split(path.sep).join('/');
-      return !skipped.some((root) => slashed.includes(root));
-    });
-}
-
 function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
   const text = new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(file));
   const set = argumentSetOf(text);
@@ -106,12 +95,13 @@ function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
     throw new Error(`it could not read ${unparsed[0] ?? ''}`);
   }
   const { checks } = selected;
-  const diagnostics = engineDiagnostics(reportedRows(report, checks, set.head));
+  const rows = rowsOf(report, checks, generatedRoots(set.head));
+  const diagnostics = engineDiagnostics(keptRows(rows, set, set.sources));
   writeFileSync(
     file,
     withProjectFlags(
       text,
-      checks.map((check) => `-Xep:${check}:OFF`),
+      checks.filter((check) => !CANNOT_BE_OFF.includes(check)).map((check) => `-Xep:${check}:OFF`),
     ),
   );
   return diagnostics;

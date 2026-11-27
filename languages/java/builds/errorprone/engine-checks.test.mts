@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
-import { fieldOf, fieldsOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import {
   argumentSetOf,
   generatedRoots,
@@ -120,23 +120,31 @@ describe('engineChecksFor', () => {
     expect(engineChecksFor([...head, `--own-classes=${own}`]).checks).toStrictEqual([]);
   });
 
-  it('moves only checks the engine has, that no class annotation exempts and Lombok does not switch off', () => {
+  it('moves only checks the engine has and Java runs enable', () => {
     const read = (file: string): unknown =>
       parseJson(readFileSync(path.join(REPOSITORY, file), 'utf8'));
     const checks = read('languages/java/gradle/errorprone/checks.json');
     const ported = textsOf(read('engine/parity/errorprone/ported.json'));
-    const special = [
-      ...textsOf(fieldOf(checks, 'lombokUnsuppressedOff')),
-      ...Object.keys(fieldsOf(fieldOf(checks, 'classExemptions'))),
-      ...textsOf(fieldOf(checks, 'disable')),
-    ];
+    const disabled = textsOf(fieldOf(checks, 'disable'));
 
     expect(WITHOUT_NULL_AWAY.filter((check) => !ported.includes(check))).toStrictEqual([]);
-    expect(ENGINE_CHECKS.filter((check) => special.includes(check))).toStrictEqual([]);
+    expect(ENGINE_CHECKS.filter((check) => disabled.includes(check))).toStrictEqual([]);
   });
 
-  it('keeps on Error Prone the checks Error Prone refuses to switch off', () => {
-    expect(ENGINE_CHECKS).not.toContain('UnicodeDirectionalityCharacters');
+  it('moves the checks with class exemptions, Lombok grouping and the one Error Prone cannot switch off', () => {
+    expect(
+      [
+        'IdentifierName',
+        'MissingBraces',
+        'UnicodeDirectionalityCharacters',
+        'HardCodedSdCardPath',
+      ].filter((check) => !ENGINE_CHECKS.includes(check)),
+    ).toStrictEqual([]);
+    expect(
+      ENGINE_CHECKS.filter((check) =>
+        ['ReferenceEquality', 'UnnecessaryMethodReference'].includes(check),
+      ),
+    ).toStrictEqual([]);
   });
 });
 

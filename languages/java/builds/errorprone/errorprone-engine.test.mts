@@ -103,8 +103,9 @@ describe('errorProneOnEngine', () => {
       NITPICKER_JDK: plan.javaHome,
     });
     const lines = readFileSync(argumentFile, 'utf8').split('\n');
-    expect(lines.slice(lines.indexOf('--sources') - ENGINE_CHECKS.length)).toStrictEqual([
-      ...ENGINE_CHECKS.map((check) => `--errorprone-flag=-Xep:${check}:OFF`),
+    const off = ENGINE_CHECKS.filter((check) => check !== 'UnicodeDirectionalityCharacters');
+    expect(lines.slice(lines.indexOf('--sources') - off.length)).toStrictEqual([
+      ...off.map((check) => `--errorprone-flag=-Xep:${check}:OFF`),
       ...['--sources', source, generated, ''],
     ]);
   });

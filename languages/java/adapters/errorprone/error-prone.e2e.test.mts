@@ -366,8 +366,8 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
   });
 
   it('records the annotations of every class around a diagnostic, so a nested class is spared too', () => {
-    const report = listOf(
-      parseJson(readFileSync(path.join(root, 'build/nitpicker/errorprone.json'), 'utf8')),
+    const report = ['errorprone.json', 'errorprone-engine.json'].flatMap((name) =>
+      listOf(parseJson(readFileSync(path.join(root, 'build/nitpicker', name), 'utf8'))),
     );
 
     expect(

@@ -356,8 +356,35 @@ impl Context<'_> {
             rule: check.to_string(),
             message: format!("[{check}] {message}"),
             symbol: None,
-            priority: None, arguments: None,
+            priority: None,
+            arguments: CLASS_EXEMPTED
+                .contains(&check)
+                .then(|| self.class_annotations(offset))
+                .filter(|names| !names.is_empty()),
         });
+    }
+    /// The annotations of the classes around an offset, innermost class first, each followed by the annotations on its
+    /// own declaration, the way Error Prone's runner lists them: full names, without `java.lang.annotation`.
+    fn class_annotations(&self, offset: usize) -> Vec<String> {
+        let mut names = Vec::new();
+        let mut current = self.file.tree.root_node().descendant_for_byte_range(offset, offset);
+        while let Some(node) = current {
+            if CLASS_KINDS.contains(&node.kind()) {
+                self.add_annotations(self.resolver.annotation_names(node), &mut names);
+            }
+            current = node.parent();
+        }
+        names
+    }
+    fn add_annotations(&self, found: Vec<String>, names: &mut Vec<String>) {
+        for name in found {
+            if name.starts_with("java.lang.annotation.") || names.contains(&name) {
+                continue;
+            }
+            names.push(name.clone());
+            let above = self.resolver.index.get(&name).map(|info| info.class_annotations.clone()).unwrap_or_default();
+            self.add_annotations(above, names);
+        }
     }
     /// Whether the node or a declaration around it carries `@SuppressWarnings` with the check's name or "all".
     pub fn suppressed(&self, check: &str, node: Node) -> bool {
@@ -944,6 +971,16 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
 ];
 
 pub struct ErrorProne;
+
+/// Checks whose findings nitpicker drops inside classes with certain annotations; their rows carry the annotations.
+const CLASS_EXEMPTED: &[&str] = &["IdentifierName", "PrivateConstructorForUtilityClass"];
+const CLASS_KINDS: &[&str] = &[
+    "class_declaration",
+    "interface_declaration",
+    "enum_declaration",
+    "record_declaration",
+    "annotation_type_declaration",
+];
 
 impl FileRule for ErrorProne {
     fn id(&self) -> &'static str {
