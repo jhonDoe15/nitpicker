@@ -13,9 +13,15 @@ fn report(context: &Context, at: Node, generator: &str) {
     }
 }
 
+/// Two generators of one method on one line are one finding.
 fn report_in(context: &Context, at: Node, generator: &str, label: &str) {
     let message = format!("This random generator ({generator}) is predictable");
     let place = super::super::place::function(label);
+    let line = context.line(at);
+    let same = |found: &crate::engine::finding::Finding| found.rule == "PREDICTABLE_RANDOM" && found.line == line && found.symbol.as_deref() == Some(place.as_str());
+    if context.out.borrow().iter().any(|found| same(found) && found.message == message) {
+        return;
+    }
     context.report_listed("PREDICTABLE_RANDOM", at, context.line(at), message, place, 2, vec![generator.to_string()]);
 }
 
@@ -43,9 +49,13 @@ pub fn generator(context: &Context, node: Node) -> Option<&'static str> {
     }
 }
 
+/// A `Random` made as an anonymous class is built inside the constructor javac writes for that class.
 pub fn check(context: &Context, node: Node) {
-    if let Some(generator) = generator(context, node) {
-        report(context, node, generator);
+    let Some(generator) = generator(context, node) else { return };
+    let anonymous = children(node).iter().any(|part| part.kind() == "class_body");
+    match context.resolver.scope.names.get(&node.id()).filter(|_| anonymous) {
+        Some(own) => report_in(context, node, generator, &super::super::names::anonymous(context, own, node)),
+        None => report(context, node, generator),
     }
 }
 

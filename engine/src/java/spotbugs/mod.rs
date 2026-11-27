@@ -23,6 +23,7 @@ mod names;
 mod naming;
 mod nulls;
 mod order;
+mod sequence;
 mod serial;
 pub mod place;
 mod observed;
@@ -228,6 +229,7 @@ const DETECTORS: &[Detector] = &[
     concurrent::concurrent as Detector,
     idioms::idioms as Detector,
     naming::naming as Detector,
+    sequence::sequence as Detector,
 ];
 
 #[derive(Default)]
