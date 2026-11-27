@@ -172,7 +172,7 @@ fn constant(context: &Context, own: &str, field: Node, value: Node) -> bool {
 }
 
 /// The lines of the code a field declaration or initializer block adds to `<init>` or `<clinit>`.
-fn initializer_lines(context: &Context, own: &str, member: Node, interface: bool) -> Vec<usize> {
+pub fn initializer_lines(context: &Context, own: &str, member: Node, interface: bool) -> Vec<usize> {
     match member.kind() {
         "field_declaration" | "constant_declaration" => {
             let is_static = interface || member.kind() == "constant_declaration" || has_modifier(member, "static");

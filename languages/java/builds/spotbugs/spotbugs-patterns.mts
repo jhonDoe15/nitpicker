@@ -8,7 +8,10 @@ import {
   THREAD_PATTERNS,
   URL_PATTERNS,
 } from './spotbugs-dumb-placed.mts';
+import { COOKIE_PATTERNS } from './cookies/spotbugs-cookies-placed.mts';
+import { CRYPTO_PATTERNS } from './crypto/spotbugs-crypto-placed.mts';
 import { INJECTIONS } from './spotbugs-placed.mts';
+import { TLS_PATTERNS } from './tls/spotbugs-tls-placed.mts';
 import {
   DIVISION_PATTERNS,
   ENUM_PATTERNS,
@@ -136,6 +139,9 @@ export const ON_ENGINE: readonly string[] = [
   ...FLOAT_PATTERNS,
   ...CIRCUIT_PATTERNS,
   ...CALENDAR_PATTERNS,
+  ...CRYPTO_PATTERNS,
+  ...TLS_PATTERNS,
+  ...COOKIE_PATTERNS,
   ...ASSIGNMENT_PATTERNS,
 ];
 
