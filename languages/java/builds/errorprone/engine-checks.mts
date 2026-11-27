@@ -1,5 +1,13 @@
 import PORTED_CHECKS from '../../gradle/errorprone/engine-checks.json' with { type: 'json' };
-import { ownClasses, ownPackages, runsProcessors, type ArgumentSet } from './engine-arguments.mts';
+import {
+  lombokTested,
+  lombokVersions,
+  ownClasses,
+  ownPackages,
+  runsProcessors,
+  TESTED_LOMBOK,
+  type ArgumentSet,
+} from './engine-arguments.mts';
 import { NOT_DISABLEABLE, type CheckLevels } from './options/check-levels.mts';
 import { optionReaders, unsupportedOption } from './options/project-options.mts';
 import { runnerLevels } from './options/runner-levels.mts';
@@ -39,6 +47,11 @@ export function wholeReason(
   }
   if (levels === undefined) {
     return 'Error Prone refuses the project check levels';
+  }
+  const untested = lombokVersions(set.head).find((version) => !lombokTested(version));
+  if (untested !== undefined) {
+    const { lowest, highest } = TESTED_LOMBOK;
+    return `it runs Lombok ${untested}, outside the versions compared with Error Prone (${lowest} to ${highest})`;
   }
   return runsProcessors(set.head) ? 'it runs annotation processors' : undefined;
 }
