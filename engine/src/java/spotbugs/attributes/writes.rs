@@ -24,6 +24,42 @@ pub enum Phase {
 /// How SpotBugs orders the stores of one class: phase, constructor, initializer before body, place in the file.
 pub type Order = (Phase, usize, u8, usize);
 
+/// Where an access sits in the class file, for patterns that meet a class's methods in the order javac writes them:
+/// lambdas after everything else, then the place of the method; field initializers count from the first
+/// constructor that runs them (a class without one gets javac's, which comes first).
+pub type Code = (bool, usize, u8, usize);
+
+pub fn code(node: Node, known: &mut Constructors) -> Code {
+    let Some((member, lambda)) = member_of(node) else { return (true, usize::MAX, 0, node.start_byte()) };
+    let at = node.start_byte();
+    if lambda {
+        return (true, 0, 0, at);
+    }
+    let Some(body) = parent(member) else { return (false, member.start_byte(), 1, at) };
+    let body = if body.kind() == "enum_body_declarations" { parent(body).unwrap_or(body) } else { body };
+    let is_static = body.kind() == "interface_body" || has_modifier(member, "static") || matches!(member.kind(), "static_initializer" | "enum_constant" | "constant_declaration");
+    match member.kind() {
+        "field_declaration" | "block" if !is_static => {
+            let (all, first) = constructors(body, known);
+            let start = all.get(*first).and_then(|id| super::super::place::members(body).into_iter().find(|part| part.id() == *id)).map_or(0, |constructor| constructor.start_byte());
+            (false, start, 0, at)
+        }
+        "field_declaration" | "static_initializer" | "enum_constant" | "constant_declaration" => (false, usize::MAX, 0, at),
+        _ => (false, member.start_byte(), 1, at),
+    }
+}
+
+/// Whether a load is the value of `this.f = this.f` (or `f = f`) for the same field.
+pub fn copies_itself(context: &Context, load: Node) -> bool {
+    let Some(above) = parent(load) else { return false };
+    let plain = above.kind() == "assignment_expression" && above.child_by_field_name("operator").is_some_and(|operator| operator.kind() == "=");
+    let right = above.child_by_field_name("right").is_some_and(|right| right.id() == load.id());
+    let Some(left) = above.child_by_field_name("left").filter(|_| plain && right) else { return false };
+    let on_this = |side: Node| side.kind() == "identifier" || side.child_by_field_name("object").is_some_and(|object| object.kind() == "this");
+    let key = |side: Node| super::super::fields::field_key(context, side);
+    on_this(left) && on_this(load) && key(left).is_some() && key(left) == key(load)
+}
+
 /// The member of a class body that holds a node, and whether a lambda lies in between.
 fn member_of(node: Node) -> Option<(Node, bool)> {
     let mut lambda = false;

@@ -8,7 +8,7 @@
 mod eval;
 mod flow;
 mod lines;
-mod reach;
+pub(super) mod reach;
 mod values;
 
 use super::{Context, names, place};

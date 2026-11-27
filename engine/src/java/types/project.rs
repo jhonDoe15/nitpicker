@@ -194,14 +194,17 @@ pub fn build(files: &[SourceFile], options: &crate::engine::Options) -> JavaProj
     JavaProject { index, sources, literals, volatiles, null_finals, numbers, extended }
 }
 
-/// Puts back, as statements of the blanked body, the class literals and `assert` statements that `literals` reads.
+/// Puts back, as statements of the blanked body, the class literals, `forName` calls and `assert` statements that
+/// `literals` reads.
 fn keep_class_objects(file: &SourceFile, body: Node, bytes: &mut [u8]) {
     let mut kept: Vec<(usize, usize, bool)> = Vec::new();
     walk(body, |node| {
         let inside = kept.last().is_some_and(|(_, end, _)| node.start_byte() < *end);
         match node.kind() {
             "assert_statement" if !inside => kept.push((node.start_byte(), node.end_byte(), false)),
-            "class_literal" if !inside && bytes.get(node.end_byte()) == Some(&b' ') => kept.push((node.start_byte(), node.end_byte(), true)),
+            "class_literal" | "method_invocation" if !inside && loads_class(file, node) && bytes.get(node.end_byte()) == Some(&b' ') => {
+                kept.push((node.start_byte(), node.end_byte(), true));
+            }
             _ => {}
         }
     });
@@ -305,11 +308,28 @@ fn class_literals(files: &[SourceFile], scopes: &[FileScope], index: &TypeIndex)
                     }));
                 }
                 "assert_statement" => found.extend(super::scope::enclosing_types(scope, node).pop()),
+                "method_invocation" => found.extend(loaded_by_name(&resolver, index, node)),
                 _ => {}
             });
             found
         })
         .collect()
+}
+
+fn loads_class(file: &SourceFile, node: Node) -> bool {
+    let name = node.child_by_field_name("name").map(|name| file.text_of(name));
+    node.kind() == "class_literal" || (name == Some("forName") && node.child_by_field_name("object").is_some())
+}
+
+/// The class `Class.forName` loads when its one argument is a constant: javac writes the name into the class file.
+fn loaded_by_name(resolver: &Resolver, index: &TypeIndex, call: Node) -> Option<String> {
+    let object = call.child_by_field_name("object")?;
+    let arguments = call.child_by_field_name("arguments")?;
+    let named = resolver.file.text_of(call.child_by_field_name("name")?) == "forName" && arguments.named_child_count() == 1;
+    let on_class = matches!(resolver.receiver(object)?, super::expr::Receiver::Static(owner) if owner == "java.lang.Class");
+    let binary = resolver.constant_string(arguments.named_child(0)?).filter(|_| named && on_class)?;
+    let dotted = binary.replace('$', ".");
+    Some(if index.get(&dotted).is_some() { dotted } else { binary })
 }
 
 const CLASS_BODIES: [&str; 4] = ["class_body", "interface_body", "enum_body", "annotation_type_body"];
