@@ -25,7 +25,7 @@ pub fn class(context: &Context, class: &str) -> String {
 }
 
 /// The place SpotBugs names for a value an instruction uses: the field it was read from, the local variable that
-/// held it, or `?` for anything else.
+/// held it (`this` is the first local of an instance method), or `?` for anything else.
 pub fn value(context: &Context, label: &str, node: Node) -> String {
     let node = unwrap(node);
     let field = super::fields::field_key(context, node);
@@ -34,9 +34,29 @@ pub fn value(context: &Context, label: &str, node: Node) -> String {
             Some(Binding::Local(_)) => variable(label, context.text(node)),
             _ => field.map_or_else(|| variable(label, "?"), |(class, name)| member(context, &class, &name)),
         },
+        "field_access" if node.child_by_field_name("field").is_some_and(|field| field.kind() == "this") => outer_this(context, label, node),
         "field_access" => field.map_or_else(|| variable(label, "?"), |(class, name)| member(context, &class, &name)),
+        "this" => variable(label, "this"),
         _ => variable(label, "?"),
     }
+}
+
+/// `Outer.this`: the method's own `this`, or the field javac reads last, that of the class just inside `Outer`,
+/// named `this$` and the depth of `Outer`; in a constructor of that class, its parameter of that name.
+fn outer_this(context: &Context, label: &str, node: Node) -> String {
+    let around = crate::java::types::scope::enclosing_types(context.resolver.scope, node);
+    let named = context.resolver.type_of(node).map(|kind| kind.erased().name());
+    match named.and_then(|named| around.iter().position(|class| *class == named)) {
+        Some(0) => variable(label, "this"),
+        Some(1) if constructs(context, label, &around[0]) => variable(label, &format!("this${}", around.len() - 2)),
+        Some(at) => member(context, &around[at - 1], &format!("this${}", around.len() - 1 - at)),
+        None => variable(label, "?"),
+    }
+}
+
+/// Whether `label` is a constructor of `class`: its code reads the instance around the class from its parameter.
+fn constructs(context: &Context, label: &str, class: &str) -> bool {
+    label.strip_prefix("new ").is_some_and(|rest| rest.split('(').next() == Some(names::binary(context, class).as_str()))
 }
 
 /// The methods SpotBugs names for code at `node`: the lambda, method or constructor around it; for a field
