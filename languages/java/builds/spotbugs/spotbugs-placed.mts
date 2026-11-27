@@ -279,4 +279,9 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     levels: { 1: NOTE, 2: NOTE },
     placement: 'shown',
   },
+  BX_UNBOXING_IMMEDIATELY_REBOXED: {
+    text: 'Boxed value is unboxed and then immediately reboxed',
+    levels: { 2: NOTE },
+    placement: 'shown',
+  },
 };

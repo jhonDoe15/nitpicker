@@ -6,6 +6,7 @@
   "spotbugs/BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS": ["bug"],
   "spotbugs/BC_VACUOUS_INSTANCEOF": ["simplification"],
   "spotbugs/BIT_SIGNED_CHECK": ["bug"],
+  "spotbugs/BX_UNBOXING_IMMEDIATELY_REBOXED": ["performance"],
   "spotbugs/CD_CIRCULAR_DEPENDENCY": ["maintainability"],
   "spotbugs/CI_CONFUSED_INHERITANCE": ["maintainability"],
   "spotbugs/CNT_ROUGH_CONSTANT_VALUE": ["bug"],

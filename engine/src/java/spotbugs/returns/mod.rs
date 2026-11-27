@@ -1,4 +1,4 @@
-//! RV_RETURN_VALUE_IGNORED_BAD_PRACTICE and RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT.
+//! RV_RETURN_VALUE_IGNORED_BAD_PRACTICE, RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT and BX_UNBOXING_IMMEDIATELY_REBOXED.
 //! A call whose result the code drops (a call statement, the body of a lambda that returns nothing, a `for`
 //! update) is reported once per method, called method and priority, on the first one's line, named after the
 //! method javac gives the code. The bad-practice pattern takes the JDK methods of `jdk.rs` at priority 2 on a
@@ -9,6 +9,7 @@
 //! and priority 3 is not reported. `void` methods, `equals(Object)`, methods marked to have their result ignored,
 //! and overrides of a JDK method of the bad-practice pattern are not reported. A method of the run is named without
 //! its package when it is in the caller's package; the SARIF place of a JDK method drops a `java.lang.` prefix.
+mod boxes;
 mod effects;
 mod jdk;
 mod settle;
@@ -24,7 +25,7 @@ use tree_sitter::Node;
 
 pub const BAD_PRACTICE: &str = "RV_RETURN_VALUE_IGNORED_BAD_PRACTICE";
 pub const NO_SIDE_EFFECT: &str = "RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT";
-pub const PATTERNS: &[&str] = &[BAD_PRACTICE, NO_SIDE_EFFECT];
+pub const PATTERNS: &[&str] = &[BAD_PRACTICE, NO_SIDE_EFFECT, boxes::PATTERN];
 const BOUNDARIES: &[&str] = &["lambda_expression", "class_body", "method_declaration", "constructor_declaration"];
 
 /// Whether an exception handler covers a node with a range of code all on the node's line, which SpotBugs takes as
@@ -245,6 +246,9 @@ fn ignorable(context: &Context, call: &Call) -> bool {
 
 /// The file's dropped results: bad-practice findings at once, the rest for `Effects` to settle with the whole run.
 pub fn returns(context: &Context, effects: &Effects) {
+    if context.wants(&[boxes::PATTERN]) {
+        boxes::boxes(context);
+    }
     let bad = context.wants(&[BAD_PRACTICE]);
     let side = context.wants(&[NO_SIDE_EFFECT]);
     if side {
