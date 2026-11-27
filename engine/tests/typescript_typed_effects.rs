@@ -8,6 +8,7 @@ type Row = Vec<serde_json::Value>;
 
 const REMOTE_CALLS: [&str; 2] = ["no-remote-call-in-transaction", "no-remote-call-under-lock"];
 const WRITES: [&str; 4] = ["no-retry-without-idempotency", "no-dual-write", "no-stale-retry-after-conflict", "no-unisolated-job-loop"];
+const LOOPS: [&str; 1] = ["no-lazy-relation-in-loop"];
 
 fn compiler() -> Option<PathBuf> {
     if let Some(named) = std::env::var_os("NITPICKER_TYPESCRIPT_COMPILER") {
@@ -55,6 +56,9 @@ fn project(name: &str, tag: &str) -> (PathBuf, Vec<String>) {
     let mut files = Vec::new();
     for subproject in subprojects {
         copy_tree(&fixtures.join("typescript-typed-effects/libraries"), &root.join(&subproject).join("node_modules"));
+        if fixture.join("libraries").is_dir() {
+            copy_tree(&fixture.join("libraries"), &root.join(&subproject).join("node_modules"));
+        }
         for entry in std::fs::read_dir(root.join(&subproject).join("src")).expect("read folder").flatten() {
             files.push(format!("{subproject}/src/{}", entry.file_name().to_string_lossy()));
         }
@@ -118,6 +122,11 @@ fn remote_call_rules_match_the_plugin_on_the_fixture_project() {
 #[test]
 fn write_rules_match_the_plugin_on_the_fixture_project() {
     compare("typescript-typed-writes", &WRITES);
+}
+
+#[test]
+fn loop_rules_match_the_plugin_on_the_fixture_project() {
+    compare("typescript-typed-loops", &LOOPS);
 }
 
 #[test]

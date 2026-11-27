@@ -92,6 +92,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-forwarding-wrapper', TYPED],
   ['no-in-presence-check', TYPED],
   ['no-listen-on-all-interfaces', {}],
+  ['no-lazy-relation-in-loop', TYPED],
   ['no-local-time-zone', TYPED],
   ['no-lookup-as-presence', TYPED],
   ['no-mutating-method-in-domain', TYPED],
