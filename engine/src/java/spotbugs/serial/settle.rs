@@ -17,9 +17,18 @@ pub struct Serial {
     referenced: Mutex<HashSet<String>>,
     loaded: Mutex<HashSet<String>>,
     pending: Mutex<Vec<Pending>>,
+    /// SE_COMPARATOR_SHOULD_BE_SERIALIZABLE findings, with the classes their fields hold: one that likely cannot be
+    /// serialized hides the finding (priority 3).
+    comparators: Mutex<Vec<(Finding, Vec<String>)>>,
 }
 
 impl Serial {
+    pub fn note_comparators(&self, found: Vec<(Finding, Vec<String>)>) {
+        if !found.is_empty() {
+            self.comparators.lock().expect("comparators").extend(found);
+        }
+    }
+
     pub fn note(&self, (referenced, loaded): (Vec<String>, Vec<String>), pending: Vec<Pending>) {
         self.referenced.lock().expect("referenced").extend(referenced);
         self.loaded.lock().expect("loaded").extend(loaded);
@@ -30,7 +39,8 @@ impl Serial {
 
     pub fn settle(&self, project: &JavaProject, out: &mut Vec<Finding>) {
         let pending: Vec<Pending> = self.pending.lock().expect("pending").drain(..).collect();
-        if pending.is_empty() {
+        let comparators: Vec<(Finding, Vec<String>)> = self.comparators.lock().expect("comparators").drain(..).collect();
+        if pending.is_empty() && comparators.is_empty() {
             return;
         }
         let mut known: Vec<String> = project.sources.keys().cloned().collect();
@@ -45,6 +55,11 @@ impl Serial {
         known.dedup();
         let known = Known { project, known, named };
         let mut tiers: HashMap<String, Option<u8>> = HashMap::new();
+        for (finding, held) in comparators {
+            if !held.iter().any(|class| tiers.entry(class.clone()).or_insert_with(|| known.tier(class)).is_some()) {
+                out.push(finding);
+            }
+        }
         for mut waiting in pending {
             let tier = waiting.held.iter().filter_map(|class| *tiers.entry(class.clone()).or_insert_with(|| known.tier(class))).min();
             let Some(tier) = tier else { continue };

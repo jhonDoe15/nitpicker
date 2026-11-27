@@ -11,6 +11,7 @@ import {
 } from './spotbugs-dumb-placed.mts';
 import { COOKIE_PATTERNS } from './cookies/spotbugs-cookies-placed.mts';
 import { CRYPTO_PATTERNS } from './crypto/spotbugs-crypto-placed.mts';
+import { COMPARATOR_PATTERNS } from './equality/spotbugs-equality-placed.mts';
 import { INJECTIONS } from './spotbugs-placed.mts';
 import { TLS_PATTERNS } from './tls/spotbugs-tls-placed.mts';
 import {
@@ -145,6 +146,7 @@ export const ON_ENGINE: readonly string[] = [
   ...COOKIE_PATTERNS,
   ...ASSIGNMENT_PATTERNS,
   ...RESOURCE_PATTERNS,
+  ...COMPARATOR_PATTERNS,
 ];
 
 export const LOMBOK_WITHOUT_CLASSES: readonly string[] = [
