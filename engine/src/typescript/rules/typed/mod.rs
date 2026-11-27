@@ -4,6 +4,7 @@
 pub mod caller_objects;
 pub mod contracts;
 pub mod effects;
+pub mod lookups;
 pub mod numbers;
 pub mod offsets;
 pub mod presence;
@@ -35,6 +36,7 @@ use super::handlers;
 use super::io_loops;
 use super::jobs;
 use super::lazy_relations;
+use super::lookups as lookup_rules;
 use super::held_scopes;
 use super::number_input;
 use super::patterns;
@@ -73,6 +75,7 @@ pub const TYPED: &[(&str, Rule)] =
     ("no-remote-call-in-transaction", held_scopes::remote_in_scope::no_remote_call_in_transaction),
     ("no-remote-call-under-lock", held_scopes::remote_in_scope::no_remote_call_under_lock),
     ("no-io-in-loop", io_loops::no_io_in_loop::no_io_in_loop),
+    ("no-lookup-per-element", lookup_rules::no_lookup_per_element::no_lookup_per_element),
     ("no-lazy-relation-in-loop", lazy_relations::no_lazy_relation_in_loop::no_lazy_relation_in_loop),
     ("no-retry-without-idempotency", writes::no_retry_without_idempotency::no_retry_without_idempotency),
     ("no-dual-write", dual_writes::no_dual_write::no_dual_write),

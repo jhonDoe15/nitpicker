@@ -2,5 +2,5 @@
 mod emitter_creations;
 mod emitter_modules;
 mod error_handling;
-mod names;
+pub mod names;
 pub mod require_error_listener;

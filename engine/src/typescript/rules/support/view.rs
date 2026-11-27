@@ -300,9 +300,22 @@ impl<'v> Node<'v> {
 
     /// `nodeChildren` of the ESLint helpers: every field that is a node, and the nodes of every list field.
     pub fn children(&self) -> Vec<Node<'v>> {
+        self.children_in(false)
+    }
+
+    /// The children in the key order of typescript-estree's nodes (fields sorted by name, lists in order).
+    pub fn estree_children(&self) -> Vec<Node<'v>> {
+        self.children_in(true)
+    }
+
+    fn children_in(&self, by_key: bool) -> Vec<Node<'v>> {
         let (start, end) = self.data().fields;
+        let mut fields: Vec<&Field> = self.view.fields[start as usize..end as usize].iter().collect();
+        if by_key {
+            fields.sort_by_key(|field| self.view.slice(field.key.0, field.key.1));
+        }
         let mut found = Vec::new();
-        for field in &self.view.fields[start as usize..end as usize] {
+        for field in fields {
             match field.value {
                 Value::Node(index) => found.push(self.view.at(index)),
                 Value::List(..) => found.extend(self.view.items(field.value).iter().filter_map(|item| match item {
@@ -318,10 +331,19 @@ impl<'v> Node<'v> {
 
     /// The node and everything under it, parents before children.
     pub fn descendants(&self) -> Vec<Node<'v>> {
+        self.descendants_in(false)
+    }
+
+    /// `descendants` in the key order of typescript-estree's nodes.
+    pub fn estree_descendants(&self) -> Vec<Node<'v>> {
+        self.descendants_in(true)
+    }
+
+    fn descendants_in(&self, by_key: bool) -> Vec<Node<'v>> {
         let mut found = vec![*self];
         let mut index = 0;
         while index < found.len() {
-            let children = found[index].children();
+            let children = found[index].children_in(by_key);
             found.splice(index + 1..index + 1, children);
             index += 1;
         }

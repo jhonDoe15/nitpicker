@@ -161,6 +161,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-local-time-zone', TYPED],
   ['no-loaded-rows-saved-back', TYPED],
   ['no-lookup-as-presence', TYPED],
+  ['no-lookup-per-element', EFFECTS],
   ['no-many-to-many-cascade-remove', {}],
   ['no-mutating-method-in-domain', TYPED],
   ['no-node-process-per-test', {}],
