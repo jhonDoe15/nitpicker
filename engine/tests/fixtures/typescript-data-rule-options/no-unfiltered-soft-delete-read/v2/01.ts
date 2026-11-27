@@ -1,0 +1,1 @@
+async function f(db) { return db.selectFrom('asset').selectAll().$call(withDefaultVisibility).execute(); }

@@ -1,0 +1,1 @@
+import { Repository } from "typeorm"; export async function run(repo, prisma, db, em, Order, id, ids) { const found = await items.find((item) => item.id === id); return found; }

@@ -1,0 +1,1 @@
+async function f(db) { return db.selectFrom('asset').selectAll().where('asset.id', '=', 1).executeTakeFirst(); }

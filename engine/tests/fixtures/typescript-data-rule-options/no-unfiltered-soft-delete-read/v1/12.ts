@@ -1,0 +1,1 @@
+async function f(db) { const q = db.selectFrom('asset').selectAll(); return q; }

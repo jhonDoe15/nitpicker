@@ -1,0 +1,1 @@
+import { Repository } from "typeorm"; export async function run(repo, prisma, db, em, Order, id, ids) { return (await repo.find()).reduce((sum, row) => sum + row.total, 0); }

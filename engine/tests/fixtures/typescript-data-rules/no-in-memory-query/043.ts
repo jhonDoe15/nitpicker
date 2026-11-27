@@ -1,0 +1,1 @@
+import { Repository } from "typeorm"; export async function run(repo, prisma, db, em, Order, id, ids) { return (await repo.createQueryBuilder("o").forUpdate().getMany()).length; }

@@ -1,0 +1,1 @@
+import { Repository } from "typeorm"; export async function run(repo, prisma, db, em, Order, id, ids) { const rows = await repo.find(); const parents = new Set(rows.map((row) => row.parentId)); return rows.filter((row) => parents.has(row.id)); }

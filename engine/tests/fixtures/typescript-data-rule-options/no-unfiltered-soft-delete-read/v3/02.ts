@@ -1,0 +1,1 @@
+class S { find() { return this.prisma.album.findMany({ include: { assets: { where: {} } } }); } }

@@ -1,0 +1,1 @@
+import { Repository } from "typeorm"; export async function run(repo, prisma, db, em, Order, id, ids) { return Math.max(...(await repo.find()).map((row) => row.total)); }

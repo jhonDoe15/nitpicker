@@ -67,6 +67,16 @@ function optionFacts(...names: readonly string[]): FileFacts {
     Object.fromEntries(names.map((name) => [kebab(name), text(options, name)]));
 }
 
+function jsonFacts(...names: readonly string[]): FileFacts {
+  return (_filename, options) =>
+    Object.fromEntries(
+      names.map((name) => [
+        kebab(name),
+        JSON.stringify(Reflect.get(Object(options[0]), name) ?? []),
+      ]),
+    );
+}
+
 export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<string, EngineRule>([
   [
     'cognitive-complexity',
@@ -82,16 +92,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-accumulator-concat', TYPED],
   ['no-add-only-collection', {}],
   ['no-array-spread-arguments', TYPED],
-  [
-    'no-assertion-in-loop',
-    {
-      facts: (_filename, options) => ({
-        'assertion-function-names': JSON.stringify(
-          Reflect.get(Object(options[0]), 'assertionFunctionNames') ?? [],
-        ),
-      }),
-    },
-  ],
+  ['no-assertion-in-loop', { facts: jsonFacts('assertionFunctionNames') }],
   ['no-blank-number-coercion', TYPED],
   ['no-btoa-on-runtime-text', {}],
   ['no-case-mixed-header-merge', {}],
@@ -133,6 +134,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-forwarding-method-alias', TYPED],
   ['no-forwarding-wrapper', TYPED],
   ['no-in-presence-check', TYPED],
+  ['no-in-memory-query', {}],
   ['no-incomplete-escaping', {}],
   [
     'no-interval-polling-in-tests',
@@ -203,15 +205,8 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
     },
   ],
   ['no-switched-off-tests', {}],
-  [
-    'no-unhandled-void-promise',
-    {
-      needs: 'types',
-      facts: (_filename, options) => ({
-        runners: JSON.stringify(Reflect.get(Object(options[0]), 'runners') ?? []),
-      }),
-    },
-  ],
+  ['no-unhandled-void-promise', { needs: 'types', facts: jsonFacts('runners') }],
+  ['no-unfiltered-soft-delete-read', { facts: jsonFacts('orms', 'filters') }],
   ['no-union-order-dependence', TYPED],
   [
     'no-unknown-in-domain',
@@ -236,14 +231,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
     { facts: (filename) => ({ 'global-trimmer': String(hasGlobalTrimmer(filename)) }) },
   ],
   ['no-slash-only-redirect-guard', {}],
-  [
-    'no-route-without-auth',
-    {
-      facts: (_filename, options) => ({
-        entries: JSON.stringify(Reflect.get(Object(options[0]), 'entries') ?? []),
-      }),
-    },
-  ],
+  ['no-route-without-auth', { facts: jsonFacts('entries') }],
   ['no-sql-string-building', { facts: optionFacts('sqlLibrary') }],
   ['no-weak-hash', {}],
   ['no-unversioned-orm-entity', TYPED],
