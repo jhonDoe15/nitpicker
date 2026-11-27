@@ -16,6 +16,45 @@ pub enum Gate {
     Types(&'static [&'static str]),
     /// The file holds one of the words, or one of the symbols.
     Text(&'static [&'static str]),
+    /// javac's tree of the file may nest deeper than `DeeplyNested`'s default limit of 1000 levels.
+    Deep,
+}
+
+/// The most javac tree levels that one level of the parse tree stands for: a parse node is at most a javac node with
+/// a synthetic child and grandchild (an enum constant is a variable, its `new` and its class body).
+const JAVAC_LEVELS_PER_NODE: usize = 3;
+
+/// `DeeplyNested` reports a node at javac depth 1001 that scans a child, its default `MaxDepth` being 1000.
+const DEEPLY_NESTED: usize = 1000;
+
+/// The tokens of the `dimensions` nodes that are children of the node, or of its declarators. javac wraps the
+/// element type in one array type per bracket pair (and an annotated type per annotation), while the parse keeps the
+/// brackets flat beside the type, also when a declarator or a method carries them (`A<B> x[][]`, `int f()[]`).
+fn brackets(node: tree_sitter::Node) -> usize {
+    let mut cursor = node.walk();
+    node.children(&mut cursor)
+        .map(|child| match child.kind() {
+            "dimensions" => child.child_count() as usize,
+            "variable_declarator" => {
+                let mut inner = child.walk();
+                child.children(&mut inner).filter(|part| part.kind() == "dimensions").map(|part| part.child_count() as usize).sum()
+            }
+            _ => 0,
+        })
+        .sum()
+}
+
+/// The deepest nesting of the parse tree, where the children of a node sit below its brackets (see `brackets`).
+fn parse_depth(root: tree_sitter::Node) -> usize {
+    let mut deepest = 0;
+    let mut stack: Vec<(tree_sitter::Node, usize)> = vec![(root, 0)];
+    while let Some((node, above)) = stack.pop() {
+        let depth = above + 1 + brackets(node);
+        deepest = deepest.max(depth);
+        let mut cursor = node.walk();
+        stack.extend(node.children(&mut cursor).map(|child| (child, depth)));
+    }
+    deepest
 }
 
 const SWITCH: Gate = Gate::Text(&["switch"]);
@@ -32,7 +71,7 @@ pub const PRECONDITIONS: &[(&str, Gate)] = &[
     ("MislabeledAndroidString", Gate::Android),
     ("ParcelableCreator", Gate::Android),
     ("RectIntersectReturnValueIgnored", Gate::Android),
-    ("DeeplyNested", Gate::Always),
+    ("DeeplyNested", Gate::Deep),
     ("UnsafeWildcard", Gate::Always),
     ("IncompatibleArgumentType", Gate::Always),
     ("InlineMeInliner", Gate::Always),
@@ -98,8 +137,9 @@ fn has_any(text: &str, entries: &[&str]) -> bool {
         })
 }
 
-fn holds(gate: &Gate, text: &str, index: &TypeIndex) -> bool {
+fn holds(gate: &Gate, text: &str, root: tree_sitter::Node, index: &TypeIndex) -> bool {
     match gate {
+        Gate::Deep => root.has_error() || parse_depth(root) * JAVAC_LEVELS_PER_NODE > DEEPLY_NESTED,
         Gate::Android => index.android_compatible,
         Gate::Always => true,
         Gate::Types(names) => names.iter().any(|name| index.has(name)),
@@ -108,11 +148,11 @@ fn holds(gate: &Gate, text: &str, index: &TypeIndex) -> bool {
 }
 
 /// The checks of the list that may report in the file; a check without a precondition may report anywhere.
-pub fn may_report(checks: &[&str], text: &str, index: &TypeIndex) -> Vec<String> {
+pub fn may_report(checks: &[&str], text: &str, root: tree_sitter::Node, index: &TypeIndex) -> Vec<String> {
     checks
         .iter()
         .filter(|check| {
-            PRECONDITIONS.iter().find(|(name, _)| name == *check).is_none_or(|(_, gate)| holds(gate, text, index))
+            PRECONDITIONS.iter().find(|(name, _)| name == *check).is_none_or(|(_, gate)| holds(gate, text, root, index))
         })
         .map(|check| check.to_string())
         .collect()
@@ -131,6 +171,24 @@ mod tests {
         assert!(has_any("s\\u0077itch", &["instanceof"]));
         assert!(has_any("\"\\045d\"", &["%", "\\45", "\\045"]));
         assert!(!has_any("\"\\45d\" no", &["\\045"]));
+    }
+
+    fn depth(text: &str) -> usize {
+        let mut parser = tree_sitter::Parser::new();
+        parser.set_language(&tree_sitter_java::LANGUAGE.into()).expect("grammar");
+        parse_depth(parser.parse(text, None).expect("tree").root_node())
+    }
+
+    #[test]
+    fn array_brackets_nest_and_long_chains_are_deep() {
+        let flat = depth("class A { int x; }");
+        assert!(depth(&format!("class A {{ int{} x; }}", "[]".repeat(20))) >= flat + 20);
+        let generic = format!("class A {{ {}String{} f; }}", "B<".repeat(40), format!("{}>", "[]".repeat(10)).repeat(40));
+        assert!(depth(&generic) * JAVAC_LEVELS_PER_NODE > DEEPLY_NESTED);
+        assert!(depth(&format!("class A {{ int x{}; }}", "[]".repeat(400))) * JAVAC_LEVELS_PER_NODE > DEEPLY_NESTED);
+        let chain = format!("class A {{ Object f() {{ return b(){}; }} }}", ".c()".repeat(400));
+        assert!(depth(&chain) * JAVAC_LEVELS_PER_NODE > DEEPLY_NESTED);
+        assert!(flat * JAVAC_LEVELS_PER_NODE < DEEPLY_NESTED);
     }
 
     fn names(json: &serde_json::Value, key: &str) -> Vec<String> {

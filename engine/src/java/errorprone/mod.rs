@@ -1124,7 +1124,7 @@ impl FileRule for ErrorProne {
         out.append(&mut found);
         if let Ok(asked) = std::env::var("NP_EP_MAY_REPORT") {
             let asked: Vec<&str> = asked.split(',').filter(|name| !name.is_empty()).collect();
-            let found = may_report::may_report(&asked, &file.text, &project.index);
+            let found = may_report::may_report(&asked, &file.text, file.tree.root_node(), &project.index);
             out.push(Finding {
                 file: file.path.clone(),
                 line: 1,
