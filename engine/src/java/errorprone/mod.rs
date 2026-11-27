@@ -298,6 +298,12 @@ mod truth_checks;
 mod three_letter_zones;
 mod wakelock;
 mod may_report;
+mod reach;
+mod reach_checks;
+mod oneof;
+mod idents;
+mod idents_found;
+mod pattern_instanceof;
 mod flogger_args;
 mod no_allocation;
 mod must_be_closed;
@@ -577,6 +583,12 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["AvoidCommonTypeNames"], types::avoid_common_type_names),
     (&["UnnecessaryLongToIntConversion"], types::unnecessary_long_to_int),
     (&["LiteByteStringUtf8"], types::lite_byte_string_utf8),
+    (&["FallThrough"], reach_checks::fall_through),
+    (&["MissingDefault"], reach_checks::missing_default),
+    (&["SwitchDefault"], reach_checks::switch_default),
+    (&["ReachabilityFenceUsage"], reach_checks::reachability_fence_usage),
+    (&["WrongOneof"], oneof::wrong_oneof),
+    (&["PatternMatchingInstanceof"], pattern_instanceof::pattern_matching_instanceof),
     (&["URLEqualsHashCode"], types::url_equals_hash_code),
     (&["UnusedTypeParameter"], types::unused_type_parameter),
     (&["StringCharset"], strings::string_charset),

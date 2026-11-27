@@ -128,7 +128,7 @@ describe('errorProneOnEngine', () => {
       { ...rowIn(source, 'UnicodeDirectionalityCharacters'), line: 1, column: 1 },
       { ...rowIn(generated, 'UnicodeDirectionalityCharacters'), line: 1, column: 1 },
       { ...rowIn(source, 'IdentifierName'), arguments: ['demo.Marked'] },
-      mayReportIn(source, 'FallThrough,NotAsked'),
+      mayReportIn(source, 'StatementSwitchToExpressionSwitch,NotAsked'),
       mayReportIn(generated),
     ];
 
@@ -144,7 +144,7 @@ describe('errorProneOnEngine', () => {
       source,
       '',
     ]);
-    expect(lines).not.toContain('--errorprone-flag=-Xep:FallThrough:OFF');
+    expect(lines).not.toContain('--errorprone-flag=-Xep:StatementSwitchToExpressionSwitch:OFF');
     expect(
       lines.filter((line) => /-Xep:(?:SwitchDefault|Immutable):OFF$/u.test(line)).toSorted(),
     ).toStrictEqual([
@@ -158,7 +158,7 @@ describe('errorProneOnEngine', () => {
     );
     expect(reported).toStrictEqual([JSON.stringify(['[IdentifierName] found', ['demo.Marked']])]);
     expect(notes).toStrictEqual([
-      'nitpicker: Error Prone compiles 1 of 2 files of main for 1 checks the engine does not run: FallThrough\n',
+      'nitpicker: Error Prone compiles 1 of 2 files of main for 1 checks the engine does not run: StatementSwitchToExpressionSwitch\n',
     ]);
     expect(argumentFilesToCompile(plan.argumentFiles)).toStrictEqual([argumentFile]);
   });

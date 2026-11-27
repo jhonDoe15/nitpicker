@@ -84,7 +84,7 @@ fn has_initialism(name: &str) -> bool {
     (0..letters.len()).any(|at| initialism(&letters, at).is_some())
 }
 
-fn fix_initialisms(name: &str) -> String {
+pub(super) fn fix_initialisms(name: &str) -> String {
     let letters: Vec<char> = name.chars().collect();
     let mut out = String::new();
     let mut at = 0;

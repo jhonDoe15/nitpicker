@@ -15,6 +15,7 @@ import {
   lookupEntries,
   modulePathEntries,
   releaseOf,
+  sourceLevelOf,
   type ArgumentSet,
 } from './engine-arguments.mts';
 import {
@@ -83,6 +84,7 @@ function engineReport(
   rmSync(report, { force: true });
   const release = releaseOf(head);
   const encoding = encodingOf(head);
+  const source = release === undefined ? sourceLevelOf(head) : undefined;
   const { status, stderr } = run(
     [
       ...['--files', listed, '--rules', ERROR_PRONE_RULES, '--classpath', lookup],
@@ -90,6 +92,7 @@ function engineReport(
       ...(release === undefined ? [] : ['--release', release]),
       ...(testOnly(head) ? ['--test-only'] : []),
       ...(encoding === undefined ? [] : ['--encoding', encoding]),
+      ...(source === undefined ? [] : ['--source', source]),
       ...['--out', report],
     ],
     {

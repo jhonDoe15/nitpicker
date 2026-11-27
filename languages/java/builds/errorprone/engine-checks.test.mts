@@ -10,6 +10,7 @@ import {
   modulePathEntries,
   ownPackages,
   releaseOf,
+  sourceLevelOf,
   withProjectFlags,
 } from './engine-arguments.mts';
 import { ENGINE_CHECKS, engineChecksFor, NULL_AWAY } from './engine-checks.mts';
@@ -175,6 +176,15 @@ describe('the arguments file', () => {
     expect(releaseOf([...head, '--project-arg=--add-exports=demo/demo.api=ALL-UNNAMED'])).toBe(
       '17',
     );
+  });
+
+  it('gives the language level from the release, else from the source option', () => {
+    const { head } = argumentSetOf(text);
+    const sourceOnly = head.filter((line) => !line.startsWith('--release='));
+
+    expect(sourceLevelOf(head)).toBe('17');
+    expect(sourceLevelOf([...sourceOnly, '--source=11'])).toBe('11');
+    expect(sourceLevelOf(sourceOnly)).toBeUndefined();
   });
 
   it('adds project flags before the sources', () => {

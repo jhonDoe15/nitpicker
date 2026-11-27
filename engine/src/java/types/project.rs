@@ -78,7 +78,7 @@ pub fn build(files: &[SourceFile], options: &crate::engine::Options) -> JavaProj
     index.lombok = options.lombok;
     index.android_compatible = options.android_compatible;
     index.test_only = options.test_only;
-    index.source_level = release.unwrap_or_else(jdk_major);
+    index.source_level = release.or(options.source).unwrap_or_else(jdk_major);
     let modules = module_entries(&options.module_path);
     let mut entries = [modules.as_slice(), classpath].concat();
     index.load_binaries(&entries);
