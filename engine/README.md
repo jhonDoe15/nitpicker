@@ -995,8 +995,8 @@ the line of a merged finding, `var` loop variables, pattern switch guards) are i
 
 ### Thread patterns
 
-Thread patterns (#2522, `src/java/spotbugs/threads/`, labs in
-`tests/fixtures/spotbugs/atomicity`).
+Thread patterns (#2522, `src/java/spotbugs/threads/` and `src/java/spotbugs/concurrent/`, labs in
+`tests/fixtures/spotbugs/atomicity*`).
 
 - SharedVariableAtomicityDetector (AT_STALE_THREAD_WRITE_OF_PRIMITIVE, AT_NONATOMIC_64BIT_PRIMITIVE,
   AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE), priority 2, level `warning`, place: the field. It looks at one class
@@ -1014,6 +1014,11 @@ Thread patterns (#2522, `src/java/spotbugs/threads/`, labs in
   `long` or `double` and AT_STALE_THREAD_WRITE_OF_PRIMITIVE for the rest. One finding per method, field and pattern,
   on the line of the first such write (the line of the last call or `?:` condition in the value, else of the
   statement).
+- AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION, priority 2, level `warning`, place: the method
+  `ConcurrentHashMap.put(Object, Object)`: a `put` on a value whose type is `ConcurrentHashMap` itself (not
+  `super.put` or an inherited `put`) inside the branch that runs when `get(key) == null` or `!containsKey(key)`,
+  directly or through a local holding the result, alone or in an `&&` chain, as the condition of an `if`, `while`,
+  `for` or `?:`. One finding per `put`, on the line of its `(`.
 
 ## Names the compiler makes up
 

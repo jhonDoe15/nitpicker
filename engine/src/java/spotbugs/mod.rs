@@ -3,6 +3,7 @@
 mod attributes;
 mod calls;
 mod classes;
+mod concurrent;
 mod compare;
 mod constructors;
 mod dead;
@@ -221,6 +222,7 @@ const DETECTORS: &[Detector] = &[
     attributes::should_be_static as Detector,
     dead::dead_stores as Detector,
     threads::threads as Detector,
+    concurrent::concurrent as Detector,
 ];
 
 #[derive(Default)]

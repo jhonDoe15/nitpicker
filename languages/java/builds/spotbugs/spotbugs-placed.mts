@@ -43,6 +43,11 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     text: 'Operation on shared variable is not atomic',
     levels: { 2: WARNING },
   },
+  AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION: {
+    text: 'Sequence of calls to concurrent abstraction may not be atomic',
+    levels: { 2: WARNING },
+    placement: 'relative',
+  },
   WMI_WRONG_MAP_ITERATOR: {
     text: 'Inefficient use of keySet iterator instead of entrySet iterator',
     levels: { 2: NOTE },
