@@ -29,10 +29,14 @@ fn rows_of(case: &str, rule: &str, rules: &str) -> (Rows, Rows) {
 }
 
 fn rows_selected(case: &str, rule: &str, rules: &str, only: Option<&str>) -> (Rows, Rows) {
+    rows_with(case, rule, rules, only, &[], case)
+}
+
+fn rows_with(case: &str, rule: &str, rules: &str, only: Option<&str>, options: &[&str], expected: &str) -> (Rows, Rows) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
     let source = root.join("fixtures").join(case);
     let run = RUNS.fetch_add(1, Ordering::Relaxed);
-    let out = std::env::temp_dir().join(format!("nitpicker-engine-{case}-{}-{}-{run}.json", only.unwrap_or("all"), std::process::id()));
+    let out = std::env::temp_dir().join(format!("nitpicker-engine-{}-{}-{}-{run}.json", case.replace('/', "-"), only.unwrap_or("all"), std::process::id()));
     let mut command = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"));
     if let Some(names) = only {
         command.env("NP_EP_ONLY", names);
@@ -41,6 +45,7 @@ fn rows_selected(case: &str, rule: &str, rules: &str, only: Option<&str>) -> (Ro
         .arg(&source)
         .args(["--rules", rule, "--out"])
         .arg(&out)
+        .args(options)
         .env("NP_XPATH_RULES", root.join("rules").join(format!("{rules}.json")))
         .status()
         .expect("engine runs");
@@ -64,7 +69,7 @@ fn rows_selected(case: &str, rule: &str, rules: &str, only: Option<&str>) -> (Ro
         })
         .collect::<Vec<Row>>());
     let expected: Vec<Row> =
-        serde_json::from_str(&std::fs::read_to_string(root.join("expected").join(format!("{case}.json"))).expect("expected")).expect("rows");
+        serde_json::from_str(&std::fs::read_to_string(root.join("expected").join(format!("{expected}.json"))).expect("expected")).expect("rows");
     (found, counted(expected))
 }
 
@@ -129,14 +134,23 @@ fn concurrency_and_value_rules_report_what_pmd_reports() {
     same_as_pmd("values", "all");
 }
 
-#[test]
-fn error_prone_checks_report_what_error_prone_reports() {
-    let (found, expected) = rows_of("errorprone", "_ErrorProne", "all");
+fn same_as_error_prone((found, expected): (Rows, Rows), checks: usize) {
     let found: BTreeMap<Row, _> = found.into_iter().filter(|(row, _)| row.1 != "NullAway").collect();
     let missed: Vec<&Row> = expected.iter().filter(|(row, count)| found.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     let extra: Vec<&Row> = found.iter().filter(|(row, count)| expected.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(expected.keys().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 527);
+    assert_eq!(expected.keys().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), checks);
+}
+
+#[test]
+fn error_prone_checks_report_what_error_prone_reports() {
+    same_as_error_prone(rows_of("errorprone", "_ErrorProne", "all"), 527);
+}
+
+/// `--test-only` is Error Prone's `-XepCompilingTestOnlyCode`; the rows come from Error Prone run with that flag.
+#[test]
+fn error_prone_checks_report_what_error_prone_reports_on_test_only_code() {
+    same_as_error_prone(rows_with("errorprone", "_ErrorProne", "all", None, &["--test-only"], "errorprone-test-only"), 514);
 }
 
 /// A Java run selects some checks (`NP_EP_ONLY`); the others are skipped, and each selected check reports what it
@@ -152,6 +166,41 @@ fn a_selected_error_prone_check_reports_the_same_alone() {
         assert!(!wanted.is_empty(), "{name}: nothing reported");
         assert_eq!(alone, wanted, "{name}");
     }
+}
+
+/// javac's `-encoding`: the rows come from Error Prone compiling each fixture in its character set.
+#[test]
+fn error_prone_checks_read_sources_in_the_encoding_of_the_compile() {
+    for (case, encoding) in [("latin1", "ISO-8859-1"), ("cp1252", "windows-1252"), ("ms932", "windows-31j")] {
+        let (found, expected) = rows_with(&format!("encodings/{case}"), "_ErrorProne", "all", None, &["--encoding", encoding], &format!("errorprone-{case}"));
+        assert_eq!(found, expected, "{encoding}");
+    }
+    let report = std::env::temp_dir().join(format!("nitpicker-engine-latin1-{}.json", std::process::id()));
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/encodings/latin1");
+    let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
+        .arg(&source)
+        .args(["--rules", "_ErrorProne", "--encoding", "latin1", "--out"])
+        .arg(&report)
+        .env("NP_EP_ONLY", "ReferenceEquality")
+        .status()
+        .expect("engine runs");
+    assert!(status.success());
+    let text = std::fs::read_to_string(&report).expect("report");
+    let _ = std::fs::remove_file(&report);
+    let report: serde_json::Value = serde_json::from_str(&text).expect("json");
+    let message = report["findings"][0]["message"].as_str().expect("message");
+    assert!(message.contains("return \"caf\u{e9} \u{f1}and\u{fa}\".equals(x);"), "{message}");
+}
+
+#[test]
+fn an_encoding_the_engine_cannot_decode_as_the_jdk_does_stops_the_run() {
+    let output = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
+        .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/encodings/latin1"))
+        .args(["--rules", "_ErrorProne", "--encoding", "GB18030"])
+        .output()
+        .expect("engine runs");
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("the engine cannot read sources in the encoding GB18030"));
 }
 
 #[test]
@@ -268,12 +317,12 @@ fn an_older_release_sees_the_library_of_that_release() {
 type Told = (String, u64, u64, String);
 
 /// NullAway rows of the engine on `source`, with paths relative to `base`, against expected rows from NullAway itself.
-fn null_away_differences(source: &Path, base: &Path, packages: &str, classpath: Option<&Path>, expected: &str) -> (Vec<Told>, Vec<Told>, usize) {
+fn null_away_differences(source: &Path, base: &Path, packages: &str, lookup: Option<(&str, &Path)>, expected: &str) -> (Vec<Told>, Vec<Told>, usize) {
     let out = std::env::temp_dir().join(format!("nitpicker-engine-nullaway-{}-{}.json", std::process::id(), RUNS.fetch_add(1, Ordering::Relaxed)));
     let mut command = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"));
     command.arg(source).args(["--rules", "_ErrorProne", "--out"]).arg(&out).env("NP_EP_ONLY", "NullAway").env("NP_NULLAWAY_PACKAGES", packages);
-    if let Some(classpath) = classpath {
-        command.arg("--classpath").arg(classpath);
+    if let Some((option, entries)) = lookup {
+        command.arg(option).arg(entries);
     }
     assert!(command.status().expect("engine runs").success());
     let report: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&out).expect("report")).expect("json");
@@ -332,6 +381,40 @@ fn null_away_reports_what_null_away_reports_on_the_error_prone_fixtures() {
     assert_eq!(count, 734);
 }
 
+/// A module (`module-info.java` with `requires` and a package it does not export) against a `@NullMarked` library
+/// module with a `@NullUnmarked` package, as javac compiles it with `--module-path`: NullAway and the other checks
+/// report what Error Prone reports, with the library as a folder and as a multi-release jar inside a folder of modules.
+#[test]
+fn null_away_and_error_prone_report_the_same_on_a_module() {
+    let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join("nullaway-modules");
+    let classes = std::env::temp_dir().join(format!("nitpicker-engine-nullaway-modules-{}", std::process::id()));
+    let library = ["module-info.java", "lib/Nullable.java", "lib/Store.java", "lib/loose/package-info.java", "lib/loose/Lookup.java", "org/jspecify/annotations/NullMarked.java", "org/jspecify/annotations/NullUnmarked.java"]
+        .map(|file| base.join("library").join(file));
+    let javac = Path::new(&std::env::var("JAVA_HOME").expect("JAVA_HOME")).join("bin").join("javac");
+    assert!(Command::new(javac).arg("-d").arg(&classes).args(&library).env_remove("JAVA_TOOL_OPTIONS").status().expect("javac runs").success());
+    let lookup = classes.display().to_string();
+    let (found, expected) = rows_with("nullaway-modules/sources", "_ErrorProne", "all", None, &["--module-path", &lookup], "errorprone-modules");
+    let packed = std::env::temp_dir().join(format!("nitpicker-engine-nullaway-modules-jars-{}", std::process::id()));
+    let jar = Path::new(&std::env::var("JAVA_HOME").expect("JAVA_HOME")).join("bin").join("jar");
+    let versioned = packed.join("versioned");
+    std::fs::create_dir_all(&versioned).expect("folder");
+    std::fs::rename(classes.join("module-info.class"), versioned.join("module-info.class")).expect("move");
+    let manifest = packed.join("manifest.txt");
+    std::fs::write(&manifest, "Multi-Release: true\n").expect("manifest");
+    let folder = packed.join("modules");
+    std::fs::create_dir_all(&folder).expect("folder");
+    let archive = folder.join("lib.jar");
+    let packing = Command::new(jar).arg("--create").arg("--file").arg(&archive).arg("--manifest").arg(&manifest).arg("-C").arg(&classes).arg(".").args(["--release", "9", "-C"]).arg(&versioned).arg(".").env_remove("JAVA_TOOL_OPTIONS").status();
+    let _ = std::fs::remove_dir_all(&classes);
+    assert!(packing.expect("jar runs").success());
+    let (missed, extra, count) = null_away_differences(&base.join("sources"), &base, "demo.app.api,demo.app.internal", Some(("--module-path", &folder)), "nullaway-modules.json");
+    let _ = std::fs::remove_dir_all(&packed);
+    assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
+    assert_eq!(count, 8);
+    let found: Rows = found.into_iter().filter(|(row, _)| row.1 != "NullAway").collect();
+    assert_eq!(found, expected);
+}
+
 /// A library compiled with javac carries its `@Nullable` in type annotations; NullAway reads them from the class files.
 #[test]
 fn null_away_reads_type_annotations_from_class_files() {
@@ -347,7 +430,7 @@ fn null_away_reads_type_annotations_from_class_files() {
     }
     let javac = Path::new(&std::env::var("JAVA_HOME").expect("JAVA_HOME")).join("bin").join("javac");
     assert!(Command::new(javac).arg("-d").arg(&classes).args(&sources).env_remove("JAVA_TOOL_OPTIONS").status().expect("javac runs").success());
-    let result = null_away_differences(&base.join("sources"), &base, "u,lib", Some(&classes), "nullaway-classes.json");
+    let result = null_away_differences(&base.join("sources"), &base, "u,lib", Some(("--classpath", &classes)), "nullaway-classes.json");
     let _ = std::fs::remove_dir_all(&classes);
     let (missed, extra, count) = result;
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");

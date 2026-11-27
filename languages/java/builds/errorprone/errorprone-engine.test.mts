@@ -159,6 +159,49 @@ describe('errorProneOnEngine', () => {
     expect(argumentFilesToCompile(plan.argumentFiles)).toStrictEqual([argumentFile]);
   });
 
+  it('reads the sources in the encoding of the compile', () => {
+    const { plan, environment } = setup('-encoding', 'ISO-8859-1');
+    const started: Started[] = [];
+
+    errorProneOnEngine(plan, environment, { run: engineWriting({ findings: [] }, started) });
+
+    const [{ argumentList } = { argumentList: [] }] = started;
+    expect(argumentList.slice(-4)).toStrictEqual([
+      ...['--encoding', 'ISO-8859-1'],
+      ...['--out', `${plan.argumentFiles[0] ?? ''}.engine-report.json`],
+    ]);
+  });
+
+  it('gives the module path to the engine apart from the class path', () => {
+    const { plan, environment } = setup('--module-path', '/mods/a.jar');
+    const started: Started[] = [];
+
+    errorProneOnEngine(plan, environment, { run: engineWriting({ findings: [] }, started) });
+
+    const [{ argumentList, environment: passed } = { argumentList: [], environment: {} }] = started;
+    const listed = `${plan.argumentFiles[0] ?? ''}.engine-modulepath.txt`;
+    expect(argumentList.slice(4, 8)).toStrictEqual([
+      ...['--classpath', `${plan.argumentFiles[0] ?? ''}.engine-classpath.txt`],
+      ...['--module-path', listed],
+    ]);
+    expect(readFileSync(listed, 'utf8')).toBe('/mods/a.jar');
+    expect(passed).toMatchObject({ NP_NULLAWAY_PACKAGES: 'demo' });
+  });
+
+  it('runs test sources in the test-only mode of the engine, without NullAway', () => {
+    const { plan, environment } = setup('--test-only');
+    const started: Started[] = [];
+
+    errorProneOnEngine(plan, environment, { run: engineWriting({ findings: [] }, started) });
+
+    const [{ argumentList, environment: passed } = { argumentList: [], environment: {} }] = started;
+    expect(argumentList).toContain('--test-only');
+    expect(passed).toMatchObject({
+      NP_EP_ONLY: ENGINE_CHECKS.filter((check) => check !== NULL_AWAY).join(','),
+    });
+    expect(passed).not.toHaveProperty('NP_NULLAWAY_PACKAGES');
+  });
+
   it.each([
     ['the engine fails', () => ({ status: 1, stdout: '', stderr: 'no types' }), 'no types'],
     [

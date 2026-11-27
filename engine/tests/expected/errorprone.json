@@ -12888,6 +12888,7 @@
 ["e/Statements.java", "UnnecessarySemicolon", 65, 25],
 ["e/Statements.java", "UnnecessarySemicolon", 68, 9],
 ["e/Statements.java", "UnnecessarySemicolon", 74, 23],
+["e/TestOnlyAsserts.java", "ClassNamedLikeTypeParameter", 8, 5],
 ["e/Types.java", "CheckReturnValue", 32, 30],
 ["e/Types.java", "CheckReturnValue", 45, 30],
 ["e/Types.java", "CheckReturnValue", 51, 34],

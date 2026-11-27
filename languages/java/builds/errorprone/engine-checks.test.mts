@@ -7,15 +7,15 @@ import {
   argumentSetOf,
   generatedRoots,
   lookupEntries,
+  modulePathEntries,
   ownPackages,
   releaseOf,
   withProjectFlags,
 } from './engine-arguments.mts';
-import { ENGINE_CHECKS, engineChecksFor, NULL_AWAY, TEST_SENSITIVE } from './engine-checks.mts';
+import { ENGINE_CHECKS, engineChecksFor, NULL_AWAY } from './engine-checks.mts';
 
 const REPOSITORY = path.resolve(import.meta.dirname, '../../../..');
 const WITHOUT_NULL_AWAY = ENGINE_CHECKS.filter((check) => check !== NULL_AWAY);
-const ON_TEST_SOURCES = WITHOUT_NULL_AWAY.filter((check) => !TEST_SENSITIVE.includes(check));
 const projectWith = useTempProjects('nitpicker-errorprone-checks-');
 
 function classesIn(...packages: readonly string[]): string {
@@ -42,37 +42,28 @@ describe('engineChecksFor', () => {
     });
   });
 
-  it('leaves a source set in another encoding than UTF-8 to Error Prone', () => {
+  it('runs the engine checks whatever the encoding of the sources', () => {
     const own = classesIn('demo');
 
-    expect(engineChecksFor(headWith(own, '-encoding', 'ISO-8859-1')).checks).toStrictEqual([]);
-    expect(engineChecksFor(headWith(own, '-encoding', 'utf-8')).checks).toStrictEqual(
+    expect(engineChecksFor(headWith(own, '-encoding', 'ISO-8859-1')).checks).toStrictEqual(
       ENGINE_CHECKS,
     );
   });
 
-  it('leaves NullAway to Error Prone on test sources, without own classes and with a module path', () => {
+  it('runs NullAway on the engine with a module path, not on test sources or without own classes', () => {
     const own = classesIn('demo');
 
     expect(engineChecksFor(headWith(own, '--test-only'))).toStrictEqual({
-      checks: ON_TEST_SOURCES,
+      checks: WITHOUT_NULL_AWAY,
       packages: [],
     });
     expect(engineChecksFor(headWith(path.join(own, 'missing'))).checks).toStrictEqual(
       WITHOUT_NULL_AWAY,
     );
-    expect(engineChecksFor(headWith(own, '--module-path', '/lib.jar')).checks).toStrictEqual(
-      WITHOUT_NULL_AWAY,
-    );
-  });
-
-  it('leaves checks that Error Prone treats differently in test code to Error Prone on test sources', () => {
-    const watched = ['CheckReturnValue', 'ThrowSpecificExceptions', 'ReturnValueIgnored'];
-
-    expect(ON_TEST_SOURCES.length).toBe(WITHOUT_NULL_AWAY.length - TEST_SENSITIVE.length);
-    expect(ON_TEST_SOURCES.filter((check) => watched.includes(check))).toStrictEqual([
-      'CheckReturnValue',
-    ]);
+    expect(engineChecksFor(headWith(own, '--module-path', '/lib.jar'))).toStrictEqual({
+      checks: ENGINE_CHECKS,
+      packages: ['demo'],
+    });
   });
 
   it('leaves only the checks the project configures to Error Prone', () => {
@@ -162,11 +153,12 @@ describe('the arguments file', () => {
     ...['--sources', '/src/A.java', '/src/B.java', ''],
   ].join('\n');
 
-  it('gives the sources, the class lookup, the release and the generated roots', () => {
+  it('gives the sources, the class and module lookup, the release and the generated roots', () => {
     const { head, sources } = argumentSetOf(text);
 
     expect(sources).toStrictEqual(['/src/A.java', '/src/B.java']);
-    expect(lookupEntries(head)).toStrictEqual(['/m.jar', '/a.jar', '/b', '/own']);
+    expect(lookupEntries(head)).toStrictEqual(['/a.jar', '/b', '/own']);
+    expect(modulePathEntries(head)).toStrictEqual(['/m.jar']);
     expect(releaseOf(head)).toBe('17');
     expect(generatedRoots(head)).toStrictEqual(['/gen']);
     expect(generatedRoots(head.filter((line) => line !== '--skip-generated'))).toStrictEqual([]);

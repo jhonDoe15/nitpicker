@@ -38,6 +38,10 @@ function optionOf(head: readonly string[], flag: string): string | undefined {
   return at === -1 ? undefined : head[at + 1];
 }
 
+export function encodingOf(head: readonly string[]): string | undefined {
+  return optionOf(head, '-encoding');
+}
+
 export function projectFlags(head: readonly string[]): string[] {
   return valuesAfter(head, PROJECT_FLAG);
 }
@@ -47,11 +51,11 @@ export function ownClasses(head: readonly string[]): string[] {
 }
 
 export function lookupEntries(head: readonly string[]): string[] {
-  return [
-    ...entriesOf(optionOf(head, '--module-path')),
-    ...entriesOf(optionOf(head, '-classpath')),
-    ...ownClasses(head),
-  ];
+  return [...entriesOf(optionOf(head, '-classpath')), ...ownClasses(head)];
+}
+
+export function modulePathEntries(head: readonly string[]): string[] {
+  return entriesOf(optionOf(head, '--module-path'));
 }
 
 export function generatedRoots(head: readonly string[]): string[] {

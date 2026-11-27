@@ -11,6 +11,7 @@ serde_json = { version = "1.0.154", features = ["unbounded_depth"] }
 tree-sitter = "0.27.2"
 tree-sitter-java = "0.23.5"
 regex = "1"
+encoding_rs = "0.8.35"
 sha2 = "0.10"
 fancy-regex = "0.14"
 walkdir = "2"

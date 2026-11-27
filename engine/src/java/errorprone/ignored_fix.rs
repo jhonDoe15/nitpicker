@@ -145,8 +145,13 @@ pub fn call_site_fixes(context: &Context, call: Node) -> Vec<Fix> {
     let mut blanket = true;
     if result == Some(Type::Primitive("boolean")) {
         let mut fix = Fix::new();
-        let name = qualify_static_import(context, call, "com.google.common.base.Verify.verify", &mut fix);
-        fixes.push(fix.insert(call.start_byte(), format!("{name}(")).insert(call.end_byte(), ")"));
+        if context.test_only() {
+            let name = qualify_static_import(context, call, "com.google.common.truth.Truth.assertThat", &mut fix);
+            fixes.push(fix.insert(call.start_byte(), format!("{name}(")).insert(call.end_byte(), ").isTrue()"));
+        } else {
+            let name = qualify_static_import(context, call, "com.google.common.base.Verify.verify", &mut fix);
+            fixes.push(fix.insert(call.start_byte(), format!("{name}(")).insert(call.end_byte(), ")"));
+        }
     } else if result.as_ref().is_some_and(|kind| has_is_true(context, kind)) {
         fixes.push(Fix::new().insert(call.end_byte(), ".isTrue()"));
         blanket = false;

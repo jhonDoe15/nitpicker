@@ -6,7 +6,7 @@ import java.util.*;
 import java.util.regex.*;
 import javax.tools.*;
 
-/** ErrorProneRun <mode ep|javac> <out.json> <checks.json> <classpath file> <sources file> [extra javac options...] */
+/** ErrorProneRun <mode ep|javac> <out.json> <checks.json> <classpath file> <sources file> [extra javac options...]; -Dep.test=true compiles as test-only code */
 public class ErrorProneRun {
   public static void main(String[] a) throws Exception {
     boolean ep = a[0].equals("ep");
@@ -24,9 +24,11 @@ public class ErrorProneRun {
     List<String> opts = new ArrayList<>(List.of("-d", classes.toString(), "-classpath", String.join(":", cp),
         "-sourcepath", "", "-encoding", "UTF-8", "-Xmaxwarns", "10000000", "-Xmaxerrs", "100000", "-nowarn", "-g", "-parameters"));
     for (int i = 5; i < a.length; i++) opts.add(a[i]);
+    if (opts.lastIndexOf("-encoding") > opts.indexOf("-encoding")) { int i = opts.indexOf("-encoding"); opts.remove(i); opts.remove(i); }
     if (opts.contains("--module-path")) { int i = opts.indexOf("-sourcepath"); opts.remove(i); opts.remove(i); }
     if (ep) {
       List<String> f = new ArrayList<>(List.of("-Xplugin:ErrorProne", "-XepAllErrorsAsWarnings"));
+      if (Boolean.getBoolean("ep.test")) f.add("-XepCompilingTestOnlyCode");
       String only = System.getProperty("ep.only", "");
       if (!only.isEmpty()) {
         f.add("-XepDisableAllChecks");
@@ -51,7 +53,7 @@ public class ErrorProneRun {
       if (!opts.contains("-proc:none") && pp < 0) opts.add("-proc:none");
     }
     JavaCompiler c = ToolProvider.getSystemJavaCompiler();
-    StandardJavaFileManager fm = c.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+    StandardJavaFileManager fm = c.getStandardFileManager(null, null, opts.get(opts.indexOf("-encoding") + 1).equals("UTF-8") ? StandardCharsets.UTF_8 : null);
     StringBuilder out = new StringBuilder("{\"findings\":[\n");
     int[] n = {0, 0};
     Pattern name = Pattern.compile("^\\[(\\w+)\\] ");

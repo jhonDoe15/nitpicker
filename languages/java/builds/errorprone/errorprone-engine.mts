@@ -10,12 +10,20 @@ import {
 import { fieldOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import {
   argumentSetOf,
+  encodingOf,
   generatedRoots,
   lookupEntries,
+  modulePathEntries,
   releaseOf,
   type ArgumentSet,
 } from './engine-arguments.mts';
-import { engineChecksFor, NULL_AWAY, wholeReason, type EngineChecks } from './engine-checks.mts';
+import {
+  engineChecksFor,
+  NULL_AWAY,
+  testOnly,
+  wholeReason,
+  type EngineChecks,
+} from './engine-checks.mts';
 import {
   diagnosticsOf as engineDiagnostics,
   ENGINE_REPORT,
@@ -65,15 +73,22 @@ function engineReport(
 ): unknown {
   const listed = `${file}.engine-sources.txt`;
   const lookup = `${file}.engine-classpath.txt`;
+  const modules = `${file}.engine-modulepath.txt`;
   const report = `${file}.engine-report.json`;
   writeFileSync(listed, sources.map((source) => `${source}\n`).join(''));
   writeFileSync(lookup, lookupEntries(head).join('\n'));
+  const modulePath = modulePathEntries(head);
+  writeFileSync(modules, modulePath.join('\n'));
   rmSync(report, { force: true });
   const release = releaseOf(head);
+  const encoding = encodingOf(head);
   const { status, stderr } = run(
     [
       ...['--files', listed, '--rules', ERROR_PRONE_RULES, '--classpath', lookup],
+      ...(modulePath.length === 0 ? [] : ['--module-path', modules]),
       ...(release === undefined ? [] : ['--release', release]),
+      ...(testOnly(head) ? ['--test-only'] : []),
+      ...(encoding === undefined ? [] : ['--encoding', encoding]),
       ...['--out', report],
     ],
     {

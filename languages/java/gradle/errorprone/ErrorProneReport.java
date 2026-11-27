@@ -533,8 +533,8 @@ public final class ErrorProneReport {
     boolean compiled;
     Map<String, List<ClassSpan>> classes = new HashMap<>();
     Map<String, Map<Long, Long>> ends = run.getLast().contains("-XepPatchChecks:") ? new HashMap<>() : null;
-    try (StandardJavaFileManager files =
-        compiler.getStandardFileManager(diagnostics, Locale.ROOT, StandardCharsets.UTF_8)) {
+    try (StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, Locale.ROOT,
+        run.contains("-encoding") ? null : StandardCharsets.UTF_8)) {
       JavacTask task = (JavacTask) compiler.getTask(
           null, files, diagnostics, run, null, files.getJavaFileObjectsFromStrings(sources));
       recordClasses(task, classes, ends);
