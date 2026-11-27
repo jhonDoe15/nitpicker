@@ -1,19 +1,27 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { resolveFunction, type SourceContext } from '../analysis/constant-resolution.mts';
+import {
+  referencesOf,
+  resolveFunction,
+  type SourceContext,
+} from '../analysis/constant-resolution.mts';
 import { ancestorsOf, nameOf } from '../typed/node-views.mts';
 import { isFunction, isNamedMember } from '../typed/syntax-views.mts';
 import { isLoop, isUnboundedList } from './unbounded-lists.mts';
 
 const COPY_STEPS = new Set(['map', 'filter', 'flatMap']);
 
+function spreadCopy(context: SourceContext, node: TSESTree.ArrayExpression): boolean {
+  const [only] = node.elements;
+  return (
+    node.elements.length === 1 &&
+    only?.type === AST_NODE_TYPES.SpreadElement &&
+    isUnboundedList(context, only.argument)
+  );
+}
+
 function copiedList(context: SourceContext, node: TSESTree.Node): boolean {
   if (node.type === AST_NODE_TYPES.ArrayExpression) {
-    const [only] = node.elements;
-    return (
-      node.elements.length === 1 &&
-      only?.type === AST_NODE_TYPES.SpreadElement &&
-      isUnboundedList(context, only.argument)
-    );
+    return spreadCopy(context, node);
   }
   return (
     node.type === AST_NODE_TYPES.CallExpression &&
@@ -44,6 +52,19 @@ function repeatedWithin(reference: TSESTree.Node, target: TSESTree.Node): boolea
   return between.some((ancestor) => isLoop(ancestor) || isFunction(ancestor));
 }
 
+function walkedOnce(
+  references: readonly TSESLint.Scope.Reference[],
+  target: TSESTree.Node,
+): boolean {
+  const [only] = references;
+  return (
+    references.length === 1 &&
+    only !== undefined &&
+    walksOnce(only.identifier) &&
+    !repeatedWithin(only.identifier, target)
+  );
+}
+
 function iteratesOnce(
   context: SourceContext,
   call: TSESTree.CallExpression,
@@ -54,17 +75,7 @@ function iteratesOnce(
   if (target === undefined || parameter?.type !== AST_NODE_TYPES.Identifier) {
     return false;
   }
-  const references =
-    context.sourceCode
-      .getDeclaredVariables(target)
-      .find((variable) => variable.name === parameter.name)?.references ?? [];
-  const [only] = references;
-  return (
-    references.length === 1 &&
-    only !== undefined &&
-    walksOnce(only.identifier) &&
-    !repeatedWithin(only.identifier, target)
-  );
+  return walkedOnce(referencesOf(context, target, parameter.name), target);
 }
 
 export const rule: TSESLint.RuleModule<'copyForOnePass'> = {

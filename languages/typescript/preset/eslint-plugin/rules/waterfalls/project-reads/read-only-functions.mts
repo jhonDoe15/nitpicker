@@ -5,8 +5,9 @@ import { resolveModuleSpecifier as untypedResolve } from '../../../../modules/mo
 import { findVariable } from '../../analysis/constant-resolution.mts';
 import { readTextFile } from '../../react/support/file-reads.mts';
 import { readStamped, type StampedCache } from '../../react/support/typed-sources.mts';
+import type { FunctionNode } from '../../typed/node-views.mts';
 import { isFunction } from '../../typed/syntax-views.mts';
-import { exportedFunction, type FunctionLookup } from './exported-functions.mts';
+import { exportedFunction, type Found, type FunctionLookup } from './exported-functions.mts';
 import { isReadOnlyBody, type IsRead } from './read-only-bodies.mts';
 
 type Resolution = { readonly kind: string; readonly path?: string };
@@ -30,22 +31,19 @@ function parsedProgram(file: string): TSESTree.Program | undefined {
   return readStamped(programs, file, readProgram);
 }
 
-function importedFunction(
-  file: string,
-  specifier: string,
-  name: string,
-): TSESTree.FunctionLike | undefined {
+function lookedUp(lookup: FunctionLookup): Found | undefined {
+  const resolved = resolveModuleSpecifier(lookup.specifier, lookup.file);
+  const path = resolved.kind === 'file' ? resolved.path : undefined;
+  const program = path === undefined ? undefined : parsedProgram(path);
+  return path === undefined || program === undefined
+    ? undefined
+    : exportedFunction(program, path, lookup.name);
+}
+
+function importedFunction(file: string, specifier: string, name: string): FunctionNode | undefined {
   const pending: FunctionLookup[] = [{ file, specifier, name }];
   for (const lookup of pending) {
-    const resolved = resolveModuleSpecifier(lookup.specifier, lookup.file);
-    const program =
-      resolved.kind === 'file' && resolved.path !== undefined
-        ? parsedProgram(resolved.path)
-        : undefined;
-    const found =
-      program === undefined || resolved.path === undefined
-        ? undefined
-        : exportedFunction(program, resolved.path, lookup.name);
+    const found = lookedUp(lookup);
     if (found?.kind === 'function') {
       return found.fn;
     }
@@ -67,6 +65,27 @@ function importedName(definition: TSESLint.Scope.Definition): string | undefined
     : undefined;
 }
 
+function variableFunction(declarator: TSESTree.VariableDeclarator): TSESTree.Node | undefined {
+  const { init, parent } = declarator;
+  return parent.kind === 'const' && init && isFunction(init) ? init : undefined;
+}
+
+function importedDefinition(
+  definition: TSESLint.Scope.Definition,
+  filename: string,
+): TSESTree.Node | undefined {
+  const name =
+    definition.type === TSESLint.Scope.DefinitionType.ImportBinding
+      ? importedName(definition)
+      : undefined;
+  const source = definition.parent;
+  return name !== undefined &&
+    source?.type === AST_NODE_TYPES.ImportDeclaration &&
+    source.importKind !== 'type'
+    ? importedFunction(filename, source.source.value, name)
+    : undefined;
+}
+
 function calledFunction(
   callee: TSESTree.Identifier,
   sourceCode: TSESLint.SourceCode,
@@ -80,20 +99,9 @@ function calledFunction(
   if (definition.type === TSESLint.Scope.DefinitionType.FunctionName) {
     return definition.node;
   }
-  if (definition.type === TSESLint.Scope.DefinitionType.Variable) {
-    const { init, parent } = definition.node;
-    return parent.kind === 'const' && init && isFunction(init) ? init : undefined;
-  }
-  const name =
-    definition.type === TSESLint.Scope.DefinitionType.ImportBinding
-      ? importedName(definition)
-      : undefined;
-  const source = definition.parent;
-  return name !== undefined &&
-    source?.type === AST_NODE_TYPES.ImportDeclaration &&
-    source.importKind !== 'type'
-    ? importedFunction(filename, source.source.value, name)
-    : undefined;
+  return definition.type === TSESLint.Scope.DefinitionType.Variable
+    ? variableFunction(definition.node)
+    : importedDefinition(definition, filename);
 }
 
 type ReadOnlyQuery = {

@@ -21,6 +21,7 @@ tester.run('no-mapped-copy-for-single-pass', rule, {
     'export const f = (out, findings) => imported(findings.map(g));',
     'function w(items) { for (const a of xs) for (const i of items) use(a, i); } export const f = (findings) => w(findings.map(g));',
     'function w(items) { xs.forEach(() => { for (const i of items) use(i); }); } export const f = (findings) => w(findings.map(g));',
+    `${WRITER} export function f(out, findings) { writeLines(out, findings['map'](toIssue)); }`,
   ],
   invalid: [
     invalid(

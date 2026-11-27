@@ -11,6 +11,8 @@ import {
   type ReadStatement,
 } from './read-calls.mts';
 
+type Run = [ReadStatement, ReadStatement, ...ReadStatement[]];
+
 function declaredName(read: ReadStatement, sourceCode: TSESLint.SourceCode): string {
   return nameOf(read.id) ?? sourceCode.getText(read.id);
 }
@@ -19,7 +21,7 @@ function independentRuns(
   statements: readonly TSESTree.Statement[],
   orms: readonly string[],
   context: FileContext,
-): ReadStatement[][] {
+): Run[] {
   const { sourceCode } = context;
   const runs: ReadStatement[][] = [];
   let run: ReadStatement[] = [];
@@ -40,7 +42,7 @@ function independentRuns(
     }
   }
   runs.push(run);
-  return runs.filter((each) => each.length > 1);
+  return runs.filter((each): each is Run => each.length > 1);
 }
 
 export const rule: TSESLint.RuleModule<'sequential', WriteOptions> = {
@@ -69,17 +71,14 @@ export const rule: TSESLint.RuleModule<'sequential', WriteOptions> = {
           return;
         }
         for (const run of independentRuns(block.body, orms, context)) {
-          const [first] = run;
-          if (first !== undefined) {
-            context.report({
-              node: first.statement,
-              messageId: 'sequential',
-              data: {
-                count: String(run.length),
-                names: run.map((read) => declaredName(read, sourceCode)).join(', '),
-              },
-            });
-          }
+          context.report({
+            node: run[0].statement,
+            messageId: 'sequential',
+            data: {
+              count: String(run.length),
+              names: run.map((read) => declaredName(read, sourceCode)).join(', '),
+            },
+          });
         }
       },
     };

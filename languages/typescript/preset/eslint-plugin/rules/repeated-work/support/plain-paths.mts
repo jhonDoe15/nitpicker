@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { lastOf } from '../../../../../../../shared/lists/lists.mts';
 import { memberChain } from '../../collections/costly-forms/repeated-runs.mts';
 
 export function isPlainPath(node: TSESTree.Node): boolean {
@@ -13,5 +14,5 @@ export function isPlainPath(node: TSESTree.Node): boolean {
 }
 
 export function pathRoot(node: TSESTree.Node): TSESTree.Node {
-  return memberChain(node).at(-1) ?? node;
+  return lastOf(memberChain(node), node);
 }

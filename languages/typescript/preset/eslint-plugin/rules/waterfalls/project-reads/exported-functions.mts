@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { nameText } from '../../typed/node-views.mts';
+import { nameText, type FunctionNode } from '../../typed/node-views.mts';
 import { isFunction } from '../../typed/syntax-views.mts';
 
 export type FunctionLookup = {
@@ -7,20 +7,17 @@ export type FunctionLookup = {
   readonly specifier: string;
   readonly name: string;
 };
-type Found =
-  | { readonly kind: 'function'; readonly fn: TSESTree.FunctionLike }
+export type Found =
+  | { readonly kind: 'function'; readonly fn: FunctionNode }
   | { readonly kind: 'forwarded'; readonly lookup: FunctionLookup };
 
 const DEFAULT = 'default';
 
-function declaredFunction(
-  declaration: TSESTree.Node | undefined,
+function declaredConstFunction(
+  declaration: TSESTree.VariableDeclaration,
   name: string,
-): TSESTree.FunctionLike | undefined {
-  if (declaration?.type === AST_NODE_TYPES.FunctionDeclaration) {
-    return declaration.id?.name === name ? declaration : undefined;
-  }
-  if (declaration?.type !== AST_NODE_TYPES.VariableDeclaration || declaration.kind !== 'const') {
+): FunctionNode | undefined {
+  if (declaration.kind !== 'const') {
     return undefined;
   }
   const init = declaration.declarations.find(
@@ -29,32 +26,45 @@ function declaredFunction(
   return init && isFunction(init) ? init : undefined;
 }
 
+function declaredFunction(
+  declaration: TSESTree.Node | null | undefined,
+  name: string,
+): FunctionNode | undefined {
+  if (declaration?.type === AST_NODE_TYPES.FunctionDeclaration) {
+    return declaration.id?.name === name ? declaration : undefined;
+  }
+  return declaration?.type === AST_NODE_TYPES.VariableDeclaration
+    ? declaredConstFunction(declaration, name)
+    : undefined;
+}
+
+function importedBinding(statement: TSESTree.Node, file: string, name: string): Found | undefined {
+  if (statement.type !== AST_NODE_TYPES.ImportDeclaration || statement.importKind === 'type') {
+    return undefined;
+  }
+  const imported = statement.specifiers.find(
+    (specifier): specifier is TSESTree.ImportSpecifier =>
+      specifier.type === AST_NODE_TYPES.ImportSpecifier && specifier.local.name === name,
+  );
+  return imported === undefined
+    ? undefined
+    : {
+        kind: 'forwarded',
+        lookup: { file, specifier: statement.source.value, name: nameText(imported.imported) },
+      };
+}
+
 function localFunction(program: TSESTree.Program, file: string, name: string): Found | undefined {
   for (const statement of program.body) {
     const declaration =
-      statement.type === AST_NODE_TYPES.ExportNamedDeclaration
-        ? (statement.declaration ?? undefined)
-        : statement;
+      statement.type === AST_NODE_TYPES.ExportNamedDeclaration ? statement.declaration : statement;
     const fn = declaredFunction(declaration, name);
     if (fn !== undefined) {
       return { kind: 'function', fn };
     }
-    const imported =
-      statement.type === AST_NODE_TYPES.ImportDeclaration && statement.importKind !== 'type'
-        ? statement.specifiers.find(
-            (specifier) =>
-              specifier.type === AST_NODE_TYPES.ImportSpecifier && specifier.local.name === name,
-          )
-        : undefined;
-    if (
-      imported?.type === AST_NODE_TYPES.ImportSpecifier &&
-      statement.type === AST_NODE_TYPES.ImportDeclaration
-    ) {
-      const original = nameText(imported.imported);
-      return {
-        kind: 'forwarded',
-        lookup: { file, specifier: statement.source.value, name: original },
-      };
+    const forwarded = importedBinding(statement, file, name);
+    if (forwarded !== undefined) {
+      return forwarded;
     }
   }
   return undefined;
@@ -109,7 +119,7 @@ export function exportedFunction(
     if (statement.type !== AST_NODE_TYPES.ExportNamedDeclaration) {
       continue;
     }
-    const fn = declaredFunction(statement.declaration ?? undefined, name);
+    const fn = declaredFunction(statement.declaration, name);
     const found = fn === undefined ? listedExport({ statement, program, file, name }) : undefined;
     if (fn !== undefined) {
       return { kind: 'function', fn };
