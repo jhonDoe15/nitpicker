@@ -6,6 +6,9 @@ mod javac_print;
 mod formatter;
 mod regex;
 mod temporal_fields;
+mod jdk_parse;
+mod jdk_values;
+mod always_throws;
 mod format_validation;
 mod format_string;
 mod format_annotation;
@@ -795,6 +798,8 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["InvalidTimeZoneID"], time_constants::invalid_time_zone_id),
     (&["InvalidZoneId"], time_constants::invalid_zone_id),
     (&["InvalidJavaTimeConstant"], time_constants::invalid_java_time_constant),
+    (&["AlwaysThrows"], always_throws::always_throws),
+    (&["NewFileSystem"], always_throws::new_file_system),
     (&["StringJoin"], size_join::string_join),
     (&["SizeGreaterThanOrEqualsZero"], size_join::size_greater_than_or_equals_zero),
     (&["ThrowIfUncheckedKnownChecked"], size_join::throw_if_unchecked_known_checked),

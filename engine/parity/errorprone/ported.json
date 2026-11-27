@@ -552,5 +552,7 @@
  "OrphanedFormatString",
  "FloatingPointAssertionWithinEpsilon",
  "InvalidPatternSyntax",
- "TemporalAccessorGetChronoField"
+ "TemporalAccessorGetChronoField",
+ "AlwaysThrows",
+ "NewFileSystem"
 ]

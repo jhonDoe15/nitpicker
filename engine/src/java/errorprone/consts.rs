@@ -1,5 +1,6 @@
 //! Compile-time constant values of expressions, as far as literals, operators and constant fields of the same file give them.
 use super::Context;
+use super::java_text::{double_to_string, float_to_string};
 use crate::engine::source::{children, walk};
 use crate::java::helpers::{declarators, has_modifier};
 use crate::java::types::expr::{Binding, Receiver, literal_text, unwrap};
@@ -69,8 +70,8 @@ impl Const {
         match self {
             Const::Int(value) => value.to_string(),
             Const::Long(value) => value.to_string(),
-            Const::Float(value) => value.to_string(),
-            Const::Double(value) => value.to_string(),
+            Const::Float(value) => float_to_string(*value),
+            Const::Double(value) => double_to_string(*value),
             Const::Bool(value) => value.to_string(),
             Const::Char(value) => char::from_u32(u32::from(*value)).map(String::from).unwrap_or_default(),
             Const::Str(value) => value.clone(),
