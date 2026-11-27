@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { engineFindingOf } from '../../../../../shared/engine/engine-rows.mts';
 import { fieldOf, listOf, textsOf } from '../../../../../shared/values/readers.mts';
-import type { ArgumentSet } from '../engine-arguments.mts';
+import { projectArguments, type ArgumentSet } from '../engine-arguments.mts';
 import type { EngineRow } from '../engine-diagnostics.mts';
 import { NOT_DISABLEABLE } from '../options/check-levels.mts';
 import { lombokUnsuppressed } from './runner-checks.mts';
@@ -9,6 +9,9 @@ import type { SourceSetPlan } from './source-set-plan.mts';
 
 const MAY_REPORT = '_MayReport';
 const HAND_BACK = '_HandBack';
+/** Checks whose suggestion Error Prone shows only when javac still compiles the sources with the fix applied. */
+const RECOMPILED = new Set(['MutableGuiceModule', 'StaticMockMember', 'TruthAssertExpected']);
+const SUGGESTION = '\n  Did you mean ';
 
 function checksByFile(report: unknown, kind: string): ReadonlyMap<string, readonly string[]> {
   const rows = listOf(fieldOf(report, 'findings')).map(engineFindingOf);
@@ -39,6 +42,30 @@ export function joinedHandBacks(
     joined.set(file, [...new Set([...(joined.get(file) ?? []), ...checks])]);
   }
   return joined;
+}
+
+/**
+ * javac warnings can fail Error Prone's recompile (100 of them, or one under `-Werror`), which the engine cannot count:
+ * with `-Werror` or `-Xlint` the suggestions it found for those checks go back to Error Prone.
+ */
+function warningsDecide(head: readonly string[]): boolean {
+  return projectArguments(head).some(
+    (argument) => argument === '-Werror' || (argument.startsWith('-Xlint') && argument !== '-Xlint:none'),
+  );
+}
+
+/** For each file, the recompiled checks whose suggestions go back to Error Prone because warnings decide them. */
+export function recompiledHandBacks(
+  { head }: ArgumentSet,
+  rows: readonly EngineRow[],
+): ReadonlyMap<string, readonly string[]> {
+  const back = new Map<string, string[]>();
+  if (warningsDecide(head)) {
+    rows
+      .filter(({ rule, message }) => RECOMPILED.has(rule) && message.includes(SUGGESTION))
+      .forEach(({ rule, file }) => back.set(file, [...new Set([...(back.get(file) ?? []), rule])]));
+  }
+  return back;
 }
 
 function slashed(file: string): string {

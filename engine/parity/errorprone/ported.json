@@ -561,5 +561,11 @@
  "ModifySourceCollectionInStream",
  "TypeNameShadowing",
  "UseBinds",
+ "StaticMockMember",
+ "TruthAssertExpected",
+ "MutableGuiceModule",
+ "MissingFail",
+ "TryFailRefactoring",
+ "AssertThrowsMinimizer",
  "InlineMeValidator"
 ]
