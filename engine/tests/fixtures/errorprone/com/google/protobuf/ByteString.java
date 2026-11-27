@@ -18,4 +18,8 @@ public abstract class ByteString {
   public static ByteString copyFromUtf8(String text) {
     return null;
   }
+
+  public static ByteString fromHex(String hexString) {
+    return null;
+  }
 }

@@ -63,8 +63,6 @@ pub const PRECONDITIONS: &[(&str, Gate)] = &[
     ("StatementSwitchToExpressionSwitch", SWITCH),
     ("RefactorSwitch", SWITCH),
     ("BadInstanceof", INSTANCEOF),
-    ("NewFileSystem", Gate::Text(&["newFileSystem"])),
-    ("AlwaysThrows", Gate::Text(&["put", "of", "parse", "fromHex", "fromString", "plus", "minus"])),
     ("ModifySourceCollectionInStream", Gate::Text(&["stream", "parallelStream"])),
     ("EqualsBrokenForNull", Gate::Text(&["equals"])),
     ("RedundantNullCheck", NULL),
