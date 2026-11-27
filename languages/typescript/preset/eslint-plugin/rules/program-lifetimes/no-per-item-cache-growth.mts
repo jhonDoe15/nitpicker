@@ -26,19 +26,28 @@ function memberUse(node: TSESTree.Node): TSESTree.MemberExpression | undefined {
     : undefined;
 }
 
+function privateMapDeclarator(
+  variable: TSESLint.Scope.Variable,
+): TSESTree.VariableDeclarator | undefined {
+  const definition = variable.defs.length === 1 ? variable.defs[0] : undefined;
+  const declarator = definition?.node;
+  return declarator?.type === AST_NODE_TYPES.VariableDeclarator &&
+    declarator.parent.parent.type !== AST_NODE_TYPES.ExportNamedDeclaration &&
+    isNewMap(declarator.init ?? undefined)
+    ? declarator
+    : undefined;
+}
+
 function moduleCache(context: SourceContext, node: TSESTree.Identifier): Cache | undefined {
   const variable = findVariable(context, node, node.name);
-  const definition = variable?.defs.length === 1 ? variable.defs[0] : undefined;
-  if (
-    variable === undefined ||
-    !MODULE_SCOPES.has(variable.scope.type) ||
-    definition?.node.type !== AST_NODE_TYPES.VariableDeclarator ||
-    definition.node.parent.parent.type === AST_NODE_TYPES.ExportNamedDeclaration ||
-    !isNewMap(definition.node.init ?? undefined)
-  ) {
+  if (variable === undefined || !MODULE_SCOPES.has(variable.scope.type)) {
     return undefined;
   }
-  const { id } = definition.node;
+  const declarator = privateMapDeclarator(variable);
+  if (declarator === undefined) {
+    return undefined;
+  }
+  const { id } = declarator;
   const reads = variable.references.filter((reference) => reference.identifier !== id);
   return {
     uses: reads.flatMap((reference) => memberUse(reference.identifier) ?? []),
@@ -73,19 +82,19 @@ function thisMembers(
   return byName;
 }
 
+function declaresMapField(owner: TSESTree.ClassBody, name: string | undefined): boolean {
+  const field = owner.body.find(
+    (element) => element.type === AST_NODE_TYPES.PropertyDefinition && nameOf(element.key) === name,
+  );
+  return field?.type === AST_NODE_TYPES.PropertyDefinition && isNewMap(field.value ?? undefined);
+}
+
 function fieldCache(member: TSESTree.MemberExpression, fields: Fields): Cache | undefined {
   const name = nameOf(member.property);
   const owner = ancestorsOf(member).find(
     (ancestor): ancestor is TSESTree.ClassBody => ancestor.type === AST_NODE_TYPES.ClassBody,
   );
-  const field = owner?.body.find(
-    (element) => element.type === AST_NODE_TYPES.PropertyDefinition && nameOf(element.key) === name,
-  );
-  if (
-    owner === undefined ||
-    field?.type !== AST_NODE_TYPES.PropertyDefinition ||
-    !isNewMap(field.value ?? undefined)
-  ) {
+  if (owner === undefined || !declaresMapField(owner, name)) {
     return undefined;
   }
   const accesses = thisMembers(owner, fields).get(name ?? '') ?? [];
@@ -133,6 +142,37 @@ function enclosingLoop(node: TSESTree.Node): LoopNode | undefined {
   return undefined;
 }
 
+type Growth = {
+  readonly loop: LoopNode;
+  readonly cache: Cache;
+  readonly call: TSESTree.CallExpression;
+  readonly key: TSESTree.Node;
+};
+
+function readsBackInItem(context: SourceContext, { cache, call, key }: Growth): boolean {
+  const keyText = context.sourceCode.getText(key);
+  return cache.uses.some((use) => {
+    const read = use.parent;
+    return (
+      nameOf(use.property) === 'get' &&
+      read.type === AST_NODE_TYPES.CallExpression &&
+      read.range[0] > call.range[1] &&
+      read.arguments[0] !== undefined &&
+      context.sourceCode.getText(read.arguments[0]) === keyText
+    );
+  });
+}
+
+function growsPerItem(context: SourceContext, growth: Growth): boolean {
+  const { loop, cache, key } = growth;
+  return (
+    loop.right.type !== AST_NODE_TYPES.ArrayExpression &&
+    readsLoopItem(key, loopNames(loop)) &&
+    readsBackInItem(context, growth) &&
+    cache.uses.every((use) => contains(loop.body, use) && !SHRINKS.has(nameOf(use.property) ?? ''))
+  );
+}
+
 function grows(context: SourceContext, call: TSESTree.CallExpression, fields: Fields): boolean {
   const { callee } = call;
   const [key] = call.arguments;
@@ -148,23 +188,7 @@ function grows(context: SourceContext, call: TSESTree.CallExpression, fields: Fi
   if (loop === undefined || cache === undefined || cache.writes > 0) {
     return false;
   }
-  const keyText = context.sourceCode.getText(key);
-  const readInSameItem = cache.uses.some((use) => {
-    const read = use.parent;
-    return (
-      nameOf(use.property) === 'get' &&
-      read.type === AST_NODE_TYPES.CallExpression &&
-      read.range[0] > call.range[1] &&
-      read.arguments[0] !== undefined &&
-      context.sourceCode.getText(read.arguments[0]) === keyText
-    );
-  });
-  return (
-    loop.right.type !== AST_NODE_TYPES.ArrayExpression &&
-    readsLoopItem(key, loopNames(loop)) &&
-    readInSameItem &&
-    cache.uses.every((use) => contains(loop.body, use) && !SHRINKS.has(nameOf(use.property) ?? ''))
-  );
+  return growsPerItem(context, { loop, cache, call, key });
 }
 
 export const rule: TSESLint.RuleModule<'perItemCache'> = {

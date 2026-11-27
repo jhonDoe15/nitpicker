@@ -4,4 +4,4 @@ pub mod headers;
 pub mod paths;
 pub mod relative;
 pub mod unencoded;
-mod values;
+pub mod values;

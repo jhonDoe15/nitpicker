@@ -1,5 +1,12 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { memberRoot, nameOf, nodeChildren, nodesWithoutNested } from '../../typed/node-views.mts';
+import { textOf } from '../../../../../../../shared/values/readers.mts';
+import {
+  memberRoot,
+  nameOf,
+  nodeChildren,
+  nodesWithoutNested,
+  type FunctionNode,
+} from '../../typed/node-views.mts';
 
 export type IsRead = (call: TSESTree.CallExpression) => boolean;
 
@@ -78,6 +85,20 @@ function writesOutside(node: TSESTree.Node, locals: ReadonlySet<string>): boolea
   return target.type !== AST_NODE_TYPES.Identifier || !locals.has(target.name);
 }
 
+function isSyncTransform(callee: TSESTree.MemberExpression): boolean {
+  return (
+    callee.property.type === AST_NODE_TYPES.Identifier && SYNC_TRANSFORMS.has(callee.property.name)
+  );
+}
+
+function isPureStatic(callee: TSESTree.MemberExpression): boolean {
+  const { object, property } = callee;
+  return (
+    object.type === AST_NODE_TYPES.Identifier &&
+    (PURE_STATICS.get(object.name)?.has(textOf(nameOf(property))) ?? false)
+  );
+}
+
 function transforms(call: TSESTree.CallExpression): boolean {
   const { callee } = call;
   if (callee.type !== AST_NODE_TYPES.MemberExpression || callee.computed) {
@@ -85,11 +106,9 @@ function transforms(call: TSESTree.CallExpression): boolean {
   }
   const root = memberRoot(callee.object);
   return (
-    (callee.property.type === AST_NODE_TYPES.Identifier &&
-      SYNC_TRANSFORMS.has(callee.property.name)) ||
+    isSyncTransform(callee) ||
     (root.type === AST_NODE_TYPES.Identifier && CHEAP_RECEIVERS.has(root.name)) ||
-    (callee.object.type === AST_NODE_TYPES.Identifier &&
-      (PURE_STATICS.get(callee.object.name)?.has(nameOf(callee.property) ?? '') ?? false))
+    isPureStatic(callee)
   );
 }
 
@@ -116,12 +135,8 @@ function awaitsRead(node: TSESTree.Node, isRead: IsRead): boolean {
   );
 }
 
-export function isReadOnlyBody(fn: TSESTree.FunctionLike, isRead: IsRead): boolean {
-  const body = fn.body;
-  if (body === null || body === undefined) {
-    return false;
-  }
-  const nodes = nodesWithoutNested(body, new Set(), nodeChildren);
+export function isReadOnlyBody(fn: FunctionNode, isRead: IsRead): boolean {
+  const nodes = nodesWithoutNested(fn.body, new Set(), nodeChildren);
   const calls = nodes.filter(
     (node): node is TSESTree.CallExpression => node.type === AST_NODE_TYPES.CallExpression,
   );

@@ -136,3 +136,18 @@ pub fn is_url_constructor(node: Option<Node>) -> bool {
 pub fn source<'t>(text: &'t str, node: Node) -> &'t str {
     &text[node.start() as usize..node.end() as usize]
 }
+
+/// `stringValue` as UTF-16 code units, lone surrogates kept.
+pub fn string_units(node: Option<Node>) -> Option<Vec<u16>> {
+    let node = node?;
+    if node.is("Literal") {
+        return matches!(node.get("value"), Value::Text(..)).then(|| node.view.utf16(node.get("value"))).flatten();
+    }
+    if !node.is("TemplateLiteral") || !node.nodes("expressions").is_empty() {
+        return None;
+    }
+    match node.list("quasis").first().copied().flatten()?.get("value") {
+        Value::Node(at) => node.view.utf16(node.view.at(at).get("cooked")),
+        _ => None,
+    }
+}

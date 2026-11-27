@@ -48,6 +48,23 @@ export function f(xs: Row[], groups: Map<string, Row[]>) { for (const x of xs) {
 export function f(xs: Row[], o: Record<string, Row[]>) { for (const x of xs) { o[x.k] = [...(o[x.j] ?? []), x]; } }
 
 export function f(xs: Row[], o: Record<string, Row[]>) { for (const x of xs) { o[x.k] ||= [...(o[x.k] ?? []), x]; } }
+
+export function f(xs: Row[], groups: Map<string, Row[]>, cache: Row[]) { for (const x of xs) {
+  groups.set(x.k, [...(cache ?? []), x]); } }
+
+export function f(xs: Row[], groups: Map<string, Row[]>) { for (const x of xs) {
+  groups.set(x.k, [...(groups.get(x.k, 1) ?? []), x]); } }
+
+export function f(xs: Row[], groups: Map<string, Row[]>) { for (const x of xs) {
+  groups.set(x.k, [...(groups.read(x.k) ?? []), x]); } }
+
+export function f(xs: Row[], groups: Map<string, Row[]>) { for (const x of xs) {
+  const copy = [...(groups.get(x.k) ?? []), x]; use(copy); } }
+declare function use(rows: Row[]): void;
+
+export function f(xs: Row[], groups: Map<string, Row[]>, store: Store) { for (const x of xs) {
+  store.put(x.k, [...(groups.get(x.k) ?? []), x]); } }
+interface Store { put(key: string, rows: Row[]): void }
 `),
   invalid: cases(`
 export function f(xs: Row[], groups: Map<string, Row[]>) { for (const x of xs) {

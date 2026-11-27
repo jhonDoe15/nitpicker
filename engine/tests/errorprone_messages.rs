@@ -16,7 +16,17 @@ fn counted(rows: impl IntoIterator<Item = Row>) -> BTreeMap<Row, usize> {
 /// The first line of the message and Error Prone's "Did you mean" sentence, the parts a Java run shows.
 fn shown(message: &str) -> String {
     let first = message.lines().next().unwrap_or_default();
-    message.find("\n  Did you mean ").map_or(first.to_string(), |at| format!("{first}{}", &message[at..]))
+    unordered_fields(message.find("\n  Did you mean ").map_or(first.to_string(), |at| format!("{first}{}", &message[at..])))
+}
+
+/// The JDK prints the fields of a `java.time.format.Parsed` from a `HashMap` keyed by `ChronoField`, whose order changes between JVM runs.
+fn unordered_fields(message: String) -> String {
+    let marker = "TemporalAccessor: {";
+    let Some(start) = message.find(marker).map(|at| at + marker.len()) else { return message };
+    let Some(length) = message[start..].find('}') else { return message };
+    let mut fields: Vec<&str> = message[start..start + length].split(", ").collect();
+    fields.sort_unstable();
+    format!("{}{}{}", &message[..start], fields.join(", "), &message[start + length..])
 }
 
 #[test]
@@ -45,7 +55,8 @@ fn error_prone_messages_and_suggestions_match_error_prone() {
         )
     }));
     let listed = std::fs::read_to_string(root.join("expected").join("errorprone-messages.json")).expect("expected");
-    let expected = counted(serde_json::from_str::<Vec<Row>>(&listed).expect("rows"));
+    let rows = serde_json::from_str::<Vec<Row>>(&listed).expect("rows");
+    let expected = counted(rows.into_iter().map(|(file, rule, line, column, message)| (file, rule, line, column, unordered_fields(message))));
     let missed: Vec<&Row> = expected.iter().filter(|(row, count)| found.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     let extra: Vec<&Row> = found.iter().filter(|(row, count)| expected.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:#?}, extra {extra:#?}");

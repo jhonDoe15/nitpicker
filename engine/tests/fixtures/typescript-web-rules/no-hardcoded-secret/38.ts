@@ -1,0 +1,1 @@
+function f(token = "abc123def456") { return token; }

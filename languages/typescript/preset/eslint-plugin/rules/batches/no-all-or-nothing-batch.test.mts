@@ -24,6 +24,8 @@ tester.run('no-all-or-nothing-batch', rule, {
     'export async function load(files: string[]) { const rows = files.map((file) => JSON.parse(file)); return rows; }',
     'export async function load(files: string[]) { return Promise.all(files.map(async (file) => { const parse = () => JSON.parse(file); return parse; })); }',
     'async function one(file: string) { try { return JSON.parse(await readFile(file, "utf8")); } catch { return undefined; } } export async function load(files: string[]) { return Promise.all(files.map(one)); }',
+    'export async function load() { return Promise.all(lister()().map(async (file) => readFile(file, "utf8"))); }',
+    'export async function load(files: string[]) { return Promise.all(files.map()); }',
   ],
   invalid: reported('allOrNothing', [
     'export async function load(files: string[]) { return Promise.all(files.map(async (file) => JSON.parse(await readFile(file, "utf8")))); }',
@@ -36,5 +38,8 @@ tester.run('no-all-or-nothing-batch', rule, {
     'import { parse as parseToml } from "smol-toml"; export async function load(files: string[]) { return Promise.all(files.map(async (file) => parseToml(file))); }',
     'import * as acorn from "acorn"; export async function load(files: string[]) { return Promise.all(files.map(async (file) => acorn.parse(file, { ecmaVersion: 2022 }))); }',
     'export async function load(modules: string[]) { return Promise.all(modules.map((module) => fs.promises.readFile(module, "utf8").then((text) => text))); }',
+    'import { "parse" as read } from "yaml"; export async function load(files: string[]) { return Promise.all(files.map(async (file) => read(file))); }',
+    'export async function load(files: string[]) { return Promise.all(files.map(async (file) => readFile(file, "utf8")["finally"](() => 1))); }',
+    'export const load = (files: string[]) => Promise.all(files.map(async (file) => JSON.parse(file)));',
   ]),
 });

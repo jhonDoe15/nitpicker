@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { appendAll, largest, reachableFrom, sharedPrefixLength, smallest } from './lists.mts';
+import {
+  appendAll,
+  largest,
+  lastOf,
+  reachableFrom,
+  sharedPrefixLength,
+  smallest,
+} from './lists.mts';
 
 const MORE_THAN_A_CALL_TAKES = 300_000;
 
@@ -41,5 +48,10 @@ describe('list helpers that do not pass every item as a call argument', () => {
     ]);
 
     expect([...reachableFrom(['a'], (node) => edges.get(node) ?? [])]).toEqual(['a', 'b', 'c']);
+  });
+
+  it('take the last item, or the fallback when there is none', () => {
+    expect(lastOf([1, 2, 3], 0)).toBe(3);
+    expect(lastOf([], 7)).toBe(7);
   });
 });

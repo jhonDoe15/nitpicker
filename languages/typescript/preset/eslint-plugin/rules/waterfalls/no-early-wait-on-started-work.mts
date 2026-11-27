@@ -70,7 +70,7 @@ export const rule = typeCheckedRule({
           !wordsOf(task).some((word) => SYNCHRONIZING.has(word)) &&
           isPromise(checker, nodeMap.get(handle))
         ) {
-          const text = sourceCode.getText(next).split('\n')[0] ?? '';
+          const text = sourceCode.getText(next).split('\n', 1).join('');
           context.report({ node: wait, messageId: 'early', data: { task, next: text } });
         }
       }

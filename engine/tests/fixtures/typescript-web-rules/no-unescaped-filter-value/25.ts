@@ -1,0 +1,1 @@
+export const a = (n: number) => ({ $like: 5 });
