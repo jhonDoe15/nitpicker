@@ -1,0 +1,1 @@
+export const a = (a: number, b: number) => `<td>${a * b}</td>`;

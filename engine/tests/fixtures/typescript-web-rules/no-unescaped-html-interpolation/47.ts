@@ -1,0 +1,1 @@
+export const a = (m: string) => `<span${m}>x</span>`;

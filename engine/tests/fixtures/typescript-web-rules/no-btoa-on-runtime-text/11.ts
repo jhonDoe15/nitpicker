@@ -1,0 +1,1 @@
+import { btoa } from "./safe"; export const a = btoa(text);

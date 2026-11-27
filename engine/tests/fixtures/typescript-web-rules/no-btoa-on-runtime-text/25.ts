@@ -1,0 +1,1 @@
+export const h = globalThis.btoa(JSON.stringify(payload));

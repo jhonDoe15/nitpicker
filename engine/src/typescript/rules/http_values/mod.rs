@@ -1,7 +1,7 @@
 //! `no-raw-http-value`: header values, cookie prefixes, `URL` parts and file extensions compared by exact case, and
 //! structured headers split by hand.
 mod forms;
-mod origins;
+pub mod origins;
 mod url_parts;
 
 use self::forms::{cookie_prefix, extension_lookup, hand_split, name_lookup, value_comparison};

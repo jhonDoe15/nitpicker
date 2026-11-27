@@ -181,10 +181,14 @@ impl<'a, 's> Scopes<'a, 's> {
                     AstKind::TSTypeParameter(_) => (DefKind::Type, &["TSTypeParameter"]),
                     AstKind::TSEnumDeclaration(_) => (DefKind::Other, &["TSEnumDeclaration"]),
                     AstKind::TSNamespaceDeclaration(_) => (DefKind::Other, &["TSModuleDeclaration"]),
+                    AstKind::TSEnumMember(_) => (DefKind::Other, &["TSEnumMember"]),
                     AstKind::TSImportEqualsDeclaration(_) => (DefKind::ImportBinding, &["TSImportEqualsDeclaration"]),
                     _ => return None,
                 };
                 let node = std::iter::once(name).chain(name.ancestors()).find(|candidate| wanted.contains(&candidate.kind()))?;
+                if node.is("TSModuleDeclaration") && node.node("id") != Some(name) {
+                    return None;
+                }
                 Some(Def { kind, node, name })
             })
             .collect()

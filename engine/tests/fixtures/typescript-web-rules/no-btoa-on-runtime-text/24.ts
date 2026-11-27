@@ -1,0 +1,1 @@
+export const h = window.btoa(user + ":" + secret);

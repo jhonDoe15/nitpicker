@@ -1,0 +1,1 @@
+root.querySelector(`#${id.replace(/[\\.]/g, "\\$&")}`);

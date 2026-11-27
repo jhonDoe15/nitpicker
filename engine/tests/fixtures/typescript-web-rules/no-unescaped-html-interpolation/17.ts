@@ -1,0 +1,1 @@
+export const a = (c: { classNames: { box: string } }) => `<div class="${c.classNames.box}">x</div>`;

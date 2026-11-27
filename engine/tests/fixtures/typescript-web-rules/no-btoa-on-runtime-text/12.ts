@@ -1,0 +1,1 @@
+export function btoa(text: string) { return text; } export const a = btoa(value);

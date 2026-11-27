@@ -1,0 +1,1 @@
+export const names = ["NODE_TLS_REJECT_UNAUTHORIZED"];

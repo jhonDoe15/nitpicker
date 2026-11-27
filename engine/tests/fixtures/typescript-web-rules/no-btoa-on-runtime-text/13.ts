@@ -1,0 +1,1 @@
+export const a = Buffer.from(text, "utf8").toString("base64");

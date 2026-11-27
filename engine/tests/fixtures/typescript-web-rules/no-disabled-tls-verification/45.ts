@@ -1,0 +1,1 @@
+https.globalAgent.options.rejectUnauthorized = false;

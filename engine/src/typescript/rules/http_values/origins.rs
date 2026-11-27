@@ -1,6 +1,7 @@
 //! `http-origins.mts`, `header-tables.mts` and `receivers.mts` of the ESLint plugin: where a value comes from, a
 //! request header by its lowercase name or a file extension, followed back through `String`, trims, `??`, `||` and
 //! single-write names in the same function. Run without type information, receivers are known by name alone.
+use crate::typescript::rules::security_values::leaves::is_eslint_write;
 use crate::typescript::rules::security_values::{defs, unwrapped, variable_of};
 use crate::typescript::rules::support::scope::{DefKind, Scopes};
 use crate::typescript::rules::support::view::Node;
@@ -12,7 +13,6 @@ const KEEPING_METHODS: [&str; 5] = ["trim", "trimStart", "trimEnd", "toString", 
 const DOT_HEADERS: [&str; 12] =
     ["accept", "authorization", "connection", "cookie", "expect", "forwarded", "host", "origin", "pragma", "te", "upgrade", "vary"];
 const MAX_DEPTH: usize = 4;
-const WRITE_WRAPPERS: [&str; 4] = ["TSAsExpression", "TSSatisfiesExpression", "TSNonNullExpression", "TSTypeAssertion"];
 const FUNCTION_SCOPES: [&str; 3] = ["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression"];
 const ACCEPT: &str = "accept(?:-(?:charset|encoding|language))?";
 
@@ -153,19 +153,10 @@ fn variable_scope(node: Node) -> Option<Node> {
     None
 }
 
-/// Whether a reference writes the name as ESLint counts writes: not through `satisfies`, which it reads as an
-/// expression, and not the `var` of a catch body that writes the clause's parameter of the same name.
-fn counted_write(identifier: Node, write: bool, declared: bool) -> bool {
-    let mut node = identifier;
-    let mut satisfies = false;
-    while let Some(wrapper) = node.parent().filter(|parent| WRITE_WRAPPERS.contains(&parent.kind())) {
-        satisfies |= wrapper.is("TSSatisfiesExpression");
-        node = wrapper;
-    }
-    let target = node.parent().is_some_and(|parent| {
-        (parent.is("AssignmentExpression") && parent.node("left") == Some(node)) || parent.is("UpdateExpression")
-    });
-    write && !(satisfies && target) && !(declared && catching_clause(identifier))
+/// Whether a reference writes the name as ESLint counts writes: a direct target only through one wrapper that is
+/// not `satisfies`, and not the `var` of a catch body that writes the clause's parameter of the same name.
+pub fn counted_write(identifier: Node, write: bool, declared: bool) -> bool {
+    write && is_eslint_write(identifier) && !(declared && catching_clause(identifier))
 }
 
 fn catching_clause(name: Node) -> bool {

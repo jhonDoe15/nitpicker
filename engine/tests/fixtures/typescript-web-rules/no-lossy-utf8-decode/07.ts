@@ -1,0 +1,1 @@
+export const ok = new TextDecoder().decode(bytes) === "ping";

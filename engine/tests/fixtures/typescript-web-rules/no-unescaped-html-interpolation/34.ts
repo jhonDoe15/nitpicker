@@ -1,0 +1,1 @@
+export const a = (to: string) => invariant(to, `<div id="${to}"> missing`);

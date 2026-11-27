@@ -1,0 +1,1 @@
+export const a = (name: string) => { const inner = `<b>${escapeHtml(name)}</b>`; return `<p>${inner}</p>`; };
