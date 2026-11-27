@@ -90,6 +90,249 @@
   42
  ],
  [
+  "no-case-sensitive-path-compare/36.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  48
+ ],
+ [
+  "no-case-sensitive-path-compare/37.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  41
+ ],
+ [
+  "no-case-sensitive-path-compare/38.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  51
+ ],
+ [
+  "no-case-sensitive-path-compare/39.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  30
+ ],
+ [
+  "no-case-sensitive-path-compare/40.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  44
+ ],
+ [
+  "no-case-sensitive-path-compare/41.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  58
+ ],
+ [
+  "no-case-sensitive-path-compare/42.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  40
+ ],
+ [
+  "no-case-sensitive-path-compare/43.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  31
+ ],
+ [
+  "no-case-sensitive-path-compare/44.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  37
+ ],
+ [
+  "no-case-sensitive-path-compare/45.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  45
+ ],
+ [
+  "no-case-sensitive-path-compare/46.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "Host names and URI authorities are case-insensitive. Lowercase both sides (`a.toLowerCase() === b.toLowerCase()`) before comparing them.",
+  1,
+  50
+ ],
+ [
+  "no-case-sensitive-path-compare/47.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "Host names and URI authorities are case-insensitive. Lowercase both sides (`a.toLowerCase() === b.toLowerCase()`) before comparing them.",
+  1,
+  32
+ ],
+ [
+  "no-case-sensitive-path-compare/48.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "Host names and URI authorities are case-insensitive. Lowercase both sides (`a.toLowerCase() === b.toLowerCase()`) before comparing them.",
+  1,
+  40
+ ],
+ [
+  "no-case-sensitive-path-compare/49.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "Host names and URI authorities are case-insensitive. Lowercase both sides (`a.toLowerCase() === b.toLowerCase()`) before comparing them.",
+  1,
+  38
+ ],
+ [
+  "no-dynamic-import-of-path/20.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  26,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  56
+ ],
+ [
+  "no-dynamic-import-of-path/21.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  20,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  46
+ ],
+ [
+  "no-dynamic-import-of-path/22.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  26,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  64
+ ],
+ [
+  "no-dynamic-import-of-path/23.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  26,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  59
+ ],
+ [
+  "no-dynamic-import-of-path/24.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  26,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  76
+ ],
+ [
+  "no-dynamic-import-of-path/25.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  65,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  69
+ ],
+ [
+  "no-dynamic-import-of-path/26.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  26,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  55
+ ],
+ [
+  "no-dynamic-import-of-path/27.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  26,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  50
+ ],
+ [
+  "no-dynamic-import-of-path/28.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  26,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  60
+ ],
+ [
+  "no-dynamic-import-of-path/29.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  2,
+  59,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  2,
+  71
+ ],
+ [
+  "no-dynamic-import-of-path/30.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  2,
+  61,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  2,
+  70
+ ],
+ [
+  "no-dynamic-import-of-path/31.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  2,
+  69,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  2,
+  79
+ ],
+ [
+  "no-dynamic-import-of-path/32.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  2,
+  26,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  2,
+  48
+ ],
+ [
   "no-unencoded-url-part/42.ts",
   "nitpicker/no-unencoded-url-part",
   1,

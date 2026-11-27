@@ -5,8 +5,10 @@ use std::process::Command;
 
 type Row = Vec<serde_json::Value>;
 
-const RULES: [&str; 3] = [
+const RULES: [&str; 5] = [
     "no-case-mixed-header-merge",
+    "no-case-sensitive-path-compare",
+    "no-dynamic-import-of-path",
     "no-unencoded-url-part",
     "no-unresolved-relative-url",
 ];

@@ -93,6 +93,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ],
   ['no-blank-number-coercion', TYPED],
   ['no-case-mixed-header-merge', {}],
+  ['no-case-sensitive-path-compare', {}],
   ['no-chunkwise-stream-text', TYPED],
   [
     'no-copied-constant',
@@ -106,6 +107,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ],
   ['no-copy-pasted-tests', { facts: runnerWords('eachCase') }],
   ['no-dropped-delegate-result', TYPED],
+  ['no-dynamic-import-of-path', {}],
   ['no-eager-relation', {}],
   ['no-empty-every-signal', TYPED],
   ['no-expanding-replacement-string', TYPED],

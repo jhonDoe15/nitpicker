@@ -1,0 +1,1 @@
+if (path.relative(a, b) === "") {}
