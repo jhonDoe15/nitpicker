@@ -1,0 +1,1 @@
+export const f = (pool) => pool.query("select a.id, array_agg(t.name) from a join t on t.a = a.id group by a.id");

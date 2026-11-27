@@ -123,6 +123,11 @@ impl<'c, 'a, 's> ModuleScope<'c, 'a, 's> {
         self.families.contains(&family)
     }
 
+    /// The module each top-level binding comes from.
+    pub fn sources(&self) -> impl Iterator<Item = &str> {
+        self.bindings.iter().map(|(_, binding)| binding.source.as_str())
+    }
+
     pub fn binding(&self, name: &str) -> Option<&OrmBinding> {
         self.bindings.iter().find(|(local, _)| local == name).map(|(_, binding)| binding)
     }

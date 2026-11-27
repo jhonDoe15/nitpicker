@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export const f = (db, id) => sql`select 1 from asset where id = ${id} limit 1`.execute(db);

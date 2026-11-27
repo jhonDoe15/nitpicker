@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export const f = (eb) => eb.fn.jsonAgg("album").orderBy("album.name").as("albums");

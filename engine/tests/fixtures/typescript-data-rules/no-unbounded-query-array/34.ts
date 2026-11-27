@@ -1,0 +1,1 @@
+import { inArray } from "drizzle-orm"; export const f = (db, users, ids) => db.select().from(users).where(inArray(users.id, ids));

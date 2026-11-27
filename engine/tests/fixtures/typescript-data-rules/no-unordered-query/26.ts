@@ -1,0 +1,1 @@
+export const f = (prisma) => prisma.user.findMany({ where: { active: true } });

@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export async function f(db, query) { let builder = db.selectFrom("asset").selectAll(); if (query) { builder = builder.where("name", "=", query); } return builder.offset(40).limit(20).execute(); }

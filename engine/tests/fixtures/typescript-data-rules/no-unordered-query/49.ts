@@ -1,0 +1,1 @@
+export const f = (prisma, after) => prisma.user.findMany({ cursor: { id: after } });

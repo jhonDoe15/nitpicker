@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export class Repo { @Chunked() async remove(ids) { await this.db.deleteFrom("asset").where("id", "in", ids).execute(); } }

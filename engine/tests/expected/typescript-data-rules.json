@@ -1260,6 +1260,330 @@
   103
  ],
  [
+  "no-unbounded-query-array/25.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  122,
+  "ids goes into the in list as one bound parameter per element: an empty array renders in (), a syntax error, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and send the whole array as one parameter (sql`id = any(${ids}::uuid[])`), or split it with the project's chunking helper. An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  125
+ ],
+ [
+  "no-unbounded-query-array/26.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  119,
+  "dto.ownerIds goes into the in list as one bound parameter per element: an empty array renders in (), a syntax error, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and send the whole array as one parameter (sql`id = any(${ids}::uuid[])`), or split it with the project's chunking helper. An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  131
+ ],
+ [
+  "no-unbounded-query-array/27.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  133,
+  "ids goes into the in list as one bound parameter per element: an empty array renders in (), a syntax error, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and send the whole array as one parameter (sql`id = any(${ids}::uuid[])`), or split it with the project's chunking helper. An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  136
+ ],
+ [
+  "no-unbounded-query-array/28.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  101,
+  "this array is inserted as one multi-row statement that spends a bound parameter on every column of every row: an empty array fails, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and insert in chunks with the project's chunking helper (for (const rows of chunk(items, 1000))). An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  139
+ ],
+ [
+  "no-unbounded-query-array/29.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  107,
+  "rows is inserted as one multi-row statement that spends a bound parameter on every column of every row: an empty array fails, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and insert in chunks with the project's chunking helper (for (const rows of chunk(items, 1000))). An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  111
+ ],
+ [
+  "no-unbounded-query-array/30.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  82,
+  "ids goes into the in list as one bound parameter per element: an empty array renders in (), a syntax error, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and send the whole array as one parameter (sql`id = any(${ids}::uuid[])`), or split it with the project's chunking helper. An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  85
+ ],
+ [
+  "no-unbounded-query-array/31.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  77,
+  "users.map((user) => user.row) is inserted as one multi-row statement that spends a bound parameter on every column of every row: an empty array fails, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and insert in chunks with the project's chunking helper (for (const rows of chunk(items, 1000))). An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  106
+ ],
+ [
+  "no-unbounded-query-array/32.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  96,
+  "ids goes into the in list as one bound parameter per element: an empty array renders in (), a syntax error, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and send the whole array as one parameter (sql`id = any(${ids}::uuid[])`), or split it with the project's chunking helper. An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  99
+ ],
+ [
+  "no-unbounded-query-array/33.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  95,
+  "rows is inserted as one multi-row statement that spends a bound parameter on every column of every row: an empty array fails, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and insert in chunks with the project's chunking helper (for (const rows of chunk(items, 1000))). An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  99
+ ],
+ [
+  "no-unbounded-query-array/34.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  125,
+  "ids goes into the in list as one bound parameter per element: an empty array renders in (), a syntax error, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and send the whole array as one parameter (sql`id = any(${ids}::uuid[])`), or split it with the project's chunking helper. An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  128
+ ],
+ [
+  "no-unbounded-query-array/35.ts",
+  "nitpicker/no-unbounded-query-array",
+  1,
+  113,
+  "rows is inserted as one multi-row statement that spends a bound parameter on every column of every row: an empty array fails, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and insert in chunks with the project's chunking helper (for (const rows of chunk(items, 1000))). An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  1,
+  117
+ ],
+ [
+  "no-unbounded-query-array/r-parenthesized-annotation.ts",
+  "nitpicker/no-unbounded-query-array",
+  4,
+  35,
+  "rows is inserted as one multi-row statement that spends a bound parameter on every column of every row: an empty array fails, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and insert in chunks with the project's chunking helper (for (const rows of chunk(items, 1000))). An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  4,
+  39
+ ],
+ [
+  "no-unbounded-query-array/r-parenthesized-annotation.ts",
+  "nitpicker/no-unbounded-query-array",
+  5,
+  35,
+  "more is inserted as one multi-row statement that spends a bound parameter on every column of every row: an empty array fails, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and insert in chunks with the project's chunking helper (for (const rows of chunk(items, 1000))). An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  5,
+  39
+ ],
+ [
+  "no-unbounded-query-array/r-parenthesized-annotation.ts",
+  "nitpicker/no-unbounded-query-array",
+  6,
+  36,
+  "other is inserted as one multi-row statement that spends a bound parameter on every column of every row: an empty array fails, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty and insert in chunks with the project's chunking helper (for (const rows of chunk(items, 1000))). An exception fits only an array that its callers bound, such as a request field with a maximum length.",
+  6,
+  41
+ ],
+ [
+  "no-unordered-query/41.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  99,
+  "limit(20) picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  104
+ ],
+ [
+  "no-unordered-query/42.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  132,
+  "limit(1) picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  137
+ ],
+ [
+  "no-unordered-query/43.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  201,
+  "offset(40) picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  207
+ ],
+ [
+  "no-unordered-query/44.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  93,
+  "limit(20) picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  98
+ ],
+ [
+  "no-unordered-query/45.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  60,
+  "limit(5) picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  65
+ ],
+ [
+  "no-unordered-query/46.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  113,
+  "skip(20) picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  117
+ ],
+ [
+  "no-unordered-query/47.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  121,
+  "limit(10) picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  126
+ ],
+ [
+  "no-unordered-query/48.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  78,
+  "take: 10 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  86
+ ],
+ [
+  "no-unordered-query/49.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  60,
+  "cursor: { id: after } picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  81
+ ],
+ [
+  "no-unordered-query/50.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  94,
+  "take: 5 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  101
+ ],
+ [
+  "no-unordered-query/51.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  52,
+  "limit: 10 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  61
+ ],
+ [
+  "no-unordered-query/51.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  80,
+  "limit: 3 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  88
+ ],
+ [
+  "no-unordered-query/52.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  111,
+  "skip: 20 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  119
+ ],
+ [
+  "no-unordered-query/53.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  103,
+  "limit: 10 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  112
+ ],
+ [
+  "no-unordered-query/54.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  67,
+  "LIMIT 20 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  119
+ ],
+ [
+  "no-unordered-query/55.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  39,
+  "LIMIT $1 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  70
+ ],
+ [
+  "no-unordered-query/56.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  22,
+  "OFFSET 10 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  80
+ ],
+ [
+  "no-unordered-query/57.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  64,
+  "json_agg(...) builds a list with no ORDER BY, so its elements come back in whatever order the database reads them, and a test that compares the whole list can fail at random. Order inside the aggregate (json_agg(t ORDER BY t.name), eb.fn.jsonAgg('t').orderBy('t.name')) or give jsonArrayFrom a subquery with orderBy. An exception fits only a nested list that is a set, whose callers never depend on its order; add the path to \"exceptions\" with that reason.",
+  1,
+  96
+ ],
+ [
+  "no-unordered-query/58.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  39,
+  "array_agg(...) builds a list with no ORDER BY, so its elements come back in whatever order the database reads them, and a test that compares the whole list can fail at random. Order inside the aggregate (json_agg(t ORDER BY t.name), eb.fn.jsonAgg('t').orderBy('t.name')) or give jsonArrayFrom a subquery with orderBy. An exception fits only a nested list that is a set, whose callers never depend on its order; add the path to \"exceptions\" with that reason.",
+  1,
+  113
+ ],
+ [
+  "no-unordered-query/59.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  70,
+  "jsonAgg(\"album\") builds a list with no ORDER BY, so its elements come back in whatever order the database reads them, and a test that compares the whole list can fail at random. Order inside the aggregate (json_agg(t ORDER BY t.name), eb.fn.jsonAgg('t').orderBy('t.name')) or give jsonArrayFrom a subquery with orderBy. An exception fits only a nested list that is a set, whose callers never depend on its order; add the path to \"exceptions\" with that reason.",
+  1,
+  77
+ ],
+ [
+  "no-unordered-query/60.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  70,
+  "agg(\"array_agg\", [\"tag.value\"]) builds a list with no ORDER BY, so its elements come back in whatever order the database reads them, and a test that compares the whole list can fail at random. Order inside the aggregate (json_agg(t ORDER BY t.name), eb.fn.jsonAgg('t').orderBy('t.name')) or give jsonArrayFrom a subquery with orderBy. An exception fits only a nested list that is a set, whose callers never depend on its order; add the path to \"exceptions\" with that reason.",
+  1,
+  73
+ ],
+ [
+  "no-unordered-query/61.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  120,
+  "jsonArrayFrom(...) builds a list with no ORDER BY, so its elements come back in whatever order the database reads them, and a test that compares the whole list can fail at random. Order inside the aggregate (json_agg(t ORDER BY t.name), eb.fn.jsonAgg('t').orderBy('t.name')) or give jsonArrayFrom a subquery with orderBy. An exception fits only a nested list that is a set, whose callers never depend on its order; add the path to \"exceptions\" with that reason.",
+  1,
+  208
+ ],
+ [
   "no-unpaged-listing/13.ts",
   "nitpicker/no-unpaged-listing",
   1,
