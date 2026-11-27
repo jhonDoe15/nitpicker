@@ -10,7 +10,15 @@ import {
 } from '../../../../shared/engine/engine-run.mts';
 import { fieldOf, listOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import { CAST_PATTERNS } from './casts/spotbugs-casts-placed.mts';
-import { INVOCATION_PATTERNS, URL_PATTERNS } from './spotbugs-dumb-placed.mts';
+import {
+  BOUND_PATTERNS,
+  BOXING_PATTERNS,
+  CALL_PATTERNS,
+  INVOCATION_PATTERNS,
+  NUMBER_PATTERNS,
+  THREAD_PATTERNS,
+  URL_PATTERNS,
+} from './spotbugs-dumb-placed.mts';
 import {
   DIVISION_PATTERNS,
   ENUM_PATTERNS,
@@ -83,6 +91,16 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   FindUselessControlFlow: ['UCF_USELESS_CONTROL_FLOW', 'UCF_USELESS_CONTROL_FLOW_NEXT_LINE'],
   URLProblems: URL_PATTERNS,
   DumbMethodInvocations: INVOCATION_PATTERNS,
+  DumbMethods: [
+    ...BOXING_PATTERNS,
+    ...THREAD_PATTERNS,
+    ...NUMBER_PATTERNS,
+    ...CALL_PATTERNS,
+    ...BOUND_PATTERNS,
+    'BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS',
+    'DMI_RANDOM_USED_ONLY_ONCE',
+    'DMI_COLLECTION_OF_URLS',
+  ],
   IDivResultCastToDouble: DIVISION_PATTERNS,
   WaitInLoop: WAIT_PATTERNS,
   StartInConstructor: START_PATTERNS,

@@ -64,7 +64,46 @@ export const INVOCATION_PATTERNS: readonly string[] = [
   'DMI_MISLEADING_SUBSTRING',
 ];
 
+export const BOUND_PATTERNS: readonly string[] = [
+  'RANGE_ARRAY_INDEX',
+  'RANGE_ARRAY_OFFSET',
+  'RANGE_ARRAY_LENGTH',
+  'RANGE_STRING_INDEX',
+  'NP_IMMEDIATE_DEREFERENCE_OF_READLINE',
+  'DMI_ANNOTATION_IS_NOT_VISIBLE_TO_REFLECTION',
+  'DMI_ARGUMENTS_WRONG_ORDER',
+  'DMI_CALLING_NEXT_FROM_HASNEXT',
+  'DMI_DOH',
+  'DMI_VACUOUS_CALL_TO_EASYMOCK_METHOD',
+  'SW_SWING_METHODS_INVOKED_IN_SWING_THREAD',
+];
+
 const ERRORS = { 1: ERROR, 2: ERROR };
+const ERROR_TWO = { 2: ERROR };
+
+const BOUND_PLACED: Readonly<Record<string, Placed>> = {
+  RANGE_ARRAY_INDEX: { text: 'Array index is out of bounds', levels: ERROR_TWO },
+  RANGE_ARRAY_OFFSET: { text: 'Array offset is out of bounds', levels: ERROR_TWO, placement: SHOWN },
+  RANGE_ARRAY_LENGTH: { text: 'Array length is out of bounds', levels: ERROR_TWO, placement: SHOWN },
+  RANGE_STRING_INDEX: { text: 'String index is out of bounds', levels: ERROR_TWO, placement: SHOWN },
+  NP_IMMEDIATE_DEREFERENCE_OF_READLINE: {
+    text: 'Immediate dereference of the result of readLine()',
+    levels: { 2: NOTE },
+  },
+  DMI_ANNOTATION_IS_NOT_VISIBLE_TO_REFLECTION: {
+    text: 'Cannot use reflection to check for presence of annotation without runtime retention',
+    levels: { 1: ERROR },
+    placement: SHOWN,
+  },
+  DMI_ARGUMENTS_WRONG_ORDER: { text: 'Reversed method arguments', levels: ERROR_TWO, placement: SHOWN },
+  DMI_CALLING_NEXT_FROM_HASNEXT: { text: 'hasNext method invokes next', levels: ERROR_TWO },
+  DMI_DOH: { text: "D'oh! A nonsensical method invocation", levels: ERROR_TWO, placement: SHOWN },
+  DMI_VACUOUS_CALL_TO_EASYMOCK_METHOD: {
+    text: 'Useless/vacuous call to EasyMock method',
+    levels: ERROR_TWO,
+    placement: SHOWN,
+  },
+};
 
 const NUMBER_PLACED: Readonly<Record<string, Placed>> = {
   BIT_IOR_OF_SIGNED_BYTE: { text: 'Bitwise OR of signed byte value', levels: ERRORS },
@@ -215,4 +254,5 @@ export const DUMB_PLACED: Readonly<Record<string, Placed>> = {
   ...NUMBER_PLACED,
   ...CALL_PLACED,
   ...INVOCATION_PLACED,
+  ...BOUND_PLACED,
 };
