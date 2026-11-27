@@ -21,6 +21,7 @@ import {
   CIRCUIT_PATTERNS,
   FLOAT_PATTERNS,
 } from './tail/spotbugs-tail-logic-placed.mts';
+import { VALUE_DETECTORS } from './values/spotbugs-values-placed.mts';
 
 export const WRONG_MAP_ITERATOR = 'WMI_WRONG_MAP_ITERATOR';
 export const LOCK_MONITORENTER = 'JLM_JSR166_LOCK_MONITORENTER';
@@ -56,6 +57,7 @@ const VALUE_PATTERNS: readonly string[] = [
   UNINITIALIZED_READ,
   ...HARD_CODED,
   ...USELESS_CONDITIONS,
+  ...Object.values(VALUE_DETECTORS).flat(),
 ];
 export const ON_ENGINE: readonly string[] = [
   'CT_CONSTRUCTOR_THROW',

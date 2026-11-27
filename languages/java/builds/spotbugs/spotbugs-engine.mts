@@ -42,6 +42,7 @@ import {
   UTIL_MONITORENTER,
   WRONG_MAP_ITERATOR,
 } from './spotbugs-patterns.mts';
+import { VALUE_DETECTORS } from './values/spotbugs-values-placed.mts';
 
 export { ON_ENGINE } from './spotbugs-patterns.mts';
 
@@ -102,6 +103,7 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   DontCatchNullPointerException: ['DCN_NULLPOINTER_EXCEPTION'],
   WrongMapIterator: [WRONG_MAP_ITERATOR],
   BooleanReturnNull: ['NP_BOOLEAN_RETURN_NULL'],
+  ...VALUE_DETECTORS,
   FindDeadLocalStores: DEAD_STORES,
   FindLocalSelfAssignment2: SELF_ASSIGNMENTS,
   FindBadCast2: CAST_PATTERNS,
