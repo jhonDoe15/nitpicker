@@ -3,6 +3,7 @@
 
 pub mod catches;
 mod code;
+mod numbers;
 
 use super::annotations_run::before_spread;
 use code::code_bytes;
@@ -34,7 +35,10 @@ pub fn masked(text: &str) -> Option<String> {
         blank_parenthesized_targets(text, &mut bytes);
     }
     if text.contains('_') {
-        fill_number_underscores(text, &mut bytes);
+        numbers::fill_number_underscores(text, &mut bytes);
+    }
+    if text.contains('0') {
+        numbers::decimal_floats_after_zero(text, &mut bytes);
     }
     bytes.and_then(|bytes| String::from_utf8(bytes).ok())
 }
@@ -96,29 +100,6 @@ fn blank_spread_annotations(text: &str, bytes: &mut Option<Vec<u8>>) {
             }
         }
         from = dots;
-    }
-}
-
-/// The grammar takes only single underscores between digits, and none right after the `0` of an octal literal,
-/// where Java takes any run of them (`0_1__2l`). In such a number each underscore becomes a `0`, which keeps the kind
-/// of literal; the rules read its value from the real text.
-fn fill_number_underscores(text: &str, bytes: &mut Option<Vec<u8>>) {
-    static NUMBER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\b[0-9][0-9A-Za-z_]*").expect("pattern"));
-    let mut code: Option<Vec<bool>> = None;
-    for number in NUMBER.find_iter(text) {
-        let written = number.as_str();
-        if !written.contains("__") && !written.starts_with("0_") {
-            continue;
-        }
-        if !code.get_or_insert_with(|| code_bytes(text))[number.start()] {
-            continue;
-        }
-        let bytes = bytes.get_or_insert_with(|| text.as_bytes().to_vec());
-        for byte in &mut bytes[number.start()..number.end()] {
-            if *byte == b'_' {
-                *byte = b'0';
-            }
-        }
     }
 }
 
