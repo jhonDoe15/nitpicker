@@ -151,10 +151,19 @@ fn report(context: &Context, unit: &Unit, flow: &Flow, label: &str) {
         let certain = first.tag == NULL && origin.kind == Kind::Unnamed;
         let name = origin.name.clone().filter(|_| !certain).or(variable).unwrap_or_else(|| "null".to_string());
         if first.tag == NULL {
-            context.report(ALWAYS, first.at, at, format!("Null pointer dereference of {name} in {label}"));
+            let message = format!("Null pointer dereference of {name} in {label}");
+            context.report_listed(ALWAYS, first.at, at, message, dereferenced(unit, label, &name), 1, vec![name, label.to_string()]);
         } else {
             context.report(SOME_PATH, first.at, at, format!("Possible null pointer dereference of {name} in {label}"));
         }
+    }
+}
+
+/// The place SpotBugs' SARIF names for a dereferenced value: the field it was read from, or the local variable.
+fn dereferenced(unit: &Unit, label: &str, name: &str) -> String {
+    match unit.finder.all.iter().find(|path| path.shown == name) {
+        Some(path) if path.field => format!("member:{}", path.full),
+        _ => super::place::variable(label, name),
     }
 }
 

@@ -475,6 +475,10 @@ and 3.2 GB after a 31 s compile. The null pass runs once per file, a body nothin
 after a glance at its text, and what a method of another file does is worked out only when a call hands it a
 value that matters, then kept for the run.
 
+An `NP_ALWAYS_NULL` finding carries the place and arguments SpotBugs' SARIF gives (#2509): the local variable, or
+for a field the field under the class of the method that reads it, and the name and method. A
+`CT_CONSTRUCTOR_THROW` finding names its constructor the same way, also for what a field initializer throws.
+
 What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 240 findings of these patterns, all the same):
 
 - Only `@CheckForNull`, or an annotation whose own declaration carries `@CheckForNull` (a nickname, as measured
