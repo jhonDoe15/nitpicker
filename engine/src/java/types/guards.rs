@@ -232,6 +232,14 @@ impl TypeIndex {
         found
     }
 
+    /// The string a constant expression of a member of `class` folds to.
+    pub fn constant_text(&self, expr: &Expr, class: &str) -> Option<String> {
+        match self.constant(expr, class, 0)? {
+            Value::Str(text) => Some(text),
+            _ => None,
+        }
+    }
+
     fn constant(&self, expr: &Expr, class: &str, depth: usize) -> Option<Value> {
         let number = |part: &Expr| match self.constant(part, class, depth)? {
             Value::Num(value) => Some(value),

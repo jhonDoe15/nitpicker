@@ -44,7 +44,7 @@ fn error_prone_messages_and_suggestions_match_error_prone() {
     let report: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&out).expect("report")).expect("json");
     let _ = std::fs::remove_file(&out);
     let prefix = format!("{}/", source.display());
-    let found = counted(report["findings"].as_array().expect("findings").iter().filter(|finding| finding["rule"] != "NullAway").map(|finding| {
+    let found = counted(report["findings"].as_array().expect("findings").iter().filter(|finding| finding["rule"] != "NullAway" && finding["rule"] != "_HandBack").map(|finding| {
         let file = finding["file"].as_str().expect("file");
         (
             file.strip_prefix(&prefix).unwrap_or(file).to_string(),

@@ -647,7 +647,7 @@ impl<'a> Resolver<'a> {
             .filter(|parameter| matches!(parameter.kind(), "formal_parameter" | "spread_parameter"))
             .map(|parameter| self.annotation_names(parameter))
             .collect();
-        super::model::Detail { access, annotations: self.annotation_names(member), parameter_annotations, guards: self.guard_exprs(member), marked: String::new(), nullable_types: Vec::new() }
+        super::model::Detail { access, annotations: self.annotation_names(member), parameter_annotations, guards: self.guard_exprs(member), marked: String::new(), nullable_types: Vec::new(), kept: self.kept_annotations(member) }
     }
 
     /// Whether a declaration carries `@CheckForNull` (JSR-305 or SpotBugs) or an annotation that is itself annotated with it.
@@ -1240,7 +1240,11 @@ impl<'a> Resolver<'a> {
             let (parameters, generic_parameters, varargs) = self.parameters(declaration.field("parameters"));
             if !info.methods.iter().any(|method| method.name == "<init>" && method.parameters == parameters) {
                 let compact = declaration.field("body").map(children).unwrap_or_default().into_iter().find(|member| member.kind() == "compact_constructor_declaration");
-                let detail = super::model::Detail { annotations: compact.map(|member| self.annotation_names(member)).unwrap_or_default(), ..Default::default() };
+                let detail = super::model::Detail {
+                    annotations: compact.map(|member| self.annotation_names(member)).unwrap_or_default(),
+                    kept: compact.map(|member| self.kept_annotations(member)).unwrap_or_default(),
+                    ..Default::default()
+                };
                 info.methods.push(Method { generic_parameters, varargs, nullable_parameters: self.nullable_parameters(declaration), names: self.parameter_names(declaration), detail, ..plain("<init>", parameters, Type::Primitive("void")) });
             }
             for component in declaration.field("parameters").map(children).unwrap_or_default() {

@@ -282,6 +282,8 @@ pub struct Detail {
     pub marked: String,
     /// Each parameter position and type path that carries a type-use annotation named `Nullable`, from a class file.
     pub nullable_types: Vec<(u8, Vec<(u8, u8)>)>,
+    /// The annotations of `annotation_values::KEPT` on the method, with their element values.
+    pub kept: Vec<super::annotation_values::Kept>,
 }
 
 /// Where an annotation type may be used, as bits of `ClassInfo::targets`, from its `@Target`.

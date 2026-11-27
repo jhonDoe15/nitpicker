@@ -35,7 +35,7 @@ import type { CheckLevels } from './options/check-levels.mts';
 import { narrowedFlags } from './options/narrowed-flags.mts';
 import { excludedFile, handedBack } from './options/project-options.mts';
 import { lombokOff } from './options/runner-levels.mts';
-import { keptRows, mayReportOf, rowsOf } from './skip/plan-rows.mts';
+import { handBackOf, joinedHandBacks, keptRows, mayReportOf, rowsOf } from './skip/plan-rows.mts';
 import {
   auditEnvironment,
   contextFiles,
@@ -209,7 +209,7 @@ function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
   const found = rowsOf(report, selected.checks, unreportedRoots(set));
   const plan = sourceSetPlan(set, remaining, {
     mayReport: mayReportOf(report),
-    handedBack: handedBack(set, found, levels),
+    handedBack: joinedHandBacks(handedBack(set, found, levels), handBackOf(report)),
   });
   const rows = keptRows(found, {
     set,

@@ -8,15 +8,37 @@ import { lombokUnsuppressed } from './runner-checks.mts';
 import type { SourceSetPlan } from './source-set-plan.mts';
 
 const MAY_REPORT = '_MayReport';
+const HAND_BACK = '_HandBack';
 
-/** For each file, the checks the engine was asked about that may report there. */
-export function mayReportOf(report: unknown): ReadonlyMap<string, readonly string[]> {
+function checksByFile(report: unknown, kind: string): ReadonlyMap<string, readonly string[]> {
   const rows = listOf(fieldOf(report, 'findings')).map(engineFindingOf);
   return new Map(
     rows
-      .filter(({ rule }) => rule === MAY_REPORT)
+      .filter(({ rule }) => rule === kind)
       .map(({ file, message }) => [file, message.split(',').filter(Boolean)] as const),
   );
+}
+
+/** For each file, the checks the engine was asked about that may report there. */
+export function mayReportOf(report: unknown): ReadonlyMap<string, readonly string[]> {
+  return checksByFile(report, MAY_REPORT);
+}
+
+/** For each file, the engine's checks that it cannot answer there and leaves to Error Prone. */
+export function handBackOf(report: unknown): ReadonlyMap<string, readonly string[]> {
+  return checksByFile(report, HAND_BACK);
+}
+
+/** The checks handed back per file by either source. */
+export function joinedHandBacks(
+  first: ReadonlyMap<string, readonly string[]>,
+  second: ReadonlyMap<string, readonly string[]>,
+): ReadonlyMap<string, readonly string[]> {
+  const joined = new Map<string, readonly string[]>(first);
+  for (const [file, checks] of second) {
+    joined.set(file, [...new Set([...(joined.get(file) ?? []), ...checks])]);
+  }
+  return joined;
 }
 
 function slashed(file: string): string {

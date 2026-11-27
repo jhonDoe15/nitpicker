@@ -1969,6 +1969,30 @@ impl<'a> Resolver<'a> {
         self.select(owner, &candidates, &self.shapes(call))
     }
 
+    /// The constructor an enum constant calls, with the constant's arguments.
+    pub fn resolve_enum_constant(&self, constant: Node) -> Option<Call> {
+        let own = enclosing_type(self.file, self.scope, constant)?;
+        self.constructor_of(constant, self.own_type(&own))
+    }
+
+    /// The constructor of the superclass that a constructor without `this(...)` or `super(...)` calls.
+    pub fn resolve_implicit_super(&self, constructor: Node) -> Option<Call> {
+        let own = enclosing_type(self.file, self.scope, constructor)?;
+        self.constructor_of(constructor, self.type_of_super(&own)?)
+    }
+
+    fn constructor_of(&self, node: Node, owner: Type) -> Option<Call> {
+        if self.spent() {
+            return None;
+        }
+        self.in_turn(node, || {
+            let info = self.index.get(&owner.name())?;
+            let candidates: Vec<(&ClassInfo, &Method)> =
+                info.methods.iter().filter(|method| method.name == "<init>").map(|method| (info, method)).collect();
+            self.select(owner.clone(), &candidates, &self.shapes(node))
+        })
+    }
+
     fn type_of_super(&self, own: &str) -> Option<Type> {
         let own = self.own_type(own);
         let info = self.index.get(&own.name())?;
