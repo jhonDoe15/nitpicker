@@ -1,0 +1,1 @@
+it('uses a web worker shape', () => { const worker = new Worker('a.js'); });

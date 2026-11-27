@@ -1,0 +1,1 @@
+globalThis.setInterval(tick, 500);
