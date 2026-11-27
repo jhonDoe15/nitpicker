@@ -44,7 +44,7 @@ pub fn collect_files(roots: &[PathBuf], language: &dyn Language) -> Vec<PathBuf>
     files
 }
 
-fn parse_text(text: &str, language: &dyn Language) -> Option<tree_sitter::Tree> {
+pub(crate) fn parse_text(text: &str, language: &dyn Language) -> Option<tree_sitter::Tree> {
     PARSERS.with(|parsers| {
         let mut parsers = parsers.borrow_mut();
         let parser = parsers.entry(language.id()).or_insert_with(|| {
@@ -63,7 +63,7 @@ pub fn parse(path: &PathBuf, language: &dyn Language) -> Option<SourceFile> {
     parse_in(path, language, None)
 }
 
-fn parse_in(path: &PathBuf, language: &dyn Language, encoding: Option<super::encoding::Charset>) -> Option<SourceFile> {
+pub(crate) fn parse_in(path: &PathBuf, language: &dyn Language, encoding: Option<super::encoding::Charset>) -> Option<SourceFile> {
     let text = super::source::read_text_in(path, encoding)?;
     let tree = parse_text(&text, language)?;
     Some(SourceFile { path: path.to_string_lossy().into_owned(), text, tree })

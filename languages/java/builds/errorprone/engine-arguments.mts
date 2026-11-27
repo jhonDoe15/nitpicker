@@ -50,6 +50,11 @@ export function projectFlags(head: readonly string[]): string[] {
   return valuesAfter(head, PROJECT_FLAG);
 }
 
+/** The project's own compiler arguments, as the build passed them to javac. */
+export function projectArguments(head: readonly string[]): string[] {
+  return valuesAfter(head, PROJECT_ARG);
+}
+
 export function ownClasses(head: readonly string[]): string[] {
   return valuesAfter(head, OWN_CLASSES).flatMap(entriesOf);
 }

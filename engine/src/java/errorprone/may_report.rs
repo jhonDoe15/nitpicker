@@ -63,8 +63,6 @@ const SWITCH: Gate = Gate::Text(&["switch"]);
 const INSTANCEOF: Gate = Gate::Text(&["instanceof"]);
 const COMPARED: Gate = Gate::Text(&["==", "!="]);
 const NULL: Gate = Gate::Text(&["null"]);
-const TRY: Gate = Gate::Text(&["try"]);
-
 /// The checks of Error Prone 2.50.0 that Java runs enable and the engine does not run, with their preconditions.
 pub const PRECONDITIONS: &[(&str, Gate)] = &[
     ("BinderIdentityRestoredDangerously", Gate::Android),
@@ -79,16 +77,6 @@ pub const PRECONDITIONS: &[(&str, Gate)] = &[
     ("InlineMeInliner", Gate::Inlined),
     ("NullArgumentForNonNullParameter", Gate::Always),
     ("Immutable", Gate::Always),
-    ("MutableGuiceModule", Gate::Types(&["com.google.inject.AbstractModule"])),
-    ("StaticMockMember", Gate::Types(&["org.mockito.Mock"])),
-    (
-        "TruthAssertExpected",
-        Gate::Types(&[
-            "com.google.common.truth.Truth",
-            "com.google.common.truth.extensions.proto.ProtoTruth",
-            "com.google.common.truth.StandardSubjectBuilder",
-        ]),
-    ),
     ("AutoValueBoxedValues", Gate::Types(&["com.google.auto.value.AutoValue"])),
     (
         "MisformattedTestData",
@@ -105,9 +93,6 @@ pub const PRECONDITIONS: &[(&str, Gate)] = &[
     ("RedundantNullCheck", NULL),
     ("ReturnsNullCollection", NULL),
     ("InlineMeValidator", Gate::Text(&["InlineMe"])),
-    ("MissingFail", TRY),
-    ("TryFailRefactoring", TRY),
-    ("AssertThrowsMinimizer", Gate::Text(&["assertThrows"])),
     ("ReferenceEquality", COMPARED),
     ("OptionalEquality", COMPARED),
     ("MemorySegmentReferenceEquality", COMPARED),

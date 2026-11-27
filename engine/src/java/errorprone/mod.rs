@@ -14,6 +14,14 @@ mod record_components;
 mod modify_source;
 mod type_shadowing;
 mod use_binds;
+mod fix_compiles;
+mod assert_throws_fix;
+mod assert_throws_minimizer;
+mod assert_throws_types;
+mod missing_fail;
+mod missing_fail_parts;
+mod truth_expected;
+mod fix_compiles_writes;
 mod format_validation;
 mod format_string;
 mod format_annotation;
@@ -364,7 +372,7 @@ impl Context<'_> {
     }
     /// Leaves the check in this file to Error Prone, unless a `@SuppressWarnings` around the node turns it off there.
     pub fn hand_back(&self, check: &'static str, node: Node) {
-        if self.suppressed(check, node) || self.skipped(check) {
+        if self.suppressed(check, node) || self.skipped(check) || self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == check)) {
             return;
         }
         let mut handed = self.handed.borrow_mut();
@@ -437,7 +445,7 @@ impl Context<'_> {
     pub fn suppressed(&self, check: &str, node: Node) -> bool {
         let mut current = Some(node);
         while let Some(at) = current {
-            if DECLARATIONS.contains(&at.kind()) && self.suppress_strings(at).iter().any(|name| name == check || name == "all") {
+            if DECLARATIONS.contains(&at.kind()) && self.suppress_strings(at).iter().any(|name| name == check || name == "all" || ALT_NAMES.contains(&(check, name.as_str()))) {
                 return true;
             }
             current = parent(at);
@@ -825,6 +833,12 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["InvalidZoneId"], time_constants::invalid_zone_id),
     (&["InvalidJavaTimeConstant"], time_constants::invalid_java_time_constant),
     (&["AlwaysThrows"], always_throws::always_throws),
+    (&["StaticMockMember"], fix_compiles::static_mock_member),
+    (&["MissingFail"], missing_fail::missing_fail),
+    (&["TryFailRefactoring"], assert_throws_fix::try_fail_refactoring),
+    (&["AssertThrowsMinimizer"], assert_throws_minimizer::assert_throws_minimizer),
+    (&["TruthAssertExpected"], truth_expected::truth_assert_expected),
+    (&["MutableGuiceModule"], fix_compiles::mutable_guice_module),
     (&["NewFileSystem"], always_throws::new_file_system),
     (&["StringJoin"], size_join::string_join),
     (&["SizeGreaterThanOrEqualsZero"], size_join::size_greater_than_or_equals_zero),
@@ -1058,6 +1072,9 @@ const NOT_ON_TEST_ONLY: &[&str] = &[
     "ExposedPrivateType", "Interruption", "LiteProtoToString", "MissingSummary",
     "StaticAssignmentOfThrowable", "ThrowSpecificExceptions", "TimeInStaticInitializer",
 ];
+
+/// Other names a check answers to in `@SuppressWarnings` (`altNames`), for the checks ported with theirs.
+const ALT_NAMES: &[(&str, &str)] = &[("MissingFail", "missing-fail")];
 
 pub struct ErrorProne;
 
