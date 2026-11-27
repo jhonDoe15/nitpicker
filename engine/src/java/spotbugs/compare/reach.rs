@@ -153,6 +153,7 @@ pub fn dead(context: &Context, comparison: Node) -> bool {
                 let test = holder.child_by_field_name("condition").and_then(|condition| known(context, condition));
                 (is("consequence") && test == Some(false)) || (is("alternative") && test == Some(true))
             }
+            "block" | "constructor_body" => named_children(holder).into_iter().take_while(|part| part.id() != node.id()).any(|part| left(context, part)),
             _ => false,
         };
         if skipped {
@@ -161,6 +162,24 @@ pub fn dead(context: &Context, comparison: Node) -> bool {
         node = holder;
     }
     false
+}
+
+/// Whether an `if` whose condition javac knows always takes a branch that returns or throws.
+fn left(context: &Context, statement: Node) -> bool {
+    if statement.kind() != "if_statement" {
+        return false;
+    }
+    let Some(test) = statement.child_by_field_name("condition").and_then(|condition| known(context, condition)) else { return false };
+    let taken = statement.child_by_field_name(if test { "consequence" } else { "alternative" });
+    taken.is_some_and(exits)
+}
+
+fn exits(node: Node) -> bool {
+    match node.kind() {
+        "return_statement" | "throw_statement" => true,
+        "block" => named_children(node).into_iter().filter(|part| !part.kind().ends_with("comment")).next_back().is_some_and(exits),
+        _ => false,
+    }
 }
 
 /// Whether both outcomes of the comparison go to the same place.

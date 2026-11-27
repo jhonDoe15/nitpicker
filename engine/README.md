@@ -747,6 +747,49 @@ runs and SpotBugs no longer runs the detector. Measured (`tests/fixtures/spotbug
 - Instance initializer blocks and field initializers are reported once per constructor that does not start with
   `this(...)`, as javac copies them there; static ones in the static initializer.
 
+### Casts and `instanceof`
+
+`src/java/spotbugs/casts/` rebuilds FindBadCast2: the `BC_*` cast patterns and `NP_NULL_INSTANCEOF`. SpotBugs no
+longer runs the detector. A forward dataflow over each method's control flow graph tracks, per local, the type the
+compiled code has for its value, whether that type is exact, and where the value came from. Measured
+(`tests/fixtures/spotbugs/casts*`, all priorities):
+
+- A value's type is the erased declared type, or for a field the one type every store of the file gives it (stores in
+  code javac drops behind a constant condition do not count). `new` makes an exact type; `Collection.toArray()` an
+  exact `Object[]`. A catch parameter has the types the `try` body can throw that the clause catches, met as the
+  verifier meets classes, counting unchecked exceptions as `RuntimeException` (and `Error`); of a multi-catch only
+  the first type counts. Where two paths meet, a known null takes the other side's type.
+- Nothing is reported for an array element, for the result of a static or private method, for a type variable, for
+  a cast from `Object`, for a cast inside a `try` that catches `ClassCastException`, or for a cast to a type the
+  method already cast the value to.
+- `BC_IMPOSSIBLE_CAST` / `BC_IMPOSSIBLE_DOWNCAST` (a downcast when the target is a subtype), high: the value is of an
+  exact type, a final class, or an array and the target is not one of its supertypes, or the two are unrelated
+  classes, or the target is a final class that does not implement the source interface.
+  `BC_IMPOSSIBLE_DOWNCAST_OF_TOARRAY`, high: a cast of `toArray()` to an array type.
+- `BC_IMPOSSIBLE_INSTANCEOF`, medium (high for an array), and `BC_VACUOUS_INSTANCEOF`, medium, by the same rules;
+  `NP_NULL_INSTANCEOF`, medium, for a value known to be null. The branch an impossible `instanceof` of a local
+  never takes is not followed.
+- `BC_BAD_CAST_TO_ABSTRACT_COLLECTION`: a `Collection` cast to `List`, `Set` or `SortedSet`.
+  `BC_BAD_CAST_TO_CONCRETE_COLLECTION`: a collection or map interface cast to `ArrayList`, `HashMap` and the other
+  JDK classes. `BC_UNCONFIRMED_CAST`: any other downcast or cross cast of a parameter, field, caught exception,
+  merged or new value; `BC_UNCONFIRMED_CAST_OF_RETURN_VALUE`: of the result of an instance method, always low.
+- Priorities, where plain means a parameter of a public method (an interface member, a static initializer):
+  `BC_BAD_CAST_TO_ABSTRACT_COLLECTION` high when plain, else medium; `BC_BAD_CAST_TO_CONCRETE_COLLECTION` from
+  `Collection` the same, from the others one step lower; `BC_UNCONFIRMED_CAST` medium when plain, else low. An
+  earlier `instanceof` to the target lowers a finding two steps, two or more to other types one. An unconfirmed cast
+  drops one step more to an interface or from an abstract class or interface, and one when the target is the only
+  class of the run below an abstract source. A cross cast from a class of the run that no class of the run joins with
+  the target rises two steps from a concrete class, one from an abstract class, to a class, or when the interface
+  has implementors, never above high.
+- The place is the variable the value came from (a parameter or catch parameter keeps its name through copies), the
+  field under the class of the method, the called method or constructor, or the method itself for arrays and for
+  `instanceof` always true or null.
+
+Known differences, all low priority and so not shown: SpotBugs knows the one JDK class below some JDK interfaces
+(`Queue` to `ArrayDeque`, `Runnable` to `Thread`) and drops a step for them; it reports a cast of the result of a
+static method when the method is in a library; and a cross cast from a library class gets no adjustment from the
+engine.
+
 ### Statement patterns
 
 Patterns that look at single statements or at one method's switches (`src/java/spotbugs/statements/`), measured on

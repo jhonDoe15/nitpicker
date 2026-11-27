@@ -1,3 +1,4 @@
+import { CAST_PATTERNS } from './casts/spotbugs-casts-placed.mts';
 import {
   BOXING_PATTERNS,
   INVOCATION_PATTERNS,
@@ -97,4 +98,5 @@ export const ON_ENGINE: readonly string[] = [
   ...NUMBER_PATTERNS,
   ...CALL_PATTERNS,
   ...INVOCATION_PATTERNS,
+  ...CAST_PATTERNS,
 ];
