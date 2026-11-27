@@ -33,6 +33,14 @@ pub struct TypeIndex {
     declaring: OnceLock<HashMap<(String, usize), Vec<String>>>,
     /// The names of the fields and methods that carry `@GuardedBy`.
     guarded: OnceLock<HashSet<String>>,
+    /// The names a call to a method or constructor with an annotation named `InlineMe` spells.
+    inline_me: OnceLock<HashSet<String>>,
+    /// The archives of the JDK's own classes.
+    jdk_archives: HashSet<usize>,
+    /// The class files under `META-INF/versions` of the class path's multi-release jars.
+    versioned: Vec<Origin>,
+    /// A class path jar's manifest names more entries with `Class-Path`, which javac reads and the index does not.
+    pub manifest_paths: bool,
     settled: bool,
     /// The classes of the source files that the class path holds too.
     compiled: HashSet<String>,
@@ -53,21 +61,43 @@ pub struct TypeIndex {
 }
 
 /// The class names of an archive, with where each one is.
-fn archive_classes(path: &Path) -> Vec<(String, Origin)> {
-    let Ok(file) = std::fs::File::open(path) else { return Vec::new() };
-    let Ok(archive) = zip::ZipArchive::new(std::io::BufReader::new(file)) else { return Vec::new() };
+fn archive_classes(path: &Path) -> Archived {
+    let Ok(file) = std::fs::File::open(path) else { return Archived::default() };
+    let Ok(mut archive) = zip::ZipArchive::new(std::io::BufReader::new(file)) else { return Archived::default() };
+    let mut versioned = Vec::new();
     let named: Vec<(String, usize)> = (0..archive.len())
         .filter_map(|position| {
             let name = archive.name_for_index(position)?.ok()?;
             let inner = name.strip_suffix(".class")?;
-            if inner.ends_with("module-info") || name.contains("META-INF/versions") {
+            if inner.ends_with("module-info") {
+                return None;
+            }
+            if name.contains("META-INF/versions") {
+                versioned.push(position);
                 return None;
             }
             Some((classfile::dotted(inner.strip_prefix("classes/").unwrap_or(inner)), position))
         })
         .collect();
+    let manifest_path = archive.by_name("META-INF/MANIFEST.MF").ok().is_some_and(|mut entry| {
+        let mut text = Vec::new();
+        entry.read_to_end(&mut text).is_ok() && text.windows(11).any(|part| part.eq_ignore_ascii_case(b"Class-Path:"))
+    });
     let shared = Arc::new(Mutex::new(archive));
-    named.into_iter().map(|(name, position)| (name, Origin::Archive(shared.clone(), position))).collect()
+    Archived {
+        versioned: versioned.into_iter().map(|position| Origin::Archive(shared.clone(), position)).collect(),
+        classes: named.into_iter().map(|(name, position)| (name, Origin::Archive(shared.clone(), position))).collect(),
+        manifest_path,
+    }
+}
+
+/// What a class path entry holds: its classes, the class files under `META-INF/versions` of a multi-release jar,
+/// and whether its manifest names more entries with `Class-Path`. The index reads neither of the last two.
+#[derive(Default)]
+struct Archived {
+    classes: Vec<(String, Origin)>,
+    versioned: Vec<Origin>,
+    manifest_path: bool,
 }
 
 /// The classes `ct.sym` keeps for one release: `<releases>/<module>/<package path>/<Class>.sig`, where the
@@ -158,6 +188,18 @@ fn read_bytes(origin: &Origin) -> Option<Vec<u8>> {
 }
 
 /// Whether a class file may hold a `@GuardedBy` annotation of one of the kinds Error Prone reads.
+/// The archive an origin is in, as a key.
+fn archive_key(origin: &Origin) -> Option<usize> {
+    match origin {
+        Origin::Archive(archive, _) => Some(Arc::as_ptr(archive) as usize),
+        Origin::File(_) => None,
+    }
+}
+
+fn mentions_inline_me(bytes: &[u8]) -> bool {
+    bytes.windows(9).any(|window| window == b"InlineMe;")
+}
+
 fn mentions_guard(bytes: &[u8]) -> bool {
     bytes.windows(10).any(|window| window == b"GuardedBy;")
 }
@@ -174,11 +216,30 @@ fn anonymous(name: &str) -> bool {
 impl TypeIndex {
     /// Entries are jars, jmods or class folders. Earlier entries win, like a class path.
     pub fn load_binaries(&mut self, entries: &[PathBuf]) {
-        let loaded: Vec<Vec<(String, Origin)>> = entries
+        self.load_entries(entries, false);
+    }
+
+    /// The JDK's own modules: like `load_binaries`, with their classes known as the JDK's.
+    pub fn load_jdk(&mut self, entries: &[PathBuf]) {
+        self.load_entries(entries, true);
+    }
+
+    fn load_entries(&mut self, entries: &[PathBuf], jdk: bool) {
+        let loaded: Vec<Archived> = entries
             .par_iter()
-            .map(|entry| if entry.is_dir() { folder_classes(entry) } else { archive_classes(entry) })
+            .map(|entry| if entry.is_dir() { Archived { classes: folder_classes(entry), ..Archived::default() } } else { archive_classes(entry) })
             .collect();
-        for (name, origin) in loaded.into_iter().flatten() {
+        let mut classes = Vec::new();
+        for archived in loaded {
+            if jdk {
+                self.jdk_archives.extend(archived.classes.first().and_then(|(_, origin)| archive_key(origin)));
+            } else {
+                self.versioned.extend(archived.versioned);
+                self.manifest_paths |= archived.manifest_path;
+            }
+            classes.extend(archived.classes);
+        }
+        for (name, origin) in classes {
             if anonymous(&name) {
                 continue;
             }
@@ -207,6 +268,7 @@ impl TypeIndex {
     pub fn load_release(&mut self, signatures: &Path, release: u32) -> bool {
         let loaded = release_classes(signatures, release);
         let found = !loaded.is_empty();
+        self.jdk_archives.extend(loaded.first().and_then(|(_, origin)| archive_key(origin)));
         for (name, origin) in loaded {
             if !anonymous(&name) && !self.classes.contains_key(&name) {
                 self.classes.insert(name, Slot::Later(origin, OnceLock::new()));
@@ -639,6 +701,53 @@ impl TypeIndex {
             for name in names {
                 if let Some(class) = self.get(name) {
                     add(class, &mut found);
+                }
+            }
+            found
+        })
+    }
+
+    /// The names that a call, `new`, or method reference to a method or constructor carrying an annotation named
+    /// `InlineMe`, in the sources or on the class path, holds: the method's name, or the simple name of the
+    /// constructor's class, which an implicit or explicit `super(...)` call's class names in its `extends` clause.
+    /// Every class file outside the JDK whose bytes mention such an annotation is parsed.
+    pub fn inline_me_names(&self) -> &HashSet<String> {
+        self.inline_me.get_or_init(|| {
+            let mut found = HashSet::new();
+            let add = |class: &ClassInfo, found: &mut HashSet<String>| {
+                let last = class.name.rsplit('.').next().unwrap_or_default();
+                for method in &class.methods {
+                    if !method.detail.annotations.iter().any(|name| name == "InlineMe" || name.ends_with(".InlineMe")) {
+                        continue;
+                    }
+                    if method.name != "<init>" {
+                        found.insert(method.name.clone());
+                        continue;
+                    }
+                    found.insert(last.to_string());
+                    found.extend(last.split('$').map(|part| part.trim_start_matches(|c: char| c.is_ascii_digit()).to_string()));
+                }
+            };
+            let from_jdk = |origin: &Origin| archive_key(origin).is_some_and(|key| self.jdk_archives.contains(&key));
+            let later: Vec<&String> = self
+                .classes
+                .iter()
+                .filter_map(|(name, slot)| match slot {
+                    Slot::Ready(class) => {
+                        add(class, &mut found);
+                        None
+                    }
+                    Slot::Later(origin, _) => (!from_jdk(origin) && read_bytes(origin).is_some_and(|bytes| mentions_inline_me(&bytes))).then_some(name),
+                })
+                .collect();
+            for name in later {
+                if let Some(class) = self.get(name) {
+                    add(class, &mut found);
+                }
+            }
+            for bytes in self.versioned.iter().filter_map(read_bytes).filter(|bytes| mentions_inline_me(bytes)) {
+                if let Some(class) = classfile::parse(&bytes) {
+                    add(&class, &mut found);
                 }
             }
             found
