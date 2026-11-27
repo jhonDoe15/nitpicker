@@ -8,7 +8,9 @@ use std::sync::LazyLock;
 /// (`case Shape.Box(var inside) ->`, `value instanceof Shape.Box(var inside)`) as a method call. The first is blanked out; in the second the dots of the
 /// record type become `_`, so the grammar sees one name and parses a record pattern. The grammar also stops at a
 /// NUL character, which Java allows in strings, text blocks, character literals and comments: there it becomes a
-/// space. A NUL in code is left, so the file stays broken, as it is for PMD at the end of a file.
+/// space. A NUL in code is left, so the file stays broken, as it is for PMD at the end of a file. The grammar rejects
+/// a parenthesized assignment target (`(x) = 2`, `(this.f) += 1`): those parentheses become spaces, and the PMD tree
+/// puts them back from the real text.
 pub fn masked(text: &str) -> Option<String> {
     let mut bytes: Option<Vec<u8>> = None;
     if text.contains('\0') {
@@ -20,7 +22,54 @@ pub fn masked(text: &str) -> Option<String> {
     if text.contains("case") || text.contains("instanceof") {
         join_record_pattern_names(text, &mut bytes);
     }
+    if text.contains(')') && text.contains('=') {
+        blank_parenthesized_targets(text, &mut bytes);
+    }
     bytes.and_then(|bytes| String::from_utf8(bytes).ok())
+}
+
+fn blank_parenthesized_targets(text: &str, bytes: &mut Option<Vec<u8>>) {
+    static TARGET: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*(?:\[[^\[\]]*\])*$").expect("pattern")
+    });
+    static ASSIGNMENT: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"^\s*(?:>>>=|<<=|>>=|[-+*/%&|^]=|=)").expect("pattern"));
+    let raw = text.as_bytes();
+    let mut code: Option<Vec<bool>> = None;
+    for (close, _) in text.match_indices(')') {
+        let Some(sign) = ASSIGNMENT.find(&text[close + 1..]) else { continue };
+        if raw.get(close + 1 + sign.end()) == Some(&b'=') && sign.as_str().trim() == "=" {
+            continue;
+        }
+        let code = code.get_or_insert_with(|| code_bytes(text));
+        let mut depth = 0usize;
+        let Some(open) = (0..=close).rev().filter(|at| code[*at]).find(|at| {
+            match raw[*at] {
+                b')' => depth += 1,
+                b'(' => depth -= 1,
+                _ => {}
+            }
+            depth == 0
+        }) else {
+            continue;
+        };
+        let before = text[..open].trim_end();
+        let word = before.rsplit(|character: char| !(character.is_alphanumeric() || character == '_' || character == '$')).next();
+        let keyword = word.is_some_and(|word| matches!(word, "return" | "throw" | "yield" | "else" | "case"));
+        if !code[open..=close].iter().all(|inside| *inside) || (before.ends_with([')', ']', '>']) || !word.is_none_or(str::is_empty)) && !keyword {
+            continue;
+        }
+        let inner: String = text[open..=close].chars().filter(|character| !character.is_whitespace() && !matches!(character, '(' | ')')).collect();
+        if !TARGET.is_match(&inner) {
+            continue;
+        }
+        let bytes = bytes.get_or_insert_with(|| text.as_bytes().to_vec());
+        for at in open..=close {
+            if matches!(raw[at], b'(' | b')') {
+                bytes[at] = b' ';
+            }
+        }
+    }
 }
 
 fn blank_spread_annotations(text: &str, bytes: &mut Option<Vec<u8>>) {
