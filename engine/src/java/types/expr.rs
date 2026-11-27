@@ -296,8 +296,9 @@ impl<'a> Resolver<'a> {
             let named = |holder: Node| holder.field("name").is_some_and(|n| self.file.text_of(n) == name);
             match node.kind() {
                 "block" | "constructor_body" | "switch_block_statement_group" | "program" => {
-                    let earlier = std::iter::successors(node.prev_named_sibling(), |group| group.prev_named_sibling())
-                        .take_while(|group| node.kind() == "switch_block_statement_group" && group.kind() == node.kind());
+                    // Finding a sibling walks down from the root in tree-sitter, so only switch groups ask for one.
+                    let first = if node.kind() == "switch_block_statement_group" { node.prev_named_sibling() } else { None };
+                    let earlier = std::iter::successors(first, |group| group.prev_named_sibling()).take_while(|group| group.kind() == node.kind());
                     for holder in std::iter::once(node).chain(earlier) {
                         let declared = self.locals_of(holder);
                         let found = declared.iter().find(|local| local.0 == name).filter(|local| local.1 < inner.start_byte());
