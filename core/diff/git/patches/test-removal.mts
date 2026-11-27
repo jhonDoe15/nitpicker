@@ -72,6 +72,8 @@ const IMPORT_SPECIFIER =
   /(?:\bfrom|\bimport|\brequire|\bmock|\bimportActual|\bdoMock)\s*(?:\(\s*)?(['"`])([^'"`\n]+)\1/gu;
 const RELATIVE_SPECIFIER = /^\.\.?\//u;
 const UNRESOLVABLE_SPECIFIER = /^(?:[#~/]|@\/)|\$\{|(?:^|\/)(?:\.\.?|index(?:\.[^/]*)?)\/?$/u;
+const TEST_DATA =
+  /\.(?:json|jsonc|json5|snap|txt|md|ya?ml|csv|tsv|xml|html|svg|png|jpe?g|gif|sql)$/iu;
 const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'];
 const TYPESCRIPT_TWINS: Readonly<Record<string, readonly string[]>> = {
   '.js': ['.ts', '.tsx'],
@@ -119,7 +121,7 @@ export function removedTestTargetsOf(
   baseProject: string,
 ): ReadonlySet<string> | undefined {
   const targets = new Set<string>();
-  const sources = testFiles.filter((file) => SOURCE_EXTENSIONS.includes(path.posix.extname(file)));
+  const sources = testFiles.filter((file) => !TEST_DATA.test(file));
   for (const file of sources) {
     const text = texts.get(file);
     const imported = text === undefined ? undefined : importedTargets(file, text);
