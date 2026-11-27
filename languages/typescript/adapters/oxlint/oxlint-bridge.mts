@@ -2,14 +2,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ESLint } from 'eslint';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
-import { nativeConfigFlags } from '../lint-engine/compatibility/native-config.mts';
 
 type BridgeRequest = {
   readonly namespace: string;
   readonly alias: string;
   readonly ruleNames: readonly string[];
-  readonly projectRoot: string;
-  readonly sampleFile: string;
 };
 
 type BridgedPlugin = { readonly meta: { readonly name: string }; readonly rules: unknown };
@@ -24,29 +21,21 @@ export async function bridgedPlugin({
   namespace,
   alias,
   ruleNames,
-  projectRoot,
-  sampleFile,
 }: BridgeRequest): Promise<BridgedPlugin> {
   const rules =
-    namespace === CORE_RULES_NAMESPACE
-      ? await coreRules({ ruleNames, projectRoot, sampleFile })
-      : await pluginRules(namespace);
+    namespace === CORE_RULES_NAMESPACE ? coreRules(ruleNames) : await pluginRules(namespace);
   return { meta: { name: alias }, rules };
 }
 
-async function coreRules({
-  ruleNames,
-  projectRoot,
-  sampleFile,
-}: Omit<BridgeRequest, 'namespace' | 'alias'>): Promise<Record<string, unknown>> {
-  const eslint = new ESLint({
-    cwd: projectRoot,
-    overrideConfigFile: wrapperPath,
-    flags: nativeConfigFlags(wrapperPath),
-  });
-  const config: unknown = await eslint.calculateConfigForFile(sampleFile);
-  const rules = fieldOf(fieldOf(fieldOf(config, 'plugins'), '@'), 'rules');
-  return Object.fromEntries(ruleNames.map((name) => [name, fieldOf(rules, name)]));
+function coreRules(ruleNames: readonly string[]): Record<string, unknown> {
+  const plugins = listOf(ESLint.defaultConfig).map((entry) => fieldOf(entry, 'plugins'));
+  const rules = fieldOf(
+    plugins.find((plugin) => fieldOf(plugin, '@') !== undefined),
+    '@',
+  );
+  return Object.fromEntries(
+    ruleNames.map((name) => [name, fieldOf(fieldOf(rules, 'rules'), name)]),
+  );
 }
 
 async function pluginRules(namespace: string): Promise<unknown> {

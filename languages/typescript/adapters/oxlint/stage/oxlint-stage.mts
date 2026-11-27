@@ -173,21 +173,16 @@ function rebasedExtend(value: unknown, directory: string): unknown {
 
 export function writeStageConfigs({
   stage,
-  projectRoot,
-  sampleFile,
   translation,
 }: {
   readonly stage: string;
-  readonly projectRoot: string;
-  readonly sampleFile: string | undefined;
   readonly translation: Translation;
 }): StageConfig[] {
   const bridge = checkoutModuleUrl(new URL('../oxlint-bridge.mjs', import.meta.url)).href;
   const jsPlugins = translation.plugins.map((plugin) => {
-    const request = { ...plugin, projectRoot, sampleFile };
     writeFileSync(
       path.join(stage, STAGE_DIRECTORY, `${plugin.alias}.mjs`),
-      `import { bridgedPlugin } from ${JSON.stringify(bridge)};\nexport default await bridgedPlugin(${JSON.stringify(request)});\n`,
+      `import { bridgedPlugin } from ${JSON.stringify(bridge)};\nexport default await bridgedPlugin(${JSON.stringify(plugin)});\n`,
     );
     return `./${STAGE_DIRECTORY}/${plugin.alias}.mjs`;
   });
