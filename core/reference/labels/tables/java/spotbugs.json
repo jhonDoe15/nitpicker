@@ -139,6 +139,7 @@
   "spotbugs/REC_CATCH_EXCEPTION": ["reliability"],
   "spotbugs/RI_REDUNDANT_INTERFACES": ["simplification"],
   "spotbugs/RV_NEGATING_RESULT_OF_COMPARETO": ["bug"],
+  "spotbugs/RV_RETURN_VALUE_IGNORED_BAD_PRACTICE": ["reliability"],
   "spotbugs/RV_RETURN_VALUE_IGNORED_INFERRED": ["reliability"],
   "spotbugs/RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT": ["simplification"],
   "spotbugs/SA_FIELD_DOUBLE_ASSIGNMENT": ["simplification"],

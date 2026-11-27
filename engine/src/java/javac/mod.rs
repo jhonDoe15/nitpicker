@@ -8,6 +8,7 @@ pub mod classes;
 mod lambdas;
 pub mod locals;
 mod references;
+pub(crate) use references::inner_class;
 pub mod rule;
 
 use crate::engine::source::{children, parent};

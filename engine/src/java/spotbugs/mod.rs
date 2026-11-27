@@ -24,6 +24,7 @@ mod naming;
 mod nulls;
 mod order;
 mod sequence;
+mod returns;
 mod serial;
 pub mod place;
 mod observed;
@@ -142,6 +143,10 @@ impl<'a> Context<'a> {
     pub fn finding_listed(&self, pattern: &'static str, at: Node, line: usize, message: String, place: String, arguments: Vec<String>) -> Option<Finding> {
         self.finding(pattern, at, line, message).map(|finding| Finding { symbol: Some(place), arguments: Some(arguments), ..finding })
     }
+    /// Adds a finding made with `finding_listed`.
+    pub fn push(&self, finding: Finding) {
+        self.out.borrow_mut().push(finding);
+    }
     fn finding(&self, pattern: &'static str, at: Node, line: usize, message: String) -> Option<Finding> {
         if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == pattern)) || self.suppressed(pattern, at) {
             return None;
@@ -239,6 +244,7 @@ pub struct SpotBugs {
     serial: serial::Serial,
     attributes: attributes::Attributes,
     taint: taint::Derived,
+    effects: returns::Effects,
 }
 
 impl FileRule for SpotBugs {
@@ -262,6 +268,9 @@ impl FileRule for SpotBugs {
             }
         }
         compare::ref_comparisons(&context);
+        if context.wants(returns::PATTERNS) {
+            returns::returns(&context, &self.effects);
+        }
         nulls::null_dereference(&context, &declared);
         taint::injections(&context, &declared, &self.taint);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
@@ -280,6 +289,7 @@ impl FileRule for SpotBugs {
             self.serial.settle(project, out);
             self.attributes.settle(&project.index, &project.literals, || self.known.visits(&project.index), out);
             self.taint.settle(project, &self.elsewhere, out);
+            self.effects.settle(project, out);
         }
     }
 }
