@@ -1,0 +1,1 @@
+import assert from 'node:assert'; assert.notStrictEqual(0.1, total);

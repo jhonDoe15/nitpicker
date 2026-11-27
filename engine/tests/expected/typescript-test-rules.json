@@ -1609,5 +1609,302 @@
   "Fixed sleeps are non-deterministic; wait on a condition with vi.waitFor or expect.poll. An exception fits only when a real wait is unavoidable.",
   1,
   129
+ ],
+ [
+  "no-float-equality-in-tests/01.ts",
+  "nitpicker/no-float-equality-in-tests",
+  1,
+  20,
+  "A float literal compared for exact equality fails on rounding error. Use `toBeCloseTo(0.1)`, `expect.closeTo(0.1)` inside the expected value, chai `closeTo`, or `assert.ok(Math.abs(actual - 0.1) < tolerance)`. An exception fits only when the value is exact by construction.",
+  1,
+  23
+ ],
+ [
+  "no-float-equality-in-tests/02.ts",
+  "nitpicker/no-float-equality-in-tests",
+  1,
+  25,
+  "A float literal compared for exact equality fails on rounding error. Use `toBeCloseTo(0.1)`, `expect.closeTo(0.1)` inside the expected value, chai `closeTo`, or `assert.ok(Math.abs(actual - 0.1) < tolerance)`. An exception fits only when the value is exact by construction.",
+  1,
+  28
+ ],
+ [
+  "no-float-equality-in-tests/03.ts",
+  "nitpicker/no-float-equality-in-tests",
+  1,
+  57,
+  "A float literal compared for exact equality fails on rounding error. Use `toBeCloseTo(0.1)`, `expect.closeTo(0.1)` inside the expected value, chai `closeTo`, or `assert.ok(Math.abs(actual - 0.1) < tolerance)`. An exception fits only when the value is exact by construction.",
+  1,
+  60
+ ],
+ [
+  "no-float-equality-in-tests/03.ts",
+  "nitpicker/no-unpinned-assertion",
+  1,
+  35,
+  "A literal passed as the value under test can never fail. Pass the value the code under test returns as the first argument of `notStrictEqual`. An exception fits only when the value cannot be pinned.",
+  1,
+  68
+ ],
+ [
+  "no-float-equality-in-tests/04.ts",
+  "nitpicker/no-float-equality-in-tests",
+  1,
+  60,
+  "A float literal compared for exact equality fails on rounding error. Use `toBeCloseTo(0.1)`, `expect.closeTo(0.1)` inside the expected value, chai `closeTo`, or `assert.ok(Math.abs(actual - 0.1) < tolerance)`. An exception fits only when the value is exact by construction.",
+  1,
+  63
+ ],
+ [
+  "no-float-equality-in-tests/05.ts",
+  "nitpicker/no-float-equality-in-tests",
+  1,
+  54,
+  "A float literal compared for exact equality fails on rounding error. Use `toBeCloseTo(0.1)`, `expect.closeTo(0.1)` inside the expected value, chai `closeTo`, or `assert.ok(Math.abs(actual - 0.1) < tolerance)`. An exception fits only when the value is exact by construction.",
+  1,
+  57
+ ],
+ [
+  "no-listing-order-in-assertions/01.ts",
+  "nitpicker/no-listing-order-in-assertions",
+  1,
+  136,
+  "Directory listings and glob results come in the order the file system returns, which differs between file systems and machines, so this ordered comparison passes on one and fails on another. Sort the result first (`.sort()` or `.toSorted()`), or compare without order (`expect.arrayContaining` with a length check, or a `Set`).",
+  1,
+  188
+ ],
+ [
+  "no-listing-order-in-assertions/02.ts",
+  "nitpicker/no-listing-order-in-assertions",
+  1,
+  168,
+  "Directory listings and glob results come in the order the file system returns, which differs between file systems and machines, so this ordered comparison passes on one and fails on another. Sort the result first (`.sort()` or `.toSorted()`), or compare without order (`expect.arrayContaining` with a length check, or a `Set`).",
+  1,
+  209
+ ],
+ [
+  "no-listing-order-in-assertions/03.ts",
+  "nitpicker/no-listing-order-in-assertions",
+  1,
+  136,
+  "Directory listings and glob results come in the order the file system returns, which differs between file systems and machines, so this ordered comparison passes on one and fails on another. Sort the result first (`.sort()` or `.toSorted()`), or compare without order (`expect.arrayContaining` with a length check, or a `Set`).",
+  1,
+  198
+ ],
+ [
+  "no-listing-order-in-assertions/04.ts",
+  "nitpicker/no-listing-order-in-assertions",
+  1,
+  117,
+  "Directory listings and glob results come in the order the file system returns, which differs between file systems and machines, so this ordered comparison passes on one and fails on another. Sort the result first (`.sort()` or `.toSorted()`), or compare without order (`expect.arrayContaining` with a length check, or a `Set`).",
+  1,
+  174
+ ],
+ [
+  "no-listing-order-in-assertions/05.ts",
+  "nitpicker/no-listing-order-in-assertions",
+  1,
+  62,
+  "Directory listings and glob results come in the order the file system returns, which differs between file systems and machines, so this ordered comparison passes on one and fails on another. Sort the result first (`.sort()` or `.toSorted()`), or compare without order (`expect.arrayContaining` with a length check, or a `Set`).",
+  1,
+  97
+ ],
+ [
+  "no-shared-temp-path-in-tests/01.ts",
+  "nitpicker/no-shared-temp-path-in-tests",
+  1,
+  13,
+  "This temp path is the same in every test run, so tests that run at the same time (concurrent tests, or other test files on other workers) write the same file and one overwrites or deletes the other's. Create a directory per test with `fs.mkdtemp(path.join(os.tmpdir(), \"prefix-\"))` and write inside it.",
+  1,
+  42
+ ],
+ [
+  "no-shared-temp-path-in-tests/02.ts",
+  "nitpicker/no-shared-temp-path-in-tests",
+  1,
+  13,
+  "This temp path is the same in every test run, so tests that run at the same time (concurrent tests, or other test files on other workers) write the same file and one overwrites or deletes the other's. Create a directory per test with `fs.mkdtemp(path.join(os.tmpdir(), \"prefix-\"))` and write inside it.",
+  1,
+  42
+ ],
+ [
+  "no-shared-temp-path-in-tests/03.ts",
+  "nitpicker/no-shared-temp-path-in-tests",
+  1,
+  34,
+  "This temp path is the same in every test run, so tests that run at the same time (concurrent tests, or other test files on other workers) write the same file and one overwrites or deletes the other's. Create a directory per test with `fs.mkdtemp(path.join(os.tmpdir(), \"prefix-\"))` and write inside it.",
+  1,
+  63
+ ],
+ [
+  "no-shared-temp-path-in-tests/04.ts",
+  "nitpicker/no-shared-temp-path-in-tests",
+  1,
+  13,
+  "This temp path is unique only per process (`process.pid`), so tests in the same process or worker threads build the same name and one overwrites or deletes the other's file. Create a directory per test with `fs.mkdtemp(path.join(os.tmpdir(), \"prefix-\"))` and write inside it.",
+  1,
+  65
+ ],
+ [
+  "no-shared-temp-path-in-tests/05.ts",
+  "nitpicker/no-shared-temp-path-in-tests",
+  1,
+  35,
+  "This temp path is unique only per process (`process.pid`), so tests in the same process or worker threads build the same name and one overwrites or deletes the other's file. Create a directory per test with `fs.mkdtemp(path.join(os.tmpdir(), \"prefix-\"))` and write inside it.",
+  1,
+  87
+ ],
+ [
+  "no-uninjectable-delay/01.ts",
+  "nitpicker/no-uninjectable-delay",
+  2,
+  26,
+  "setTimeout waits DELAY_MS (1000 ms), a module constant that exported \"stop\" cannot override, so a test must wait it out or fake timers. Accept the delay as an option with DELAY_MS as its default, for example \"{ delayMs = DELAY_MS } = {}\". An exception fits only when the delay is deliberately fixed.",
+  2,
+  52
+ ],
+ [
+  "no-uninjectable-delay/02.ts",
+  "nitpicker/no-uninjectable-delay",
+  2,
+  42,
+  "setInterval waits POLL_MS (500 ms), a module constant that exported \"watch\" cannot override, so a test must wait it out or fake timers. Accept the delay as an option with POLL_MS as its default, for example \"{ delayMs = POLL_MS } = {}\". An exception fits only when the delay is deliberately fixed.",
+  2,
+  81
+ ],
+ [
+  "no-uninjectable-delay/03.ts",
+  "nitpicker/no-uninjectable-delay",
+  2,
+  50,
+  "setTimeout waits DELAY_MS (2000 ms), a module constant that exported \"stop\" cannot override, so a test must wait it out or fake timers. Accept the delay as an option with DELAY_MS as its default, for example \"{ delayMs = DELAY_MS } = {}\". An exception fits only when the delay is deliberately fixed.",
+  2,
+  89
+ ],
+ [
+  "no-uninjectable-delay/04.ts",
+  "nitpicker/no-uninjectable-delay",
+  3,
+  46,
+  "setTimeout waits SETTLE_MS (750 ms), a module constant that exported \"settle\" cannot override, so a test must wait it out or fake timers. Accept the delay as an option with SETTLE_MS as its default, for example \"{ delayMs = SETTLE_MS } = {}\". An exception fits only when the delay is deliberately fixed.",
+  3,
+  62
+ ],
+ [
+  "no-uninjectable-delay/05.ts",
+  "nitpicker/no-uninjectable-delay",
+  2,
+  26,
+  "setTimeout waits BASE_MS (800 ms), a module constant that exported \"stop\" cannot override, so a test must wait it out or fake timers. Accept the delay as an option with BASE_MS as its default, for example \"{ delayMs = BASE_MS } = {}\". An exception fits only when the delay is deliberately fixed.",
+  2,
+  66
+ ],
+ [
+  "no-unpinned-assertion/01.ts",
+  "nitpicker/no-unpinned-assertion",
+  1,
+  1,
+  "`assert.ok` passes for many values. Assert the exact value with `assert.strictEqual` or `assert.deepStrictEqual`. An exception fits only when the value cannot be pinned.",
+  1,
+  18
+ ],
+ [
+  "no-unpinned-assertion/02.ts",
+  "nitpicker/no-unpinned-assertion",
+  1,
+  1,
+  "`assert.isOk` passes for many values. Assert the exact value with `assert.strictEqual` or `assert.deepStrictEqual`. An exception fits only when the value cannot be pinned.",
+  1,
+  20
+ ],
+ [
+  "no-unpinned-assertion/03.ts",
+  "nitpicker/no-unpinned-assertion",
+  1,
+  1,
+  "`assert.exists` passes for many values. Assert the exact value with `assert.strictEqual` or `assert.deepStrictEqual`. An exception fits only when the value cannot be pinned.",
+  1,
+  22
+ ],
+ [
+  "no-unpinned-assertion/04.ts",
+  "nitpicker/no-unpinned-assertion",
+  1,
+  1,
+  "`assert.isDefined` passes for many values. Assert the exact value with `assert.strictEqual` or `assert.deepStrictEqual`. An exception fits only when the value cannot be pinned.",
+  1,
+  25
+ ],
+ [
+  "no-unpinned-assertion/05.ts",
+  "nitpicker/no-unpinned-assertion",
+  1,
+  1,
+  "`assert.isNotNull` passes for many values. Assert the exact value with `assert.strictEqual` or `assert.deepStrictEqual`. An exception fits only when the value cannot be pinned.",
+  1,
+  25
+ ],
+ [
+  "no-weak-assertion/01.ts",
+  "nitpicker/no-weak-assertion",
+  1,
+  18,
+  "`expect(…).not.toBe(null)` passes for any value but null, the same weak check as `not.toBeNull`. Assert the value itself with `toBe` or `toEqual`, such as `expect(user).toEqual({ id: 1 })`. An exception fits only when the value cannot be pinned.",
+  1,
+  22
+ ],
+ [
+  "no-weak-assertion/02.ts",
+  "nitpicker/no-weak-assertion",
+  1,
+  18,
+  "`expect(…).not.toBe(undefined)` passes for any value but undefined, the same weak check as `not.toBeNull`. Assert the value itself with `toBe` or `toEqual`, such as `expect(user).toEqual({ id: 1 })`. An exception fits only when the value cannot be pinned.",
+  1,
+  22
+ ],
+ [
+  "no-weak-assertion/03.ts",
+  "nitpicker/no-weak-assertion",
+  1,
+  18,
+  "`expect(…).not.toEqual(null)` passes for any value but null, the same weak check as `not.toBeNull`. Assert the value itself with `toBe` or `toEqual`, such as `expect(user).toEqual({ id: 1 })`. An exception fits only when the value cannot be pinned.",
+  1,
+  25
+ ],
+ [
+  "no-weak-assertion/04.ts",
+  "nitpicker/no-weak-assertion",
+  1,
+  18,
+  "`expect(…).not.toStrictEqual(undefined)` passes for any value but undefined, the same weak check as `not.toBeNull`. Assert the value itself with `toBe` or `toEqual`, such as `expect(user).toEqual({ id: 1 })`. An exception fits only when the value cannot be pinned.",
+  1,
+  31
+ ],
+ [
+  "no-weak-assertion/05.ts",
+  "nitpicker/no-weak-assertion",
+  1,
+  18,
+  "`expect(…).not.toBe(void 0)` passes for any value but undefined, the same weak check as `not.toBeNull`. Assert the value itself with `toBe` or `toEqual`, such as `expect(user).toEqual({ id: 1 })`. An exception fits only when the value cannot be pinned.",
+  1,
+  22
+ ],
+ [
+  "no-uninjectable-delay/02.ts",
+  "nitpicker/no-interval-polling-in-tests",
+  2,
+  42,
+  "Prefer vi.waitFor / expect.poll over setInterval polling in tests.",
+  2,
+  81
+ ],
+ [
+  "no-uninjectable-delay/04.ts",
+  "nitpicker/no-fixed-sleep-synchronization",
+  3,
+  40,
+  "Fixed sleeps are non-deterministic; wait on a condition with vi.waitFor or expect.poll. An exception fits only when a real wait is unavoidable.",
+  3,
+  62
  ]
 ]

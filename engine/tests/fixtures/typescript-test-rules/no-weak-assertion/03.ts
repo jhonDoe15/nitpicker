@@ -1,0 +1,1 @@
+expect(user).not.toEqual(null);

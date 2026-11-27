@@ -8,21 +8,27 @@ use std::process::Command;
 
 type Row = Vec<serde_json::Value>;
 
-const RULES: [&str; 14] = [
+const RULES: [&str; 20] = [
     "integration-test-uses-approved-harness",
     "no-assertion-in-loop",
     "no-copy-pasted-tests",
     "no-first-test-charged-setup",
     "no-fixed-sleep-synchronization",
+    "no-float-equality-in-tests",
     "no-git-repository-per-test",
     "no-interval-polling-in-tests",
+    "no-listing-order-in-assertions",
     "no-node-process-per-test",
     "no-partial-output-assertion",
     "no-server-or-worker-per-test",
+    "no-shared-temp-path-in-tests",
     "no-shared-test-state",
     "no-switched-off-tests",
     "no-test-helpers-in-source",
+    "no-uninjectable-delay",
     "no-unowned-async-assertion",
+    "no-unpinned-assertion",
+    "no-weak-assertion",
 ];
 /// Its files are named as the rule would see them relative to the project: the caller gives that path as a setting.
 const PATH_RULE: &str = "no-test-helpers-in-source";

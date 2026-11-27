@@ -37,6 +37,7 @@ export const TEST_ENGINE_RULES: readonly (readonly [string, EngineRule])[] = [
     },
   ],
   ['no-first-test-charged-setup', { facts: runnerWords('sharedSetupHook') }],
+  ['no-float-equality-in-tests', {}],
   [
     'no-fixed-sleep-synchronization',
     {
@@ -46,10 +47,15 @@ export const TEST_ENGINE_RULES: readonly (readonly [string, EngineRule])[] = [
       }),
     },
   ],
+  ['no-listing-order-in-assertions', {}],
   [
     'no-partial-output-assertion',
     {
       facts: runnerWords('wholeOutput', 'fragmentForms', 'wholeValue', 'partialForms', 'variedField'),
     },
   ],
+  ['no-shared-temp-path-in-tests', {}],
+  ['no-uninjectable-delay', {}],
+  ['no-unpinned-assertion', {}],
+  ['no-weak-assertion', {}],
 ];

@@ -1,0 +1,1 @@
+import chai from 'chai'; chai.expect(total).to.equal(0.1);

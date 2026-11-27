@@ -1,6 +1,6 @@
 //! `no-fixed-sleep-synchronization`: a test that sleeps for a fixed time, or asserts absence by letting a wait time
 //! out. The test fixtures (the `fixture` setting) are left alone.
-mod numbers;
+pub mod numbers;
 mod waits;
 
 use crate::typescript::rules::Context;
