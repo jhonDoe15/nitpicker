@@ -2,7 +2,7 @@
 //! half-built object a finalizer could get hold of. An anonymous class counts too: its field initializers and
 //! initializer blocks run in the constructor the compiler writes for it.
 use super::handlers::{caught, catch_types, closing, declares, Guard, UNKNOWN};
-use super::{Context, lombok, names};
+use super::{Context, lombok, names, place};
 use crate::engine::source::{children, named_children, parent};
 use crate::java::helpers::has_modifier;
 use crate::java::types::model::flag;
@@ -253,8 +253,9 @@ pub fn constructor_throw(context: &Context, class: Node) {
     let outer = if anonymous { None } else { crate::java::javac::instance_around(context.resolver, class) };
     let report = |declaration: Node, site: Node| {
         let label = if anonymous { names::anonymous(context, &own, class) } else { names::method(context, &own, declaration, outer.as_deref()) };
-        let message = format!("Exception thrown in class {} at {label} {TAIL}", names::binary(context, &own));
-        context.report("CT_CONSTRUCTOR_THROW", declaration, site_line(context, site), message);
+        let class = names::binary(context, &own);
+        let message = format!("Exception thrown in class {class} at {label} {TAIL}");
+        context.report_listed("CT_CONSTRUCTOR_THROW", declaration, site_line(context, site), message, place::function(&label), 2, vec![class, label]);
     };
     if constructors.is_empty() && (anonymous || !lombok::writes_constructors(context, class)) {
         let mut sites = Vec::new();

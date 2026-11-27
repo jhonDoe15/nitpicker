@@ -106,11 +106,11 @@ fn findings_name_the_place_spotbugs_sarif_names() {
     assert_eq!(found, expected);
 }
 
-/// For a lock, SpotBugs' SARIF names a field under the class of the method that reads it; nitpicker writes it so
-/// from the method the finding lists second.
+/// For a lock or a null dereference, SpotBugs' SARIF names a field under the class of the method that reads it;
+/// nitpicker writes it so from the method the finding lists second.
 fn under_method(rule: &str, place: &str, listed: &[String]) -> String {
     let (Some(field), Some(method)) = (place.strip_prefix("member:"), listed.get(1)) else { return place.to_string() };
-    if !rule.starts_with("JLM_JSR166_") {
+    if !rule.starts_with("JLM_JSR166_") && rule != "NP_ALWAYS_NULL" {
         return place.to_string();
     }
     let signature = method.split('(').next().unwrap_or_default();
