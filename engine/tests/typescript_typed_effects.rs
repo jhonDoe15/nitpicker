@@ -1,6 +1,7 @@
 //! Runs the rules that need the shared effects analysis on fixture projects with fake IO packages in each
-//! subproject's `node_modules` (copied from `libraries` for the run, since `node_modules` is never committed),
-//! and compares with what the ESLint-plugin rules reported for the same files with the JavaScript compiler.
+//! subproject's `node_modules` (copied for the run from the effects fixture's `libraries`, then the fixture's own,
+//! since `node_modules` is never committed), and compares with what the ESLint-plugin rules reported for the same
+//! files with the JavaScript compiler.
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -9,6 +10,8 @@ type Row = Vec<serde_json::Value>;
 const REMOTE_CALLS: [&str; 2] = ["no-remote-call-in-transaction", "no-remote-call-under-lock"];
 const WRITES: [&str; 4] = ["no-retry-without-idempotency", "no-dual-write", "no-stale-retry-after-conflict", "no-unisolated-job-loop"];
 const LOOPS: [&str; 2] = ["no-lazy-relation-in-loop", "no-io-in-loop"];
+const ROWS: [&str; 2] = ["no-whole-rows-for-one-value", "no-loaded-rows-saved-back"];
+const LOOKUPS: [&str; 1] = ["no-lookup-per-element"];
 
 fn compiler() -> Option<PathBuf> {
     if let Some(named) = std::env::var_os("NITPICKER_TYPESCRIPT_COMPILER") {
@@ -127,6 +130,16 @@ fn write_rules_match_the_plugin_on_the_fixture_project() {
 #[test]
 fn loop_rules_match_the_plugin_on_the_fixture_project() {
     compare("typescript-typed-loops", &LOOPS);
+}
+
+#[test]
+fn query_row_rules_match_the_plugin_on_the_fixture_project() {
+    compare("typescript-typed-rows", &ROWS);
+}
+
+#[test]
+fn lookup_rules_match_the_plugin_on_the_fixture_project() {
+    compare("typescript-typed-lookups", &LOOKUPS);
 }
 
 #[test]

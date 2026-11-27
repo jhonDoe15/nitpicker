@@ -20,6 +20,7 @@ import { hasGlobalTrimmer } from '../rules/request-text/global-trimmer.mts';
 const stylesheetSpecifier: RegExp = untypedStylesheetSpecifier;
 
 const TYPED = { needs: 'types' } as const;
+const DEFAULT_COMPLEXITY_LIMIT = 15;
 const EFFECTS: EngineRule = {
   ...TYPED,
   facts: (_filename, _options, { root }) => testSourcesFact(root),
@@ -78,6 +79,10 @@ function optionFacts(...names: readonly string[]): FileFacts {
 }
 
 export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<string, EngineRule>([
+  [
+    'cognitive-complexity',
+    { facts: (_filename, options) => ({ max: String(options[0] ?? DEFAULT_COMPLEXITY_LIMIT) }) },
+  ],
   [
     'contract-infrastructure-type',
     { ...TYPED, facts: (filename) => ({ feature: featureOf(filename) }) },
@@ -154,7 +159,9 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-lazy-relation-in-loop', TYPED],
   ['no-lossy-utf8-decode', {}],
   ['no-local-time-zone', TYPED],
+  ['no-loaded-rows-saved-back', TYPED],
   ['no-lookup-as-presence', TYPED],
+  ['no-lookup-per-element', EFFECTS],
   ['no-many-to-many-cascade-remove', {}],
   ['no-mutating-method-in-domain', TYPED],
   ['no-node-process-per-test', {}],
@@ -190,6 +197,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-secret-in-log', {}],
   ['no-send-without-return', {}],
   ['no-server-or-worker-per-test', { facts: runnerWords('sharedSetupHook') }],
+  ['no-self-recursion', {}],
   ['no-shadowed-spread-key', TYPED],
   ['no-shared-test-state', {}],
   ['no-silent-catch', {}],
@@ -251,6 +259,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-weak-hash', {}],
   ['no-unversioned-orm-entity', TYPED],
   ['no-wait-for-with-fake-timers', {}],
+  ['no-whole-rows-for-one-value', TYPED],
   [
     'preserve-error-cause',
     { facts: (_filename, options) => ({ options: JSON.stringify(options[0] ?? {}) }) },

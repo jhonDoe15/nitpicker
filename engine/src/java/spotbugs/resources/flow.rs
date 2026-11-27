@@ -22,6 +22,10 @@ pub trait Resource {
     fn throws(&self, context: &Context, step: Node) -> Option<Thrown> {
         throws(context, step)
     }
+    /// Whether a close of the object a site opened still misses that site.
+    fn parted(&self, _context: &Context, _open: Node, _close: Node) -> bool {
+        false
+    }
 }
 
 /// Which object each local variable holds, by how the code names it.
@@ -54,7 +58,7 @@ impl Keys {
             }
             "method_invocation" => "call".to_string(),
             "array_access" => "array".to_string(),
-            "this" => "this".to_string(),
+            "this" | "super" => "this".to_string(),
             _ => format!("value@{}", node.id()),
         }
     }
@@ -153,6 +157,8 @@ pub struct Leaks<'t> {
     pub exceptional: Vec<bool>,
     /// Whether the body closes anything.
     pub closes: bool,
+    /// Per site: whether some way from it reaches a close of any object.
+    pub closed_after: Vec<bool>,
 }
 
 pub fn leaks<'t>(context: &Context, graph: &Cfg<'t>, resource: &dyn Resource) -> Leaks<'t> {
@@ -167,7 +173,8 @@ pub fn leaks<'t>(context: &Context, graph: &Cfg<'t>, resource: &dyn Resource) ->
         }
     }
     let count = sites.len();
-    let mut leaks = Leaks { sites, normal: vec![false; count], exceptional: vec![false; count], closes: false };
+    let none = vec![false; count];
+    let mut leaks = Leaks { sites, normal: none.clone(), exceptional: none.clone(), closes: false, closed_after: none };
     if count == 0 {
         return leaks;
     }
@@ -194,7 +201,8 @@ pub fn leaks<'t>(context: &Context, graph: &Cfg<'t>, resource: &dyn Resource) ->
                 Some(Event::Close(key)) => {
                     leaks.closes = true;
                     for (site, held) in state.held.iter_mut().enumerate() {
-                        if opened[site] == *key {
+                        leaks.closed_after[site] |= held[0] || held[1];
+                        if opened[site] == *key && !resource.parted(context, leaks.sites[site], *step) {
                             *held = [false, false];
                         }
                     }

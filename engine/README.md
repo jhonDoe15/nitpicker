@@ -788,9 +788,8 @@ runs and SpotBugs no longer runs the detector. Measured (`tests/fixtures/spotbug
 ### Unreleased locks
 
 `src/java/spotbugs/resources/` rebuilds FindUnreleasedLock: `UL_UNRELEASED_LOCK` and
-`UL_UNRELEASED_LOCK_EXCEPTION_PATH`. On the seven code bases SpotBugs reports 5 (Elasticsearch `server` 4, Guava 1);
-the engine gives the same 4 of them, misses `Cache.forEach` and adds `IndexShard.withEngine` on Elasticsearch, so
-SpotBugs still runs FindUnreleasedLock in real runs until those are explained.
+`UL_UNRELEASED_LOCK_EXCEPTION_PATH`. The engine reports what SpotBugs reports on the seven code bases (4 findings:
+Elasticsearch `server` 3, Guava 1), and SpotBugs no longer runs FindUnreleasedLock in real runs.
 `resources/flow.rs` follows each `lock()` call (a site) over the flow graph to every way out of the method, telling
 paths that took an exception edge from those that did not. SpotBugs never reports `CWO_CLOSED_WITHOUT_OPENED` on
 lab code (an `unlock()` with no `lock()` before it, twice in a row or on some paths only), so the engine does not
@@ -798,16 +797,30 @@ either.
 
 What SpotBugs does, as measured (`tests/fixtures/spotbugs/unreleased*`):
 
+- SpotBugs looks only at classes whose own code (lambdas included, nested and anonymous classes not) calls a method
+  or constructor that javac names on a class of `java.util.concurrent.locks` that is no interface: `new
+  ReentrantLock()`, `ReentrantLock::new`, `readLock()` on a `ReentrantReadWriteLock`, `LockSupport.parkNanos(1)`.
+  A class that only calls `Lock.lock()` or `ReadWriteLock.readLock()`, calls a method only `Object` declares
+  (`hashCode()` on a `ReentrantLock`), or names such a class in a cast, `instanceof` or class literal, is not
+  reported (`unreleased20`, `unreleased22`).
 - Only `lock()` without arguments on a value whose type is `java.util.concurrent.locks.Lock` or a subtype takes a
   lock; `lockInterruptibly()` and `tryLock()` take nothing, and calls named `lock`/`unlock` on other classes count
   for nothing. A method that never calls `unlock()` on a `Lock` is not reported (it takes the lock for its caller);
-  an `unlock()` of another lock is enough. Methods whose name holds `lock` in any case are skipped, lambdas too
+  an `unlock()` of another lock is enough, but only for a `lock()` that some path leads from to an `unlock()`:
+  a lock taken after the last unlock is taken for the caller too (`unreleased22`). Methods whose name holds `lock` in any case are skipped, lambdas too
   when the method around them is (javac names them after it).
 - `unlock()` releases the locks taken on the same object as the code names it: a field by its name (even after a
   store to it), the same parameter or local value, any array element (`a[0]` and `b[1]` alike), and any call result
   (`readLock()` and `writeLock()` alike). A call result, a field, a parameter and each `new` are told apart. A lock
   taken twice is released by one `unlock()`. A lock reached through the instance around an inner class (javac's
   `this$0`) takes nothing, nor does a field of the file that nothing stores into (SpotBugs takes it to be null).
+- SpotBugs loses a lock taken on a field of a value that changes from one round of a loop around the `lock()` to
+  the next (an array element at the loop's index, the variable of a for-each over an array, a call taking the
+  index, a local the loop assigns) when the `unlock()` is reached through another loop inside that one (a loop
+  on another branch, or one the code cannot go on from to the `unlock()`, does not count):
+  the lock then counts as held on that path (`unreleased21`). A for-each over an `Iterable`, a constant index, a
+  field or parameter, the lock value itself in a local, a loop inside a lambda, and a loop that cannot go round
+  again (its body always returns) keep the lock.
 - A way out still holding a lock is a `return`, the end of the method, or an exception leaving it. Exception edges
   are those of dead stores (above), except that `lock()` and `unlock()` themselves, a `ReadWriteLock`'s
   `readLock()` and `writeLock()`, reading a field of another

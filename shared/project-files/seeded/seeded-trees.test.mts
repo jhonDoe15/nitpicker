@@ -61,4 +61,18 @@ describe('seeded repository trees', () => {
     expect(projectFilePaths(path.join(root, 'src'))).toEqual(before);
     expect(gitCalls(logFile)).toEqual([]);
   });
+
+  it('reads a seed without a top folder as the listing of no repository', () => {
+    const file = path.join(temporaryRoot(), 'tree.json');
+    writeFileSync(file, '{"kind":"file","value":"a.ts"}\n');
+    seedTreesFrom(file);
+
+    expect(seededTree('/repository')).toBeUndefined();
+    expect(seededTree('')).toEqual({
+      files: ['a.ts'],
+      links: new Set(),
+      submodules: new Set(),
+      gitPaths: [],
+    });
+  });
 });

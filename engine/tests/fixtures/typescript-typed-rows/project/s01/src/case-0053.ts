@@ -1,0 +1,2 @@
+import { eq, inArray } from "drizzle-orm";
+export async function run(db, orders) { const rows = await db.select().from(orders); await db.delete(tokens).where(inArray(tokens.id, rows.map((row) => row.id))); }

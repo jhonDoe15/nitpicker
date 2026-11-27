@@ -156,6 +156,31 @@ type Derived = {
   readonly derivedSourceRoots?: readonly string[];
 };
 
+function presetOf(loaded: Loaded, overlay: ProjectOverlay | undefined): string {
+  return loaded.config?.preset ?? overlay?.preset ?? DEFAULT_PRESET;
+}
+
+function rootsToDerive(
+  entry: ProjectEntry,
+  { absolute, overlay }: { absolute: string; overlay: ProjectOverlay | undefined },
+  loaded: Loaded,
+): readonly string[] | undefined {
+  const unset = loaded.config !== undefined && loaded.config.layout?.sourceRoots === undefined;
+  return entry.path !== '.' && unset && SCRIPT_PRESETS.has(presetOf(loaded, overlay))
+    ? derivedSourceRoots(absolute)
+    : undefined;
+}
+
+function withSourceRoots(
+  overlay: ProjectOverlay | undefined,
+  roots: readonly string[],
+): ProjectOverlay {
+  const settings = overlay?.settings ?? {};
+  const declared = fieldOf(settings, 'layout');
+  const layout = { ...(isPlainObject(declared) ? declared : undefined), sourceRoots: roots };
+  return { ...overlay, settings: { ...settings, layout } };
+}
+
 function withDerivedRoots(
   entry: ProjectEntry,
   {
@@ -165,19 +190,11 @@ function withDerivedRoots(
   }: { absolute: string; overlay: ProjectOverlay | undefined; repositoryRoot: string },
   loaded: Loaded,
 ): Derived {
-  const preset = loaded.config?.preset ?? overlay?.preset ?? DEFAULT_PRESET;
-  const unset = loaded.config !== undefined && loaded.config.layout?.sourceRoots === undefined;
-  const roots =
-    entry.path !== '.' && unset && SCRIPT_PRESETS.has(preset)
-      ? derivedSourceRoots(absolute)
-      : undefined;
+  const roots = rootsToDerive(entry, { absolute, overlay }, loaded);
   if (roots === undefined) {
     return { overlay, loaded };
   }
-  const settings = overlay?.settings ?? {};
-  const declared = fieldOf(settings, 'layout');
-  const layout = { ...(isPlainObject(declared) ? declared : undefined), sourceRoots: roots };
-  const derived = { ...overlay, settings: { ...settings, layout } };
+  const derived = withSourceRoots(overlay, roots);
   return {
     overlay: derived,
     loaded: loadSettings(absolute, derived, repositoryRoot),
@@ -231,7 +248,24 @@ export function describeProject(entry: ProjectEntry, context: PlanContext): Plan
     repoPath: path.posix.normalize(path.posix.join(prefix, folder)),
     origin: entry.origin,
     overlay,
-    preset: loaded.config?.preset ?? overlay?.preset ?? DEFAULT_PRESET,
+    ...plannedSettings(entry, { prefix, absolute, repositoryRoot }, { overlay, loaded, derived }),
+  };
+}
+
+function plannedSettings(
+  entry: ProjectEntry,
+  {
+    prefix,
+    absolute,
+    repositoryRoot,
+  }: { prefix: string; absolute: string; repositoryRoot: string },
+  { overlay, loaded, derived }: Derived & { readonly derived: readonly string[] | undefined },
+): Pick<
+  PlanProject,
+  'preset' | 'toolchainRoot' | 'derivedSourceRoots' | 'sharedFiles' | 'configError'
+> {
+  return {
+    preset: presetOf(loaded, overlay),
     ...(entry.workspace === undefined
       ? {}
       : { toolchainRoot: path.posix.normalize(path.posix.join(prefix, entry.workspace)) }),

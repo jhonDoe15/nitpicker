@@ -17,6 +17,8 @@ use super::super::{Context, names, place};
 use super::flow::{Event, Keys, Resource, leaks};
 use crate::java::flow::cfg::{self, unwrap};
 use crate::java::types::model::Type;
+use crate::java::types::scope::enclosing_types;
+use std::collections::HashSet;
 use tree_sitter::Node;
 
 pub const PATTERNS: &[&str] = &["UL_UNRELEASED_LOCK", "UL_UNRELEASED_LOCK_EXCEPTION_PATH"];
@@ -46,6 +48,9 @@ impl Resource for Locks {
             "unlock" => Some(Event::Close(keys.of(context, object))),
             _ => None,
         }
+    }
+    fn parted(&self, context: &Context, open: Node, close: Node) -> bool {
+        super::loops::parted(context, open, close)
     }
     fn throws(&self, context: &Context, step: Node) -> Option<Thrown> {
         let other = |target: Option<Node>| target.map(unwrap).is_some_and(|target| match target.kind() {
@@ -109,9 +114,25 @@ fn upcast(context: &Context, step: Node) -> bool {
     }
 }
 
+/// The classes whose own code calls a method or constructor of a class (not an interface) of
+/// `java.util.concurrent.locks`: SpotBugs looks at no other class.
+fn screened(context: &Context) -> HashSet<String> {
+    let index = context.resolver.index;
+    super::screen::callers(context, &|owner| in_package(owner) && index.get(owner).is_some_and(|info| !info.is_interface))
+}
+
+fn in_package(name: &str) -> bool {
+    name.starts_with("java.util.concurrent.locks.")
+}
+
 pub fn unreleased(context: &Context) {
+    let screened = screened(context);
     for body in super::bodies(context) {
         if !context.text(body).contains("lock") {
+            continue;
+        }
+        let class = enclosing_types(context.resolver.scope, body).into_iter().next();
+        if !class.is_some_and(|class| screened.contains(&class)) {
             continue;
         }
         let Some(label) = names::around(context, body) else { continue };
@@ -123,7 +144,10 @@ pub fn unreleased(context: &Context) {
         if !found.closes {
             continue;
         }
-        let first = |held: &dyn Fn(usize) -> bool| (0..found.sites.len()).filter(|site| held(*site)).min_by_key(|site| found.sites[*site].start_byte());
+        let counted = |site: &usize| found.closed_after[*site];
+        let first = |held: &dyn Fn(usize) -> bool| {
+            (0..found.sites.len()).filter(counted).filter(|site| held(*site)).min_by_key(|site| found.sites[*site].start_byte())
+        };
         let normal = first(&|site| found.normal[site]);
         let exceptional = first(&|site| !found.normal[site] && found.exceptional[site]);
         for (site, pattern, priority, text) in [(normal, PATTERNS[0], 1, "all paths"), (exceptional, PATTERNS[1], 2, "all exception paths")] {

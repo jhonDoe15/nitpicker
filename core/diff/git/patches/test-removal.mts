@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { normalizeGitPath } from '../normalize.mts';
+import { textOf } from '../../../../shared/values/readers.mts';
 import { repositoryPath } from '../paths.mts';
 import { readBlobTexts } from '../repository/blobs.mts';
 import { runGit } from '../repository/command.mts';
@@ -97,8 +98,8 @@ function candidatesOf(target: string): string[] {
 
 export function importedTargets(testFile: string, text: string): string[] | undefined {
   const directory = path.posix.dirname(testFile);
-  const specifiers = [...text.matchAll(IMPORT_SPECIFIER)].map(
-    ([, , specifier]) => (specifier ?? '').split('?')[0] ?? '',
+  const specifiers = [...text.matchAll(IMPORT_SPECIFIER)].map(([, , specifier]) =>
+    textOf(specifier).split('?', 1).join(''),
   );
   if (specifiers.some((specifier) => UNRESOLVABLE_SPECIFIER.test(specifier))) {
     return undefined;
@@ -126,11 +127,12 @@ export function removedTestTargetsOf(
     const text = texts.get(file);
     const imported = text === undefined ? undefined : importedTargets(file, text);
     const found = (imported ?? []).map((target) => insideProject(target, baseProject));
-    if (found.length === 0 || found.includes(undefined)) {
+    const inside = found.filter((target) => target !== undefined);
+    if (inside.length === 0 || inside.length < found.length) {
       return undefined;
     }
-    for (const target of found) {
-      targets.add(target ?? '');
+    for (const target of inside) {
+      targets.add(target);
     }
   }
   return targets;
@@ -143,9 +145,12 @@ export function readTestRemoval(range: DiffRange): TestRemoval {
   if (removed.length === 0) {
     return { testsRemoved: false, removedTestTargets: undefined };
   }
-  const specs = new Map(removed.map((file) => [`${range.mergeBaseSha}:${file}`, file]));
-  const blobs = readBlobTexts(range.repositoryRoot, [...specs.keys()]);
-  const texts = new Map([...blobs].map(([spec, text]) => [specs.get(spec) ?? spec, text]));
+  const prefix = `${range.mergeBaseSha}:`;
+  const blobs = readBlobTexts(
+    range.repositoryRoot,
+    removed.map((file) => `${prefix}${file}`),
+  );
+  const texts = new Map([...blobs].map(([spec, text]) => [spec.slice(prefix.length), text]));
   const baseProject = repositoryPath(range.baseProjectRelativePath ?? range.projectRelativePath);
   return {
     testsRemoved: true,

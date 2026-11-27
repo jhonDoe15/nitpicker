@@ -1,0 +1,929 @@
+[
+ [
+  "k01/src/case-0017.ts",
+  "nitpicker/no-lookup-per-element",
+  7,
+  16,
+  "`mergeMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  7,
+  64
+ ],
+ [
+  "k01/src/case-0018.ts",
+  "nitpicker/no-lookup-per-element",
+  7,
+  16,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  7,
+  65
+ ],
+ [
+  "k01/src/case-0019.ts",
+  "nitpicker/no-lookup-per-element",
+  7,
+  16,
+  "`switchMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  7,
+  65
+ ],
+ [
+  "k01/src/case-0020.ts",
+  "nitpicker/no-lookup-per-element",
+  7,
+  16,
+  "`mergeMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  7,
+  67
+ ],
+ [
+  "k01/src/case-0021.ts",
+  "nitpicker/no-lookup-per-element",
+  7,
+  16,
+  "`mergeMap` runs `service.ownerOf()`, which calls `this.ownerRepository.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  7,
+  66
+ ],
+ [
+  "k01/src/case-0022.ts",
+  "nitpicker/no-lookup-per-element",
+  7,
+  74,
+  "`concatMap` runs `service.ownerOf()`, which calls `this.ownerRepository.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  7,
+  91
+ ],
+ [
+  "k01/src/case-0023.ts",
+  "nitpicker/no-lookup-per-element",
+  7,
+  51,
+  "`concatMap` runs `service.ownerOf()`, which calls `this.ownerRepository.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  7,
+  95
+ ],
+ [
+  "k01/src/case-0024.ts",
+  "nitpicker/no-lookup-per-element",
+  7,
+  39,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids.map((id) => id.trim())`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  7,
+  88
+ ],
+ [
+  "k01/src/case-0025.ts",
+  "nitpicker/no-lookup-per-element",
+  7,
+  17,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  7,
+  66
+ ],
+ [
+  "k02/src/case-0001.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`mergeMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  58
+ ],
+ [
+  "k02/src/case-0002.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  19,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  73
+ ],
+ [
+  "k02/src/case-0003.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`mergeMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  52
+ ],
+ [
+  "k02/src/case-0004.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  52
+ ],
+ [
+  "k02/src/case-0005.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`exhaustMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  60
+ ],
+ [
+  "k02/src/case-0006.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`flatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  57
+ ],
+ [
+  "k02/src/case-0009.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`mergeMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  50
+ ],
+ [
+  "k02/src/case-0010.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  48
+ ],
+ [
+  "k02/src/case-0015.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`mergeMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  54
+ ],
+ [
+  "k02/src/case-0017.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  41,
+  "`mergeMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  85
+ ],
+ [
+  "k02/src/case-0019.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  62,
+  "`mergeMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  110
+ ],
+ [
+  "k02/src/case-0021.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  42,
+  "`mergeMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  113
+ ],
+ [
+  "k02/src/case-0023.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  70,
+  "`mergeMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  125
+ ],
+ [
+  "k02/src/case-0024.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  90,
+  "`mergeMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  134
+ ],
+ [
+  "k02/src/case-0025.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  116,
+  "`mergeMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  165
+ ],
+ [
+  "k02/src/case-0026.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  196,
+  "`mergeMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  245
+ ],
+ [
+  "k02/src/case-0031.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `fetch()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  44
+ ],
+ [
+  "k02/src/case-0037.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  89,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  109
+ ],
+ [
+  "k02/src/case-0039.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`mergeMap` runs `service.remote()`, which calls `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  52
+ ],
+ [
+  "k02/src/case-0040.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `service.ownerOf()`, which calls `this.ownerRepository.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  54
+ ],
+ [
+  "k02/src/case-0041.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  73,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  90
+ ],
+ [
+  "k02/src/case-0043.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  92
+ ],
+ [
+  "k02/src/case-0045.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  18,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `idSet`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  61
+ ],
+ [
+  "k02/src/case-0046.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  18,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `idMap`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  74
+ ],
+ [
+  "k02/src/case-0047.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  19,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `anyIds`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  62
+ ],
+ [
+  "k02/src/case-0048.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  30,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `unknownIds`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  81
+ ],
+ [
+  "k02/src/case-0049.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  19,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `maybe`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  62
+ ],
+ [
+  "k02/src/case-0050.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  17,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `pair`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  60
+ ],
+ [
+  "k02/src/case-0051.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  15,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ro`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  58
+ ],
+ [
+  "k02/src/case-0057.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  37,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids.slice(0, ids.length)`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  80
+ ],
+ [
+  "k02/src/case-0059.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  29,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids.slice(count)`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  72
+ ],
+ [
+  "k02/src/case-0061.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  76,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `the collection`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  119
+ ],
+ [
+  "k02/src/case-0065.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  64,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `batch`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  107
+ ],
+ [
+  "k02/src/case-0067.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  25,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `new Set(ids)`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  68
+ ],
+ [
+  "k02/src/case-0068.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  30,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `new Set([...ids])`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  73
+ ],
+ [
+  "k02/src/case-0069.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  17,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  60
+ ],
+ [
+  "k02/src/case-0072.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  21,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `[...ids]`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  64
+ ],
+ [
+  "k02/src/case-0074.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  41,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  84
+ ],
+ [
+  "k02/src/case-0076.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  39,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  82
+ ],
+ [
+  "k02/src/case-0078.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  24,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  67
+ ],
+ [
+  "k02/src/case-0082.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  73,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  116
+ ],
+ [
+  "k02/src/case-0083.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  72
+ ],
+ [
+  "k02/src/case-0086.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  61,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `rowList`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  108
+ ],
+ [
+  "k02/src/case-0087.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  65
+ ],
+ [
+  "k02/src/case-0088.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  89
+ ],
+ [
+  "k02/src/case-0089.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  127
+ ],
+ [
+  "k02/src/case-0090.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  81
+ ],
+ [
+  "k02/src/case-0091.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  79
+ ],
+ [
+  "k02/src/case-0094.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  83
+ ],
+ [
+  "k02/src/case-0095.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  69
+ ],
+ [
+  "k02/src/case-0099.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`mergeMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  70
+ ],
+ [
+  "k02/src/case-0101.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  17,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  60
+ ],
+ [
+  "k02/src/case-0102.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  103,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `the collection`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  146
+ ],
+ [
+  "k02/src/case-0103.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  67,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `the collection`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  110
+ ],
+ [
+  "k02/src/case-0104.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  100
+ ],
+ [
+  "k02/src/case-0106.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  49,
+  "`mergeMap` runs `this.http.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  87
+ ],
+ [
+  "k02/src/case-0110.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`mergeMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  62
+ ],
+ [
+  "k02/src/case-0111.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`switchMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  70
+ ],
+ [
+  "k02/src/case-0112.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.find()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  65
+ ],
+ [
+  "k02/src/case-0114.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  33,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `all`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  76
+ ],
+ [
+  "k02/src/case-0115.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  39,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `mutable`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  82
+ ],
+ [
+  "k02/src/case-0116.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  37,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  80
+ ],
+ [
+  "k02/src/case-0117.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  34,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `Object.entries(idMap)`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  90
+ ],
+ [
+  "k02/src/case-0118.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  23,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids.flat()`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  66
+ ],
+ [
+  "k02/src/case-0121.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  15,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `[]`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  58
+ ],
+ [
+  "k02/src/case-0122.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  20,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `[, \"a\"]`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  63
+ ],
+ [
+  "k02/src/case-0124.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  116
+ ],
+ [
+  "k02/src/case-0125.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findOneBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  138
+ ],
+ [
+  "k02/src/case-0126.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  107
+ ],
+ [
+  "k02/src/case-0127.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  128
+ ],
+ [
+  "k02/src/case-0128.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  132
+ ],
+ [
+  "k02/src/case-0129.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  91
+ ],
+ [
+  "k02/src/case-0130.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  113
+ ],
+ [
+  "k02/src/case-0131.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  91
+ ],
+ [
+  "k02/src/case-0132.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  94
+ ],
+ [
+  "k02/src/case-0133.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  104
+ ],
+ [
+  "k02/src/case-0134.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  111
+ ],
+ [
+  "k02/src/case-0135.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  113
+ ],
+ [
+  "k02/src/case-0136.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  107
+ ],
+ [
+  "k02/src/case-0137.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  119
+ ],
+ [
+  "k02/src/case-0138.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  96
+ ],
+ [
+  "k02/src/case-0139.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  99
+ ],
+ [
+  "k02/src/case-0140.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  99
+ ],
+ [
+  "k02/src/case-0141.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  91
+ ],
+ [
+  "k02/src/case-0142.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  99
+ ],
+ [
+  "k02/src/case-0143.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  100
+ ],
+ [
+  "k02/src/case-0144.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  130
+ ],
+ [
+  "k02/src/case-0145.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  116
+ ],
+ [
+  "k02/src/case-0146.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  106
+ ],
+ [
+  "k02/src/case-0147.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  107
+ ],
+ [
+  "k02/src/case-0148.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  86
+ ],
+ [
+  "k02/src/case-0149.ts",
+  "nitpicker/no-lookup-per-element",
+  28,
+  16,
+  "`concatMap` runs `owners.findBy()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  28,
+  95
+ ],
+ [
+  "k02/src/case-0150.ts",
+  "nitpicker/no-lookup-per-element",
+  29,
+  16,
+  "`mergeMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  29,
+  59
+ ],
+ [
+  "k02/src/case-0151.ts",
+  "nitpicker/no-lookup-per-element",
+  29,
+  16,
+  "`mergeMap` runs `axios.get()` once for every element of `ids`: N elements make N queries or requests, with or without a concurrency limit. Fetch them in one batched query (`findByIds`, `WHERE id IN (...)`, a batch endpoint) before the pipeline and join the rows to the elements in memory. An exception fits only when the collection is always tiny.",
+  29,
+  59
+ ]
+]
