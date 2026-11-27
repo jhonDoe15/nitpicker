@@ -51,9 +51,15 @@ pub fn code(node: Node, known: &mut Constructors) -> Code {
 
 /// Whether a load is the value of `this.f = this.f` (or `f = f`) for the same field.
 pub fn copies_itself(context: &Context, load: Node) -> bool {
-    let Some(above) = parent(load) else { return false };
+    let mut value = load;
+    let Some(mut above) = parent(load) else { return false };
+    while above.kind() == "parenthesized_expression" {
+        value = above;
+        let Some(next) = parent(above) else { return false };
+        above = next;
+    }
     let plain = above.kind() == "assignment_expression" && above.child_by_field_name("operator").is_some_and(|operator| operator.kind() == "=");
-    let right = above.child_by_field_name("right").is_some_and(|right| right.id() == load.id());
+    let right = above.child_by_field_name("right").is_some_and(|right| right.id() == value.id());
     let Some(left) = above.child_by_field_name("left").filter(|_| plain && right) else { return false };
     let on_this = |side: Node| side.kind() == "identifier" || side.child_by_field_name("object").is_some_and(|object| object.kind() == "this");
     let key = |side: Node| super::super::fields::field_key(context, side);

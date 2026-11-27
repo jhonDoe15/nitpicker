@@ -116,7 +116,7 @@ fn finally(node: Node) -> bool {
 }
 
 /// The outcome javac knows a condition has without testing it, as it folds `&&`, `||` and `!` of constants.
-fn known(context: &Context, node: Node) -> Option<bool> {
+pub fn known(context: &Context, node: Node) -> Option<bool> {
     let operator = node.child_by_field_name("operator").map(|operator| operator.kind());
     let sides = || (node.child_by_field_name("left").and_then(|left| known(context, left)), node.child_by_field_name("right").and_then(|right| known(context, right)));
     match (node.kind(), operator) {

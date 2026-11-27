@@ -1168,15 +1168,19 @@ single character. NM_SAME_SIMPLE_NAME_AS_SUPERCLASS (priority 1) and NM_SAME_SIM
 the name without the package equals that of the direct superclass or of a directly implemented interface.
 
 URF_UNREAD_FIELD and URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD (`attributes/unread.rs`): an instance field that is not
-final, that the run stores into and never loads (`this.f = this.f` is no load). Classes that are serializable or
-declare a native method are skipped, and so are fields whose name starts with `_`. A field of a class whose `Class`
+final, that the run stores into and never loads (`this.f = this.f` is no load, nor a load in code javac drops behind
+a condition it knows, nor a pattern variable named like the field). Classes that are serializable (but for a field
+named `serialVersionUID`) or declare a native method are skipped, and so are fields whose name starts with `_`. With
+Lombok, a field that a getter, `toString`, `equals` or `hashCode` Lombok writes reads counts as loaded. A field of a class whose `Class`
 object the run names (a class literal, `Class.forName` with a constant name, an `assert` in the outermost class) is
 priority 3. The finding sits on the first store SpotBugs meets: classes in visiting order, then the methods in the
 order javac writes them (lambdas last).
 
 DMI_RANDOM_USED_ONLY_ONCE (`sequence/`): after `new Random(...)` or `new SecureRandom(...)` in a compiled method,
 each later call that javac writes against one of those two classes is reported once per called method, until the
-method runs another constructor or a `super.` call. Methods of `Object` and `ints`, `longs`, `doubles` do not count.
+method runs another constructor or a `super.` call. A constructor runs `super(...)` first, then field initializers,
+then its own code; a `for` loop's updates run after its body. Methods of `Object` and `ints`, `longs`, `doubles` do not
+count.
 Priority 1, on the call's arguments line, SARIF place the called method.
 
 IC_SUPERCLASS_USES_SUBCLASS_DURING_INITIALIZATION (`sequence/initialization.rs`): the static initializer of a type

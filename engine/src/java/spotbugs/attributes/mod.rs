@@ -3,6 +3,7 @@
 //! code could change), and SS_SHOULD_BE_STATIC (a final instance field set to a constant). The first three hang on
 //! what every class of the run stores into and reads from the field, so each file notes that and the run decides.
 mod constants;
+mod dropped;
 mod settle;
 mod unread;
 mod writes;
@@ -79,7 +80,8 @@ fn used_name(usage: Node) -> bool {
         "element_value_pair" => is("value"),
         "method_reference" => above.named_child(0).is_some_and(|first| first.id() == usage.id()),
         "scoped_identifier" | "labeled_statement" | "break_statement" | "continue_statement" | "inferred_parameters" | "formal_parameter"
-        | "catch_formal_parameter" | "enum_constant" | "resource" => false,
+        | "catch_formal_parameter" | "enum_constant" | "resource" | "type_pattern" | "record_pattern_component" | "receiver_parameter"
+        | "spread_parameter" => false,
         _ => !is("name"),
     }
 }
@@ -92,6 +94,7 @@ pub fn gather(context: &Context, names: &HashSet<String>) -> Notes {
     }
     let path = context.file.path.clone();
     let known = std::cell::RefCell::new(writes::Constructors::new());
+    let seen = std::cell::RefCell::new(std::collections::HashMap::new());
     let access = |notes: &mut Notes, key: (String, String), node: Node, value: Option<Node>, store: bool| {
         let (Some(by), Some(order)) = (writes::writer(context, node), writes::order(node, &mut known.borrow_mut())) else { return };
         let empty = value.is_some_and(|value| writes::empty_array(context, value));
@@ -131,7 +134,7 @@ pub fn gather(context: &Context, names: &HashSet<String>) -> Notes {
         "identifier" | "field_access" => {
             let name = if node.kind() == "identifier" { Some(node) } else { node.child_by_field_name("field") };
             let wanted = name.is_some_and(|name| names.contains(context.text(name)));
-            if wanted && used_name(node) && reads(node) && !super::compare::reach::dead(context, node)
+            if wanted && used_name(node) && reads(node) && !dropped::dropped(context, node, &mut seen.borrow_mut())
                 && let Some(key) = field_key(context, node)
             {
                 access(&mut notes, key, node, None, false);

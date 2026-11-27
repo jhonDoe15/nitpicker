@@ -4288,5 +4288,22 @@
 ["random1/p/R.java", "PREDICTABLE_RANDOM", 44, "function:p.R.y()"],
 ["random1/p/R.java", "URF_UNREAD_FIELD", 7, "member:p.R.field"],
 ["random1/p/R.java", "PREDICTABLE_RANDOM", 38, "function:new p.R$MyRandom()"],
-["unread2/p/C.java", "DLS_DEAD_LOCAL_STORE", 47, "variable:p.C.mr()#f"]
+["unread2/p/C.java", "DLS_DEAD_LOCAL_STORE", 47, "variable:p.C.mr()#f"],
+["random8/pk/Q2.java", "DMI_RANDOM_USED_ONLY_ONCE", 3, "function:java.util.Random.nextLong()"],
+["random8/pk/Q2.java", "PREDICTABLE_RANDOM", 3, "function:new pk.Q2()"],
+["random8/pk/Q3.java", "DMI_RANDOM_USED_ONLY_ONCE", 3, "function:java.util.Random.nextInt()"],
+["random8/pk/Q3.java", "DMI_RANDOM_USED_ONLY_ONCE", 3, "function:java.util.Random.nextLong()"],
+["random8/pk/Q3.java", "PREDICTABLE_RANDOM", 3, "function:new pk.Q3()"],
+["random8/pk/R.java", "PREDICTABLE_RANDOM", 4, "function:pk.R.o()"],
+["random8/pk/R.java", "PREDICTABLE_RANDOM", 6, "function:pk.R.o2()"],
+["unread14/pk/W.java", "URF_UNREAD_FIELD", 4, "member:pk.W.f"],
+["unread14/pk/W.java", "URF_UNREAD_FIELD", 4, "member:pk.W.g"],
+["unread14/pk/W.java", "URF_UNREAD_FIELD", 4, "member:pk.W.h"],
+["unread14/pk/W.java", "URF_UNREAD_FIELD", 4, "member:pk.W.k"],
+["unread14/pk/W.java", "URF_UNREAD_FIELD", 4, "member:pk.W.m"],
+["unread14/pk/W2.java", "DLS_DEAD_LOCAL_STORE_SHADOWS_FIELD", 5, "variable:pk.W2.a(Object)#f"],
+["unread14/pk/W2.java", "URF_UNREAD_FIELD", 4, "member:pk.W2.f"],
+["unread14/pk/W2.java", "URF_UNREAD_FIELD", 4, "member:pk.W2.f2"],
+["unread14/pk/W2.java", "URF_UNREAD_FIELD", 4, "member:pk.W2.g"],
+["unread14/pk/W2.java", "URF_UNREAD_FIELD", 4, "member:pk.W2.g2"]
 ]

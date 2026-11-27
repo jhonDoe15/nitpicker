@@ -10,7 +10,7 @@ mod initialization;
 
 use super::idioms::{Compiled, called, compiled};
 use super::{Context, names};
-use crate::engine::source::{children, parent};
+use crate::engine::source::{ancestor, children, parent};
 use crate::java::types::model::Type;
 use crate::java::types::scope::{TYPE_DECLARATIONS, enclosing_types};
 use std::collections::HashSet;
@@ -26,7 +26,9 @@ const SKIPPED: &[&str] = &["toString", "hashCode", "equals", "getClass", "wait",
 pub fn runs_at(node: Node) -> (usize, usize) {
     let mut current = node;
     while let Some(above) = parent(current) {
-        if above.kind() == "for_statement" && above.child_by_field_name("update").is_some_and(|update| update.id() == current.id()) {
+        let mut cursor = above.walk();
+        let update = above.kind() == "for_statement" && above.children_by_field_name("update", &mut cursor).any(|update| update.id() == current.id());
+        if update {
             let body = above.child_by_field_name("body").map_or(above.end_byte(), |body| body.end_byte());
             return (body, node.end_byte());
         }
@@ -38,7 +40,8 @@ pub fn runs_at(node: Node) -> (usize, usize) {
     (node.end_byte(), 0)
 }
 
-/// The member of a class body that holds a node: javac runs field initializers before a constructor's own code.
+/// The member of a class body that holds a node: javac runs `super(...)` or `this(...)`, then field initializers,
+/// then the rest of a constructor's code.
 fn member_of(node: Node) -> Option<Node> {
     let mut current = node;
     loop {
@@ -109,6 +112,8 @@ fn random_once(context: &Context, methods: &[Compiled]) {
                 parts.push(root);
                 parts.len() - 1
             });
+            let first = node.kind() == "explicit_constructor_invocation" || ancestor(*node, &["explicit_constructor_invocation"]).is_some();
+            let part = if first { 0 } else { part + 1 };
             if matches!(node.kind(), "object_creation_expression" | "method_invocation" | "explicit_constructor_invocation") {
                 events.push(((part, runs_at(*node)), *node));
             }

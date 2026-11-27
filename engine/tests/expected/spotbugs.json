@@ -6494,5 +6494,22 @@
 ["random1/p/R.java", "PREDICTABLE_RANDOM", 43, "This random generator (java.util.Random) is predictable"],
 ["random1/p/R.java", "DMI_RANDOM_USED_ONLY_ONCE", 44, "Random object created and used only once in p.R.y()"],
 ["random1/p/R.java", "PREDICTABLE_RANDOM", 44, "This random generator (java.util.Random) is predictable"],
-["unread2/p/C.java", "DLS_DEAD_LOCAL_STORE", 47, "Dead store to f in p.C.mr()"]
+["unread2/p/C.java", "DLS_DEAD_LOCAL_STORE", 47, "Dead store to f in p.C.mr()"],
+["random8/pk/Q2.java", "DMI_RANDOM_USED_ONLY_ONCE", 3, "Random object created and used only once in new pk.Q2()"],
+["random8/pk/Q2.java", "PREDICTABLE_RANDOM", 3, "This random generator (java.util.Random) is predictable"],
+["random8/pk/Q3.java", "DMI_RANDOM_USED_ONLY_ONCE", 3, "Random object created and used only once in new pk.Q3()"],
+["random8/pk/Q3.java", "DMI_RANDOM_USED_ONLY_ONCE", 3, "Random object created and used only once in new pk.Q3()"],
+["random8/pk/Q3.java", "PREDICTABLE_RANDOM", 3, "This random generator (java.util.Random) is predictable"],
+["random8/pk/R.java", "PREDICTABLE_RANDOM", 4, "This random generator (java.util.Random) is predictable"],
+["random8/pk/R.java", "PREDICTABLE_RANDOM", 6, "This random generator (java.util.Random) is predictable"],
+["unread14/pk/W.java", "URF_UNREAD_FIELD", 4, "Unread field: pk.W.f"],
+["unread14/pk/W.java", "URF_UNREAD_FIELD", 4, "Unread field: pk.W.g"],
+["unread14/pk/W.java", "URF_UNREAD_FIELD", 4, "Unread field: pk.W.h"],
+["unread14/pk/W.java", "URF_UNREAD_FIELD", 4, "Unread field: pk.W.k"],
+["unread14/pk/W.java", "URF_UNREAD_FIELD", 4, "Unread field: pk.W.m"],
+["unread14/pk/W2.java", "URF_UNREAD_FIELD", 4, "Unread field: pk.W2.f"],
+["unread14/pk/W2.java", "URF_UNREAD_FIELD", 4, "Unread field: pk.W2.f2"],
+["unread14/pk/W2.java", "URF_UNREAD_FIELD", 4, "Unread field: pk.W2.g"],
+["unread14/pk/W2.java", "URF_UNREAD_FIELD", 4, "Unread field: pk.W2.g2"],
+["unread14/pk/W2.java", "DLS_DEAD_LOCAL_STORE_SHADOWS_FIELD", 5, "Dead store to f rather than field with same name in pk.W2.a(Object)"]
 ]
