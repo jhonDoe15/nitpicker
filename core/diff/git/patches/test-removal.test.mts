@@ -86,6 +86,24 @@ describe('the code a removed test imported', () => {
     expect(removedTestTargetsOf(['app/a.test.ts'], texts, 'app')).toEqual(new Set(['a.ts']));
   });
 
+  it('leaves out test data, which no test runner loads as a test', () => {
+    const texts = new Map([
+      ['tests/a.test.ts', "import { a } from '../a.ts';"],
+      ['tests/expected/a.json', '{}'],
+    ]);
+
+    expect(removedTestTargetsOf(['tests/a.test.ts', 'tests/expected/a.json'], texts, '')).toEqual(
+      new Set(['a.ts']),
+    );
+    expect(removedTestTargetsOf(['tests/expected/a.json'], texts, '')).toEqual(new Set());
+  });
+
+  it('knows no targets when a removed test is in another language', () => {
+    const texts = new Map([['src/test/java/a/ATest.java', 'import a.A;']]);
+
+    expect(removedTestTargetsOf(['src/test/java/a/ATest.java'], texts, '')).toBeUndefined();
+  });
+
   it.each([
     ['imports nothing relative', new Map([['a.test.ts', "import { a } from '@app/a';"]])],
     ['cannot be read at the base', new Map<string, string>()],
