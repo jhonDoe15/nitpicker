@@ -1,0 +1,1 @@
+import { Repository } from "typeorm"; export async function run(repo, prisma, db, em, Order, id, ids) { const rows = await repo.find({ lock: { mode: "pessimistic_read" } }); return rows.length; }

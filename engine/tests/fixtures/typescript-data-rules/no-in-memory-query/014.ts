@@ -1,0 +1,1 @@
+ export async function run(repo, prisma, db, em, Order, id, ids) { const rows = await client.findAll(); return rows.length; }

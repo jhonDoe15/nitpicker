@@ -1,0 +1,1 @@
+import { Repository } from "typeorm"; export async function run(repo) { return (await repo.find({ where: { a: 1 } })).length; }

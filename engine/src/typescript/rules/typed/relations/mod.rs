@@ -15,12 +15,3 @@ impl Types {
         Some((any, name))
     }
 }
-
-impl Types {
-    /// The declarations of `type.getProperty(name)` for the type of the node with this handle; the name goes to
-    /// the compiler as written, as `getProperty` takes it.
-    pub fn property_declarations_named(&mut self, handle: &str, name: &str) -> Vec<String> {
-        let Some(kind) = self.type_at_handle(handle) else { return Vec::new() };
-        self.property(&kind, name).map(|symbol| symbol.declarations.clone()).unwrap_or_default()
-    }
-}

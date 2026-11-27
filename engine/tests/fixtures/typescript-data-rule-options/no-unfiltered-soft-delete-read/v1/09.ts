@@ -1,0 +1,1 @@
+class S { find() { return this.prisma.asset.findMany({ where: { deletedAt: null } }); } }

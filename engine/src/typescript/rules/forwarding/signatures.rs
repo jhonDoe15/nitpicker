@@ -42,12 +42,12 @@ pub fn has_same_signature(types: &mut Types, own: (&str, &MethodFacts), target: 
 }
 
 fn has_property(types: &mut Types, owner: &Type, name: &str) -> bool {
-    types.named_property(owner, name).is_some()
+    types.property(owner, name).is_some()
 }
 
 fn is_merged(types: &mut Types, class: &str, name: &str) -> bool {
     let Some(own) = types.type_of(class) else { return false };
-    let Some(property) = types.named_property(&own, name) else { return false };
+    let Some(property) = types.property(&own, name) else { return false };
     property.declarations.iter().any(|declaration| types.parent_of(declaration).as_deref() != Some(class))
 }
 

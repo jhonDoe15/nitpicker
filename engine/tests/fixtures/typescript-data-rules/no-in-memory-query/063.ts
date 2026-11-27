@@ -1,0 +1,1 @@
+import { Model } from "sequelize"; export async function run(repo, prisma, db, em, Order, id, ids) { const rows = await Order.findAll({ where: { id } }); return rows.length; }

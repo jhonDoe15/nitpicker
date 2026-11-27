@@ -75,7 +75,7 @@ impl Types {
         let parts = if kind.flags & type_flags::UNION != 0 { self.parts(&kind).to_vec() } else { vec![kind] };
         for part in parts {
             let Some(apparent) = self.apparent(&part) else { continue };
-            let Some(then) = self.named_property(&apparent, "then") else { continue };
+            let Some(then) = self.property(&apparent, "then") else { continue };
             let found = self.session.server.type_of_symbol_at(&self.session.project, then.id, call);
             let Some(callable) = self.answered(found) else { continue };
             if self.signature_count(&callable, false) > 0 {
@@ -88,7 +88,7 @@ impl Types {
     /// The declarations of a property of the type at the node: `getPropertyOfType(getTypeAtLocation(node), name)`.
     pub fn property_declarations(&mut self, handle: &str, name: &str) -> Vec<String> {
         let Some(kind) = self.type_at_handle(handle) else { return Vec::new() };
-        self.named_property(&kind, name).map(|symbol| symbol.declarations.clone()).unwrap_or_default()
+        self.property(&kind, name).map(|symbol| symbol.declarations.clone()).unwrap_or_default()
     }
 
     /// The files of the program, in the compiler's order.

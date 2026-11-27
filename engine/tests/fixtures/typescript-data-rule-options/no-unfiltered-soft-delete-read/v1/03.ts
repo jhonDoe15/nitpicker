@@ -1,0 +1,1 @@
+async function f(db) { return db.selectFrom('album').selectAll().execute(); }

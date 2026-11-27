@@ -1,0 +1,1 @@
+class S { find() { return this.assetRepository.find({ withDeleted: true }); } }
