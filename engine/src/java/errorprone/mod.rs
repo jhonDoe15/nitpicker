@@ -14,6 +14,14 @@ mod record_components;
 mod modify_source;
 mod type_shadowing;
 mod use_binds;
+mod fix_compiles;
+mod assert_throws_fix;
+mod assert_throws_minimizer;
+mod assert_throws_types;
+mod missing_fail;
+mod missing_fail_parts;
+mod truth_expected;
+mod fix_compiles_writes;
 mod format_validation;
 mod format_string;
 mod format_annotation;
@@ -344,6 +352,7 @@ pub struct Context<'a> {
     line_starts: Vec<usize>,
     selected: Option<Vec<String>>,
     out: std::cell::RefCell<Vec<Finding>>,
+    handed: std::cell::RefCell<Vec<&'static str>>,
     /// The class each name in the file stands for, as written and in full: two checks read every name.
     pub named: std::cell::RefCell<std::collections::HashMap<usize, Option<(String, String)>>>,
 }
@@ -365,6 +374,16 @@ impl Context<'_> {
             return;
         }
         self.report_always(check, offset, &format!("{message}{}", fixes::sentence(&self.file.text, fixes)));
+    }
+    /// Leaves the check's findings in this file to Error Prone, unless the check is not selected or is suppressed there.
+    pub fn hand_back(&self, check: &'static str, matched: Node) {
+        if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == check)) || self.suppressed(check, matched) {
+            return;
+        }
+        let mut handed = self.handed.borrow_mut();
+        if !handed.contains(&check) {
+            handed.push(check);
+        }
     }
     /// Reports at a raw position with the sentence for the fixes, without looking for a suppression.
     pub fn report_always_fixed(&self, check: &'static str, offset: usize, message: &str, fixes: &[fixes::Fix]) {
@@ -424,7 +443,7 @@ impl Context<'_> {
     pub fn suppressed(&self, check: &str, node: Node) -> bool {
         let mut current = Some(node);
         while let Some(at) = current {
-            if DECLARATIONS.contains(&at.kind()) && self.suppress_strings(at).iter().any(|name| name == check || name == "all") {
+            if DECLARATIONS.contains(&at.kind()) && self.suppress_strings(at).iter().any(|name| name == check || name == "all" || ALT_NAMES.contains(&(check, name.as_str()))) {
                 return true;
             }
             current = parent(at);
@@ -811,6 +830,12 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["InvalidZoneId"], time_constants::invalid_zone_id),
     (&["InvalidJavaTimeConstant"], time_constants::invalid_java_time_constant),
     (&["AlwaysThrows"], always_throws::always_throws),
+    (&["StaticMockMember"], fix_compiles::static_mock_member),
+    (&["MissingFail"], missing_fail::missing_fail),
+    (&["TryFailRefactoring"], assert_throws_fix::try_fail_refactoring),
+    (&["AssertThrowsMinimizer"], assert_throws_minimizer::assert_throws_minimizer),
+    (&["TruthAssertExpected"], truth_expected::truth_assert_expected),
+    (&["MutableGuiceModule"], fix_compiles::mutable_guice_module),
     (&["NewFileSystem"], always_throws::new_file_system),
     (&["StringJoin"], size_join::string_join),
     (&["SizeGreaterThanOrEqualsZero"], size_join::size_greater_than_or_equals_zero),
@@ -1045,6 +1070,9 @@ const NOT_ON_TEST_ONLY: &[&str] = &[
     "StaticAssignmentOfThrowable", "ThrowSpecificExceptions", "TimeInStaticInitializer",
 ];
 
+/// Other names a check answers to in `@SuppressWarnings` (`altNames`), for the checks ported with theirs.
+const ALT_NAMES: &[(&str, &str)] = &[("MissingFail", "missing-fail")];
+
 pub struct ErrorProne;
 
 /// The row that lists, for each file the engine read, the checks of `NP_EP_MAY_REPORT` that may report there.
@@ -1055,6 +1083,9 @@ const REWRITTEN: &str = "_Rewritten";
 /// The row for a place where Lombok rewrites written code in a way the engine does not model (`lombok_rewrites`):
 /// Error Prone has to check that file.
 const LOMBOK_REWRITE: &str = "_LombokRewrite";
+/// The row that lists, for a file, the checks whose findings there the engine leaves to Error Prone: it found them, but
+/// cannot tell what Error Prone's recompile with the fix would say.
+const HAND_BACK: &str = "_HandBack";
 /// Checks whose findings nitpicker drops inside classes with certain annotations; their rows carry the annotations.
 const CLASS_EXEMPTED: &[&str] = &["IdentifierName", "PrivateConstructorForUtilityClass"];
 const CLASS_KINDS: &[&str] = &[
@@ -1110,7 +1141,7 @@ impl FileRule for ErrorProne {
         let mut line_starts = vec![0];
         line_starts.extend(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1));
         let selected = std::env::var("NP_EP_ONLY").ok().map(|names| names.split(',').map(String::from).collect());
-        let context = Context { resolver, project, file, line_starts, selected, out: std::cell::RefCell::new(Vec::new()), named: std::cell::RefCell::new(std::collections::HashMap::new()) };
+        let context = Context { resolver, project, file, line_starts, selected, out: std::cell::RefCell::new(Vec::new()), handed: std::cell::RefCell::new(Vec::new()), named: std::cell::RefCell::new(std::collections::HashMap::new()) };
         let wanted = |names: &[&str]| {
             !names.iter().all(|name| context.skipped(name))
                 && context.selected.as_ref().is_none_or(|selected| names.iter().any(|name| selected.iter().any(|one| one == name)))
@@ -1128,6 +1159,7 @@ impl FileRule for ErrorProne {
         }
         let rewrites = if project.index.lombok { lombok_rewrites::rewrites(&context, file.tree.root_node()) } else { Vec::new() };
         let places: Vec<(usize, usize)> = rewrites.iter().map(|rewrite| context.line_column(rewrite.at)).collect();
+        let handed = context.handed.take();
         let mut found = context.out.into_inner();
         for (rewrite, (line, column)) in rewrites.into_iter().zip(places) {
             found.push(Finding {
@@ -1136,6 +1168,18 @@ impl FileRule for ErrorProne {
                 column,
                 rule: LOMBOK_REWRITE.to_string(),
                 message: rewrite.feature.to_string(),
+                symbol: None,
+                priority: None,
+                arguments: None,
+            });
+        }
+        if !handed.is_empty() {
+            found.push(Finding {
+                file: file.path.clone(),
+                line: 1,
+                column: 1,
+                rule: HAND_BACK.to_string(),
+                message: handed.join(","),
                 symbol: None,
                 priority: None,
                 arguments: None,

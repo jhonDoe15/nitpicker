@@ -559,5 +559,11 @@
  "RecordComponentAccessorAnnotationConflict",
  "ModifySourceCollectionInStream",
  "TypeNameShadowing",
- "UseBinds"
+ "UseBinds",
+ "StaticMockMember",
+ "TruthAssertExpected",
+ "MutableGuiceModule",
+ "MissingFail",
+ "TryFailRefactoring",
+ "AssertThrowsMinimizer"
 ]

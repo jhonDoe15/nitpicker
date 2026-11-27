@@ -1,13 +1,17 @@
 import path from 'node:path';
 import { engineFindingOf } from '../../../../../shared/engine/engine-rows.mts';
 import { fieldOf, listOf, textsOf } from '../../../../../shared/values/readers.mts';
-import type { ArgumentSet } from '../engine-arguments.mts';
+import { projectArguments, type ArgumentSet } from '../engine-arguments.mts';
 import type { EngineRow } from '../engine-diagnostics.mts';
 import { NOT_DISABLEABLE } from '../options/check-levels.mts';
 import { lombokUnsuppressed } from './runner-checks.mts';
 import type { SourceSetPlan } from './source-set-plan.mts';
 
 const MAY_REPORT = '_MayReport';
+const HAND_BACK = '_HandBack';
+/** Checks whose suggestion Error Prone shows only when javac still compiles the sources with the fix applied. */
+const RECOMPILED = new Set(['MutableGuiceModule', 'StaticMockMember', 'TruthAssertExpected']);
+const SUGGESTION = '\n  Did you mean ';
 
 /** For each file, the checks the engine was asked about that may report there. */
 export function mayReportOf(report: unknown): ReadonlyMap<string, readonly string[]> {
@@ -17,6 +21,43 @@ export function mayReportOf(report: unknown): ReadonlyMap<string, readonly strin
       .filter(({ rule }) => rule === MAY_REPORT)
       .map(({ file, message }) => [file, message.split(',').filter(Boolean)] as const),
   );
+}
+
+/**
+ * javac warnings can fail Error Prone's recompile (100 of them, or one under `-Werror`), which the engine cannot count:
+ * with `-Werror` or `-Xlint` the suggestions it found for those checks go back to Error Prone.
+ */
+function warningsDecide(head: readonly string[]): boolean {
+  return projectArguments(head).some(
+    (argument) => argument === '-Werror' || (argument.startsWith('-Xlint') && argument !== '-Xlint:none'),
+  );
+}
+
+/**
+ * For each file, the engine's checks that go back to Error Prone: the ones the engine says it cannot decide there, the
+ * recompiled checks' suggestions when warnings decide them, and the ones of `others`.
+ */
+export function engineHandedBack(
+  report: unknown,
+  { head }: ArgumentSet,
+  rows: readonly EngineRow[],
+  others: ReadonlyMap<string, readonly string[]>,
+): ReadonlyMap<string, readonly string[]> {
+  const back = new Map<string, string[]>([...others].map(([file, checks]) => [file, [...checks]]));
+  const add = (file: string, check: string) => {
+    back.set(file, [...new Set([...(back.get(file) ?? []), check])]);
+  };
+  for (const { rule, file, message } of listOf(fieldOf(report, 'findings')).map(engineFindingOf)) {
+    if (rule === HAND_BACK) {
+      message.split(',').filter(Boolean).forEach((check) => add(file, check));
+    }
+  }
+  if (warningsDecide(head)) {
+    rows
+      .filter(({ rule, message }) => RECOMPILED.has(rule) && message.includes(SUGGESTION))
+      .forEach(({ rule, file }) => add(file, rule));
+  }
+  return back;
 }
 
 function slashed(file: string): string {
