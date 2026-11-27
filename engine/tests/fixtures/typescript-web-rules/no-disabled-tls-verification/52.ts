@@ -1,0 +1,1 @@
+export const browser = { acceptInsecureCerts: true };

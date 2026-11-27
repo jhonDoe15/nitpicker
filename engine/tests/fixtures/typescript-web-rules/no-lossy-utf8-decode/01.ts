@@ -1,0 +1,1 @@
+import { readFileSync, writeFileSync } from "node:fs"; export function f() { writeFileSync("package.json", readFileSync("package.json", "utf8").replace("a", "b")); }

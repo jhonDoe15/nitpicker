@@ -1,0 +1,1 @@
+document.querySelectorAll(`li:nth-child(${index})`);

@@ -1,0 +1,1 @@
+const d = new TextDecoder("utf8", { fatal: false }); export const v = JSON.parse(d.decode(bytes));

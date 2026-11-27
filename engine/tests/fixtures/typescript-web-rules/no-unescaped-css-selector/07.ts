@@ -1,0 +1,1 @@
+const id = "main"; document.querySelector(`#${id}`);

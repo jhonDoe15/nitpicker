@@ -1,0 +1,1 @@
+export const args = ["--no-sandbox", "--ignore-certificate-errors"];

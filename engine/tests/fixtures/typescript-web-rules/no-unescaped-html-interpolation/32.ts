@@ -1,0 +1,1 @@
+export const a = (to: string) => { throw new Error(`Expected <Link to="${to}"> to be set`); };

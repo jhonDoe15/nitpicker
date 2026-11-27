@@ -1,0 +1,1 @@
+export function f(x: unknown) { return toString.call(x) === "[object Response]"; }

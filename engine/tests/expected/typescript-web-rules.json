@@ -1,5 +1,113 @@
 [
  [
+  "no-btoa-on-runtime-text/19.ts",
+  "nitpicker/no-btoa-on-runtime-text",
+  1,
+  65,
+  "`btoa` throws for any character above U+00FF, so a name, password or JSON with an accented letter, emoji or CJK text fails. Encode to UTF-8 bytes first: `Buffer.from(text, \"utf8\").toString(\"base64\")` or `new TextEncoder().encode(text)` with a bytes-to-base64 step.",
+  1,
+  72
+ ],
+ [
+  "no-btoa-on-runtime-text/20.ts",
+  "nitpicker/no-btoa-on-runtime-text",
+  1,
+  27,
+  "`btoa` throws for any character above U+00FF, so a name, password or JSON with an accented letter, emoji or CJK text fails. Encode to UTF-8 bytes first: `Buffer.from(text, \"utf8\").toString(\"base64\")` or `new TextEncoder().encode(text)` with a bytes-to-base64 step.",
+  1,
+  54
+ ],
+ [
+  "no-btoa-on-runtime-text/21.ts",
+  "nitpicker/no-btoa-on-runtime-text",
+  1,
+  18,
+  "`btoa` throws for any character above U+00FF, so a name, password or JSON with an accented letter, emoji or CJK text fails. Encode to UTF-8 bytes first: `Buffer.from(text, \"utf8\").toString(\"base64\")` or `new TextEncoder().encode(text)` with a bytes-to-base64 step.",
+  1,
+  32
+ ],
+ [
+  "no-btoa-on-runtime-text/22.ts",
+  "nitpicker/no-btoa-on-runtime-text",
+  1,
+  18,
+  "`btoa` throws for any character above U+00FF, so a name, password or JSON with an accented letter, emoji or CJK text fails. Encode to UTF-8 bytes first: `Buffer.from(text, \"utf8\").toString(\"base64\")` or `new TextEncoder().encode(text)` with a bytes-to-base64 step.",
+  1,
+  31
+ ],
+ [
+  "no-btoa-on-runtime-text/23.ts",
+  "nitpicker/no-btoa-on-runtime-text",
+  1,
+  18,
+  "`btoa` throws for any character above U+00FF, so a name, password or JSON with an accented letter, emoji or CJK text fails. Encode to UTF-8 bytes first: `Buffer.from(text, \"utf8\").toString(\"base64\")` or `new TextEncoder().encode(text)` with a bytes-to-base64 step.",
+  1,
+  35
+ ],
+ [
+  "no-btoa-on-runtime-text/24.ts",
+  "nitpicker/no-btoa-on-runtime-text",
+  1,
+  18,
+  "`btoa` throws for any character above U+00FF, so a name, password or JSON with an accented letter, emoji or CJK text fails. Encode to UTF-8 bytes first: `Buffer.from(text, \"utf8\").toString(\"base64\")` or `new TextEncoder().encode(text)` with a bytes-to-base64 step.",
+  1,
+  50
+ ],
+ [
+  "no-btoa-on-runtime-text/25.ts",
+  "nitpicker/no-btoa-on-runtime-text",
+  1,
+  18,
+  "`btoa` throws for any character above U+00FF, so a name, password or JSON with an accented letter, emoji or CJK text fails. Encode to UTF-8 bytes first: `Buffer.from(text, \"utf8\").toString(\"base64\")` or `new TextEncoder().encode(text)` with a bytes-to-base64 step.",
+  1,
+  58
+ ],
+ [
+  "no-btoa-on-runtime-text/26.ts",
+  "nitpicker/no-btoa-on-runtime-text",
+  1,
+  41,
+  "`btoa` throws for any character above U+00FF, so a name, password or JSON with an accented letter, emoji or CJK text fails. Encode to UTF-8 bytes first: `Buffer.from(text, \"utf8\").toString(\"base64\")` or `new TextEncoder().encode(text)` with a bytes-to-base64 step.",
+  1,
+  50
+ ],
+ [
+  "no-btoa-on-runtime-text/27.ts",
+  "nitpicker/no-btoa-on-runtime-text",
+  1,
+  71,
+  "`btoa` throws for any character above U+00FF, so a name, password or JSON with an accented letter, emoji or CJK text fails. Encode to UTF-8 bytes first: `Buffer.from(text, \"utf8\").toString(\"base64\")` or `new TextEncoder().encode(text)` with a bytes-to-base64 step.",
+  1,
+  86
+ ],
+ [
+  "no-btoa-on-runtime-text/28.ts",
+  "nitpicker/no-btoa-on-runtime-text",
+  1,
+  75,
+  "`btoa` throws for any character above U+00FF, so a name, password or JSON with an accented letter, emoji or CJK text fails. Encode to UTF-8 bytes first: `Buffer.from(text, \"utf8\").toString(\"base64\")` or `new TextEncoder().encode(text)` with a bytes-to-base64 step.",
+  1,
+  85
+ ],
+ [
+  "no-btoa-on-runtime-text/29.ts",
+  "nitpicker/no-btoa-on-runtime-text",
+  1,
+  18,
+  "`btoa` throws for any character above U+00FF, so a name, password or JSON with an accented letter, emoji or CJK text fails. Encode to UTF-8 bytes first: `Buffer.from(text, \"utf8\").toString(\"base64\")` or `new TextEncoder().encode(text)` with a bytes-to-base64 step.",
+  1,
+  40
+ ],
+ [
+  "no-btoa-on-runtime-text/r-02.ts",
+  "nitpicker/no-btoa-on-runtime-text",
+  2,
+  77,
+  "`btoa` throws for any character above U+00FF, so a name, password or JSON with an accented letter, emoji or CJK text fails. Encode to UTF-8 bytes first: `Buffer.from(text, \"utf8\").toString(\"base64\")` or `new TextEncoder().encode(text)` with a bytes-to-base64 step.",
+  2,
+  84
+ ],
+ [
   "no-case-mixed-header-merge/16.ts",
   "nitpicker/no-case-mixed-header-merge",
   1,
@@ -214,6 +322,411 @@
   "Host names and URI authorities are case-insensitive. Lowercase both sides (`a.toLowerCase() === b.toLowerCase()`) before comparing them.",
   1,
   38
+ ],
+ [
+  "no-disabled-tls-verification/28.ts",
+  "nitpicker/no-disabled-tls-verification",
+  63,
+  26,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  63,
+  51
+ ],
+ [
+  "no-disabled-tls-verification/29.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  26,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  51
+ ],
+ [
+  "no-disabled-tls-verification/30.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  72,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  97
+ ],
+ [
+  "no-disabled-tls-verification/31.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  84,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  109
+ ],
+ [
+  "no-disabled-tls-verification/32.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  50,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  78
+ ],
+ [
+  "no-disabled-tls-verification/33.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  26,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  53
+ ],
+ [
+  "no-disabled-tls-verification/34.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  26,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  55
+ ],
+ [
+  "no-disabled-tls-verification/35.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  60,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  78
+ ],
+ [
+  "no-disabled-tls-verification/36.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  26,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  73
+ ],
+ [
+  "no-disabled-tls-verification/37.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  16,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  41
+ ],
+ [
+  "no-disabled-tls-verification/38.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  1,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  47
+ ],
+ [
+  "no-disabled-tls-verification/39.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  1,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  48
+ ],
+ [
+  "no-disabled-tls-verification/40.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  26,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  64
+ ],
+ [
+  "no-disabled-tls-verification/41.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  30,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  63
+ ],
+ [
+  "no-disabled-tls-verification/42.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  87,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  120
+ ],
+ [
+  "no-disabled-tls-verification/43.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  49,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  93
+ ],
+ [
+  "no-disabled-tls-verification/44.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  20,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  57
+ ],
+ [
+  "no-disabled-tls-verification/45.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  1,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  53
+ ],
+ [
+  "no-disabled-tls-verification/46.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  1,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  42
+ ],
+ [
+  "no-disabled-tls-verification/47.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  26,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  55
+ ],
+ [
+  "no-disabled-tls-verification/48.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  26,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  69
+ ],
+ [
+  "no-disabled-tls-verification/49.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  68,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  93
+ ],
+ [
+  "no-disabled-tls-verification/50.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  25,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  41
+ ],
+ [
+  "no-disabled-tls-verification/51.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  26,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  49
+ ],
+ [
+  "no-disabled-tls-verification/52.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  26,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  51
+ ],
+ [
+  "no-disabled-tls-verification/53.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  38,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  67
+ ],
+ [
+  "no-disabled-tls-verification/54.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  26,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  54
+ ],
+ [
+  "no-disabled-tls-verification/55.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  72,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  129
+ ],
+ [
+  "no-disabled-tls-verification/56.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  93,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  119
+ ],
+ [
+  "no-disabled-tls-verification/57.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  22,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  78
+ ],
+ [
+  "no-disabled-tls-verification/58.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  26,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  70
+ ],
+ [
+  "no-disabled-tls-verification/59.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  100,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  133
+ ],
+ [
+  "no-disabled-tls-verification/60.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  89,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  106
+ ],
+ [
+  "no-disabled-tls-verification/61.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  89,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  119
+ ],
+ [
+  "no-disabled-tls-verification/62.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  26,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  44
+ ],
+ [
+  "no-disabled-tls-verification/63.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  20,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  84
+ ],
+ [
+  "no-disabled-tls-verification/64.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  62,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  89
+ ],
+ [
+  "no-disabled-tls-verification/65.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  64,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  93
+ ],
+ [
+  "no-disabled-tls-verification/66.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  88,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  135
+ ],
+ [
+  "no-disabled-tls-verification/67.ts",
+  "nitpicker/no-disabled-tls-verification",
+  1,
+  20,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  1,
+  52
+ ],
+ [
+  "no-disabled-tls-verification/r-01.ts",
+  "nitpicker/no-disabled-tls-verification",
+  10,
+  5,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  10,
+  26
+ ],
+ [
+  "no-disabled-tls-verification/r-01.ts",
+  "nitpicker/no-disabled-tls-verification",
+  13,
+  5,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  13,
+  26
+ ],
+ [
+  "no-disabled-tls-verification/r-01.ts",
+  "nitpicker/no-disabled-tls-verification",
+  16,
+  5,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  16,
+  26
+ ],
+ [
+  "no-disabled-tls-verification/r-01.ts",
+  "nitpicker/no-disabled-tls-verification",
+  4,
+  5,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  4,
+  26
+ ],
+ [
+  "no-disabled-tls-verification/r-01.ts",
+  "nitpicker/no-disabled-tls-verification",
+  7,
+  5,
+  "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.",
+  7,
+  26
  ],
  [
   "no-double-decode/19.ts",
@@ -1024,6 +1537,114 @@
   "This `replace` adds a backslash before a character but nothing escapes the backslash itself, so a value holding `\\` round-trips wrong. Match both in one pattern: `value.replace(/[\\\\\"]/g, (c) => `\\\\${c}`)`.",
   1,
   68
+ ],
+ [
+  "no-lossy-utf8-decode/15.ts",
+  "nitpicker/no-lossy-utf8-decode",
+  1,
+  29,
+  "`new TextDecoder()` without `fatal: true` replaces invalid UTF-8 with U+FFFD, so this text is parsed, compared or written from corrupted data with no error. Use `new TextDecoder('utf-8', { fatal: true })`.",
+  1,
+  60
+ ],
+ [
+  "no-lossy-utf8-decode/16.ts",
+  "nitpicker/no-lossy-utf8-decode",
+  1,
+  65,
+  "`new TextDecoder()` without `fatal: true` replaces invalid UTF-8 with U+FFFD, so this text is parsed, compared or written from corrupted data with no error. Use `new TextDecoder('utf-8', { fatal: true })`.",
+  1,
+  80
+ ],
+ [
+  "no-lossy-utf8-decode/17.ts",
+  "nitpicker/no-lossy-utf8-decode",
+  1,
+  82,
+  "`new TextDecoder()` without `fatal: true` replaces invalid UTF-8 with U+FFFD, so this text is parsed, compared or written from corrupted data with no error. Use `new TextDecoder('utf-8', { fatal: true })`.",
+  1,
+  97
+ ],
+ [
+  "no-lossy-utf8-decode/18.ts",
+  "nitpicker/no-lossy-utf8-decode",
+  1,
+  57,
+  "`new TextDecoder()` without `fatal: true` replaces invalid UTF-8 with U+FFFD, so this text is parsed, compared or written from corrupted data with no error. Use `new TextDecoder('utf-8', { fatal: true })`.",
+  1,
+  84
+ ],
+ [
+  "no-lossy-utf8-decode/19.ts",
+  "nitpicker/no-lossy-utf8-decode",
+  1,
+  69,
+  "`new TextDecoder()` without `fatal: true` replaces invalid UTF-8 with U+FFFD, so this text is parsed, compared or written from corrupted data with no error. Use `new TextDecoder('utf-8', { fatal: true })`.",
+  1,
+  96
+ ],
+ [
+  "no-lossy-utf8-decode/19.ts",
+  "nitpicker/no-weak-hash",
+  1,
+  43,
+  "sha1 is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id).",
+  1,
+  61
+ ],
+ [
+  "no-lossy-utf8-decode/20.ts",
+  "nitpicker/no-lossy-utf8-decode",
+  1,
+  96,
+  "`new TextDecoder()` without `fatal: true` replaces invalid UTF-8 with U+FFFD, so this text is parsed, compared or written from corrupted data with no error. Use `new TextDecoder('utf-8', { fatal: true })`.",
+  1,
+  123
+ ],
+ [
+  "no-lossy-utf8-decode/21.ts",
+  "nitpicker/no-lossy-utf8-decode",
+  1,
+  98,
+  "This file is read as `utf8` and written back to the same path, so invalid UTF-8 becomes U+FFFD and bytes are lost. Decode the `Buffer` with `new TextDecoder('utf-8', { fatal: true })`.",
+  1,
+  124
+ ],
+ [
+  "no-lossy-utf8-decode/22.ts",
+  "nitpicker/no-lossy-utf8-decode",
+  1,
+  103,
+  "This file is read as `utf8` and written back to the same path, so invalid UTF-8 becomes U+FFFD and bytes are lost. Decode the `Buffer` with `new TextDecoder('utf-8', { fatal: true })`.",
+  1,
+  143
+ ],
+ [
+  "no-lossy-utf8-decode/23.ts",
+  "nitpicker/no-lossy-utf8-decode",
+  1,
+  135,
+  "This file is read as `utf8` and written back to the same path, so invalid UTF-8 becomes U+FFFD and bytes are lost. Decode the `Buffer` with `new TextDecoder('utf-8', { fatal: true })`.",
+  1,
+  155
+ ],
+ [
+  "no-lossy-utf8-decode/r-01.ts",
+  "nitpicker/no-lossy-utf8-decode",
+  3,
+  9,
+  "`new TextDecoder()` without `fatal: true` replaces invalid UTF-8 with U+FFFD, so this text is parsed, compared or written from corrupted data with no error. Use `new TextDecoder('utf-8', { fatal: true })`.",
+  3,
+  36
+ ],
+ [
+  "no-lossy-utf8-decode/r-02.ts",
+  "nitpicker/no-lossy-utf8-decode",
+  2,
+  28,
+  "`new TextDecoder()` without `fatal: true` replaces invalid UTF-8 with U+FFFD, so this text is parsed, compared or written from corrupted data with no error. Use `new TextDecoder('utf-8', { fatal: true })`.",
+  2,
+  55
  ],
  [
   "no-raw-http-value/34.ts",
@@ -2277,6 +2898,96 @@
   41
  ],
  [
+  "no-unescaped-css-selector/21.ts",
+  "nitpicker/no-unescaped-css-selector",
+  1,
+  28,
+  "A runtime value in a CSS selector can hold quotes, brackets, colons, dots or a leading digit and then throw or match the wrong elements. Write `#${CSS.escape(id)}` or `[data-name=\"${CSS.escape(name)}\"]`.",
+  1,
+  30
+ ],
+ [
+  "no-unescaped-css-selector/22.ts",
+  "nitpicker/no-unescaped-css-selector",
+  1,
+  31,
+  "A runtime value in a CSS selector can hold quotes, brackets, colons, dots or a leading digit and then throw or match the wrong elements. Write `#${CSS.escape(id)}` or `[data-name=\"${CSS.escape(name)}\"]`.",
+  1,
+  36
+ ],
+ [
+  "no-unescaped-css-selector/23.ts",
+  "nitpicker/no-unescaped-css-selector",
+  1,
+  33,
+  "A runtime value in a CSS selector can hold quotes, brackets, colons, dots or a leading digit and then throw or match the wrong elements. Write `#${CSS.escape(id)}` or `[data-name=\"${CSS.escape(name)}\"]`.",
+  1,
+  37
+ ],
+ [
+  "no-unescaped-css-selector/24.ts",
+  "nitpicker/no-unescaped-css-selector",
+  1,
+  27,
+  "A runtime value in a CSS selector can hold quotes, brackets, colons, dots or a leading digit and then throw or match the wrong elements. Write `#${CSS.escape(id)}` or `[data-name=\"${CSS.escape(name)}\"]`.",
+  1,
+  34
+ ],
+ [
+  "no-unescaped-css-selector/25.ts",
+  "nitpicker/no-unescaped-css-selector",
+  1,
+  16,
+  "A runtime value in a CSS selector can hold quotes, brackets, colons, dots or a leading digit and then throw or match the wrong elements. Write `#${CSS.escape(id)}` or `[data-name=\"${CSS.escape(name)}\"]`.",
+  1,
+  24
+ ],
+ [
+  "no-unescaped-css-selector/26.ts",
+  "nitpicker/no-unescaped-css-selector",
+  1,
+  21,
+  "A runtime value in a CSS selector can hold quotes, brackets, colons, dots or a leading digit and then throw or match the wrong elements. Write `#${CSS.escape(id)}` or `[data-name=\"${CSS.escape(name)}\"]`.",
+  1,
+  25
+ ],
+ [
+  "no-unescaped-css-selector/27.ts",
+  "nitpicker/no-unescaped-css-selector",
+  1,
+  18,
+  "A runtime value in a CSS selector can hold quotes, brackets, colons, dots or a leading digit and then throw or match the wrong elements. Write `#${CSS.escape(id)}` or `[data-name=\"${CSS.escape(name)}\"]`.",
+  1,
+  20
+ ],
+ [
+  "no-unescaped-css-selector/28.ts",
+  "nitpicker/no-incomplete-escaping",
+  1,
+  33,
+  "This `replace` adds a backslash before a character but nothing escapes the backslash itself, so a value holding `\\` round-trips wrong. Match both in one pattern: `value.replace(/[\\\\\"]/g, (c) => `\\\\${c}`)`.",
+  1,
+  59
+ ],
+ [
+  "no-unescaped-css-selector/28.ts",
+  "nitpicker/no-unescaped-css-selector",
+  1,
+  33,
+  "This value is escaped by hand for a CSS selector, which covers only the characters the `replace` names. Use `CSS.escape(value)` instead.",
+  1,
+  59
+ ],
+ [
+  "no-unescaped-css-selector/29.ts",
+  "nitpicker/no-unescaped-css-selector",
+  1,
+  34,
+  "A runtime value in a CSS selector can hold quotes, brackets, colons, dots or a leading digit and then throw or match the wrong elements. Write `#${CSS.escape(id)}` or `[data-name=\"${CSS.escape(name)}\"]`.",
+  1,
+  40
+ ],
+ [
   "no-unescaped-filter-value/30.ts",
   "nitpicker/no-unescaped-filter-value",
   1,
@@ -2437,6 +3148,150 @@
   "Escape `n` before it goes into the `$regex` filter (`escapeSqlLikePattern(n)` with `ESCAPE` where the dialect needs it, or `escapeRegExp` for a regex): `%`, `_`, `\\` and regex characters in it match other rows. Use a full-text or equality filter instead, or take an exception when wildcards are an intended feature of the input.",
   1,
   45
+ ],
+ [
+  "no-unescaped-html-interpolation/38.ts",
+  "nitpicker/no-unescaped-html-interpolation",
+  1,
+  67,
+  "Escape `p` before it goes into this HTML string: a quote, `<` or `&` in it breaks the markup or injects script. Wrap it in an escaping helper (`escapeHtml(p)`), build the markup with a template engine that escapes by default, or set it with DOM APIs (`textContent`, `setAttribute`). A value that is always an id or an enum can take an exception.",
+  1,
+  68
+ ],
+ [
+  "no-unescaped-html-interpolation/38.ts",
+  "nitpicker/no-unescaped-html-interpolation",
+  1,
+  73,
+  "Escape `p` before it goes into this HTML string: a quote, `<` or `&` in it breaks the markup or injects script. Wrap it in an escaping helper (`escapeHtml(p)`), build the markup with a template engine that escapes by default, or set it with DOM APIs (`textContent`, `setAttribute`). A value that is always an id or an enum can take an exception.",
+  1,
+  74
+ ],
+ [
+  "no-unescaped-html-interpolation/39.ts",
+  "nitpicker/no-unescaped-html-interpolation",
+  1,
+  57,
+  "Escape `t` before it goes into this HTML string: a quote, `<` or `&` in it breaks the markup or injects script. Wrap it in an escaping helper (`escapeHtml(t)`), build the markup with a template engine that escapes by default, or set it with DOM APIs (`textContent`, `setAttribute`). A value that is always an id or an enum can take an exception.",
+  1,
+  58
+ ],
+ [
+  "no-unescaped-html-interpolation/39.ts",
+  "nitpicker/no-unescaped-html-interpolation",
+  1,
+  70,
+  "Escape `u` before it goes into this HTML string: a quote, `<` or `&` in it breaks the markup or injects script. Wrap it in an escaping helper (`escapeHtml(u)`), build the markup with a template engine that escapes by default, or set it with DOM APIs (`textContent`, `setAttribute`). A value that is always an id or an enum can take an exception.",
+  1,
+  71
+ ],
+ [
+  "no-unescaped-html-interpolation/40.ts",
+  "nitpicker/no-unescaped-html-interpolation",
+  1,
+  47,
+  "Escape `title` before it goes into this HTML string: a quote, `<` or `&` in it breaks the markup or injects script. Wrap it in an escaping helper (`escapeHtml(title)`), build the markup with a template engine that escapes by default, or set it with DOM APIs (`textContent`, `setAttribute`). A value that is always an id or an enum can take an exception.",
+  1,
+  52
+ ],
+ [
+  "no-unescaped-html-interpolation/41.ts",
+  "nitpicker/no-unescaped-html-interpolation",
+  1,
+  50,
+  "Escape `u.name` before it goes into this HTML string: a quote, `<` or `&` in it breaks the markup or injects script. Wrap it in an escaping helper (`escapeHtml(u.name)`), build the markup with a template engine that escapes by default, or set it with DOM APIs (`textContent`, `setAttribute`). A value that is always an id or an enum can take an exception.",
+  1,
+  56
+ ],
+ [
+  "no-unescaped-html-interpolation/42.ts",
+  "nitpicker/no-unescaped-html-interpolation",
+  1,
+  48,
+  "Escape `p` before it goes into this HTML string: a quote, `<` or `&` in it breaks the markup or injects script. Wrap it in an escaping helper (`escapeHtml(p)`), build the markup with a template engine that escapes by default, or set it with DOM APIs (`textContent`, `setAttribute`). A value that is always an id or an enum can take an exception.",
+  1,
+  49
+ ],
+ [
+  "no-unescaped-html-interpolation/43.ts",
+  "nitpicker/no-unescaped-html-interpolation",
+  1,
+  41,
+  "Escape `t.trim()` before it goes into this HTML string: a quote, `<` or `&` in it breaks the markup or injects script. Wrap it in an escaping helper (`escapeHtml(t.trim())`), build the markup with a template engine that escapes by default, or set it with DOM APIs (`textContent`, `setAttribute`). A value that is always an id or an enum can take an exception.",
+  1,
+  49
+ ],
+ [
+  "no-unescaped-html-interpolation/44.ts",
+  "nitpicker/no-unescaped-html-interpolation",
+  1,
+  40,
+  "Escape `t ?? \"\"` before it goes into this HTML string: a quote, `<` or `&` in it breaks the markup or injects script. Wrap it in an escaping helper (`escapeHtml(t ?? \"\")`), build the markup with a template engine that escapes by default, or set it with DOM APIs (`textContent`, `setAttribute`). A value that is always an id or an enum can take an exception.",
+  1,
+  47
+ ],
+ [
+  "no-unescaped-html-interpolation/45.ts",
+  "nitpicker/no-unescaped-html-interpolation",
+  1,
+  73,
+  "Escape `item` before it goes into this HTML string: a quote, `<` or `&` in it breaks the markup or injects script. Wrap it in an escaping helper (`escapeHtml(item)`), build the markup with a template engine that escapes by default, or set it with DOM APIs (`textContent`, `setAttribute`). A value that is always an id or an enum can take an exception.",
+  1,
+  77
+ ],
+ [
+  "no-unescaped-html-interpolation/46.ts",
+  "nitpicker/no-unescaped-html-interpolation",
+  1,
+  53,
+  "Escape `m` before it goes into this HTML string: a quote, `<` or `&` in it breaks the markup or injects script. Wrap it in an escaping helper (`escapeHtml(m)`), build the markup with a template engine that escapes by default, or set it with DOM APIs (`textContent`, `setAttribute`). A value that is always an id or an enum can take an exception.",
+  1,
+  54
+ ],
+ [
+  "no-unescaped-html-interpolation/47.ts",
+  "nitpicker/no-unescaped-html-interpolation",
+  1,
+  41,
+  "Escape `m` before it goes into this HTML string: a quote, `<` or `&` in it breaks the markup or injects script. Wrap it in an escaping helper (`escapeHtml(m)`), build the markup with a template engine that escapes by default, or set it with DOM APIs (`textContent`, `setAttribute`). A value that is always an id or an enum can take an exception.",
+  1,
+  42
+ ],
+ [
+  "no-unescaped-html-interpolation/48.ts",
+  "nitpicker/no-unescaped-html-interpolation",
+  1,
+  36,
+  "Escape `m` before it goes into this HTML string: a quote, `<` or `&` in it breaks the markup or injects script. Wrap it in an escaping helper (`escapeHtml(m)`), build the markup with a template engine that escapes by default, or set it with DOM APIs (`textContent`, `setAttribute`). A value that is always an id or an enum can take an exception.",
+  1,
+  37
+ ],
+ [
+  "no-unescaped-html-interpolation/49.ts",
+  "nitpicker/no-unescaped-html-interpolation",
+  1,
+  56,
+  "Escape `x` before it goes into this HTML string: a quote, `<` or `&` in it breaks the markup or injects script. Wrap it in an escaping helper (`escapeHtml(x)`), build the markup with a template engine that escapes by default, or set it with DOM APIs (`textContent`, `setAttribute`). A value that is always an id or an enum can take an exception.",
+  1,
+  57
+ ],
+ [
+  "no-unescaped-html-interpolation/50.ts",
+  "nitpicker/no-unescaped-html-interpolation",
+  1,
+  39,
+  "Escape `e.replace(/a/g, \"b\")` before it goes into this HTML string: a quote, `<` or `&` in it breaks the markup or injects script. Wrap it in an escaping helper (`escapeHtml(e.replace(/a/g, \"b\"))`), build the markup with a template engine that escapes by default, or set it with DOM APIs (`textContent`, `setAttribute`). A value that is always an id or an enum can take an exception.",
+  1,
+  59
+ ],
+ [
+  "no-unescaped-html-interpolation/r-01.ts",
+  "nitpicker/no-unescaped-html-interpolation",
+  22,
+  24,
+  "Escape `H` before it goes into this HTML string: a quote, `<` or `&` in it breaks the markup or injects script. Wrap it in an escaping helper (`escapeHtml(H)`), build the markup with a template engine that escapes by default, or set it with DOM APIs (`textContent`, `setAttribute`). A value that is always an id or an enum can take an exception.",
+  22,
+  25
  ],
  [
   "no-unescaped-pattern-translation/19.ts",

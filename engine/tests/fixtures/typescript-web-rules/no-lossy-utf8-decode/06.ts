@@ -1,0 +1,1 @@
+export function f(bytes: Uint8Array) { console.log(new TextDecoder().decode(bytes)); }

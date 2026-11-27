@@ -1,0 +1,1 @@
+import { readFileSync, writeFileSync } from "node:fs"; export function f(file: string) { const text = readFileSync(file, { encoding: "utf8" }); writeFileSync(file, text.replace("a", "b")); }

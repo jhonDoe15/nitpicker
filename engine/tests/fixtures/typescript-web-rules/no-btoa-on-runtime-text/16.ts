@@ -1,0 +1,1 @@
+export function f(b: Uint8Array) { const chunks: string[] = []; chunks.push(String.fromCharCode(...b)); return btoa(chunks.join("")); }

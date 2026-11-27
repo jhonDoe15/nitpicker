@@ -1,0 +1,1 @@
+import https from "node:https"; export const server = (key, cert, ca) => https.createServer({ key, cert, ca, requestCert: true, rejectUnauthorized: false }, (req, res) => { if (!req.socket.authorized) { res.writeHead(401).end(); return; } res.end("ok"); });

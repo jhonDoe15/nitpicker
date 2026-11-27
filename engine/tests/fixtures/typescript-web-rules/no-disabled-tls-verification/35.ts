@@ -1,0 +1,1 @@
+const rejectUnauthorized = false; export const options = { rejectUnauthorized };

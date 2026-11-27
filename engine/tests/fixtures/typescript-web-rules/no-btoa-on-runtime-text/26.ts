@@ -1,0 +1,1 @@
+export function f(svg: string) { return btoa(svg); }

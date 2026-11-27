@@ -1,0 +1,1 @@
+const BLOCKED = new Set(["--ignore-certificate-errors", "--disable-web-security"]); export const safeArgs = (args) => args.filter((a) => !BLOCKED.has(a));

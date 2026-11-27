@@ -1,0 +1,1 @@
+export const a = (items: string[]) => `<ul>${items.map((item) => `<li>${item}</li>`).join("")}</ul>`;

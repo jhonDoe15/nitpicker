@@ -1,0 +1,1 @@
+export const a = (n: number) => `<td>${n.toFixed(2)}</td>`;

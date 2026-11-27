@@ -1,0 +1,1 @@
+import { MongoClient } from "mongodb"; export const c = (uri, ca) => new MongoClient(uri, { tls: true, tlsCAFile: ca });
