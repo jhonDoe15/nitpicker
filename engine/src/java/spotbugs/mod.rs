@@ -1,5 +1,6 @@
 //! SpotBugs bug patterns rebuilt for the engine from the documented meaning of each pattern and from what
 //! SpotBugs 4.9.8 reports on test code: same pattern name, line and message, read from source instead of class files.
+mod assign;
 mod attributes;
 mod calendars;
 mod calls;
@@ -245,6 +246,7 @@ const DETECTORS: &[Detector] = &[
     sequence::sequence as Detector,
     dumb::dumb as Detector,
     tail::tail as Detector,
+    assign::assignments as Detector,
     calendars::calendars as Detector,
     circuit::circuits as Detector,
 ];
