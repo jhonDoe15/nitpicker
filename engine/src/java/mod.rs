@@ -4,7 +4,7 @@ pub mod cpd;
 mod spotbugs;
 mod facts;
 mod annotations_run;
-mod grammar;
+pub(crate) mod grammar;
 pub(crate) mod fields;
 mod flow;
 mod helpers;
@@ -29,6 +29,10 @@ impl Language for Java {
     fn grammar(&self) -> tree_sitter::Language { tree_sitter_java::LANGUAGE.into() }
     /// Text the grammar parses in place of the file, same length: see `grammar::masked`.
     fn grammar_text(&self, text: &str) -> Option<String> { grammar::masked(text) }
+    fn names(&self, text: &str, tree: &tree_sitter::Tree) -> crate::engine::source::Names { grammar::names::escaped(text, tree) }
+    fn broken(&self, file: &SourceFile) -> bool {
+        file.tree.root_node().has_error() || grammar::literals::has_invalid_literal(file)
+    }
     fn rules(&self) -> Vec<Box<dyn FileRule>> {
         let mut rules: Vec<Box<dyn FileRule>> = vec![
             Box::new(magic_number::MagicNumber),

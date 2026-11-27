@@ -1,5 +1,5 @@
-//! Annotations as written in Java text, read without the grammar: the run of annotations before a `...`, which the
-//! grammar rejects, with the comments and whitespace Java allows between them.
+//! Annotations as written in Java text, read without the grammar: the run of annotations before a `...` or after the
+//! `|` of a multi-catch, which the grammar rejects, with the comments and whitespace Java allows between them.
 
 /// An annotation: where it starts and ends, and where its written name is.
 pub struct Written {
@@ -68,8 +68,8 @@ fn annotation(bytes: &[u8], start: usize) -> Option<Written> {
     Some(Written { start, end, name })
 }
 
-/// The annotations written from `start` on, when they run up to a `...`, with where the `...` starts.
-pub fn before_spread(text: &str, start: usize) -> Option<(Vec<Written>, usize)> {
+/// The annotations written from `start` on, with where the text after them starts.
+pub fn run_from(text: &str, start: usize) -> (Vec<Written>, usize) {
     let bytes = text.as_bytes();
     let mut found = Vec::new();
     let mut at = trivia(bytes, start);
@@ -77,5 +77,11 @@ pub fn before_spread(text: &str, start: usize) -> Option<(Vec<Written>, usize)> 
         at = trivia(bytes, written.end);
         found.push(written);
     }
-    (!found.is_empty() && bytes[at..].starts_with(b"...")).then_some((found, at))
+    (found, at)
+}
+
+/// The annotations written from `start` on, when they run up to a `...`, with where the `...` starts.
+pub fn before_spread(text: &str, start: usize) -> Option<(Vec<Written>, usize)> {
+    let (found, at) = run_from(text, start);
+    (!found.is_empty() && text.as_bytes()[at..].starts_with(b"...")).then_some((found, at))
 }

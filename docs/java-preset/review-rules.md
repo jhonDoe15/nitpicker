@@ -460,7 +460,9 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   Code that may not run does not count: a lambda, an anonymous or local class, the body of a `for` or
   `while` loop (a `do` loop runs once), an `&&` or `||` operand, the conditional operator `? :`, a switch
   expression, and the `try` block of a nested `try` whose `catch` swallows what it throws. Of a
-  condition, only an `instanceof` check of the caught variable guards a branch, as in Kotlin. A
+  condition, only an `instanceof` check of the caught variable guards a branch, as in Kotlin. A negated
+  check of `InterruptedException` itself (`if (!(e instanceof InterruptedException)) return null;`) guards
+  a branch that only the other exceptions take, so that branch does not count as swallowing. A
   colon-form `switch` is taken to fall through. Limits: restoring the interrupt through a variable
   (`Thread t = Thread.currentThread(); t.interrupt();`) or a project helper that always throws is reported; a call that
   takes the exception only to format it (`describe(e)`) counts as a hand-off. TypeScript has no

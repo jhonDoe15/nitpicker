@@ -119,14 +119,20 @@ fn multiple_on_declaration(context: &Context, declared: &Declared) {
     let all = declared.all_brackets(context);
     let named = declared.element().map(|kind| if kind.kind() == "generic_type" { kind.named_child(0).unwrap_or(kind) } else { kind });
     let scoped = named.filter(|kind| kind.kind() == "scoped_type_identifier").map(|kind| annotations_in(context, kind)).unwrap_or_default();
-    if all.is_empty() {
+    if let Some(outer) = all.first() {
+        listed.extend(outer.iter().cloned());
+    } else if !union(declared.holder) {
         listed.extend(declared.annotations.iter().filter(|annotation| type_use(targets(context, annotation))).cloned());
         listed.extend(declared.late.iter().cloned());
         listed.extend(scoped);
-    } else {
-        listed.extend(all[0].iter().cloned());
     }
     conflicting(context, &listed, declared.holder, declared.position);
+}
+
+/// A multi-catch parameter: javac's union type carries none of the type annotations written before it.
+fn union(holder: Node) -> bool {
+    holder.kind() == "catch_formal_parameter"
+        && named_children(holder).into_iter().find(|part| part.kind() == "catch_type").is_some_and(|kind| named_children(kind).len() > 1)
 }
 
 const ARRAY_MESSAGE: &str = "@Nullable type annotations should not be used for primitive types since they cannot be null";

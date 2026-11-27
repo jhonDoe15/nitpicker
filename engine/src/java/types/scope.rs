@@ -480,6 +480,11 @@ impl<'a> Resolver<'a> {
         self.declared(declaration, declarator, false)
     }
 
+    /// A declared type with the type variables in it kept.
+    pub fn generic_declared_type(&self, declaration: Node, declarator: Option<Node>) -> Option<Type> {
+        self.declared(declaration, declarator, true)
+    }
+
     /// Erased and generic parameter types, and whether the last one is variable arity.
     fn parameter_names(&self, member: Node) -> Vec<String> {
         let mut names = Vec::new();

@@ -75,6 +75,14 @@ pub trait Language: Sync + Send {
     fn grammar_text(&self, _text: &str) -> Option<String> {
         None
     }
+    /// The names the language reads other than as written, such as identifiers with escapes.
+    fn names(&self, _text: &str, _tree: &tree_sitter::Tree) -> super::engine::source::Names {
+        super::engine::source::Names::default()
+    }
+    /// Whether the file does not parse: the grammar's errors, and what the language rejects that the grammar accepts.
+    fn broken(&self, file: &SourceFile) -> bool {
+        file.tree.root_node().has_error()
+    }
     /// The file with everything blanked that the project pass does not read (method bodies, for instance),
     /// byte for byte as long as the file. `None` keeps the file as it is.
     fn outline(&self, _file: &SourceFile) -> Option<String> {

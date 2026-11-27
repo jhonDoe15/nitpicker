@@ -1,7 +1,14 @@
 //! The text tree-sitter parses in place of a Java file. Every change keeps each byte where it was, so the tree's
 //! positions still point into the real text, and the rules read names from the real text.
 
+pub mod catches;
+mod code;
+pub mod literals;
+pub mod names;
+mod numbers;
+
 use super::annotations_run::before_spread;
+use code::code_bytes;
 use regex::Regex;
 use std::sync::LazyLock;
 
@@ -11,11 +18,18 @@ use std::sync::LazyLock;
 /// NUL character, which Java allows in strings, text blocks, character literals and comments: there it becomes a
 /// space. A NUL in code is left, so the file stays broken, as it is for PMD at the end of a file. The grammar rejects
 /// a parenthesized assignment target (`(x) = 2`, `(this.f) += 1`): those parentheses become spaces, and the PMD tree
-/// puts them back from the real text.
+/// puts them back from the real text. Annotations after the `|` of a multi-catch become spaces too, and the backslash
+/// of a Unicode escape in a name becomes a `_` (`names`).
 pub fn masked(text: &str) -> Option<String> {
     let mut bytes: Option<Vec<u8>> = None;
     if text.contains('\0') {
         blank_quoted_nul(text, &mut bytes);
+    }
+    if text.contains("catch") && text.contains('|') && text.contains('@') {
+        catches::blank_alternative_annotations(text, &mut bytes);
+    }
+    if text.contains("\\u") {
+        names::mask_escaped_names(text, &mut bytes);
     }
     if text.contains("...") {
         blank_spread_annotations(text, &mut bytes);
@@ -27,7 +41,10 @@ pub fn masked(text: &str) -> Option<String> {
         blank_parenthesized_targets(text, &mut bytes);
     }
     if text.contains('_') {
-        fill_number_underscores(text, &mut bytes);
+        numbers::fill_number_underscores(text, &mut bytes);
+    }
+    if text.contains('0') {
+        numbers::decimal_floats_after_zero(text, &mut bytes);
     }
     bytes.and_then(|bytes| String::from_utf8(bytes).ok())
 }
@@ -92,29 +109,6 @@ fn blank_spread_annotations(text: &str, bytes: &mut Option<Vec<u8>>) {
     }
 }
 
-/// The grammar takes only single underscores between digits, and none right after the `0` of an octal literal,
-/// where Java takes any run of them (`0_1__2l`). In such a number each underscore becomes a `0`, which keeps the kind
-/// of literal; the rules read its value from the real text.
-fn fill_number_underscores(text: &str, bytes: &mut Option<Vec<u8>>) {
-    static NUMBER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\b[0-9][0-9A-Za-z_]*").expect("pattern"));
-    let mut code: Option<Vec<bool>> = None;
-    for number in NUMBER.find_iter(text) {
-        let written = number.as_str();
-        if !written.contains("__") && !written.starts_with("0_") {
-            continue;
-        }
-        if !code.get_or_insert_with(|| code_bytes(text))[number.start()] {
-            continue;
-        }
-        let bytes = bytes.get_or_insert_with(|| text.as_bytes().to_vec());
-        for byte in &mut bytes[number.start()..number.end()] {
-            if *byte == b'_' {
-                *byte = b'0';
-            }
-        }
-    }
-}
-
 fn blank_quoted_nul(text: &str, bytes: &mut Option<Vec<u8>>) {
     let code = code_bytes(text);
     for (at, byte) in text.bytes().enumerate() {
@@ -149,53 +143,6 @@ fn join_record_pattern_names(text: &str, bytes: &mut Option<Vec<u8>>) {
             }
         }
     }
-}
-
-/// For each byte, whether it is code: not inside a comment, a string, a text block or a character literal.
-fn code_bytes(text: &str) -> Vec<bool> {
-    let bytes = text.as_bytes();
-    let mut code = vec![true; bytes.len()];
-    let mut at = 0;
-    while at < bytes.len() {
-        let rest = &bytes[at..];
-        let skipped = if rest.starts_with(b"//") {
-            rest.iter().position(|byte| *byte == b'\n').unwrap_or(rest.len())
-        } else if rest.starts_with(b"/*") {
-            rest[2..].windows(2).position(|pair| pair == b"*/").map_or(rest.len(), |close| close + 4)
-        } else if rest.starts_with(b"\"\"\"") {
-            closing(rest, 3, b"\"\"\"")
-        } else if rest[0] == b'"' || rest[0] == b'\'' {
-            closing(rest, 1, &rest[..1])
-        } else {
-            0
-        };
-        if skipped == 0 {
-            at += 1;
-            continue;
-        }
-        code[at..at + skipped].iter_mut().for_each(|inside| *inside = false);
-        at += skipped;
-    }
-    code
-}
-
-/// The length of a literal that opens with `quote` and ends at the next `quote` not escaped by a backslash.
-fn closing(rest: &[u8], open: usize, quote: &[u8]) -> usize {
-    let mut at = open;
-    while at < rest.len() {
-        if rest[at] == b'\\' {
-            at += 2;
-            continue;
-        }
-        if rest[at..].starts_with(quote) {
-            return at + quote.len();
-        }
-        if quote.len() == 1 && rest[at] == b'\n' {
-            return at;
-        }
-        at += 1;
-    }
-    rest.len()
 }
 
 /// Where the pattern after `instanceof` ends: after the parentheses of its record body, if it has one.

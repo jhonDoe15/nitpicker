@@ -3,7 +3,7 @@
 use super::Context;
 use super::fixes::Fix;
 use crate::engine::source::{children, named_children, parent};
-use crate::java::annotations_run::before_spread;
+use crate::java::annotations_run::{before_spread, Written};
 use tree_sitter::Node;
 
 pub(super) const PRIMITIVES: [&str; 3] = ["integral_type", "floating_point_type", "boolean_type"];
@@ -37,7 +37,7 @@ pub(super) fn is_annotation(node: Node) -> bool {
     matches!(node.kind(), "marker_annotation" | "annotation")
 }
 
-/// An annotation as written: a tree node, or text that the grammar masks before a `...`.
+/// An annotation as written: a tree node, or text that the grammar masks before a `...` or after a multi-catch `|`.
 #[derive(Clone)]
 pub(super) struct Mark<'t> {
     pub(super) scope: Node<'t>,
@@ -50,6 +50,12 @@ impl<'t> Mark<'t> {
     fn of(context: &Context, annotation: Node<'t>) -> Self {
         let written = annotation.child_by_field_name("name").map_or("", |name| context.text(name)).to_string();
         Mark { scope: annotation, start: annotation.start_byte(), end: annotation.end_byte(), written }
+    }
+
+    fn written(context: &Context, scope: Node<'t>, written: &Written) -> Self {
+        let text = &context.file.text;
+        let name: String = text[written.name.0..written.name.1].chars().filter(|character| !character.is_whitespace()).collect();
+        Mark { scope, start: written.start, end: written.end, written: name }
     }
 
     fn simple(&self) -> &str {
@@ -70,15 +76,8 @@ pub(super) fn spread_marks<'t>(context: &Context, node: Node<'t>) -> Vec<Mark<'t
     let parts = children(node);
     let Some(dots) = parts.iter().find(|part| part.kind() == "...") else { return Vec::new() };
     let Some(kind) = parts.iter().rev().find(|part| part.end_byte() <= dots.start_byte() && part.is_named() && part.kind() != "modifiers") else { return Vec::new() };
-    let text = &context.file.text;
-    let Some((found, _)) = before_spread(text, kind.end_byte()) else { return Vec::new() };
-    found
-        .into_iter()
-        .map(|written| {
-            let name: String = text[written.name.0..written.name.1].chars().filter(|character| !character.is_whitespace()).collect();
-            Mark { scope: node, start: written.start, end: written.end, written: name }
-        })
-        .collect()
+    let Some((found, _)) = before_spread(&context.file.text, kind.end_byte()) else { return Vec::new() };
+    found.iter().map(|written| Mark::written(context, node, written)).collect()
 }
 
 pub(super) fn relevant_ones<'t>(annotations: &[Mark<'t>]) -> Vec<Mark<'t>> {
@@ -169,6 +168,12 @@ fn annotated_types<'t>(context: &Context, node: Node<'t>) -> Vec<Annotated<'t>> 
                 let primitive = PRIMITIVES.contains(&kind.kind());
                 let offset = if primitive { kind.start_byte() } else { first.start };
                 found.push(Annotated { at: node, offset, annotations, primitive, wildcard: None });
+            }
+        }
+        "catch_type" => {
+            for (written, _) in crate::java::grammar::catches::alternative_annotations(&context.file.text, node) {
+                let annotations: Vec<Mark> = written.iter().map(|written| Mark::written(context, node, written)).collect();
+                found.push(Annotated { at: node, offset: written[0].start, annotations, primitive: false, wildcard: None });
             }
         }
         "spread_parameter" => {

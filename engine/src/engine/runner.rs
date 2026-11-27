@@ -66,7 +66,8 @@ pub fn parse(path: &PathBuf, language: &dyn Language) -> Option<SourceFile> {
 pub(crate) fn parse_in(path: &PathBuf, language: &dyn Language, encoding: Option<super::encoding::Charset>) -> Option<SourceFile> {
     let text = super::source::read_text_in(path, encoding)?;
     let tree = parse_text(&text, language)?;
-    Some(SourceFile { path: path.to_string_lossy().into_owned(), text, tree })
+    let names = language.names(&text, &tree);
+    Some(SourceFile { path: path.to_string_lossy().into_owned(), text, tree, names })
 }
 
 pub fn run(files: &[PathBuf], language: &dyn Language, only: Option<&[String]>, min_tokens: usize, options: &Options) -> RunResult {
@@ -86,7 +87,8 @@ pub fn run(files: &[PathBuf], language: &dyn Language, only: Option<&[String]>, 
                 match language.outline(&file) {
                     Some(text) => {
                         let tree = parse_text(&text, language)?;
-                        Some(SourceFile { path: file.path, text, tree })
+                        let names = language.names(&text, &tree);
+                        Some(SourceFile { path: file.path, text, tree, names })
                     }
                     None => Some(file),
                 }
@@ -112,7 +114,7 @@ pub fn run(files: &[PathBuf], language: &dyn Language, only: Option<&[String]>, 
                 facts.tokens = Vec::new();
             }
             let lines = file.text.lines().count();
-            let broken = file.tree.root_node().has_error();
+            let broken = language.broken(&file);
             Some((findings, facts, lines, broken, file.path))
         })
         .collect();
