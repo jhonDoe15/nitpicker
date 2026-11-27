@@ -4,9 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
 import { spawnResult } from '../../adapters/test-support/spawn-result.mts';
 import type { JavaSpawn } from '../../adapters/typed/java-values.mts';
-import { runErrorProne, runnerFlags } from './maven-errorprone.mts';
+import { processorOutput, runErrorProne, runnerFlags } from './maven-errorprone.mts';
 
 const NOW = 1_000_000;
+const LEVEL = { release: undefined, source: undefined, target: undefined };
 const projectWith = useTempProjects('nitpicker-maven-errorprone-');
 
 function contextFor(files: Readonly<Record<string, string>>, version: string) {
@@ -90,4 +91,27 @@ describe('runnerFlags', () => {
       ]);
     },
   );
+});
+
+describe('processorOutput', () => {
+  const module = { basedir: '/work/app', outputDirectory: '/work/app/target/classes' };
+
+  it("takes the compiler plugin's folders, relative ones from the module folder", () => {
+    const compiler = {
+      generatedSources: '/work/gen',
+      test: { compilerArgs: [], ...LEVEL, generatedSources: 'gen-tests' },
+    };
+
+    expect(processorOutput(module, compiler, false)).toBe('/work/gen');
+    expect(processorOutput(module, compiler, true)).toBe('/work/app/gen-tests');
+  });
+
+  it("falls back to Maven's default folders next to the class folder", () => {
+    expect(processorOutput(module, { test: undefined }, false)).toBe(
+      '/work/app/target/generated-sources/annotations',
+    );
+    expect(processorOutput(module, { test: undefined }, true)).toBe(
+      '/work/app/target/generated-test-sources/test-annotations',
+    );
+  });
 });
