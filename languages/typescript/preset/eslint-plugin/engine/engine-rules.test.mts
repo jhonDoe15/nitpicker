@@ -70,6 +70,18 @@ describe('facts the engine rules get from the project', () => {
       expect.stringMatching(/^structured-catch-logging\.logger-shapes=/u),
       expect.stringMatching(/^test-must-use-production-runtime\.exempt=(?:true|false)$/u),
       expect.stringMatching(/^test-must-use-production-runtime\.helper-file=./u),
+      'integration-test-uses-approved-harness.integration=false',
+      'integration-test-uses-approved-harness.approved-functions=null',
+      'integration-test-uses-approved-harness.approved-subprocesses=null',
+      'no-first-test-charged-setup.shared-setup-hook=beforeAll',
+      'no-fixed-sleep-synchronization.wait-on-condition=vi.waitFor or expect.poll',
+      'no-fixed-sleep-synchronization.advance-fake-time=vi.advanceTimersByTime',
+      'no-fixed-sleep-synchronization.fixture=false',
+      'no-partial-output-assertion.whole-output=`toEqual` or `toBe`',
+      expect.stringMatching(/^no-partial-output-assertion\.fragment-forms=`toContain`/u),
+      'no-partial-output-assertion.whole-value=`toEqual`',
+      expect.stringMatching(/^no-partial-output-assertion\.partial-forms=`toMatchObject`/u),
+      'no-partial-output-assertion.varied-field=Use `expect.any(Type)` for a field that varies.',
     ]);
   });
 

@@ -1348,5 +1348,266 @@
   "This test repeats the body of 2 others and differs only in its literals. Put the cases in one table and give each case its own test with it.each.",
   4,
   5
+ ],
+ [
+  "integration-test-uses-approved-harness/01.test.ts",
+  "nitpicker/integration-test-uses-approved-harness",
+  1,
+  1,
+  "Exercise the application through an approved integration-test harness.",
+  6,
+  1
+ ],
+ [
+  "no-first-test-charged-setup/01.test.ts",
+  "nitpicker/no-first-test-charged-setup",
+  12,
+  29,
+  "\"server\" is memoized lazily at module level and filled by a call, so whichever test runs first pays for its setup, reports show that test as slow, and test order starts to matter. Compute it once in beforeAll and let tests read it. An exception fits only when the setup is cheap or the lazy memo is intended.",
+  12,
+  42
+ ],
+ [
+  "no-first-test-charged-setup/01.test.ts",
+  "nitpicker/no-first-test-charged-setup",
+  14,
+  14,
+  "\"cached\" is memoized lazily at module level and filled by a call, so whichever test runs first pays for its setup, reports show that test as slow, and test order starts to matter. Compute it once in beforeAll and let tests read it. An exception fits only when the setup is cheap or the lazy memo is intended.",
+  14,
+  28
+ ],
+ [
+  "no-first-test-charged-setup/01.test.ts",
+  "nitpicker/no-first-test-charged-setup",
+  22,
+  12,
+  "\"cached\" is memoized lazily at module level and filled by a call, so whichever test runs first pays for its setup, reports show that test as slow, and test order starts to matter. Compute it once in beforeAll and let tests read it. An exception fits only when the setup is cheap or the lazy memo is intended.",
+  22,
+  26
+ ],
+ [
+  "no-first-test-charged-setup/01.test.ts",
+  "nitpicker/no-first-test-charged-setup",
+  26,
+  38,
+  "\"cached\" is memoized lazily at module level and filled by a call, so whichever test runs first pays for its setup, reports show that test as slow, and test order starts to matter. Compute it once in beforeAll and let tests read it. An exception fits only when the setup is cheap or the lazy memo is intended.",
+  26,
+  47
+ ],
+ [
+  "no-first-test-charged-setup/01.test.ts",
+  "nitpicker/no-first-test-charged-setup",
+  8,
+  20,
+  "\"client\" is memoized lazily at module level and filled by a call, so whichever test runs first pays for its setup, reports show that test as slow, and test order starts to matter. Compute it once in beforeAll and let tests read it. An exception fits only when the setup is cheap or the lazy memo is intended.",
+  8,
+  29
+ ],
+ [
+  "no-fixed-sleep-synchronization/01.test.tsx",
+  "nitpicker/no-fixed-sleep-synchronization",
+  10,
+  3,
+  "Fixed sleeps are non-deterministic; wait on a condition with vi.waitFor or expect.poll. An exception fits only when a real wait is unavoidable.",
+  10,
+  18
+ ],
+ [
+  "no-fixed-sleep-synchronization/01.test.tsx",
+  "nitpicker/no-fixed-sleep-synchronization",
+  11,
+  9,
+  "`waitForTimeout` sleeps on wall-clock time. Wait on a condition instead, such as `await expect(locator).toBeVisible()`. An exception fits only when a real wait is unavoidable.",
+  11,
+  33
+ ],
+ [
+  "no-fixed-sleep-synchronization/01.test.tsx",
+  "nitpicker/no-fixed-sleep-synchronization",
+  12,
+  3,
+  "`cy.wait(<number>)` sleeps on wall-clock time. Wait on a request alias (`cy.wait('@request')`) or retry an assertion (`cy.get(selector).should('be.visible')`). An exception fits only when a real wait is unavoidable.",
+  12,
+  21
+ ],
+ [
+  "no-fixed-sleep-synchronization/01.test.tsx",
+  "nitpicker/no-fixed-sleep-synchronization",
+  15,
+  9,
+  "Do not assert absence by letting a wait time out: `.rejects` passes only after the full timeout, so the test is slow and depends on the delay. Advance fake timers past the delay (`vi.advanceTimersByTime`) and assert absence at once, such as `expect(screen.queryByRole('tooltip')).toBeNull()`. An exception fits only when a real wait is unavoidable.",
+  15,
+  45
+ ],
+ [
+  "no-fixed-sleep-synchronization/01.test.tsx",
+  "nitpicker/no-fixed-sleep-synchronization",
+  17,
+  9,
+  "Do not assert absence by letting a wait time out: `.rejects` passes only after the full timeout, so the test is slow and depends on the delay. Advance fake timers past the delay (`vi.advanceTimersByTime`) and assert absence at once, such as `expect(screen.queryByRole('tooltip')).toBeNull()`. An exception fits only when a real wait is unavoidable.",
+  17,
+  43
+ ],
+ [
+  "no-fixed-sleep-synchronization/01.test.tsx",
+  "nitpicker/no-fixed-sleep-synchronization",
+  18,
+  9,
+  "Do not assert absence by letting a wait time out: `.rejects` passes only after the full timeout, so the test is slow and depends on the delay. Advance fake timers past the delay (`vi.advanceTimersByTime`) and assert absence at once, such as `expect(screen.queryByRole('tooltip')).toBeNull()`. An exception fits only when a real wait is unavoidable.",
+  18,
+  42
+ ],
+ [
+  "no-fixed-sleep-synchronization/01.test.tsx",
+  "nitpicker/no-fixed-sleep-synchronization",
+  7,
+  3,
+  "Fixed sleeps are non-deterministic; wait on a condition with vi.waitFor or expect.poll. An exception fits only when a real wait is unavoidable.",
+  7,
+  59
+ ],
+ [
+  "no-fixed-sleep-synchronization/01.test.tsx",
+  "nitpicker/no-fixed-sleep-synchronization",
+  8,
+  3,
+  "Fixed sleeps are non-deterministic; wait on a condition with vi.waitFor or expect.poll. An exception fits only when a real wait is unavoidable.",
+  8,
+  72
+ ],
+ [
+  "no-fixed-sleep-synchronization/01.test.tsx",
+  "nitpicker/no-fixed-sleep-synchronization",
+  9,
+  3,
+  "Fixed sleeps are non-deterministic; wait on a condition with vi.waitFor or expect.poll. An exception fits only when a real wait is unavoidable.",
+  9,
+  18
+ ],
+ [
+  "no-node-process-per-test/03.ts",
+  "nitpicker/no-partial-output-assertion",
+  4,
+  62,
+  "Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment (`toContain`, or `toMatch` with a pattern that is not anchored `^...$`): a fragment passes even when the rest is wrong. An exception fits only when the output is too large or unordered to pin.",
+  4,
+  71
+ ],
+ [
+  "no-partial-output-assertion/01.test.ts",
+  "nitpicker/no-partial-output-assertion",
+  10,
+  18,
+  "Pass the whole expected value to `toEqual` instead of a partial match (`toMatchObject`, `expect.objectContaining`, `expect.stringContaining`, `expect.arrayContaining`): the rest of the value goes unchecked. Use `expect.any(Type)` for a field that varies. An exception fits only when the value is too large or unordered to pin.",
+  10,
+  25
+ ],
+ [
+  "no-partial-output-assertion/01.test.ts",
+  "nitpicker/no-partial-output-assertion",
+  4,
+  18,
+  "Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment (`toContain`, or `toMatch` with a pattern that is not anchored `^...$`): a fragment passes even when the rest is wrong. An exception fits only when the output is too large or unordered to pin.",
+  4,
+  27
+ ],
+ [
+  "no-partial-output-assertion/01.test.ts",
+  "nitpicker/no-partial-output-assertion",
+  5,
+  18,
+  "Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment (`toContain`, or `toMatch` with a pattern that is not anchored `^...$`): a fragment passes even when the rest is wrong. An exception fits only when the output is too large or unordered to pin.",
+  5,
+  25
+ ],
+ [
+  "no-partial-output-assertion/01.test.ts",
+  "nitpicker/no-partial-output-assertion",
+  9,
+  18,
+  "Pass the whole expected value to `toEqual` instead of a partial match (`toMatchObject`, `expect.objectContaining`, `expect.stringContaining`, `expect.arrayContaining`): the rest of the value goes unchecked. Use `expect.any(Type)` for a field that varies. An exception fits only when the value is too large or unordered to pin.",
+  9,
+  31
+ ],
+ [
+  "no-partial-output-assertion/02.test.ts",
+  "nitpicker/no-partial-output-assertion",
+  10,
+  25,
+  "Pass the whole expected value to `toEqual` instead of a partial match (`toMatchObject`, `expect.objectContaining`, `expect.stringContaining`, `expect.arrayContaining`): the rest of the value goes unchecked. Use `expect.any(Type)` for a field that varies. An exception fits only when the value is too large or unordered to pin.",
+  10,
+  32
+ ],
+ [
+  "no-partial-output-assertion/02.test.ts",
+  "nitpicker/no-partial-output-assertion",
+  3,
+  8,
+  "Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment (`toContain`, or `toMatch` with a pattern that is not anchored `^...$`): a fragment passes even when the rest is wrong. An exception fits only when the output is too large or unordered to pin.",
+  3,
+  10
+ ],
+ [
+  "no-partial-output-assertion/02.test.ts",
+  "nitpicker/no-partial-output-assertion",
+  4,
+  1,
+  "Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment (`toContain`, or `toMatch` with a pattern that is not anchored `^...$`): a fragment passes even when the rest is wrong. An exception fits only when the output is too large or unordered to pin.",
+  4,
+  7
+ ],
+ [
+  "no-partial-output-assertion/02.test.ts",
+  "nitpicker/no-partial-output-assertion",
+  5,
+  8,
+  "Pass the whole expected value to `toEqual` instead of a partial match (`toMatchObject`, `expect.objectContaining`, `expect.stringContaining`, `expect.arrayContaining`): the rest of the value goes unchecked. Use `expect.any(Type)` for a field that varies. An exception fits only when the value is too large or unordered to pin.",
+  5,
+  30
+ ],
+ [
+  "no-partial-output-assertion/02.test.ts",
+  "nitpicker/no-partial-output-assertion",
+  6,
+  8,
+  "Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment (`toContain`, or `toMatch` with a pattern that is not anchored `^...$`): a fragment passes even when the rest is wrong. An exception fits only when the output is too large or unordered to pin.",
+  6,
+  13
+ ],
+ [
+  "no-partial-output-assertion/02.test.ts",
+  "nitpicker/no-partial-output-assertion",
+  8,
+  19,
+  "Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment (`toContain`, or `toMatch` with a pattern that is not anchored `^...$`): a fragment passes even when the rest is wrong. An exception fits only when the output is too large or unordered to pin.",
+  8,
+  26
+ ],
+ [
+  "no-partial-output-assertion/02.test.ts",
+  "nitpicker/no-partial-output-assertion",
+  9,
+  22,
+  "Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment (`toContain`, or `toMatch` with a pattern that is not anchored `^...$`): a fragment passes even when the rest is wrong. An exception fits only when the output is too large or unordered to pin.",
+  9,
+  29
+ ],
+ [
+  "no-unowned-async-assertion/56.ts",
+  "nitpicker/no-fixed-sleep-synchronization",
+  1,
+  109,
+  "Fixed sleeps are non-deterministic; wait on a condition with vi.waitFor or expect.poll. An exception fits only when a real wait is unavoidable.",
+  1,
+  121
+ ],
+ [
+  "no-unowned-async-assertion/57.ts",
+  "nitpicker/no-fixed-sleep-synchronization",
+  1,
+  117,
+  "Fixed sleeps are non-deterministic; wait on a condition with vi.waitFor or expect.poll. An exception fits only when a real wait is unavoidable.",
+  1,
+  129
  ]
 ]

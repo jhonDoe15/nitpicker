@@ -77,7 +77,7 @@ pub fn first_token(text: &str) -> usize {
     loop {
         let rest = &text[at..];
         let Some(next) = rest.chars().next() else { return at };
-        if next.is_whitespace() || next == '\u{FEFF}' {
+        if next.is_whitespace() || next == '\u{FEFF}' || next == '\u{200B}' {
             at += next.len_utf8();
         } else if rest.starts_with("//") {
             at += rest.find(['\n', '\r', '\u{2028}', '\u{2029}']).unwrap_or(rest.len());
