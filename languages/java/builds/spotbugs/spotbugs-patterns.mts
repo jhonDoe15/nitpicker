@@ -1,4 +1,5 @@
 import { CAST_PATTERNS } from './casts/spotbugs-casts-placed.mts';
+import { RESOURCE_PATTERNS } from './resources/spotbugs-resources-placed.mts';
 import {
   BOUND_PATTERNS,
   BOXING_PATTERNS,
@@ -143,6 +144,7 @@ export const ON_ENGINE: readonly string[] = [
   ...TLS_PATTERNS,
   ...COOKIE_PATTERNS,
   ...ASSIGNMENT_PATTERNS,
+  ...RESOURCE_PATTERNS,
 ];
 
 export const LOMBOK_WITHOUT_CLASSES: readonly string[] = [
