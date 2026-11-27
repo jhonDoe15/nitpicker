@@ -1152,6 +1152,42 @@ Nacos 70 / 0 / 0, jackson-databind 4 / 0 / 0, commons-lang 0 / 0 / 0, javaparser
 server 2 / 0 / 0 on the classes javac could compile for SpotBugs. FindInconsistentSync2 and the other lock
 detectors of #2522 still run in SpotBugs.
 
+### Naming, unread fields, random and initialization
+
+Parts of #2263 batch 2, so these patterns leave SpotBugs while their detectors still run there for patterns that
+stay silent on test code. Labs in `tests/fixtures/spotbugs/naming*`, `unread*`, `random*` and `init*`.
+
+Naming (`src/java/spotbugs/naming/`): NM_METHOD_NAMING_CONVENTION and NM_FIELD_NAMING_CONVENTION report a name
+whose first letter is upper case, second lower case and that has no `_`. Final fields, methods of interfaces,
+methods named like their class and methods that override a concrete superclass method are left out. Public and
+protected members of a class whose class file is public are priority 2; members of other classes and of enums are
+priority 3, except when a part of the package name is a single character. A method sits on its first line of code
+(a record's implicit accessor on the `record` line), a field on no line. NM_CLASS_NOT_EXCEPTION: a class whose
+binary name ends in `Exception` and that does not extend `java.lang.Exception`, again unless a package part is a
+single character. NM_SAME_SIMPLE_NAME_AS_SUPERCLASS (priority 1) and NM_SAME_SIMPLE_NAME_AS_INTERFACE (priority 2):
+the name without the package equals that of the direct superclass or of a directly implemented interface.
+
+URF_UNREAD_FIELD and URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD (`attributes/unread.rs`): an instance field that is not
+final, that the run stores into and never loads (`this.f = this.f` is no load, nor a load in code javac drops behind
+a condition it knows, nor a pattern variable named like the field). Classes that are serializable (but for a field
+named `serialVersionUID`) or declare a native method are skipped, and so are fields whose name starts with `_`. With
+Lombok, a field that a getter, `toString`, `equals` or `hashCode` Lombok writes reads counts as loaded. A field of a class whose `Class`
+object the run names (a class literal, `Class.forName` with a constant name, an `assert` in the outermost class) is
+priority 3. The finding sits on the first store SpotBugs meets: classes in visiting order, then the methods in the
+order javac writes them (lambdas last).
+
+DMI_RANDOM_USED_ONLY_ONCE (`sequence/`): after `new Random(...)` or `new SecureRandom(...)` in a compiled method,
+each later call that javac writes against one of those two classes is reported once per called method, until the
+method runs another constructor or a `super.` call. A constructor runs `super(...)` first, then field initializers,
+then its own code; a `for` loop's updates run after its body. Methods of `Object` and `ints`, `longs`, `doubles` do not
+count.
+Priority 1, on the call's arguments line, SARIF place the called method.
+
+IC_SUPERCLASS_USES_SUBCLASS_DURING_INITIALIZATION (`sequence/initialization.rs`): the static initializer of a type
+reads or writes a static field, or calls a static method, through the name of a strict subtype. A read is priority 1
+when the subtype's class file is public, else 2; a write or call is one more. One finding per subtype, with the best
+priority, on its first line.
+
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in

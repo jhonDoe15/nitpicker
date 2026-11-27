@@ -43,3 +43,17 @@ pub fn checked_parameter<'t>(context: &Context, constructor: Node<'t>) -> Option
     let parameters = constructor.child_by_field_name("parameters")?;
     children(parameters).into_iter().find(|parameter| matches!(parameter.kind(), "formal_parameter" | "spread_parameter") && annotated(context, *parameter, "NonNull"))
 }
+
+/// Annotations on a class that make Lombok write methods reading each of its fields.
+const READERS: &[&str] = &["Data", "Value", "Getter", "ToString", "EqualsAndHashCode"];
+
+/// Whether a method Lombok writes reads the field a declaration declares: a getter, `toString`, `equals` or
+/// `hashCode` of its class, or the field's own `@Getter` that is not `AccessLevel.NONE`.
+pub fn reads_field(context: &Context, declaration: Node) -> bool {
+    let modifiers = crate::java::helpers::modifiers(declaration).map_or("", |modifiers| context.text(modifiers));
+    let getter = annotated(context, declaration, "Getter") && !modifiers.contains("AccessLevel.NONE");
+    let class = declaration.parent().and_then(|body| body.parent());
+    let shown = |class: Node| crate::java::helpers::modifiers(class).is_none_or(|modifiers| !context.text(modifiers).contains("AccessLevel.NONE"));
+    let reads = |class: Node, name: &&str| annotated(context, class, name) && (*name != "Getter" || shown(class));
+    getter || class.is_some_and(|class| READERS.iter().any(|name| reads(class, name)))
+}

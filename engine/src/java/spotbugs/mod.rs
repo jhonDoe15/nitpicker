@@ -20,8 +20,10 @@ mod lombok;
 mod methods;
 mod mutable;
 mod names;
+mod naming;
 mod nulls;
 mod order;
+mod sequence;
 mod serial;
 pub mod place;
 mod observed;
@@ -226,6 +228,8 @@ const DETECTORS: &[Detector] = &[
     threads::threads as Detector,
     concurrent::concurrent as Detector,
     idioms::idioms as Detector,
+    naming::naming as Detector,
+    sequence::sequence as Detector,
 ];
 
 #[derive(Default)]
@@ -274,7 +278,7 @@ impl FileRule for SpotBugs {
         if let Some(project) = project.downcast_ref::<JavaProject>() {
             self.known.settle(&project.index, out);
             self.serial.settle(project, out);
-            self.attributes.settle(&project.index, || self.known.visits(&project.index), out);
+            self.attributes.settle(&project.index, &project.literals, || self.known.visits(&project.index), out);
             self.taint.settle(project, &self.elsewhere, out);
         }
     }

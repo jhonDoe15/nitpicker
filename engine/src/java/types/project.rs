@@ -194,21 +194,26 @@ pub fn build(files: &[SourceFile], options: &crate::engine::Options) -> JavaProj
     JavaProject { index, sources, literals, volatiles, null_finals, numbers, extended }
 }
 
-/// Puts back, as statements of the blanked body, the class literals and `assert` statements that `literals` reads.
+/// Puts back, as statements of the blanked body, the class literals, `forName` calls and `assert` statements that
+/// `literals` reads.
 fn keep_class_objects(file: &SourceFile, body: Node, bytes: &mut [u8]) {
     let mut kept: Vec<(usize, usize, bool)> = Vec::new();
     walk(body, |node| {
         let inside = kept.last().is_some_and(|(_, end, _)| node.start_byte() < *end);
         match node.kind() {
             "assert_statement" if !inside => kept.push((node.start_byte(), node.end_byte(), false)),
-            "class_literal" if !inside && bytes.get(node.end_byte()) == Some(&b' ') => kept.push((node.start_byte(), node.end_byte(), true)),
+            "class_literal" | "method_invocation" if !inside && loads_class(file, node) => kept.push((node.start_byte(), node.end_byte(), true)),
             _ => {}
         }
     });
-    for (start, end, literal) in kept {
-        bytes[start..end].copy_from_slice(&file.text.as_bytes()[start..end]);
-        if literal {
-            bytes[end] = b';';
+    for (start, end, _) in &kept {
+        bytes[*start..*end].copy_from_slice(&file.text.as_bytes()[*start..*end]);
+    }
+    for (start, end, _) in kept.into_iter().filter(|(_, _, literal)| *literal) {
+        let after = bytes[end..body.end_byte()].iter().position(|byte| !matches!(byte, b'\n' | b'\r')).map(|at| end + at);
+        match after.filter(|at| bytes[*at] == b' ') {
+            Some(at) => bytes[at] = b';',
+            None => bytes[start..end].iter_mut().filter(|byte| !matches!(byte, b'\n' | b'\r')).for_each(|byte| *byte = b' '),
         }
     }
 }
@@ -305,11 +310,29 @@ fn class_literals(files: &[SourceFile], scopes: &[FileScope], index: &TypeIndex)
                     }));
                 }
                 "assert_statement" => found.extend(super::scope::enclosing_types(scope, node).pop()),
+                "method_invocation" => found.extend(loaded_by_name(&resolver, index, node)),
                 _ => {}
             });
             found
         })
         .collect()
+}
+
+fn loads_class(file: &SourceFile, node: Node) -> bool {
+    let name = node.child_by_field_name("name").map(|name| file.text_of(name));
+    node.kind() == "class_literal" || (name == Some("forName") && node.child_by_field_name("object").is_some())
+}
+
+/// The class `Class.forName` loads when its one argument is a constant: javac writes the name into the class file.
+fn loaded_by_name(resolver: &Resolver, index: &TypeIndex, call: Node) -> Option<String> {
+    let arguments = call.child_by_field_name("arguments")?;
+    if resolver.file.text_of(call.child_by_field_name("name")?) != "forName" || arguments.named_child_count() != 1 {
+        return None;
+    }
+    let on_class = matches!(resolver.receiver(call.child_by_field_name("object")?)?, super::expr::Receiver::Static(owner) if owner == "java.lang.Class");
+    let binary = resolver.constant_string(arguments.named_child(0)?).filter(|_| on_class)?;
+    let dotted = binary.replace('$', ".");
+    Some(if index.get(&dotted).is_some() { dotted } else { binary })
 }
 
 const CLASS_BODIES: [&str; 4] = ["class_body", "interface_body", "enum_body", "annotation_type_body"];

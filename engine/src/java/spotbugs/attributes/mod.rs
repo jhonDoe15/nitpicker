@@ -3,11 +3,13 @@
 //! code could change), and SS_SHOULD_BE_STATIC (a final instance field set to a constant). The first three hang on
 //! what every class of the run stores into and reads from the field, so each file notes that and the run decides.
 mod constants;
+mod dropped;
 mod settle;
+mod unread;
 mod writes;
 
 pub use constants::should_be_static;
-pub use settle::Attributes;
+pub use settle::{Attributes, compiled_public};
 pub use writes::line as line_of;
 
 use super::Context;
@@ -19,7 +21,7 @@ use tree_sitter::Node;
 use writes::Order;
 pub(super) use writes::Phase;
 
-pub const PATTERNS: &[&str] = &["PA_PUBLIC_PRIMITIVE_ATTRIBUTE", "MS_SHOULD_BE_FINAL", "MS_PKGPROTECT"];
+pub const PATTERNS: &[&str] = &["PA_PUBLIC_PRIMITIVE_ATTRIBUTE", "MS_SHOULD_BE_FINAL", "MS_PKGPROTECT", unread::UNREAD, unread::UNREAD_OPEN];
 
 #[derive(Clone)]
 /// One load or store of a field of the run.
@@ -30,6 +32,11 @@ pub struct Write {
     pub key: (String, String),
     pub by: String,
     pub order: Order,
+    /// Where the access sits in the class file: lambdas last, then by method, initializers in the first constructor
+    /// that runs them.
+    pub code: writes::Code,
+    /// A load that only copies the field into itself on the same object, `this.f = this.f`.
+    pub copy: bool,
     pub file: String,
     pub line: usize,
     /// The stored value is an array with no elements.
@@ -73,8 +80,9 @@ fn used_name(usage: Node) -> bool {
         "element_value_pair" => is("value"),
         "method_reference" => above.named_child(0).is_some_and(|first| first.id() == usage.id()),
         "scoped_identifier" | "labeled_statement" | "break_statement" | "continue_statement" | "inferred_parameters" | "formal_parameter"
-        | "catch_formal_parameter" | "enum_constant" | "resource" => false,
-        _ => true,
+        | "catch_formal_parameter" | "enum_constant" | "resource" | "type_pattern" | "record_pattern_component" | "receiver_parameter"
+        | "spread_parameter" => false,
+        _ => !is("name"),
     }
 }
 
@@ -86,19 +94,26 @@ pub fn gather(context: &Context, names: &HashSet<String>) -> Notes {
     }
     let path = context.file.path.clone();
     let known = std::cell::RefCell::new(writes::Constructors::new());
+    let seen = std::cell::RefCell::new(std::collections::HashMap::new());
     let access = |notes: &mut Notes, key: (String, String), node: Node, value: Option<Node>, store: bool| {
         let (Some(by), Some(order)) = (writes::writer(context, node), writes::order(node, &mut known.borrow_mut())) else { return };
         let empty = value.is_some_and(|value| writes::empty_array(context, value));
         let setup = writes::setup(context, node);
         let line = writes::line(context, node, store);
-        notes.writes.push(Write { store, package: context.resolver.scope.package.clone(), key, by, order, file: path.clone(), line, empty, setup });
+        let code = writes::code(node, &mut known.borrow_mut());
+        let copy = !store && writes::copies_itself(context, node);
+        notes.writes.push(Write { store, package: context.resolver.scope.package.clone(), key, by, order, code, copy, file: path.clone(), line, empty, setup });
     };
     walk(context.file.tree.root_node(), |node| match node.kind() {
         "variable_declarator" => {
             let Some(declaration) = parent(node).filter(|holder| matches!(holder.kind(), "field_declaration" | "constant_declaration")) else { return };
             let (Some(class), Some(name)) = (writes::writer(context, node), node.child_by_field_name("name")) else { return };
             let key = (class, context.text(name).to_string());
-            notes.quiet.push((key.clone(), (path.clone(), quiet(context, declaration))));
+            let mut off = quiet(context, declaration);
+            if !has_modifier(declaration, "static") && super::lombok::reads_field(context, declaration) {
+                off.extend([unread::UNREAD, unread::UNREAD_OPEN]);
+            }
+            notes.quiet.push((key.clone(), (path.clone(), off)));
             let constant = has_modifier(declaration, "final") && context.resolver.index.constant_field(&key.0, &key.1, &|_| false, true, 0);
             if let Some(value) = node.child_by_field_name("value").filter(|_| !constant) {
                 access(&mut notes, key, node, Some(value), true);
@@ -119,7 +134,7 @@ pub fn gather(context: &Context, names: &HashSet<String>) -> Notes {
         "identifier" | "field_access" => {
             let name = if node.kind() == "identifier" { Some(node) } else { node.child_by_field_name("field") };
             let wanted = name.is_some_and(|name| names.contains(context.text(name)));
-            if wanted && used_name(node) && reads(node)
+            if wanted && used_name(node) && reads(node) && !dropped::dropped(context, node, &mut seen.borrow_mut())
                 && let Some(key) = field_key(context, node)
             {
                 access(&mut notes, key, node, None, false);
