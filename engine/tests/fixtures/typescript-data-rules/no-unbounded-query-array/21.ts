@@ -1,0 +1,1 @@
+import knex from "knex"; export const f = (db, rows) => db.batchInsert("users", rows, 500);

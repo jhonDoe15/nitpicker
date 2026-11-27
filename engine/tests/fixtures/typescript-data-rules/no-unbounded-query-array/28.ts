@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export const f = (db, items) => db.insertInto("asset").values(items.map((item) => ({ id: item.id }))).execute();

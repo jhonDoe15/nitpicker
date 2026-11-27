@@ -1,0 +1,1 @@
+import { In, Repository } from "typeorm"; export const f = (cache, x) => cache.insert(x.map((a) => a));

@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export async function f(db) { const query = db.selectFrom("asset").selectAll().limit(10); return query.orderBy("id").execute(); }

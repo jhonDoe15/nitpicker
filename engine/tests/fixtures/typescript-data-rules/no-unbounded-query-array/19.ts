@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export async function f(db, rows) { if (!rows.length) { return; } await db.insertInto("asset").values(rows).execute(); }

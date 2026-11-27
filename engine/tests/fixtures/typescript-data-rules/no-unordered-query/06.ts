@@ -1,0 +1,1 @@
+import knex from "knex"; export const f = (g) => Iterator.from(g).take(5);

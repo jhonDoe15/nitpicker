@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export const f = (db) => db.selectFrom("user").select((eb) => eb.fn.countAll().as("n")).limit(1).executeTakeFirst();

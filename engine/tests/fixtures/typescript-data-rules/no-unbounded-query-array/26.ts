@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export const f = (db, dto) => db.deleteFrom("asset").where("ownerId", "not in", dto.ownerIds).execute();

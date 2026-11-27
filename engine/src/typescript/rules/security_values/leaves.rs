@@ -161,7 +161,7 @@ fn loop_right<'s>(statement: Option<Node<'s>>, left: Node<'s>) -> Option<Node<'s
 }
 
 /// The `writeExpr` of each write reference ESLint makes for a declared name.
-fn declared_writes(definition: Node) -> Vec<Node> {
+pub fn declared_writes(definition: Node) -> Vec<Node> {
     let (mut writes, top) = pattern_defaults(definition);
     let declarator = top.parent().filter(|declarator| declarator.is("VariableDeclarator") && declarator.node("id") == Some(top));
     if let Some(declarator) = declarator {
@@ -206,7 +206,7 @@ fn caught_names<'s>(clause: Node<'s>, name: &str) -> Vec<Node<'s>> {
 }
 
 /// The `writeExpr` of each write reference ESLint makes for an assigned name.
-fn assigned_writes(identifier: Node) -> Vec<Node> {
+pub fn assigned_writes(identifier: Node) -> Vec<Node> {
     let (mut writes, top) = pattern_defaults(identifier);
     let parent = top.parent();
     let assigned = parent.filter(|parent| parent.is("AssignmentExpression") && parent.node("left") == Some(top)).and_then(|parent| parent.node("right"));

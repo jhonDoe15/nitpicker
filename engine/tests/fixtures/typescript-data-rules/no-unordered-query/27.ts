@@ -1,0 +1,1 @@
+export const f = (prisma, page) => prisma.user.findMany({ ...page, take: 10 });

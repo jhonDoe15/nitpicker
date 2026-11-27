@@ -1,0 +1,1 @@
+export const f = (list, ids) => list.where("id", "in", ids);

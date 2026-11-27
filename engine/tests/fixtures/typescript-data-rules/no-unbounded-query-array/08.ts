@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export const f = (db, ids) => ids.length > 0 ? db.selectFrom("asset").selectAll().where("id", "in", ids).execute() : [];

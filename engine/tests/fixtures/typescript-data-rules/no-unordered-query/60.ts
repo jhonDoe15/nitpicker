@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export const f = (eb) => eb.fn.agg("array_agg", ["tag.value"]).as("tags");

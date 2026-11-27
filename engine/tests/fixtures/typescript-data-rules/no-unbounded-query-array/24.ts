@@ -1,0 +1,1 @@
+import { inArray } from "drizzle-orm"; export async function f(db, users, ids) { if (ids.length === 0) { return []; } return db.select().from(users).where(inArray(users.id, ids)); }
