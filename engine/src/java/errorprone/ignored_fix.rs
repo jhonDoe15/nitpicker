@@ -92,12 +92,19 @@ fn root_assignable<'t>(context: &Context, call: Node<'t>) -> Option<(Node<'t>, T
 }
 
 /// Assignability that also compares type arguments: `Future<Void>` does not go into a `Future<String>`.
-fn assignable(context: &Context, from: &Type, to: &Type) -> bool {
+fn assignable(context: &Context, at: Node, from: &Type, to: &Type) -> bool {
     if matches!(to, Type::Wildcard) {
         return false;
     }
     if matches!(to, Type::Variable(_)) {
         return from == to;
+    }
+    if let Type::Variable(name) = from {
+        let bound = crate::java::types::scope::type_parameter(context.file, at, name)
+            .and_then(|parameter| children(parameter).into_iter().find(|child| child.kind() == "type_bound"))
+            .and_then(|bound| bound.named_child(0))
+            .and_then(|bound| context.resolver.symbolic().type_node(bound));
+        return bound.is_some_and(|bound| assignable(context, at, &bound, to)) || to.name() == "java.lang.Object";
     }
     if !context.resolver.assignable(from, to, false) {
         return false;
@@ -119,7 +126,7 @@ fn written_type(context: &Context, name: Node) -> Option<Type> {
                 let declaration = parent(declarator)?;
                 let inferred = declaration.child_by_field_name("type").is_some_and(|kind| context.resolver.inferred_local(context.text(kind)));
                 match declarator.child_by_field_name("value") {
-                    Some(value) if inferred => context.resolver.type_of(value),
+                    Some(value) if inferred => Some(inferred_type(context, value)),
                     _ => symbolic.declared_type(declaration, Some(declarator)),
                 }
             }
@@ -134,7 +141,12 @@ fn written_type(context: &Context, name: Node) -> Option<Type> {
     }
     let field = if name.kind() == "field_access" { name.child_by_field_name("field")? } else { name };
     let object = name.child_by_field_name("object").filter(|object| name.kind() == "field_access" && !matches!(object.kind(), "this" | "super"));
-    if let Some(Type::Class(owner, given)) = object.and_then(|object| context.resolver.type_of(object)) {
+    if let Some(object) = object {
+        let seen = match context.resolver.receiver(object) {
+            Some(Receiver::Static(owner)) => Some(Type::class(&owner)),
+            _ => context.resolver.symbolic().type_of(object),
+        };
+        let Some(Type::Class(owner, given)) = seen else { return Some(Type::Wildcard) };
         let index = context.resolver.index;
         let (declaring, field) = index.field(&owner, context.text(field))?;
         return Some(field.generic.substitute(&index.member_map(&Type::Class(owner, given), &declaring.name)));
@@ -168,7 +180,18 @@ fn lambda_parameter(context: &Context, parameter: Node) -> Option<Type> {
     let index = context.resolver.index;
     let (declaring, function) = index.functional_method(&target.name())?;
     let taken = function.generic_parameters.get(position)?.substitute(&index.member_map(&target, &declaring.name));
-    matches!(taken, Type::Variable(_)).then_some(taken)
+    let Type::Variable(name) = &taken else { return None };
+    crate::java::types::scope::type_parameter(context.file, lambda, name).map(|_| taken.clone())
+}
+
+/// The type a `var` local takes from its value; a wildcard when the two resolvers disagree, as for a value whose type
+/// javac takes from a captured wildcard.
+fn inferred_type(context: &Context, value: Node) -> Type {
+    match (context.resolver.symbolic().type_of(value), context.resolver.type_of(value)) {
+        (Some(kept @ Type::Variable(_)), _) => kept,
+        (Some(kept), Some(plain)) if kept.erased() == plain.erased() => kept,
+        _ => Type::Wildcard,
+    }
 }
 
 /// The declared type of a variable with its wildcard type arguments kept as wildcards.
@@ -253,11 +276,15 @@ pub fn call_site_fixes(context: &Context, call: Node) -> Vec<Fix> {
         blanket = false;
     }
     if let (true, Some((root, held)), Some(result)) = (is_call, root_assignable(context, call), result.as_ref()) {
+        let direct = call.child_by_field_name("object").is_some_and(|object| object.id() == root.id());
         let kept = match &held {
             Type::Variable(name) => variable_result(context, call, name),
+            Type::Class(..) if direct && held.mentions_variable() => context.resolver.resolve_call(call).map(|resolved| {
+                resolved.method.generic_returns.substitute(&context.resolver.index.member_map(&held, &resolved.declaring))
+            }),
             _ => None,
         };
-        if assignable(context, kept.as_ref().unwrap_or(result), &held) {
+        if assignable(context, call, kept.as_ref().unwrap_or(result), &held) {
             fixes.push(Fix::new().insert(call.start_byte(), format!("{} = ", context.text(root))));
         }
     }

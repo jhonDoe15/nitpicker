@@ -99,4 +99,41 @@ class F28AssignBack {
             shadowed.putAll(map);
         });
     }
+
+    static class Chain<X> {
+        static Chain<String> shared = new Chain<>();
+        Chain<X> link;
+        X item;
+
+        Chain<X> chain() {
+            return this;
+        }
+    }
+
+    static class SubChain<Y extends Chain<Y>> extends Chain<Y> {
+        Y own;
+
+        void touch(SubChain<Y> other, Chain<String> plain) {
+            other.own.chain();
+            other.item.chain();
+            other.link.chain();
+            plain.link.chain();
+            Chain.shared.chain();
+        }
+    }
+
+    <U extends Chain<U>> void inferred(U u, java.util.List<? extends U> many, java.util.Optional<? extends U> maybe) {
+        var x = u;
+        x.chain();
+        var y = many.get(0);
+        y.chain();
+        var z = maybe.get();
+        z.chain();
+        Runnable later = () -> {
+            var k = u;
+            k.chain();
+        };
+        var plain = new Chain<String>();
+        plain.chain();
+    }
 }
