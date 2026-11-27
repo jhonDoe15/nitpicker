@@ -318,6 +318,24 @@ Java 21 is not there for code compiled with `--release 17`. With it (javaparser-
 code bases give the same findings as Error Prone; the differences in the table were type questions closed since
 it was measured.
 
+### Error Prone next to annotation processors that only add files
+
+Most annotation processors (AutoValue, MapStruct, Dagger, Immutables, JMH, metamodel generators) only write new
+files, so a source set that runs them keeps its checks on the engine. The Java run lists the sources the build's
+processors wrote (`--processor-output=` in the arguments file) after the source set's own and sets
+`NP_EP_CONTEXT_ROOTS` to their folders: the engine types code against them and reports nothing there. Error Prone
+checks such as `AutoValueConstructorOrderChecker` need them, since class files keep no parameter names.
+
+With `NP_EP_AUDIT_CLASSES` (the build's class folders), the engine compares each top-level and member class of
+the source with its class file (`src/java/errorprone/processor_audit.rs`): fields by name and `static`, methods by
+name, parameter count and `static`, constructors by count and member classes by name, leaving out what javac adds
+itself (synthetic and bridge members, default constructors, enum and record members). A difference, or a class
+without a class file, is a `_Rewritten` row; the source set then goes whole to Error Prone and the log names the
+class and member. Lombok source sets go to Error Prone without the comparison. Not compared: member types,
+annotations and code, and the members of local and anonymous classes; a processor that changes only these is
+not detected. `tests/errorprone_processors.rs` holds an AutoValue and MapStruct project with Error Prone's rows,
+Java shapes javac adds members to, and the Lombok fixture the comparison flags.
+
 ### Error Prone on code Lombok rewrote
 
 Error Prone sees the tree after Lombok has rewritten it. Its findings positioned only on code Lombok generated are

@@ -296,7 +296,8 @@ fn code(reader: &mut Reader, pool: &Pool, method: &mut CompiledMethod) -> Option
     Some(())
 }
 
-fn parse(data: &[u8]) -> Option<(String, CompiledClass)> {
+/// One class file: its binary name, with dots, and its members.
+pub fn parse(data: &[u8]) -> Option<(String, CompiledClass)> {
     let mut reader = Reader { data, at: 0 };
     if reader.u4()? != 0xCAFE_BABE {
         return None;

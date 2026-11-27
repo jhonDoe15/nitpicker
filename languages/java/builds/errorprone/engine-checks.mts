@@ -4,7 +4,6 @@ import {
   lombokVersions,
   ownClasses,
   ownPackages,
-  runsProcessors,
   TESTED_LOMBOK,
   type ArgumentSet,
 } from './engine-arguments.mts';
@@ -12,6 +11,7 @@ import { NOT_DISABLEABLE, type CheckLevels } from './options/check-levels.mts';
 import { optionReaders, unsupportedOption } from './options/project-options.mts';
 import { runnerLevels } from './options/runner-levels.mts';
 import { immutableInReach } from './skip/runner-checks.mts';
+import { processorReason } from './processors/processor-sources.mts';
 
 export const NULL_AWAY = 'NullAway';
 export const ENGINE_CHECKS: readonly string[] = [...PORTED_CHECKS, NULL_AWAY];
@@ -53,7 +53,9 @@ export function wholeReason(
     const { lowest, highest } = TESTED_LOMBOK;
     return `it runs Lombok ${untested}, outside the versions compared with Error Prone (${lowest} to ${highest})`;
   }
-  return runsProcessors(set.head) ? 'it runs annotation processors' : undefined;
+  return lombokVersions(set.head).length > 0
+    ? 'it runs Lombok, which rewrites classes'
+    : processorReason(set.head);
 }
 
 function runsOnEngine(check: string, levels: CheckLevels): boolean {
