@@ -32,6 +32,7 @@ describe('facts the engine rules get from the project', () => {
     );
 
     expect(settingsOf(rules)).toEqual([
+      'cognitive-complexity.max=15',
       'contract-infrastructure-type.feature=',
       'no-assertion-in-loop.assertion-function-names=[]',
       `no-copied-constant.root=${root}`,
@@ -41,6 +42,7 @@ describe('facts the engine rules get from the project', () => {
       'no-interval-polling-in-tests.fixture=false',
       ...[
         'no-io-in-loop',
+        'no-lookup-per-element',
         'no-remote-call-in-transaction',
         'no-remote-call-under-lock',
         'no-retry-without-idempotency',
@@ -70,6 +72,18 @@ describe('facts the engine rules get from the project', () => {
       expect.stringMatching(/^structured-catch-logging\.logger-shapes=/u),
       expect.stringMatching(/^test-must-use-production-runtime\.exempt=(?:true|false)$/u),
       expect.stringMatching(/^test-must-use-production-runtime\.helper-file=./u),
+      'integration-test-uses-approved-harness.integration=false',
+      'integration-test-uses-approved-harness.approved-functions=null',
+      'integration-test-uses-approved-harness.approved-subprocesses=null',
+      'no-first-test-charged-setup.shared-setup-hook=beforeAll',
+      'no-fixed-sleep-synchronization.wait-on-condition=vi.waitFor or expect.poll',
+      'no-fixed-sleep-synchronization.advance-fake-time=vi.advanceTimersByTime',
+      'no-fixed-sleep-synchronization.fixture=false',
+      'no-partial-output-assertion.whole-output=`toEqual` or `toBe`',
+      expect.stringMatching(/^no-partial-output-assertion\.fragment-forms=`toContain`/u),
+      'no-partial-output-assertion.whole-value=`toEqual`',
+      expect.stringMatching(/^no-partial-output-assertion\.partial-forms=`toMatchObject`/u),
+      'no-partial-output-assertion.varied-field=Use `expect.any(Type)` for a field that varies.',
     ]);
   });
 

@@ -11,11 +11,11 @@ import {
 } from '../rules/test-runtime/assertions/test-must-use-production-runtime.mts';
 import { vocabularyOf } from '../rules/runner-apis/runner-option.mts';
 import { readLayout } from '../rules/typed/policy-views.mts';
-import type { RunnerVocabulary } from '../../test-runner/vocabulary/typed-vocabulary.mts';
 import path from 'node:path';
 import { featureOf } from '../rules/contracts/contract-infrastructure-type.mts';
 import { testSourcesFact } from './test-sources-fact.mts';
 import { hasGlobalTrimmer } from '../rules/request-text/global-trimmer.mts';
+import { kebab, runnerWords, TEST_ENGINE_RULES } from './test-rules/test-rule-facts.mts';
 
 const stylesheetSpecifier: RegExp = untypedStylesheetSpecifier;
 
@@ -58,17 +58,6 @@ export type EngineRule = {
 function testRootOf(options: readonly unknown[]): string {
   const root: unknown = Reflect.get(Object(options[0]), 'testRoot');
   return typeof root === 'string' ? root : 'test';
-}
-
-function kebab(word: string): string {
-  return word.replaceAll(/[A-Z]/gu, (upper) => `-${upper.toLowerCase()}`);
-}
-
-function runnerWords(...words: readonly (keyof RunnerVocabulary)[]): FileFacts {
-  return (_filename, options) => {
-    const vocabulary = vocabularyOf({ options });
-    return Object.fromEntries(words.map((word) => [kebab(word), vocabulary[word]]));
-  };
 }
 
 function optionFacts(...names: readonly string[]): FileFacts {
@@ -303,6 +292,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
     },
   ],
   ['time-unit-mismatch', {}],
+  ...TEST_ENGINE_RULES,
 ]);
 
 export const PLUGIN_RULE_PREFIX = 'nitpicker/';

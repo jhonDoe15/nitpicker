@@ -6,6 +6,13 @@ const VITEST: &[(&str, &str)] = &[
     ("each-case", "give each case its own test with it.each"),
     ("shared-setup-hook", "beforeAll"),
     ("poll-instead", "vi.waitFor / expect.poll"),
+    ("whole-output", "`toEqual` or `toBe`"),
+    ("fragment-forms", "`toContain`, or `toMatch` with a pattern that is not anchored `^...$`"),
+    ("whole-value", "`toEqual`"),
+    ("partial-forms", "`toMatchObject`, `expect.objectContaining`, `expect.stringContaining`, `expect.arrayContaining`"),
+    ("varied-field", "Use `expect.any(Type)` for a field that varies."),
+    ("wait-on-condition", "vi.waitFor or expect.poll"),
+    ("advance-fake-time", "vi.advanceTimersByTime"),
 ];
 
 /// The runner's word for `word` in messages of `rule`.
