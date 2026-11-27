@@ -1,0 +1,1 @@
+await client.ft.search('idx', '*', { LIMIT: { from: 0, size: 100 } });

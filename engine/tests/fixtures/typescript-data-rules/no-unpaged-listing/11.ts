@@ -1,0 +1,1 @@
+await client.search('idx', '*');

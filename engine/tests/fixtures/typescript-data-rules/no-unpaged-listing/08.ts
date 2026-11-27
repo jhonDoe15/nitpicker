@@ -1,0 +1,1 @@
+const command = new GetObjectCommand({ Bucket, Key });

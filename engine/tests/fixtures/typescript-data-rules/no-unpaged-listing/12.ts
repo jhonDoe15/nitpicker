@@ -1,0 +1,1 @@
+await other.ft.query('idx', '*');

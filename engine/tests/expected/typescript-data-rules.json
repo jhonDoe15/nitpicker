@@ -1,0 +1,434 @@
+[
+ [
+  "no-eager-relation/17.ts",
+  "nitpicker/no-eager-relation",
+  3,
+  44,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  3,
+  49
+ ],
+ [
+  "no-eager-relation/18.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  18,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  29
+ ],
+ [
+  "no-eager-relation/19.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  101,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  121
+ ],
+ [
+  "no-eager-relation/20.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  45,
+  "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  64
+ ],
+ [
+  "no-eager-relation/21.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  48,
+  "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  66
+ ],
+ [
+  "no-eager-relation/22.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  54,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  65
+ ],
+ [
+  "no-eager-relation/23.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  67,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  78
+ ],
+ [
+  "no-eager-relation/24.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  66,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  77
+ ],
+ [
+  "no-eager-relation/25.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  49,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  60
+ ],
+ [
+  "no-eager-relation/26.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  48,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  59
+ ],
+ [
+  "no-eager-relation/27.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  41,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  52
+ ],
+ [
+  "no-eager-relation/28.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  18,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  29
+ ],
+ [
+  "no-eager-relation/29.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  16,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  27
+ ],
+ [
+  "no-eager-relation/30.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  44,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  55
+ ],
+ [
+  "no-eager-relation/31.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  101,
+  "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  112
+ ],
+ [
+  "no-eager-relation/32.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  62,
+  "eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs.",
+  2,
+  73
+ ],
+ [
+  "no-eager-relation/33.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  44,
+  "eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs.",
+  2,
+  55
+ ],
+ [
+  "no-eager-relation/34.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  98,
+  "eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs.",
+  2,
+  109
+ ],
+ [
+  "no-eager-relation/35.ts",
+  "nitpicker/no-eager-relation",
+  3,
+  114,
+  "eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs.",
+  3,
+  125
+ ],
+ [
+  "no-eager-relation/36.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  105,
+  "eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs.",
+  2,
+  110
+ ],
+ [
+  "no-eager-relation/37.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  105,
+  "eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs.",
+  2,
+  110
+ ],
+ [
+  "no-eager-relation/38.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  45,
+  "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  64
+ ],
+ [
+  "no-eager-relation/39.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  45,
+  "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  89
+ ],
+ [
+  "no-eager-relation/40.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  49,
+  "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  68
+ ],
+ [
+  "no-eager-relation/41.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  34,
+  "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  53
+ ],
+ [
+  "no-eager-relation/42.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  24,
+  "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  43
+ ],
+ [
+  "no-eager-relation/43.ts",
+  "nitpicker/no-eager-relation",
+  2,
+  32,
+  "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.",
+  2,
+  51
+ ],
+ [
+  "no-many-to-many-cascade-remove/11.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  39,
+  "A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default).",
+  2,
+  67
+ ],
+ [
+  "no-many-to-many-cascade-remove/12.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  3,
+  39,
+  "A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default).",
+  3,
+  56
+ ],
+ [
+  "no-many-to-many-cascade-remove/13.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  47,
+  "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.",
+  2,
+  80
+ ],
+ [
+  "no-many-to-many-cascade-remove/14.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  41,
+  "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.",
+  2,
+  65
+ ],
+ [
+  "no-many-to-many-cascade-remove/15.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  41,
+  "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.",
+  2,
+  68
+ ],
+ [
+  "no-many-to-many-cascade-remove/16.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  39,
+  "A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default).",
+  2,
+  52
+ ],
+ [
+  "no-many-to-many-cascade-remove/17.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  55,
+  "A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default).",
+  2,
+  84
+ ],
+ [
+  "no-many-to-many-cascade-remove/18.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  39,
+  "A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default).",
+  2,
+  63
+ ],
+ [
+  "no-many-to-many-cascade-remove/19.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  92,
+  "A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default).",
+  2,
+  105
+ ],
+ [
+  "no-many-to-many-cascade-remove/20.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  47,
+  "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.",
+  2,
+  69
+ ],
+ [
+  "no-many-to-many-cascade-remove/21.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  48,
+  "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.",
+  2,
+  90
+ ],
+ [
+  "no-many-to-many-cascade-remove/22.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  47,
+  "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.",
+  2,
+  66
+ ],
+ [
+  "no-many-to-many-cascade-remove/23.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  88,
+  "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.",
+  2,
+  110
+ ],
+ [
+  "no-many-to-many-cascade-remove/24.ts",
+  "nitpicker/no-many-to-many-cascade-remove",
+  2,
+  95,
+  "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.",
+  2,
+  102
+ ],
+ [
+  "no-unpaged-listing/13.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  50,
+  "An object-store listing returns one page (1000 keys) and the rest is ignored. Use the paginator (`paginateListObjectsV2`), or loop on `NextContinuationToken` and `IsTruncated`. An existence check passes `MaxKeys: 1`.",
+  1,
+  94
+ ],
+ [
+  "no-unpaged-listing/14.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  41,
+  "An object-store listing returns one page (1000 keys) and the rest is ignored. Use the paginator (`paginateListObjectsV2`), or loop on `NextContinuationToken` and `IsTruncated`. An existence check passes `MaxKeys: 1`.",
+  1,
+  75
+ ],
+ [
+  "no-unpaged-listing/15.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  17,
+  "An object-store listing returns one page (1000 keys) and the rest is ignored. Use the paginator (`paginateListObjectsV2`), or loop on `NextContinuationToken` and `IsTruncated`. An existence check passes `MaxKeys: 1`.",
+  1,
+  45
+ ],
+ [
+  "no-unpaged-listing/16.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  38,
+  "An object-store listing returns one page (1000 keys) and the rest is ignored. Use the paginator (`paginateListObjectsV2`), or loop on `NextContinuationToken` and `IsTruncated`. An existence check passes `MaxKeys: 1`.",
+  1,
+  66
+ ],
+ [
+  "no-unpaged-listing/17.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  67,
+  "An object-store listing returns one page (1000 keys) and the rest is ignored. Use the paginator (`paginateListObjectsV2`), or loop on `NextContinuationToken` and `IsTruncated`. An existence check passes `MaxKeys: 1`.",
+  1,
+  98
+ ],
+ [
+  "no-unpaged-listing/18.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  7,
+  "RediSearch `FT.SEARCH` returns 10 documents by default, so the rest is ignored. Pass `LIMIT: { from: 0, size: n }` and loop on the offset until a page comes back short.",
+  1,
+  35
+ ],
+ [
+  "no-unpaged-listing/19.ts",
+  "nitpicker/no-unpaged-listing",
+  1,
+  7,
+  "RediSearch `FT.SEARCH` returns 10 documents by default, so the rest is ignored. Pass `LIMIT: { from: 0, size: n }` and loop on the offset until a page comes back short.",
+  1,
+  57
+ ]
+]
