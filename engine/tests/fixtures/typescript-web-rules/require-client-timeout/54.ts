@@ -1,0 +1,1 @@
+import pg from "pg"; const CONFIG = { max: 10 }; export const pool = new pg.Pool(CONFIG);

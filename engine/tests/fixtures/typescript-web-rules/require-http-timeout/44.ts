@@ -1,0 +1,1 @@
+import * as https from "https"; export const send = () => https.request("https://x.test", { method: "POST" });

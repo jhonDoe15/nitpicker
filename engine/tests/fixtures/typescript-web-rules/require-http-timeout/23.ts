@@ -1,0 +1,1 @@
+export const get = (cache, key) => cache.get(key);

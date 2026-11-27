@@ -1,0 +1,1 @@
+import axios from "axios"; export const post = (url, body) => axios.post(url, body, { timeout: 10_000 });

@@ -1,0 +1,1 @@
+import { Pool, Client } from "pg"; export const pool = new Pool({ connectionString: "postgres://db/app?" + "statement_timeout=30000" });

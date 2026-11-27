@@ -1,0 +1,1 @@
+import { Sequelize } from "sequelize"; export const db = new Sequelize({ dialect: "postgres", dialectOptions: { statement_timeout: 30_000 } });
