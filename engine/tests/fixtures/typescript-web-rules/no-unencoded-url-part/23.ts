@@ -1,0 +1,1 @@
+const url = new URL(`${authUrl.pathname}/.well-known/x`, base);

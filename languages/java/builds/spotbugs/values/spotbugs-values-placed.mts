@@ -1,4 +1,4 @@
-import type { Placed } from './spotbugs-placed.mts';
+import type { Placed } from '../spotbugs-placed.mts';
 
 const ERROR = 'error';
 const WARNING = 'warning';

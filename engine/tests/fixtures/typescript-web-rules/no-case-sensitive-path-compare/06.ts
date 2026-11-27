@@ -1,0 +1,1 @@
+if (path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase()) {}

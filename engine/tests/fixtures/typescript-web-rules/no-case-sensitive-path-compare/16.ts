@@ -1,0 +1,1 @@
+if (isEqualAuthority(connection.remoteAuthority, uri.authority)) {}

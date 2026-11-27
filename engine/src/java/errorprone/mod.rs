@@ -9,6 +9,11 @@ mod temporal_fields;
 mod jdk_parse;
 mod jdk_values;
 mod always_throws;
+mod sun_api;
+mod record_components;
+mod modify_source;
+mod type_shadowing;
+mod use_binds;
 mod format_validation;
 mod format_string;
 mod format_annotation;
@@ -321,6 +326,7 @@ mod flogger_args;
 mod no_allocation;
 mod must_be_closed;
 mod must_be_closed_fix;
+mod processor_audit;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -866,6 +872,11 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["BareDotMetacharacter"], misc_defect_calls::bare_dot_metacharacter),
     (&["InvalidPatternSyntax"], misc_defect_calls::invalid_pattern_syntax),
     (&["TemporalAccessorGetChronoField"], temporal_fields::temporal_accessor_get_chrono_field),
+    (&["SunApi"], sun_api::sun_api),
+    (&["RecordComponentAccessorAnnotationConflict"], record_components::record_component_accessor_annotation_conflict),
+    (&["ModifySourceCollectionInStream"], modify_source::modify_source_collection_in_stream),
+    (&["TypeNameShadowing"], type_shadowing::type_name_shadowing),
+    (&["UseBinds"], use_binds::use_binds),
     (&["CharacterGetNumericValue"], misc_defect_calls::character_get_numeric_value),
     (&["GetClassOnEnum"], misc_defect_calls::get_class_on_enum),
     (&["BigDecimalEquals"], misc_defect_calls::big_decimal_equals),
@@ -1032,6 +1043,9 @@ pub struct ErrorProne;
 
 /// The row that lists, for each file the engine read, the checks of `NP_EP_MAY_REPORT` that may report there.
 const MAY_REPORT: &str = "_MayReport";
+/// The row for a class an annotation processor changed (`NP_EP_AUDIT_CLASSES`): the class file the build wrote for it
+/// has members its source does not explain.
+const REWRITTEN: &str = "_Rewritten";
 /// Checks whose findings nitpicker drops inside classes with certain annotations; their rows carry the annotations.
 const CLASS_EXEMPTED: &[&str] = &["IdentifierName", "PrivateConstructorForUtilityClass"];
 const CLASS_KINDS: &[&str] = &[
@@ -1041,6 +1055,11 @@ const CLASS_KINDS: &[&str] = &[
     "record_declaration",
     "annotation_type_declaration",
 ];
+
+/// The directories an environment variable lists, split like a class path.
+fn paths_of(variable: &str) -> Vec<std::path::PathBuf> {
+    std::env::var_os(variable).map(|value| std::env::split_paths(&value).filter(|path| !path.as_os_str().is_empty()).collect()).unwrap_or_default()
+}
 
 /// javac analyzes a `package-info.java` that declares types as two units, so Error Prone reports each finding there twice.
 fn twice_analyzed(file: &SourceFile) -> bool {
@@ -1058,7 +1077,25 @@ impl FileRule for ErrorProne {
     fn check(&self, _file: &SourceFile, _out: &mut Vec<Finding>) {}
     fn check_in(&self, file: &SourceFile, project: &Project, out: &mut Vec<Finding>) {
         let Some(project) = project.downcast_ref::<JavaProject>() else { return };
+        if paths_of("NP_EP_CONTEXT_ROOTS").iter().any(|root| std::path::Path::new(&file.path).starts_with(root)) {
+            return;
+        }
         let scope = &FileScope::of(file);
+        let audited = paths_of("NP_EP_AUDIT_CLASSES");
+        if !audited.is_empty() {
+            for found in processor_audit::rewritten(file, &scope.package, &audited) {
+                out.push(Finding {
+                    file: file.path.clone(),
+                    line: found.line,
+                    column: found.column,
+                    rule: REWRITTEN.to_string(),
+                    message: found.message,
+                    symbol: None,
+                    priority: None,
+                    arguments: None,
+                });
+            }
+        }
         let resolver = &Resolver::new(&project.index, file, scope);
         let _parents = ParentTable::of(file.tree.root_node());
         let mut line_starts = vec![0];

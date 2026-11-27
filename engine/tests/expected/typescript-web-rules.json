@@ -1,0 +1,929 @@
+[
+ [
+  "no-case-mixed-header-merge/16.ts",
+  "nitpicker/no-case-mixed-header-merge",
+  1,
+  43,
+  "Object keys are case-sensitive but header names are not: a caller header spread next to a literal header name in another case is sent twice and the override does not happen. Merge with `new Headers(headers)` and `merged.set(name, value)`, or lowercase every key first.",
+  1,
+  77
+ ],
+ [
+  "no-case-mixed-header-merge/17.ts",
+  "nitpicker/no-case-mixed-header-merge",
+  1,
+  55,
+  "Object keys are case-sensitive but header names are not: a caller header spread next to a literal header name in another case is sent twice and the override does not happen. Merge with `new Headers(headers)` and `merged.set(name, value)`, or lowercase every key first.",
+  1,
+  89
+ ],
+ [
+  "no-case-mixed-header-merge/18.ts",
+  "nitpicker/no-case-mixed-header-merge",
+  1,
+  43,
+  "Object keys are case-sensitive but header names are not: a caller header spread next to a literal header name in another case is sent twice and the override does not happen. Merge with `new Headers(headers)` and `merged.set(name, value)`, or lowercase every key first.",
+  1,
+  77
+ ],
+ [
+  "no-case-mixed-header-merge/19.ts",
+  "nitpicker/no-case-mixed-header-merge",
+  1,
+  43,
+  "Object keys are case-sensitive but header names are not: a caller header spread next to a literal header name in another case is sent twice and the override does not happen. Merge with `new Headers(headers)` and `merged.set(name, value)`, or lowercase every key first.",
+  1,
+  75
+ ],
+ [
+  "no-case-mixed-header-merge/20.ts",
+  "nitpicker/no-case-mixed-header-merge",
+  1,
+  40,
+  "Object keys are case-sensitive but header names are not: a caller header spread next to a literal header name in another case is sent twice and the override does not happen. Merge with `new Headers(headers)` and `merged.set(name, value)`, or lowercase every key first.",
+  1,
+  51
+ ],
+ [
+  "no-case-mixed-header-merge/21.ts",
+  "nitpicker/no-case-mixed-header-merge",
+  1,
+  19,
+  "Object keys are case-sensitive but header names are not: a caller header spread next to a literal header name in another case is sent twice and the override does not happen. Merge with `new Headers(headers)` and `merged.set(name, value)`, or lowercase every key first.",
+  1,
+  39
+ ],
+ [
+  "no-case-mixed-header-merge/22.ts",
+  "nitpicker/no-case-mixed-header-merge",
+  1,
+  71,
+  "Object keys are case-sensitive but header names are not: a caller header spread next to a literal header name in another case is sent twice and the override does not happen. Merge with `new Headers(headers)` and `merged.set(name, value)`, or lowercase every key first.",
+  1,
+  105
+ ],
+ [
+  "no-case-mixed-header-merge/23.ts",
+  "nitpicker/no-case-mixed-header-merge",
+  1,
+  35,
+  "Object keys are case-sensitive but header names are not: a caller header spread next to a literal header name in another case is sent twice and the override does not happen. Merge with `new Headers(headers)` and `merged.set(name, value)`, or lowercase every key first.",
+  1,
+  47
+ ],
+ [
+  "no-case-mixed-header-merge/24.ts",
+  "nitpicker/no-case-mixed-header-merge",
+  1,
+  37,
+  "Object keys are case-sensitive but header names are not: a caller header spread next to a literal header name in another case is sent twice and the override does not happen. Merge with `new Headers(headers)` and `merged.set(name, value)`, or lowercase every key first.",
+  1,
+  71
+ ],
+ [
+  "no-case-mixed-header-merge/25.ts",
+  "nitpicker/no-case-mixed-header-merge",
+  1,
+  26,
+  "Object keys are case-sensitive but header names are not: a caller header spread next to a literal header name in another case is sent twice and the override does not happen. Merge with `new Headers(headers)` and `merged.set(name, value)`, or lowercase every key first.",
+  1,
+  42
+ ],
+ [
+  "no-case-sensitive-path-compare/36.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  48
+ ],
+ [
+  "no-case-sensitive-path-compare/37.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  41
+ ],
+ [
+  "no-case-sensitive-path-compare/38.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  51
+ ],
+ [
+  "no-case-sensitive-path-compare/39.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  30
+ ],
+ [
+  "no-case-sensitive-path-compare/40.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  44
+ ],
+ [
+  "no-case-sensitive-path-compare/41.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  58
+ ],
+ [
+  "no-case-sensitive-path-compare/42.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  40
+ ],
+ [
+  "no-case-sensitive-path-compare/43.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  31
+ ],
+ [
+  "no-case-sensitive-path-compare/44.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  37
+ ],
+ [
+  "no-case-sensitive-path-compare/45.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "These file system paths are compared as plain strings, but Windows and macOS ignore case. Compare `path.relative(a, b) === \"\"`, or normalize both sides with one helper that lowercases on win32 and darwin.",
+  1,
+  45
+ ],
+ [
+  "no-case-sensitive-path-compare/46.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "Host names and URI authorities are case-insensitive. Lowercase both sides (`a.toLowerCase() === b.toLowerCase()`) before comparing them.",
+  1,
+  50
+ ],
+ [
+  "no-case-sensitive-path-compare/47.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "Host names and URI authorities are case-insensitive. Lowercase both sides (`a.toLowerCase() === b.toLowerCase()`) before comparing them.",
+  1,
+  32
+ ],
+ [
+  "no-case-sensitive-path-compare/48.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "Host names and URI authorities are case-insensitive. Lowercase both sides (`a.toLowerCase() === b.toLowerCase()`) before comparing them.",
+  1,
+  40
+ ],
+ [
+  "no-case-sensitive-path-compare/49.ts",
+  "nitpicker/no-case-sensitive-path-compare",
+  1,
+  5,
+  "Host names and URI authorities are case-insensitive. Lowercase both sides (`a.toLowerCase() === b.toLowerCase()`) before comparing them.",
+  1,
+  38
+ ],
+ [
+  "no-double-decode/19.ts",
+  "nitpicker/no-double-decode",
+  1,
+  52,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  90
+ ],
+ [
+  "no-double-decode/20.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  45
+ ],
+ [
+  "no-double-decode/21.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  55
+ ],
+ [
+  "no-double-decode/22.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  35
+ ],
+ [
+  "no-double-decode/23.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  48
+ ],
+ [
+  "no-double-decode/24.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  52
+ ],
+ [
+  "no-double-decode/25.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  55
+ ],
+ [
+  "no-double-decode/26.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  62
+ ],
+ [
+  "no-double-decode/27.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  77
+ ],
+ [
+  "no-double-decode/28.ts",
+  "nitpicker/no-double-decode",
+  1,
+  53,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  88
+ ],
+ [
+  "no-double-decode/29.ts",
+  "nitpicker/no-double-decode",
+  1,
+  51,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  92
+ ],
+ [
+  "no-double-decode/30.ts",
+  "nitpicker/no-double-decode",
+  1,
+  53,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  94
+ ],
+ [
+  "no-double-decode/31.ts",
+  "nitpicker/no-double-decode",
+  1,
+  43,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  68
+ ],
+ [
+  "no-double-decode/32.ts",
+  "nitpicker/no-double-decode",
+  1,
+  45,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  70
+ ],
+ [
+  "no-double-decode/33.ts",
+  "nitpicker/no-double-decode",
+  1,
+  34,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  63
+ ],
+ [
+  "no-double-decode/34.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  50
+ ],
+ [
+  "no-double-decode/35.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  48
+ ],
+ [
+  "no-double-decode/36.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  46
+ ],
+ [
+  "no-double-decode/37.ts",
+  "nitpicker/no-double-decode",
+  1,
+  36,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  62
+ ],
+ [
+  "no-double-decode/38.ts",
+  "nitpicker/no-double-decode",
+  1,
+  42,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  76
+ ],
+ [
+  "no-double-decode/39.ts",
+  "nitpicker/no-double-decode",
+  1,
+  11,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  67
+ ],
+ [
+  "no-double-decode/40.ts",
+  "nitpicker/no-double-decode",
+  1,
+  56,
+  "This value is already percent-decoded by the framework. Decoding it again changes text with a literal `%41` and throws a URIError on a bare `%`. Use the value as it is; decode only raw text such as `location.search` or `request.url`.",
+  1,
+  103
+ ],
+ [
+  "no-dynamic-import-of-path/20.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  26,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  56
+ ],
+ [
+  "no-dynamic-import-of-path/21.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  20,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  46
+ ],
+ [
+  "no-dynamic-import-of-path/22.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  26,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  64
+ ],
+ [
+  "no-dynamic-import-of-path/23.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  26,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  59
+ ],
+ [
+  "no-dynamic-import-of-path/24.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  26,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  76
+ ],
+ [
+  "no-dynamic-import-of-path/25.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  65,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  69
+ ],
+ [
+  "no-dynamic-import-of-path/26.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  26,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  55
+ ],
+ [
+  "no-dynamic-import-of-path/27.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  26,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  50
+ ],
+ [
+  "no-dynamic-import-of-path/28.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  3,
+  26,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  3,
+  60
+ ],
+ [
+  "no-dynamic-import-of-path/29.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  2,
+  59,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  2,
+  71
+ ],
+ [
+  "no-dynamic-import-of-path/30.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  2,
+  61,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  2,
+  70
+ ],
+ [
+  "no-dynamic-import-of-path/31.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  2,
+  69,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  2,
+  79
+ ],
+ [
+  "no-dynamic-import-of-path/32.ts",
+  "nitpicker/no-dynamic-import-of-path",
+  2,
+  26,
+  "Import a filesystem path as a file URL: `await import(pathToFileURL(file).href)`. On Windows a drive letter reads as a URL scheme and the import fails with ERR_UNSUPPORTED_ESM_URL_SCHEME.",
+  2,
+  48
+ ],
+ [
+  "no-unencoded-url-part/42.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  14,
+  "This appends `?` to a URL that may already carry a query. Build it with `const url = new URL(base); url.searchParams.set(name, value)`.",
+  1,
+  47
+ ],
+ [
+  "no-unencoded-url-part/43.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  14,
+  "This appends `?` to a URL that may already carry a query. Build it with `const url = new URL(base); url.searchParams.set(name, value)`.",
+  1,
+  37
+ ],
+ [
+  "no-unencoded-url-part/44.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  14,
+  "This appends `?` to a URL that may already carry a query. Build it with `const url = new URL(base); url.searchParams.set(name, value)`.",
+  1,
+  59
+ ],
+ [
+  "no-unencoded-url-part/45.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  65,
+  "Encode this query value with `encodeURIComponent(value)`, or build the URL with `url.searchParams.set(name, value)`. A value with `&`, `#`, `+` or non-ASCII text changes the URL.",
+  1,
+  92
+ ],
+ [
+  "no-unencoded-url-part/46.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  22,
+  "Encode this query value with `encodeURIComponent(value)`, or build the URL with `url.searchParams.set(name, value)`. A value with `&`, `#`, `+` or non-ASCII text changes the URL.",
+  1,
+  28
+ ],
+ [
+  "no-unencoded-url-part/47.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  61,
+  "This appends `?` to a URL that may already carry a query. Build it with `const url = new URL(base); url.searchParams.set(name, value)`.",
+  1,
+  85
+ ],
+ [
+  "no-unencoded-url-part/48.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  69,
+  "Encode this query value with `encodeURIComponent(value)`, or build the URL with `url.searchParams.set(name, value)`. A value with `&`, `#`, `+` or non-ASCII text changes the URL.",
+  1,
+  80
+ ],
+ [
+  "no-unencoded-url-part/49.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  36,
+  "Encode this query value with `encodeURIComponent(value)`, or build the URL with `url.searchParams.set(name, value)`. A value with `&`, `#`, `+` or non-ASCII text changes the URL.",
+  1,
+  41
+ ],
+ [
+  "no-unencoded-url-part/50.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  46,
+  "Encode this query value with `encodeURIComponent(value)`, or build the URL with `url.searchParams.set(name, value)`. A value with `&`, `#`, `+` or non-ASCII text changes the URL.",
+  1,
+  54
+ ],
+ [
+  "no-unencoded-url-part/51.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  40,
+  "Encode this query value with `encodeURIComponent(value)`, or build the URL with `url.searchParams.set(name, value)`. A value with `&`, `#`, `+` or non-ASCII text changes the URL.",
+  1,
+  46
+ ],
+ [
+  "no-unencoded-url-part/52.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  66,
+  "Encode this path segment with `encodeURIComponent(value)`: a value with `/`, `?`, `#` or `..` changes the route. Encode a key that keeps its slashes per segment.",
+  1,
+  72
+ ],
+ [
+  "no-unencoded-url-part/53.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  33,
+  "Encode this path segment with `encodeURIComponent(value)`: a value with `/`, `?`, `#` or `..` changes the route. Encode a key that keeps its slashes per segment.",
+  1,
+  48
+ ],
+ [
+  "no-unencoded-url-part/54.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  36,
+  "Encode this path segment with `encodeURIComponent(value)`: a value with `/`, `?`, `#` or `..` changes the route. Encode a key that keeps its slashes per segment.",
+  1,
+  42
+ ],
+ [
+  "no-unencoded-url-part/55.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  34,
+  "Encode this path segment with `encodeURIComponent(value)`: a value with `/`, `?`, `#` or `..` changes the route. Encode a key that keeps its slashes per segment.",
+  1,
+  39
+ ],
+ [
+  "no-unencoded-url-part/56.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  36,
+  "Encode this query value with `encodeURIComponent(value)`, or build the URL with `url.searchParams.set(name, value)`. A value with `&`, `#`, `+` or non-ASCII text changes the URL.",
+  1,
+  50
+ ],
+ [
+  "no-unencoded-url-part/57.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  34,
+  "Encode this path segment with `encodeURIComponent(value)`: a value with `/`, `?`, `#` or `..` changes the route. Encode a key that keeps its slashes per segment.",
+  1,
+  52
+ ],
+ [
+  "no-unencoded-url-part/58.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  21,
+  "A path that starts with `//` passed to `new URL(path, base)` replaces the host. Reject a path that does not start with a single `/` before building the URL.",
+  1,
+  32
+ ],
+ [
+  "no-unencoded-url-part/59.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  21,
+  "A path that starts with `//` passed to `new URL(path, base)` replaces the host. Reject a path that does not start with a single `/` before building the URL.",
+  1,
+  38
+ ],
+ [
+  "no-unencoded-url-part/60.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  26,
+  "Encode a user name or password put into a connection URL with `encodeURIComponent(value)`: `@`, `:`, `/` and `#` in it change the host.",
+  1,
+  30
+ ],
+ [
+  "no-unencoded-url-part/61.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  23,
+  "Encode a user name or password put into a connection URL with `encodeURIComponent(value)`: `@`, `:`, `/` and `#` in it change the host.",
+  1,
+  34
+ ],
+ [
+  "no-unencoded-url-part/62.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  29,
+  "Encode a user name or password put into a connection URL with `encodeURIComponent(value)`: `@`, `:`, `/` and `#` in it change the host.",
+  1,
+  35
+ ],
+ [
+  "no-unencoded-url-part/r-lone-surrogate.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  38,
+  "Encode this query value with `encodeURIComponent(value)`, or build the URL with `url.searchParams.set(name, value)`. A value with `&`, `#`, `+` or non-ASCII text changes the URL.",
+  1,
+  43
+ ],
+ [
+  "no-unencoded-url-part/r-lone-surrogate.ts",
+  "nitpicker/no-unencoded-url-part",
+  2,
+  41,
+  "Encode this path segment with `encodeURIComponent(value)`: a value with `/`, `?`, `#` or `..` changes the route. Encode a key that keeps its slashes per segment.",
+  2,
+  47
+ ],
+ [
+  "no-unencoded-url-part/r-lone-surrogate.ts",
+  "nitpicker/no-unencoded-url-part",
+  3,
+  34,
+  "Encode this query value with `encodeURIComponent(value)`, or build the URL with `url.searchParams.set(name, value)`. A value with `&`, `#`, `+` or non-ASCII text changes the URL.",
+  3,
+  39
+ ],
+ [
+  "no-unencoded-url-part/r-lone-surrogate.ts",
+  "nitpicker/no-unencoded-url-part",
+  4,
+  12,
+  "This appends `?` to a URL that may already carry a query. Build it with `const url = new URL(base); url.searchParams.set(name, value)`.",
+  4,
+  37
+ ],
+ [
+  "no-unencoded-url-part/r-lone-surrogate.ts",
+  "nitpicker/no-unencoded-url-part",
+  6,
+  12,
+  "This appends `?` to a URL that may already carry a query. Build it with `const url = new URL(base); url.searchParams.set(name, value)`.",
+  6,
+  41
+ ],
+ [
+  "no-unresolved-relative-url/22.ts",
+  "nitpicker/no-unresolved-relative-url",
+  1,
+  14,
+  "A `Location` header may be a path (`/v2/file`). Resolve it against the request URL first: `new URL(location, requestUrl)`.",
+  1,
+  43
+ ],
+ [
+  "no-unresolved-relative-url/23.ts",
+  "nitpicker/no-unresolved-relative-url",
+  1,
+  14,
+  "A `Location` header may be a path (`/v2/file`). Resolve it against the request URL first: `new URL(location, requestUrl)`.",
+  1,
+  46
+ ],
+ [
+  "no-unresolved-relative-url/24.ts",
+  "nitpicker/no-unresolved-relative-url",
+  1,
+  14,
+  "A `Location` header may be a path (`/v2/file`). Resolve it against the request URL first: `new URL(location, requestUrl)`.",
+  1,
+  51
+ ],
+ [
+  "no-unresolved-relative-url/25.ts",
+  "nitpicker/no-unresolved-relative-url",
+  1,
+  14,
+  "A `Location` header may be a path (`/v2/file`). Resolve it against the request URL first: `new URL(location, requestUrl)`.",
+  1,
+  55
+ ],
+ [
+  "no-unresolved-relative-url/26.ts",
+  "nitpicker/no-unresolved-relative-url",
+  1,
+  53,
+  "A `Location` header may be a path (`/v2/file`). Resolve it against the request URL first: `new URL(location, requestUrl)`.",
+  1,
+  70
+ ],
+ [
+  "no-unresolved-relative-url/27.ts",
+  "nitpicker/no-unresolved-relative-url",
+  1,
+  42,
+  "A `Location` header may be a path (`/v2/file`). Resolve it against the request URL first: `new URL(location, requestUrl)`.",
+  1,
+  57
+ ],
+ [
+  "no-unresolved-relative-url/28.ts",
+  "nitpicker/no-unresolved-relative-url",
+  1,
+  45,
+  "A `Location` header may be a path (`/v2/file`). Resolve it against the request URL first: `new URL(location, requestUrl)`.",
+  1,
+  91
+ ],
+ [
+  "no-unresolved-relative-url/29.ts",
+  "nitpicker/no-unresolved-relative-url",
+  1,
+  1,
+  "A `Location` header may be a path (`/v2/file`). Resolve it against the request URL first: `new URL(location, requestUrl)`.",
+  1,
+  36
+ ],
+ [
+  "no-unresolved-relative-url/30.ts",
+  "nitpicker/no-unresolved-relative-url",
+  1,
+  1,
+  "A `Location` header may be a path (`/v2/file`). Resolve it against the request URL first: `new URL(location, requestUrl)`.",
+  1,
+  37
+ ],
+ [
+  "no-unresolved-relative-url/31.ts",
+  "nitpicker/no-unresolved-relative-url",
+  1,
+  8,
+  "`Response.redirect` needs an absolute URL, and this value is a path. Resolve it against the request URL: `Response.redirect(new URL(path, request.url))`.",
+  1,
+  63
+ ],
+ [
+  "no-unresolved-relative-url/32.ts",
+  "nitpicker/no-unresolved-relative-url",
+  1,
+  8,
+  "`Response.redirect` needs an absolute URL, and this value is a path. Resolve it against the request URL: `Response.redirect(new URL(path, request.url))`.",
+  1,
+  35
+ ],
+ [
+  "no-unresolved-relative-url/33.ts",
+  "nitpicker/no-unencoded-url-part",
+  1,
+  45,
+  "Encode this query value with `encodeURIComponent(value)`, or build the URL with `url.searchParams.set(name, value)`. A value with `&`, `#`, `+` or non-ASCII text changes the URL.",
+  1,
+  49
+ ],
+ [
+  "no-unresolved-relative-url/33.ts",
+  "nitpicker/no-unresolved-relative-url",
+  1,
+  8,
+  "`Response.redirect` needs an absolute URL, and this value is a path. Resolve it against the request URL: `Response.redirect(new URL(path, request.url))`.",
+  1,
+  52
+ ],
+ [
+  "no-unresolved-relative-url/34.ts",
+  "nitpicker/no-unresolved-relative-url",
+  1,
+  16,
+  "`new URL(path)` with one argument throws `Invalid URL` for a path. Pass the base: `new URL(path, base)`.",
+  1,
+  37
+ ],
+ [
+  "no-unresolved-relative-url/35.ts",
+  "nitpicker/no-unresolved-relative-url",
+  1,
+  16,
+  "`new URL(path)` with one argument throws `Invalid URL` for a path. Pass the base: `new URL(path, base)`.",
+  1,
+  37
+ ],
+ [
+  "no-unresolved-relative-url/r-lone-surrogate.ts",
+  "nitpicker/no-unresolved-relative-url",
+  1,
+  1,
+  "`new URL(path)` with one argument throws `Invalid URL` for a path. Pass the base: `new URL(path, base)`.",
+  1,
+  19
+ ],
+ [
+  "no-unresolved-relative-url/r-lone-surrogate.ts",
+  "nitpicker/no-unresolved-relative-url",
+  2,
+  1,
+  "`new URL(path)` with one argument throws `Invalid URL` for a path. Pass the base: `new URL(path, base)`.",
+  2,
+  19
+ ],
+ [
+  "no-unresolved-relative-url/r-lone-surrogate.ts",
+  "nitpicker/no-unresolved-relative-url",
+  3,
+  1,
+  "`new URL(path)` with one argument throws `Invalid URL` for a path. Pass the base: `new URL(path, base)`.",
+  3,
+  25
+ ]
+]

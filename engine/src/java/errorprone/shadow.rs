@@ -255,7 +255,7 @@ fn enclosing_variables(context: &Context, declaration: Node) -> Vec<(String, Str
     found
 }
 
-fn replacement(name: &str, in_scope: &[String]) -> String {
+pub(super) fn replacement(name: &str, in_scope: &[String]) -> String {
     let digits = name.len() - name.trim_end_matches(|letter: char| letter.is_ascii_digit()).len();
     let (base, mut number) = if digits > 0 && digits < name.len() {
         (&name[..name.len() - digits], name[name.len() - digits..].parse::<u64>().map_or(2, |given| given + 1))

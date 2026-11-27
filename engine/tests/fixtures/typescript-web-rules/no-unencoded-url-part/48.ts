@@ -1,0 +1,1 @@
+const link = `https://example.test/verify?token=${token}&callback=${callbackUrl}`;

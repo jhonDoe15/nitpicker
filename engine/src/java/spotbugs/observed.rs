@@ -6,6 +6,7 @@ use crate::engine::source::{ancestor, children, parent, walk};
 use crate::java::types::expr::{Binding, unwrap};
 use crate::java::types::model::Type;
 use crate::java::types::scope::enclosing_types;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use tree_sitter::Node;
@@ -15,11 +16,20 @@ const DEPTH: usize = 6;
 
 pub type Stores<'t> = HashMap<(String, String), Vec<Node<'t>>>;
 
+/// What the file's fields hold, worked out once: every value stored in each, how many stores each gets, and the type
+/// SpotBugs sees in each at a depth of reading.
+#[derive(Default)]
+pub struct Memo<'a> {
+    stores: RefCell<Option<Rc<Stores<'a>>>>,
+    pub counts: std::cell::OnceCell<HashMap<(String, String), usize>>,
+    types: RefCell<HashMap<(String, String, String, usize), Option<Type>>>,
+}
+
 pub use super::fields::field_key;
 
 /// Every value the file stores in a field, by field, worked out once.
 pub fn field_stores<'a>(context: &Context<'a>) -> Rc<Stores<'a>> {
-    if let Some(known) = context.stores.borrow().as_ref() {
+    if let Some(known) = context.memo.stores.borrow().as_ref() {
         return known.clone();
     }
     let mut stored: Stores = HashMap::new();
@@ -32,14 +42,14 @@ pub fn field_stores<'a>(context: &Context<'a>) -> Rc<Stores<'a>> {
         }
         "assignment_expression" => {
             let (Some(left), Some(right)) = (node.child_by_field_name("left"), node.child_by_field_name("right")) else { return };
-            if let Some(key) = field_key(context, left) {
+            if let Some(key) = field_key(context, left).filter(|_| !super::compare::reach::dead(context, node)) {
                 stored.entry(key).or_default().push(right);
             }
         }
         _ => {}
     });
     let stored = Rc::new(stored);
-    *context.stores.borrow_mut() = Some(stored.clone());
+    *context.memo.stores.borrow_mut() = Some(stored.clone());
     stored
 }
 
@@ -50,6 +60,16 @@ fn same(all: Vec<Option<Type>>) -> Option<Type> {
 }
 
 fn field_type(context: &Context, key: &(String, String), declared: Type, depth: usize) -> Option<Type> {
+    let memo = (key.0.clone(), key.1.clone(), format!("{declared:?}"), depth);
+    if let Some(known) = context.memo.types.borrow().get(&memo) {
+        return known.clone();
+    }
+    let found = field_type_at(context, key, declared, depth);
+    context.memo.types.borrow_mut().insert(memo, found.clone());
+    found
+}
+
+fn field_type_at(context: &Context, key: &(String, String), declared: Type, depth: usize) -> Option<Type> {
     if !context.classes.contains_key(&key.0) || context.literals.contains(&key.0) {
         return Some(declared);
     }

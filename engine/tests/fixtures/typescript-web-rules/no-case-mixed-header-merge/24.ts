@@ -1,0 +1,1 @@
+const headers = { ...init?.headers, "content-type": "application/json" };

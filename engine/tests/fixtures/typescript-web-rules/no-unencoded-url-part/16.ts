@@ -1,0 +1,1 @@
+const link = `${dir}/${name}.json`;

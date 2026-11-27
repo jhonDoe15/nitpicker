@@ -1,0 +1,1 @@
+if (editor.document.uri.fsPath === resource.fsPath) {}

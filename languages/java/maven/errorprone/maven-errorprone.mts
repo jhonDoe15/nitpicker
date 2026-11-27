@@ -47,6 +47,7 @@ type ArgumentSet = CompileSet & {
   readonly processors: readonly string[];
   readonly flags: readonly string[];
   readonly skipRoots: readonly string[] | undefined;
+  readonly processorOutput: string;
 };
 
 const ERROR_PRONE = 'errorprone';
@@ -135,7 +136,7 @@ function lookupLines({ classpath: sourcePath, compiled = [], own, modular }: Com
 }
 
 function writeArguments(work: string, set: ArgumentSet): string[] {
-  const { name, sources, own, processors, compiler, test, flags, skipRoots } = set;
+  const { name, sources, own, processors, compiler, test, flags, skipRoots, processorOutput } = set;
   if (sources.length === 0) {
     return [];
   }
@@ -156,6 +157,7 @@ function writeArguments(work: string, set: ArgumentSet): string[] {
     ...(skipRoots === undefined
       ? []
       : ['--skip-generated', ...skipRoots.map((root) => `--generated-root=${root}`)]),
+    `--processor-output=${processorOutput}`,
     ...(test ? ['--test-only'] : []),
     '--sources',
     ...sources,
@@ -202,6 +204,10 @@ function argumentFilesOf(
       ],
       flags: declaredFlags,
       skipRoots: analyzesGenerated(configs) ? undefined : generatedRoots(module, set.roots),
+      processorOutput: path.join(
+        path.dirname(module.outputDirectory),
+        set.test ? 'generated-test-sources/test-annotations' : 'generated-sources/annotations',
+      ),
     }),
   );
 }

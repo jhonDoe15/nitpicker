@@ -554,5 +554,10 @@
  "InvalidPatternSyntax",
  "TemporalAccessorGetChronoField",
  "AlwaysThrows",
- "NewFileSystem"
+ "NewFileSystem",
+ "SunApi",
+ "RecordComponentAccessorAnnotationConflict",
+ "ModifySourceCollectionInStream",
+ "TypeNameShadowing",
+ "UseBinds"
 ]

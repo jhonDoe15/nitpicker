@@ -1,3 +1,4 @@
+import { CAST_PATTERNS } from './casts/spotbugs-casts-placed.mts';
 import {
   BOXING_PATTERNS,
   INVOCATION_PATTERNS,
@@ -7,6 +8,12 @@ import {
   URL_PATTERNS,
 } from './spotbugs-dumb-placed.mts';
 import { INJECTIONS } from './spotbugs-placed.mts';
+import {
+  DIVISION_PATTERNS,
+  ENUM_PATTERNS,
+  START_PATTERNS,
+  WAIT_PATTERNS,
+} from './tail/spotbugs-tail-placed.mts';
 
 export const WRONG_MAP_ITERATOR = 'WMI_WRONG_MAP_ITERATOR';
 export const LOCK_MONITORENTER = 'JLM_JSR166_LOCK_MONITORENTER';
@@ -100,5 +107,29 @@ export const ON_ENGINE: readonly string[] = [
   ...NUMBER_PATTERNS,
   ...CALL_PATTERNS,
   ...INVOCATION_PATTERNS,
+  ...CAST_PATTERNS,
+  ...DIVISION_PATTERNS,
+  ...WAIT_PATTERNS,
+  ...START_PATTERNS,
+  ...ENUM_PATTERNS,
   ...VALUE_PATTERNS,
+];
+
+export const LOMBOK_WITHOUT_CLASSES: readonly string[] = [
+  'SING_',
+  'HSM_',
+  'PA_',
+  'MS_SHOULD_BE_FINAL',
+  'MS_PKGPROTECT',
+  'SS_',
+  'DLS_',
+  'IP_PARAMETER_IS_DEAD_BUT_OVERWRITTEN',
+];
+export const LOMBOK_WRITES: readonly string[] = [
+  'AT_',
+  'UG_',
+  'URF_',
+  'UR_',
+  'NM_METHOD_NAMING_CONVENTION',
+  'ME_ENUM_FIELD_SETTER',
 ];

@@ -1,0 +1,1 @@
+const text = decodeURIComponent(location.search.slice(1));

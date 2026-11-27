@@ -1,0 +1,1 @@
+const value = decodeURIComponent(req.url.split("?")[1]);

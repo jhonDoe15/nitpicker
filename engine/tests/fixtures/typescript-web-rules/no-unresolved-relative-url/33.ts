@@ -1,0 +1,1 @@
+return NextResponse.redirect(`/login?next=${next}`);

@@ -2,6 +2,7 @@
 //! SpotBugs 4.9.8 reports on test code: same pattern name, line and message, read from source instead of class files.
 mod attributes;
 mod calls;
+mod casts;
 mod catches;
 mod classes;
 mod concurrent;
@@ -33,6 +34,7 @@ pub mod place;
 mod observed;
 mod statements;
 mod stores;
+mod tail;
 mod taint;
 mod threads;
 mod values;
@@ -56,8 +58,7 @@ pub struct Context<'a> {
     pub classes: HashMap<String, Node<'a>>,
     /// Findings that hang on what the whole run stores in a field.
     waiting: RefCell<Vec<known::Waiting>>,
-    /// Every value the file stores in a field, worked out once.
-    pub stores: RefCell<Option<std::rc::Rc<observed::Stores<'a>>>>,
+    pub memo: observed::Memo<'a>,
     /// Classes whose `Class` object the project's code names anywhere.
     pub literals: &'a HashSet<String>,
     pub volatiles: &'a HashSet<(String, String)>,
@@ -67,8 +68,6 @@ pub struct Context<'a> {
     out: RefCell<Vec<Finding>>,
     /// The names the compiler makes up for lambdas and anonymous classes, worked out once.
     compiled: std::cell::OnceCell<crate::java::javac::Names<'a>>,
-    /// How many stores the file makes into each field, worked out once.
-    pub store_counts: std::cell::OnceCell<HashMap<(String, String), usize>>,
     /// SE_BAD_FIELD findings that wait for the classes the whole run knows.
     pub serial: RefCell<Vec<serial::Pending>>,
 }
@@ -93,7 +92,7 @@ impl<'a> Context<'a> {
             file,
             classes,
             waiting: RefCell::new(Vec::new()),
-            stores: RefCell::new(None),
+            memo: observed::Memo::default(),
             literals: &project.literals,
             volatiles: &project.volatiles,
             numbers: &project.numbers,
@@ -101,7 +100,6 @@ impl<'a> Context<'a> {
             selected,
             out: RefCell::new(Vec::new()),
             compiled: std::cell::OnceCell::new(),
-            store_counts: std::cell::OnceCell::new(),
             serial: RefCell::new(Vec::new()),
         };
         (context, declared)
@@ -232,12 +230,14 @@ const DETECTORS: &[Detector] = &[
     attributes::should_be_static as Detector,
     dead::dead_stores as Detector,
     locals::locals as Detector,
+    casts::casts as Detector,
     threads::threads as Detector,
     concurrent::concurrent as Detector,
     idioms::idioms as Detector,
     naming::naming as Detector,
     sequence::sequence as Detector,
     dumb::dumb as Detector,
+    tail::tail as Detector,
 ];
 
 #[derive(Default)]

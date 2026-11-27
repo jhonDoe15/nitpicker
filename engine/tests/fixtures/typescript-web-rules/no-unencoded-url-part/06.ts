@@ -1,0 +1,1 @@
+const link = `${apiUrl}/refs/${key.split("/").map(encodeURIComponent).join("/")}`;
