@@ -539,5 +539,11 @@
  "SwitchDefault",
  "ReachabilityFenceUsage",
  "WrongOneof",
- "PatternMatchingInstanceof"
+ "PatternMatchingInstanceof",
+ "MultipleNullnessAnnotations",
+ "NullablePrimitive",
+ "NullablePrimitiveArray",
+ "NullableTypeParameter",
+ "NullableWildcard",
+ "NullableVoid"
 ]

@@ -1,6 +1,7 @@
 //! The text tree-sitter parses in place of a Java file. Every change keeps each byte where it was, so the tree's
 //! positions still point into the real text, and the rules read names from the real text.
 
+use super::annotations_run::before_spread;
 use regex::Regex;
 use std::sync::LazyLock;
 
@@ -76,15 +77,18 @@ fn blank_parenthesized_targets(text: &str, bytes: &mut Option<Vec<u8>>) {
 }
 
 fn blank_spread_annotations(text: &str, bytes: &mut Option<Vec<u8>>) {
-    static ANNOTATED_SPREAD: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"@[A-Za-z_][\w.]*(\s*\([^()]*\))?(\s*)\.\.\.").expect("pattern"));
-    for found in ANNOTATED_SPREAD.find_iter(text) {
+    let mut from = 0;
+    while let Some(found) = text[from..].find('@') {
+        let start = from + found;
+        from = start + 1;
+        let Some((_, dots)) = before_spread(text, start) else { continue };
         let bytes = bytes.get_or_insert_with(|| text.as_bytes().to_vec());
-        for byte in &mut bytes[found.start()..found.end() - 3] {
+        for byte in &mut bytes[start..dots] {
             if !byte.is_ascii_whitespace() {
                 *byte = b' ';
             }
         }
+        from = dots;
     }
 }
 
