@@ -115,6 +115,21 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     text: 'equals() method does not check for null argument',
     levels: { 1: ERROR, 2: WARNING },
   },
+  DLS_DEAD_LOCAL_STORE: { text: 'Dead store to local variable', levels: { 1: NOTE, 2: NOTE } },
+  DLS_DEAD_LOCAL_STORE_SHADOWS_FIELD: {
+    text: 'Dead store to local variable that shadows field',
+    levels: { 1: ERROR, 2: WARNING },
+  },
+  DLS_DEAD_LOCAL_STORE_OF_NULL: { text: 'Dead store of null to local variable', levels: { 1: NOTE } },
+  DLS_DEAD_STORE_OF_CLASS_LITERAL: { text: 'Dead store of class literal', levels: { 2: ERROR } },
+  DLS_DEAD_LOCAL_INCREMENT_IN_RETURN: {
+    text: 'Useless increment in return statement',
+    levels: { 1: ERROR, 2: ERROR },
+  },
+  IP_PARAMETER_IS_DEAD_BUT_OVERWRITTEN: {
+    text: 'A parameter is dead upon entry to a method but overwritten',
+    levels: { 1: ERROR, 2: ERROR },
+  },
   PA_PUBLIC_PRIMITIVE_ATTRIBUTE: {
     text: 'Primitive field is public',
     levels: { 2: NOTE },

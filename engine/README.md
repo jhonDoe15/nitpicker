@@ -586,6 +586,60 @@ Not rebuilt yet: `NP_NULL_PARAM_DEREF` and its variants, `NP_GUARANTEED_DEREF`,
 `NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE`.
 
 
+### Dead stores
+
+`src/java/spotbugs/dead/` rebuilds FindDeadLocalStores: `DLS_DEAD_LOCAL_STORE`,
+`DLS_DEAD_LOCAL_STORE_SHADOWS_FIELD`, `DLS_DEAD_LOCAL_STORE_OF_NULL`, `DLS_DEAD_STORE_OF_CLASS_LITERAL`,
+`DLS_DEAD_LOCAL_INCREMENT_IN_RETURN` and `IP_PARAMETER_IS_DEAD_BUT_OVERWRITTEN`. On the seven code bases all 71
+findings SpotBugs reports are the same (Elasticsearch `server` 17, Guava 20, javaparser-core 21, Nacos 12,
+jackson-databind 1). They run on the engine in real runs, with SpotBugs' priority and SARIF place (the variable);
+SpotBugs no longer runs FindDeadLocalStores, except in modules where Lombok runs. `NP_SB_LOW=1` also reports
+priority 3, which SpotBugs shows with `-low`, for comparing with lab runs.
+
+What SpotBugs does, as measured (`tests/fixtures/spotbugs/dead_stores*`, all priorities):
+
+- A store is dead when no way from it reads the variable. Exception handlers count: a call reaches the handlers of
+  unchecked exceptions and of what it declares; a division or remainder of whole numbers (by a constant too), an
+  array access or `length`, a reference cast, boxing, `new`, a field of an object other than `this`, string
+  concatenation, a lambda or method reference, `synchronized` and `throw` reach handlers of runtime exceptions.
+  Static fields, fields of `this`, other arithmetic and `instanceof` throw nothing. What a lambda or a class in
+  the method reads counts where it is made; lambda bodies are not looked at. `assert false` always throws, and
+  code nothing reaches is not reported. Where the method can never end (a loop that neither leaves nor has an
+  instruction that can throw), nothing counts as read or stored later: every store there is dead.
+- Not reported on the line where javac starts the handler of a `synchronized` block (its closing brace) or of a
+  `finally` (its first statement; its closing brace when it is empty and the `try` has a `catch`), when code of
+  another line follows that handler in the compiled method. `IP_PARAMETER_IS_DEAD_BUT_OVERWRITTEN` is still
+  reported there.
+- Not reported: a constant, judged by the last instruction before the store (a `?:` or a `switch` by its last
+  arm, a `?:` with a known condition by the arm javac keeps, a `final` field with a constant value read through
+  an object too; `&&`, `||`, `!` and comparisons count, `instanceof` does not), except a `long` or `double` other than 0 and 1 in a slot with
+  more than one store; the exception of a handler and copies of it; resources; the variables of `switch` patterns;
+  the parameters of a compact constructor. Names such as `unused` or `ignored` do not matter.
+- `null` is `DLS_DEAD_LOCAL_STORE_OF_NULL`, low priority (not shown) except for a parameter whose value is never
+  read; a class literal is `DLS_DEAD_STORE_OF_CLASS_LITERAL`, medium; `return i++` on an `int` is
+  `DLS_DEAD_LOCAL_INCREMENT_IN_RETURN`, medium, high for a parameter.
+- Priority of the rest: medium, high for a parameter and for a variable named as an instance field of the class
+  of an instance method (`DLS_DEAD_LOCAL_STORE_SHADOWS_FIELD`; inherited and static fields do not count), always
+  high for a parameter whose value is never read. A new object or array (not one filled in braces) raises it one
+  step; it drops one step each for a read of an instance field (not one the store converts), a copy of a variable whose value is a number other
+  than `long` or `double`, a `boolean` or a string (a conversion is no copy), a store after which another store
+  to the same javac slot can come (in a loop, over an exception edge, by a variable reusing the slot), a slot with
+  four stores or more, and a dead `++` on a slot with two or more.
+- `IP_PARAMETER_IS_DEAD_BUT_OVERWRITTEN`: a parameter whose value is never read and that is stored to, on its
+  first store: high when that store is dead, medium when it is a dead constant, low when it is read.
+- Slots are javac's: parameters first (after the enclosing instance of an inner class's constructor, and the name
+  and position of an enum's), a block's slots freed when it ends, two for `long` and `double`, hidden slots for
+  `for` over an array (three) or a collection (one), `switch` on strings or patterns (two), `synchronized` (one,
+  and one for the lock of Lombok's `@Synchronized`).
+- One finding per method, pattern, name and priority, on the first line; `SHADOWS_FIELD` merges the priorities,
+  on the line of the best. The line is the statement's (a declaration's own line), moved on by calls finished
+  before the store. A variable javac's table of names does not cover right after the store is named `$L` and its
+  slot (place `?`): a declaration that is the last code of a nested block, a `for` variable whose body is empty, a
+  first assignment that is the last code of a branch javac leaves without a jump.
+
+Known difference, in labs only: when sibling `if` and `else` branches store with the same priority, SpotBugs
+sometimes reports the `else` line (`long` constants).
+
 ### Statement patterns
 
 Patterns that look at single statements or at one method's switches (`src/java/spotbugs/statements/`), measured on

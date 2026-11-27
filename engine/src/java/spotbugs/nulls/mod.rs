@@ -30,7 +30,7 @@ mod jdk;
 mod marks;
 mod must;
 mod paths;
-mod redundant;
+pub(super) mod redundant;
 
 use super::{Context, names};
 use crate::engine::source::{children, parent};

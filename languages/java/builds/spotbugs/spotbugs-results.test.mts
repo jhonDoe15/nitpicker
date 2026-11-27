@@ -159,6 +159,28 @@ describe('spotbugsResultOf', () => {
     expect(result.message.arguments).toStrictEqual([argument]);
   });
 
+  it('writes a dead store to a variable without a name as SpotBugs SARIF does', () => {
+    const result = spotbugsResultOf({
+      file: '/src/p/R.java',
+      rule: 'DLS_DEAD_LOCAL_STORE',
+      line: 24,
+      message: 'Dead store to $L1 in p.R.a3()',
+      symbol: 'variable:p.R.a3()#?',
+      priority: 2,
+      arguments: ['$L1', 'p.R.a3()'],
+    });
+
+    expect(result.level).toBe('note');
+    expect(result.message).toStrictEqual({
+      id: 'default',
+      text: 'Dead store to local variable',
+      arguments: ['$L1', 'p.R.a3()'],
+    });
+    expect(result.locations[0].logicalLocations).toStrictEqual([
+      { name: '?', kind: 'variable', fullyQualifiedName: 'p.R.a3()#?' },
+    ]);
+  });
+
   it('refuses a placed finding without a place or with a priority it has no level for', () => {
     const finding = { file: '/A.java', rule: 'DCN_NULLPOINTER_EXCEPTION', line: 1, message: '' };
 
