@@ -11,7 +11,7 @@
 //! its package when it is in the caller's package; the SARIF place of a JDK method drops a `java.lang.` prefix.
 mod boxes;
 mod effects;
-mod jdk;
+pub(in crate::java::spotbugs) mod jdk;
 mod settle;
 
 pub use settle::Effects;

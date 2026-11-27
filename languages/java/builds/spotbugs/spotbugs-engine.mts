@@ -38,6 +38,7 @@ import {
   UNCHECKED_READS,
   UNINITIALIZED_READ,
   UNSYNC_GET,
+  USELESS_CONDITIONS,
   UTIL_MONITORENTER,
   WRONG_MAP_ITERATOR,
 } from './spotbugs-patterns.mts';
@@ -80,6 +81,7 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   FindUnsyncGet: [UNSYNC_GET],
   ReadReturnShouldBeChecked: UNCHECKED_READS,
   FindUninitializedGet: [UNINITIALIZED_READ],
+  RedundantConditions: USELESS_CONDITIONS,
   ConfusionBetweenInheritedAndOuterMethod: ['IA_AMBIGUOUS_INVOCATION_OF_INHERITED_OR_OUTER_METHOD'],
   IteratorIdioms: ['IT_NO_SUCH_ELEMENT'],
   DefaultEncodingDetector: ['DM_DEFAULT_ENCODING'],

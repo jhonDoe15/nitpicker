@@ -47,7 +47,16 @@ export const UNSYNC_GET = 'UG_SYNC_SET_UNSYNC_GET';
 export const UNCHECKED_READS: readonly string[] = ['RR_NOT_CHECKED', 'SR_NOT_CHECKED'];
 export const UNINITIALIZED_READ = 'UR_UNINIT_READ';
 export const HARD_CODED: readonly string[] = ['HARD_CODE_PASSWORD', 'HARD_CODE_KEY'];
-const VALUE_PATTERNS: readonly string[] = [...UNCHECKED_READS, UNINITIALIZED_READ, ...HARD_CODED];
+export const USELESS_CONDITIONS: readonly string[] = [
+  'UC_USELESS_CONDITION',
+  'UC_USELESS_CONDITION_TYPE',
+];
+const VALUE_PATTERNS: readonly string[] = [
+  ...UNCHECKED_READS,
+  UNINITIALIZED_READ,
+  ...HARD_CODED,
+  ...USELESS_CONDITIONS,
+];
 export const ON_ENGINE: readonly string[] = [
   'CT_CONSTRUCTOR_THROW',
   'EI_EXPOSE_REP',
@@ -143,6 +152,7 @@ export const LOMBOK_WRITES: readonly string[] = [
   'UG_',
   'URF_',
   'UR_',
+  'UC_',
   'NM_METHOD_NAMING_CONVENTION',
   'ME_ENUM_FIELD_SETTER',
 ];

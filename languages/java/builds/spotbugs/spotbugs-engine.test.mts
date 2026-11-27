@@ -55,7 +55,7 @@ describe('spotbugsOnEngine', () => {
 
     expect(added.slice(0, 3)).toStrictEqual([
       '-omitVisitors',
-      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,FindHiddenMethod,FindNakedNotify,SharedVariableAtomicityDetector,AtomicityProblem,FindUnsyncGet,ReadReturnShouldBeChecked,FindUninitializedGet,ConfusionBetweenInheritedAndOuterMethod,IteratorIdioms,DefaultEncodingDetector,FindUselessControlFlow,URLProblems,DumbMethodInvocations,DumbMethods,IDivResultCastToDouble,WaitInLoop,StartInConstructor,MutableEnum,FindFloatEquality,FindNonShortCircuit,StaticCalendarDetector,FindFieldSelfAssignment,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,FindDeadLocalStores,FindLocalSelfAssignment2,FindBadCast2',
+      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,FindHiddenMethod,FindNakedNotify,SharedVariableAtomicityDetector,AtomicityProblem,FindUnsyncGet,ReadReturnShouldBeChecked,FindUninitializedGet,RedundantConditions,ConfusionBetweenInheritedAndOuterMethod,IteratorIdioms,DefaultEncodingDetector,FindUselessControlFlow,URLProblems,DumbMethodInvocations,DumbMethods,IDivResultCastToDouble,WaitInLoop,StartInConstructor,MutableEnum,FindFloatEquality,FindNonShortCircuit,StaticCalendarDetector,FindFieldSelfAssignment,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,FindDeadLocalStores,FindLocalSelfAssignment2,FindBadCast2',
       '-exclude',
     ]);
     expect(sarifResults(plan).map((result) => fieldOf(result, 'ruleId'))).toStrictEqual([
@@ -148,7 +148,7 @@ describe('spotbugsOnEngine', () => {
       'CloneIdiom,ConstructorThrow,FindNakedNotify,ReadReturnShouldBeChecked,ConfusionBetweenInheritedAndOuterMethod,IteratorIdioms,DefaultEncodingDetector,FindUselessControlFlow,URLProblems,DumbMethodInvocations,DumbMethods,IDivResultCastToDouble,WaitInLoop,StartInConstructor,FindFloatEquality,FindNonShortCircuit,StaticCalendarDetector,FindFieldSelfAssignment,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,FindLocalSelfAssignment2,FindBadCast2',
     ]);
     expect(plain[1]).toBe(
-      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,FindHiddenMethod,FindNakedNotify,SharedVariableAtomicityDetector,AtomicityProblem,FindUnsyncGet,ReadReturnShouldBeChecked,FindUninitializedGet,ConfusionBetweenInheritedAndOuterMethod,IteratorIdioms,DefaultEncodingDetector,FindUselessControlFlow,URLProblems,DumbMethodInvocations,DumbMethods,IDivResultCastToDouble,WaitInLoop,StartInConstructor,MutableEnum,FindFloatEquality,FindNonShortCircuit,StaticCalendarDetector,FindFieldSelfAssignment,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,FindDeadLocalStores,FindLocalSelfAssignment2,FindBadCast2',
+      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,FindHiddenMethod,FindNakedNotify,SharedVariableAtomicityDetector,AtomicityProblem,FindUnsyncGet,ReadReturnShouldBeChecked,FindUninitializedGet,RedundantConditions,ConfusionBetweenInheritedAndOuterMethod,IteratorIdioms,DefaultEncodingDetector,FindUselessControlFlow,URLProblems,DumbMethodInvocations,DumbMethods,IDivResultCastToDouble,WaitInLoop,StartInConstructor,MutableEnum,FindFloatEquality,FindNonShortCircuit,StaticCalendarDetector,FindFieldSelfAssignment,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,FindDeadLocalStores,FindLocalSelfAssignment2,FindBadCast2',
     );
     expect(started.map(({ argumentList }) => argumentList.includes('--lombok'))).toStrictEqual([
       true,
@@ -184,6 +184,7 @@ describe('spotbugsOnEngine', () => {
       'AtomicityProblem',
       'FindUnsyncGet',
       'FindUninitializedGet',
+      'RedundantConditions',
       'MutableEnum',
     ]);
     const listed = started[0]?.argumentList ?? [];
