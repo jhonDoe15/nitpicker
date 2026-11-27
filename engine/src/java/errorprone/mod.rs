@@ -9,6 +9,11 @@ mod temporal_fields;
 mod jdk_parse;
 mod jdk_values;
 mod always_throws;
+mod sun_api;
+mod record_components;
+mod modify_source;
+mod type_shadowing;
+mod use_binds;
 mod format_validation;
 mod format_string;
 mod format_annotation;
@@ -867,6 +872,11 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["BareDotMetacharacter"], misc_defect_calls::bare_dot_metacharacter),
     (&["InvalidPatternSyntax"], misc_defect_calls::invalid_pattern_syntax),
     (&["TemporalAccessorGetChronoField"], temporal_fields::temporal_accessor_get_chrono_field),
+    (&["SunApi"], sun_api::sun_api),
+    (&["RecordComponentAccessorAnnotationConflict"], record_components::record_component_accessor_annotation_conflict),
+    (&["ModifySourceCollectionInStream"], modify_source::modify_source_collection_in_stream),
+    (&["TypeNameShadowing"], type_shadowing::type_name_shadowing),
+    (&["UseBinds"], use_binds::use_binds),
     (&["CharacterGetNumericValue"], misc_defect_calls::character_get_numeric_value),
     (&["GetClassOnEnum"], misc_defect_calls::get_class_on_enum),
     (&["BigDecimalEquals"], misc_defect_calls::big_decimal_equals),
