@@ -51,7 +51,7 @@ fn long_text(value: i64) -> String {
 }
 
 /// An `int` constant as SpotBugs prints it.
-fn int_text(value: i64) -> String {
+pub fn int_text(value: i64) -> String {
     if hexadecimal(value, false) { format!("0x{:x}", value as i32 as u32) } else { value.to_string() }
 }
 

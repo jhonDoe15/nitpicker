@@ -1157,8 +1157,8 @@ a `?:` over several lines were not modelled.
 On the six comparison code bases built here, SARIF results, same / missed / extra:
 commons-lang 1 / 0 / 0, MyBatis 1 / 0 / 0, Guava 5 / 0 / 0, jackson-databind 9 / 0 / 0, javaparser-core 1 / 0 / 0,
 Nacos 13 / 0 / 0 (Elasticsearch not built). The jackson-databind results are the seven BC findings, one
-EQ_COMPARETO and one EQ_DOESNT. Real runs give the three patterns to the engine; `FindHEmismatch` and `DumbMethods`
-still run in SpotBugs for their other patterns.
+EQ_COMPARETO and one EQ_DOESNT. Real runs give the three patterns to the engine; `FindHEmismatch` still runs in
+SpotBugs for its other patterns.
 
 Serialization patterns (#2261, `src/java/spotbugs/serial/`, labs in `tests/fixtures/spotbugs/serial_*`). Both look at
 a class that is `Serializable`, not `Externalizable`, not abstract, not an interface, enum or record:
@@ -1594,7 +1594,7 @@ compare patterns once per method and box class), and of two findings the better 
 - DM_STRING_TOSTRING (`toString()` on a `String`) is priority 3, which `-medium` hides, so the engine reports none.
 
 On the six comparison code bases, SARIF results, same / missed / extra: Guava 1 / 0 / 0, jackson-databind
-1 / 0 / 0, MyBatis 1 / 0 / 0, the others 0 / 0 / 0. DumbMethods still runs in SpotBugs for its other patterns.
+1 / 0 / 0, MyBatis 1 / 0 / 0, the others 0 / 0 / 0.
 
 ### Threads, exits and the collector
 
@@ -1738,6 +1738,56 @@ SpotBugs no longer runs IDivResultCastToDouble, WaitInLoop, StartInConstructor a
 On the comparison code bases, SARIF results: guava 2 / 0 / 0 (WA_AWAIT_NOT_IN_LOOP), Nacos 1 / 0 / 0
 (ME_ENUM_FIELD_SETTER), commons-lang, jackson-databind, javaparser-core and mybatis-3 0 / 0 / 0. The saved
 Elasticsearch report has one each of the CEIL cast, WA_NOT_IN_LOOP and SC_START_IN_CTOR, not checked here.
+
+### Bounds, helper calls and the rest of DumbMethods
+
+The last eleven patterns of DumbMethods (#2532, `src/java/spotbugs/dumb/ranges/` and `src/java/spotbugs/dumb/calls/`),
+labs in `tests/fixtures/spotbugs/dumb_ranges*`, `dumb_strings*` and the other `dumb_*` folders added with them. With
+these DumbMethods no longer runs in SpotBugs.
+- RANGE_ARRAY_INDEX: an element read or written (also `a[i]++`, `a[i] += v`) at a known index outside
+  `0..=length-1`; placed on the method. RANGE_ARRAY_OFFSET, RANGE_ARRAY_LENGTH: `System.arraycopy`, `read` and
+  `write(array, offset, length)` written against a class directly in `java.io` (not `GZIPOutputStream`, not a
+  subclass elsewhere) and `new String(array, offset, length)`. An offset is allowed in `0..=size` (`0..=size-1` for
+  `arraycopy`), a length in `0..=size-offset`, an unknown offset counting as 0 and `arraycopy` taking the smaller
+  room of its two arrays; both offsets are checked, then the length. RANGE_STRING_INDEX: `charAt` and
+  `codePointAt` need `0..=length-1`, `substring(begin)` `0..=length`, `substring` and `subSequence(begin, end)`
+  `0..=length` for the begin and `begin..=length` for the end, on a receiver written as `String`. Priority 2,
+  placed on the called method.
+- A finding carries the broken bound: the lowest allowed value below the range, the highest above it, none when
+  the range is empty (then the string message names `File.java:[line N]` instead of the method). An unknown size
+  counts as `Integer.MAX_VALUE`, so only negative values break it, and size minus offset wraps as `int` does. Each
+  value, bound and called method is reported once per method. Code in the branch a constant `if` or `?:` never
+  takes (also a `final` local constant) is skipped, as javac leaves it out.
+- Known sizes and values: a local's stores that reach the use, array creations with a size or initializer, string
+  constants (UTF-16 units), `trim`, `intern` and `toString` of a known string, `new StringBuilder(s).toString()`.
+  A field is followed when it is private or final and declared in the same file: its initializer, the stores in
+  the file, and its default value unless it is final or every constructor (a static initializer for a static
+  field) sets it; a field Lombok may set (`@Setter`, `@Data`, `@Builder` and the like) is not followed. A parameter
+  holds an unknown value until a store that always runs; a store on the other arm of an `if` does not count.
+  SpotBugs also follows other fields across the whole run; the engine does not (#2719).
+  Compound stores to a local (`i += 2`, `i++`) end what is known (#2720); a field holding `System.out` is named
+  by its declared type (#2721).
+- NP_IMMEDIATE_DEREFERENCE_OF_READLINE: a call written against `String` with no arguments right on the result of
+  `readLine()` returning `String`; priority 2, once per method.
+- DMI_CALLING_NEXT_FROM_HASNEXT: an instance `hasNext()` returning `boolean` that calls `next()` on `this` (not on
+  another object, not in a lambda), where `next` erases to an `Object` return; once per method, placed on the
+  class's `next()`.
+- DMI_ANNOTATION_IS_NOT_VISIBLE_TO_REFLECTION: `isAnnotationPresent(X.class)` against a class, not an interface,
+  where `X` lacks `@Retention(RUNTIME)`; the class literal may sit in a local or both arms of `?:`. Not
+  `getAnnotation` and its relatives. Priority 1, once per method and annotation.
+- DMI_DOH, DMI_ARGUMENTS_WRONG_ORDER: Guava's `Preconditions.checkNotNull` with a constant first argument (a
+  string constant or class literal, also through a local) is wrong order when exactly one other argument follows
+  and it is not constant, else D'oh. `assertNotNull` written against `org.junit.Assert` or
+  `junit.framework.Assert` (not `TestCase`): one constant argument is D'oh; of two with the second constant, D'oh
+  when the first is constant too, else wrong order, placed where the first comes from (a boxed primitive at its
+  `valueOf`). Every call is reported. `FindRefComparison` also reports DMI_DOH and still runs in
+  SpotBugs.
+- DMI_VACUOUS_CALL_TO_EASYMOCK_METHOD: `EasyMock.verify`, `replay`, `reset`, `resetToDefault`, `resetToNice` or
+  `resetToStrict` with no mocks or `new Object[0]` written in the call; priority 2.
+- SW_SWING_METHODS_INVOKED_IN_SWING_THREAD is priority 3 only, which `-medium` hides.
+
+On commons-lang, MyBatis, jackson-databind and Guava all 48 patterns of DumbMethods give SARIF results same / missed /
+extra 0 / 0 / 0, 1 / 0 / 0, 8 / 0 / 0 and 2 / 0 / 0.
 
 ## Names the compiler makes up
 

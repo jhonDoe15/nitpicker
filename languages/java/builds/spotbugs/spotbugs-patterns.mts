@@ -1,5 +1,6 @@
 import { CAST_PATTERNS } from './casts/spotbugs-casts-placed.mts';
 import {
+  BOUND_PATTERNS,
   BOXING_PATTERNS,
   INVOCATION_PATTERNS,
   NUMBER_PATTERNS,
@@ -113,6 +114,7 @@ export const ON_ENGINE: readonly string[] = [
   ...START_PATTERNS,
   ...ENUM_PATTERNS,
   ...VALUE_PATTERNS,
+  ...BOUND_PATTERNS,
 ];
 
 export const LOMBOK_WITHOUT_CLASSES: readonly string[] = [

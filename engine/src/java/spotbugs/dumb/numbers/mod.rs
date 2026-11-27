@@ -1,6 +1,6 @@
 //! The whole-number patterns of DumbMethods: bit operations and comparisons with constants.
 mod bits;
-mod compares;
+pub mod compares;
 pub mod source;
 pub mod stores;
 pub mod values;

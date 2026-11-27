@@ -69,6 +69,8 @@ pub struct Context<'a> {
     out: RefCell<Vec<Finding>>,
     /// The names the compiler makes up for lambdas and anonymous classes, worked out once.
     compiled: std::cell::OnceCell<crate::java::javac::Names<'a>>,
+    /// The values the file stores into each field, `None` for a value no one can follow, worked out once.
+    pub field_stores: std::cell::OnceCell<HashMap<(String, String), Vec<Option<Node<'a>>>>>,
     /// SE_BAD_FIELD findings that wait for the classes the whole run knows.
     pub serial: RefCell<Vec<serial::Pending>>,
 }
@@ -101,6 +103,7 @@ impl<'a> Context<'a> {
             selected,
             out: RefCell::new(Vec::new()),
             compiled: std::cell::OnceCell::new(),
+            field_stores: std::cell::OnceCell::new(),
             serial: RefCell::new(Vec::new()),
         };
         (context, declared)
