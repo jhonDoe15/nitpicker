@@ -1476,12 +1476,13 @@ impl<'a> Resolver<'a> {
             self.index.methods(&owner.name(), name)
         };
         let offset = |method: &Method| usize::from(!created && !value && method.parameters.len() + 1 == taken.len());
-        let fits = |method: &Method| {
+        let fits = |method: &Method, strict: bool| {
             let given = &taken[offset(method).min(taken.len())..];
             given.len() == method.parameters.len()
-                && given.iter().zip(&method.parameters).all(|(actual, formal)| actual.open() || self.assignable(actual, formal, false))
+                && given.iter().zip(&method.parameters).all(|(actual, formal)| actual.open() || self.assignable(actual, formal, strict))
         };
-        let fitting: Vec<&(&ClassInfo, &Method)> = methods.iter().filter(|(_, method)| fits(method)).collect();
+        let strictly: Vec<&(&ClassInfo, &Method)> = methods.iter().filter(|(_, method)| fits(method, true)).collect();
+        let fitting = if strictly.is_empty() { methods.iter().filter(|(_, method)| fits(method, false)).collect() } else { strictly };
         let narrower = |method: &Method, other: &Method| {
             method.parameters.len() == other.parameters.len()
                 && method.parameters.iter().zip(&other.parameters).all(|(a, b)| self.assignable(a, b, true))

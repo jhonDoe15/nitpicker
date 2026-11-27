@@ -378,7 +378,7 @@ fn null_away_reports_what_null_away_reports_on_the_error_prone_fixtures() {
     let top: Vec<&str> = found.iter().filter(|name| !found.iter().any(|other| name.starts_with(&format!("{other}.")))).map(String::as_str).collect();
     let (missed, extra, count) = null_away_differences(&source, &source, &top.join(","), None, "nullaway-errorprone.json");
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(count, 747);
+    assert_eq!(count, 753);
 }
 
 /// A module (`module-info.java` with `requires` and a package it does not export) against a `@NullMarked` library
