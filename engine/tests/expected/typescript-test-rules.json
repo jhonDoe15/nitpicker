@@ -1,0 +1,1019 @@
+[
+ [
+  "no-assertion-in-loop/01.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  91,
+  "This assertion sits in a `for...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  99
+ ],
+ [
+  "no-assertion-in-loop/02.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  90,
+  "This assertion sits in a `forEach` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  98
+ ],
+ [
+  "no-assertion-in-loop/03.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  80,
+  "This assertion sits in a `forEach` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  85
+ ],
+ [
+  "no-assertion-in-loop/04.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  81,
+  "This assertion sits in a `map` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  86
+ ],
+ [
+  "no-assertion-in-loop/05.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  93,
+  "This assertion sits in a `while` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  109
+ ],
+ [
+  "no-assertion-in-loop/06.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  92,
+  "This assertion sits in a `for...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  100
+ ],
+ [
+  "no-assertion-in-loop/07.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  85,
+  "This assertion sits in a `forEach` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  90
+ ],
+ [
+  "no-assertion-in-loop/08.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  114,
+  "This assertion sits in a `for...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  122
+ ],
+ [
+  "no-assertion-in-loop/09.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  110,
+  "This assertion sits in a `for...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  114
+ ],
+ [
+  "no-assertion-in-loop/10.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  64,
+  "This assertion sits in a `for...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  73
+ ],
+ [
+  "no-assertion-in-loop/11.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  48,
+  "This assertion sits in a `for...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  57
+ ],
+ [
+  "no-assertion-in-loop/12.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  49,
+  "This assertion sits in a `forEach` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  58
+ ],
+ [
+  "no-assertion-in-loop/13.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  48,
+  "This assertion sits in a `for...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  57
+ ],
+ [
+  "no-assertion-in-loop/14.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  48,
+  "This assertion sits in a `for...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  57
+ ],
+ [
+  "no-assertion-in-loop/15.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  48,
+  "This assertion sits in a `for...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  57
+ ],
+ [
+  "no-assertion-in-loop/16.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  64,
+  "This assertion sits in a `map` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  85
+ ],
+ [
+  "no-assertion-in-loop/17.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  91,
+  "This assertion sits in a `map` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  100
+ ],
+ [
+  "no-assertion-in-loop/18.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  58,
+  "This assertion sits in a `map` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  73
+ ],
+ [
+  "no-assertion-in-loop/19.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  46,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  86
+ ],
+ [
+  "no-assertion-in-loop/19.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  65,
+  "This assertion sits in a `forEach` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  74
+ ],
+ [
+  "no-assertion-in-loop/20.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  65,
+  "This assertion runs once per row of a literal table in a `for...of`: in Vitest, Jest and Mocha write the table as `it.each([...])('name', (row) => { ... })` (or `test.each`), so each row is its own test and a table that comes up empty cannot pass unnoticed; in node:test register one subtest per row (`for (const row of [...]) { await t.test(row.name, () => { ... }); }`). To check one collection instead, assert it whole (`expect(rows).toEqual([...])`). An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  74
+ ],
+ [
+  "no-assertion-in-loop/21.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  67,
+  "This assertion sits in a `for...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  81
+ ],
+ [
+  "no-assertion-in-loop/22.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  75,
+  "This assertion sits in a `forEach` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  89
+ ],
+ [
+  "no-assertion-in-loop/23.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  53,
+  "This assertion runs once per row of a literal table in a `for...of`: in Vitest, Jest and Mocha write the table as `it.each([...])('name', (row) => { ... })` (or `test.each`), so each row is its own test and a table that comes up empty cannot pass unnoticed; in node:test register one subtest per row (`for (const row of [...]) { await t.test(row.name, () => { ... }); }`). To check one collection instead, assert it whole (`expect(rows).toEqual([...])`). An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  76
+ ],
+ [
+  "no-assertion-in-loop/24.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  79,
+  "This assertion runs once per row of a literal table in a `for...of`: in Vitest, Jest and Mocha write the table as `it.each([...])('name', (row) => { ... })` (or `test.each`), so each row is its own test and a table that comes up empty cannot pass unnoticed; in node:test register one subtest per row (`for (const row of [...]) { await t.test(row.name, () => { ... }); }`). To check one collection instead, assert it whole (`expect(rows).toEqual([...])`). An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  96
+ ],
+ [
+  "no-assertion-in-loop/25.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  44,
+  "This assertion runs once per row of a literal table in a `forEach`: in Vitest, Jest and Mocha write the table as `it.each([...])('name', (row) => { ... })` (or `test.each`), so each row is its own test and a table that comes up empty cannot pass unnoticed; in node:test register one subtest per row (`for (const row of [...]) { await t.test(row.name, () => { ... }); }`). To check one collection instead, assert it whole (`expect(rows).toEqual([...])`). An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  53
+ ],
+ [
+  "no-assertion-in-loop/26.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  39,
+  "This assertion sits in a `for...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  48
+ ],
+ [
+  "no-assertion-in-loop/27.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  69,
+  "This assertion sits in a `for...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  78
+ ],
+ [
+  "no-assertion-in-loop/28.ts",
+  "nitpicker/no-assertion-in-loop",
+  3,
+  51,
+  "This assertion sits in a `for...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  3,
+  74
+ ],
+ [
+  "no-assertion-in-loop/29.ts",
+  "nitpicker/no-assertion-in-loop",
+  3,
+  81,
+  "This assertion sits in a `for...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  3,
+  104
+ ],
+ [
+  "no-assertion-in-loop/30.ts",
+  "nitpicker/no-assertion-in-loop",
+  3,
+  46,
+  "This assertion runs once per row of a literal table in a `for...of`: in Vitest, Jest and Mocha write the table as `it.each([...])('name', (row) => { ... })` (or `test.each`), so each row is its own test and a table that comes up empty cannot pass unnoticed; in node:test register one subtest per row (`for (const row of [...]) { await t.test(row.name, () => { ... }); }`). To check one collection instead, assert it whole (`expect(rows).toEqual([...])`). An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  3,
+  71
+ ],
+ [
+  "no-assertion-in-loop/31.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  57,
+  "This assertion sits in a `for...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  71
+ ],
+ [
+  "no-assertion-in-loop/32.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  40,
+  "This assertion sits in a `for...in` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  54
+ ],
+ [
+  "no-assertion-in-loop/33.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  60,
+  "This assertion sits in a `for` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  75
+ ],
+ [
+  "no-assertion-in-loop/34.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  54,
+  "This assertion sits in a `while` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  69
+ ],
+ [
+  "no-assertion-in-loop/35.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  57,
+  "This assertion sits in a `for await...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  66
+ ],
+ [
+  "no-assertion-in-loop/36.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  41,
+  "This assertion sits in a `for...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  55
+ ],
+ [
+  "no-assertion-in-loop/37.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  41,
+  "This assertion sits in a `forEach` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  55
+ ],
+ [
+  "no-assertion-in-loop/38.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  39,
+  "This assertion sits in a `forEach` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  53
+ ],
+ [
+  "no-assertion-in-loop/39.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  35,
+  "This assertion sits in a `map` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  49
+ ],
+ [
+  "no-assertion-in-loop/40.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  41,
+  "This assertion sits in a `flatMap` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  50
+ ],
+ [
+  "no-assertion-in-loop/41.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  40,
+  "This assertion sits in a `filter` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  49
+ ],
+ [
+  "no-assertion-in-loop/42.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  38,
+  "This assertion sits in a `some` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  47
+ ],
+ [
+  "no-assertion-in-loop/43.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  39,
+  "This assertion sits in a `every` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  48
+ ],
+ [
+  "no-assertion-in-loop/44.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  45,
+  "This assertion sits in a `reduce` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  54
+ ],
+ [
+  "no-assertion-in-loop/45.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  38,
+  "This assertion sits in a `find` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  47
+ ],
+ [
+  "no-shared-test-state/01.ts",
+  "nitpicker/no-shared-test-state",
+  1,
+  5,
+  "Shared mutable state makes tests depend on their order. Keep `attempts` inside the test, or declare it without a value and set it in `beforeEach`.",
+  1,
+  17
+ ],
+ [
+  "no-shared-test-state/02.ts",
+  "nitpicker/no-shared-test-state",
+  1,
+  12,
+  "Shared mutable state makes tests depend on their order. Keep `counter` inside the test, or declare it without a value and set it in `beforeEach`.",
+  1,
+  23
+ ],
+ [
+  "no-shared-test-state/03.ts",
+  "nitpicker/no-shared-test-state",
+  1,
+  27,
+  "Shared mutable state makes tests depend on their order. Keep `calls` inside the test, or declare it without a value and set it in `beforeEach`.",
+  1,
+  36
+ ],
+ [
+  "no-shared-test-state/04.ts",
+  "nitpicker/no-shared-test-state",
+  1,
+  32,
+  "Shared mutable state makes tests depend on their order. Keep `calls` inside the test, or declare it without a value and set it in `beforeEach`.",
+  1,
+  41
+ ],
+ [
+  "no-shared-test-state/05.ts",
+  "nitpicker/no-shared-test-state",
+  1,
+  5,
+  "Shared mutable state makes tests depend on their order. Keep `first` inside the test, or declare it without a value and set it in `beforeEach`.",
+  1,
+  14
+ ],
+ [
+  "no-switched-off-tests/01.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  13,
+  "A fixed `skip` or `todo` option switches the test off for good. Delete the test or make it run; a real condition such as `{ skip: process.platform === \"win32\" }` is allowed.",
+  1,
+  23
+ ],
+ [
+  "no-switched-off-tests/02.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  11,
+  "A fixed `skip` or `todo` option switches the test off for good. Delete the test or make it run; a real condition such as `{ skip: process.platform === \"win32\" }` is allowed.",
+  1,
+  30
+ ],
+ [
+  "no-switched-off-tests/03.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  17,
+  "A fixed `skip` or `todo` option switches the test off for good. Delete the test or make it run; a real condition such as `{ skip: process.platform === \"win32\" }` is allowed.",
+  1,
+  27
+ ],
+ [
+  "no-switched-off-tests/04.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  20,
+  "An unconditional `skip()` or `todo()` in the test body switches the test off for good. Delete the test or make it run; a skip under a real condition such as `if (process.platform === \"win32\") { t.skip(); }` is allowed.",
+  1,
+  36
+ ],
+ [
+  "no-switched-off-tests/05.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  20,
+  "An unconditional `skip()` or `todo()` in the test body switches the test off for good. Delete the test or make it run; a skip under a real condition such as `if (process.platform === \"win32\") { t.skip(); }` is allowed.",
+  1,
+  29
+ ],
+ [
+  "no-switched-off-tests/06.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  23,
+  "An unconditional `skip()` or `todo()` in the test body switches the test off for good. Delete the test or make it run; a skip under a real condition such as `if (process.platform === \"win32\") { t.skip(); }` is allowed.",
+  1,
+  35
+ ],
+ [
+  "no-switched-off-tests/07.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  17,
+  "A fixed `skip` or `todo` option switches the test off for good. Delete the test or make it run; a real condition such as `{ skip: process.platform === \"win32\" }` is allowed.",
+  1,
+  27
+ ],
+ [
+  "no-switched-off-tests/08.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  16,
+  "A fixed `skip` or `todo` option switches the test off for good. Delete the test or make it run; a real condition such as `{ skip: process.platform === \"win32\" }` is allowed.",
+  1,
+  29
+ ],
+ [
+  "no-switched-off-tests/09.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  16,
+  "A fixed `skip` or `todo` option switches the test off for good. Delete the test or make it run; a real condition such as `{ skip: process.platform === \"win32\" }` is allowed.",
+  1,
+  26
+ ],
+ [
+  "no-switched-off-tests/10.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  22,
+  "A fixed `skip` or `todo` option switches the test off for good. Delete the test or make it run; a real condition such as `{ skip: process.platform === \"win32\" }` is allowed.",
+  1,
+  32
+ ],
+ [
+  "no-switched-off-tests/11.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  25,
+  "An unconditional `skip()` or `todo()` in the test body switches the test off for good. Delete the test or make it run; a skip under a real condition such as `if (process.platform === \"win32\") { t.skip(); }` is allowed.",
+  1,
+  32
+ ],
+ [
+  "no-switched-off-tests/r-lone-surrogate.ts",
+  "nitpicker/no-switched-off-tests",
+  1,
+  4,
+  "A literal condition switches the test off for good. Delete the test or make it run; a real platform condition such as `process.platform === \"win32\"` is allowed.",
+  1,
+  10
+ ],
+ [
+  "no-switched-off-tests/r-lone-surrogate.ts",
+  "nitpicker/no-switched-off-tests",
+  2,
+  11,
+  "A fixed `skip` or `todo` option switches the test off for good. Delete the test or make it run; a real condition such as `{ skip: process.platform === \"win32\" }` is allowed.",
+  2,
+  26
+ ],
+ [
+  "no-switched-off-tests/r-lone-surrogate.ts",
+  "nitpicker/no-switched-off-tests",
+  3,
+  4,
+  "A literal condition switches the test off for good. Delete the test or make it run; a real platform condition such as `process.platform === \"win32\"` is allowed.",
+  3,
+  9
+ ],
+ [
+  "no-unowned-async-assertion/01.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  58,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  93
+ ],
+ [
+  "no-unowned-async-assertion/02.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  81,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  116
+ ],
+ [
+  "no-unowned-async-assertion/03.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  61,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  106
+ ],
+ [
+  "no-unowned-async-assertion/04.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  75,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  120
+ ],
+ [
+  "no-unowned-async-assertion/05.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  56,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  101
+ ],
+ [
+  "no-unowned-async-assertion/05.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  75,
+  "This assertion sits in a `map` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  84
+ ],
+ [
+  "no-unowned-async-assertion/06.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  59,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  104
+ ],
+ [
+  "no-unowned-async-assertion/07.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  59,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  97
+ ],
+ [
+  "no-unowned-async-assertion/08.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  36,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  71
+ ],
+ [
+  "no-unowned-async-assertion/09.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  32,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  67
+ ],
+ [
+  "no-unowned-async-assertion/10.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  42,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  82
+ ],
+ [
+  "no-unowned-async-assertion/11.ts",
+  "nitpicker/no-unowned-async-assertion",
+  2,
+  42,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  2,
+  90
+ ],
+ [
+  "no-unowned-async-assertion/12.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  46,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  81
+ ],
+ [
+  "no-unowned-async-assertion/13.ts",
+  "nitpicker/no-unowned-async-assertion",
+  2,
+  17,
+  "This assertion runs in a `createServer` handler, and nothing after it in the test triggers the event or waits for it, so the event can arrive after the test has finished and a failure is lost or blamed on another test. Trigger the event in the test after adding the handler, or await it (`await once(emitter, 'ready')`, or a promise the handler resolves). An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  2,
+  75
+ ],
+ [
+  "no-unowned-async-assertion/14.ts",
+  "nitpicker/no-unowned-async-assertion",
+  2,
+  17,
+  "This assertion runs in a `watch` handler, and nothing after it in the test triggers the event or waits for it, so the event can arrive after the test has finished and a failure is lost or blamed on another test. Trigger the event in the test after adding the handler, or await it (`await once(emitter, 'ready')`, or a promise the handler resolves). An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  2,
+  63
+ ],
+ [
+  "no-unowned-async-assertion/15.ts",
+  "nitpicker/no-unowned-async-assertion",
+  2,
+  17,
+  "This assertion runs in the callback of `get`, which Node calls after the test function returns, so a failure is lost or blamed on another test. Await the promise form of the API (`node:fs/promises`, `util.promisify`) instead. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  2,
+  78
+ ],
+ [
+  "no-unowned-async-assertion/16.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  58,
+  "This assertion runs in a `nextTick` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or `await` after scheduling it so it runs before the test ends. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  91
+ ],
+ [
+  "no-unowned-async-assertion/17.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  53,
+  "This assertion runs in a `nextTick` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or `await` after scheduling it so it runs before the test ends. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  94
+ ],
+ [
+  "no-unowned-async-assertion/18.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  52
+ ],
+ [
+  "no-unowned-async-assertion/19.ts",
+  "nitpicker/no-unowned-async-assertion",
+  3,
+  17,
+  "This assertion runs in a `subscribe` handler, and nothing after it in the test triggers the event or waits for it, so the event can arrive after the test has finished and a failure is lost or blamed on another test. Trigger the event in the test after adding the handler, or await it (`await once(emitter, 'ready')`, or a promise the handler resolves). An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  3,
+  65
+ ],
+ [
+  "no-unowned-async-assertion/20.ts",
+  "nitpicker/no-unowned-async-assertion",
+  3,
+  17,
+  "This assertion runs in a `subscribe` handler, and nothing after it in the test triggers the event or waits for it, so the event can arrive after the test has finished and a failure is lost or blamed on another test. Trigger the event in the test after adding the handler, or await it (`await once(emitter, 'ready')`, or a promise the handler resolves). An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  3,
+  75
+ ],
+ [
+  "no-unowned-async-assertion/21.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  41,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  76
+ ],
+ [
+  "no-unowned-async-assertion/22.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  58,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  97
+ ],
+ [
+  "no-unowned-async-assertion/23.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  26,
+  "This assertion runs in a `on` handler, and nothing after it in the test triggers the event or waits for it, so the event can arrive after the test has finished and a failure is lost or blamed on another test. Trigger the event in the test after adding the handler, or await it (`await once(emitter, 'ready')`, or a promise the handler resolves). An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  62
+ ],
+ [
+  "no-unowned-async-assertion/24.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  37,
+  "This assertion runs in a `on` handler, and nothing after it in the test triggers the event or waits for it, so the event can arrive after the test has finished and a failure is lost or blamed on another test. Trigger the event in the test after adding the handler, or await it (`await once(emitter, 'ready')`, or a promise the handler resolves). An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  78
+ ],
+ [
+  "no-unowned-async-assertion/25.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  56
+ ],
+ [
+  "no-unowned-async-assertion/26.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  56
+ ],
+ [
+  "no-unowned-async-assertion/27.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  56
+ ],
+ [
+  "no-unowned-async-assertion/28.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  56
+ ],
+ [
+  "no-unowned-async-assertion/29.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  29,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  64
+ ],
+ [
+  "no-unowned-async-assertion/30.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  19,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  54
+ ],
+ [
+  "no-unowned-async-assertion/31.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  22,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  57
+ ],
+ [
+  "no-unowned-async-assertion/32.ts",
+  "nitpicker/no-unowned-async-assertion",
+  4,
+  16,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  4,
+  51
+ ],
+ [
+  "no-unowned-async-assertion/33.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  61
+ ],
+ [
+  "no-unowned-async-assertion/34.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  15,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  50
+ ],
+ [
+  "no-unowned-async-assertion/35.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  30,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  65
+ ],
+ [
+  "no-unowned-async-assertion/36.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  19,
+  "This assertion runs in a `nextTick` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or `await` after scheduling it so it runs before the test ends. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  61
+ ],
+ [
+  "no-unowned-async-assertion/37.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  37,
+  "This assertion runs in a `nextTick` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or `await` after scheduling it so it runs before the test ends. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  78
+ ],
+ [
+  "no-unowned-async-assertion/38.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  37,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  76
+ ],
+ [
+  "no-unowned-async-assertion/39.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  56
+ ],
+ [
+  "no-unowned-async-assertion/40.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `queueMicrotask` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or `await` after scheduling it so it runs before the test ends. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  71
+ ],
+ [
+  "no-unowned-async-assertion/41.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  68,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  98
+ ],
+ [
+  "no-unowned-async-assertion/42.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  17,
+  "This assertion runs in a `requestAnimationFrame` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  63
+ ],
+ [
+  "no-unowned-async-assertion/43.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  26,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  61
+ ],
+ [
+  "no-unowned-async-assertion/44.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  34,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  69
+ ],
+ [
+  "no-unowned-async-assertion/45.ts",
+  "nitpicker/no-unowned-async-assertion",
+  1,
+  53,
+  "This assertion runs in a `setTimeout` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.",
+  1,
+  71
+ ],
+ [
+  "no-unowned-async-assertion/51.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  93,
+  "This assertion sits in a `map` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  102
+ ],
+ [
+  "no-unowned-async-assertion/52.ts",
+  "nitpicker/no-assertion-in-loop",
+  1,
+  102,
+  "This assertion sits in a `map` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+  1,
+  111
+ ]
+]

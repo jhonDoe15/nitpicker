@@ -1,0 +1,1 @@
+it('x', () => { for (const o of service.paidOrders()) { expect(o.paid).toBe(true); } });

@@ -1,0 +1,1 @@
+it('x', () => { if (c) { em.on('a', (v) => expect(v).toBe(1)); } });

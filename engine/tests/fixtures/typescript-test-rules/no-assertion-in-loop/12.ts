@@ -1,0 +1,1 @@
+const check = (o) => { o.parts.forEach((p) => { expect(p).toBe(1); }); }; it('x', () => { check(order); });

@@ -1,0 +1,1 @@
+it('x', () => { let i = 0; while (i < list.length) { expect(list[i]).toBe(1); i += 1; } });

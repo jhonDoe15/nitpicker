@@ -1,0 +1,1 @@
+const inner = (o) => expect(o).toBe(1); const outer = (o) => inner(o); it('x', () => { for (const o of orders) { outer(o); } });

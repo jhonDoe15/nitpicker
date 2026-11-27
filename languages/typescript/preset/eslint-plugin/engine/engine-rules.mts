@@ -62,6 +62,16 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-accumulator-concat', TYPED],
   ['no-add-only-collection', {}],
   ['no-array-spread-arguments', TYPED],
+  [
+    'no-assertion-in-loop',
+    {
+      facts: (_filename, options) => ({
+        'assertion-function-names': JSON.stringify(
+          Reflect.get(Object(options[0]), 'assertionFunctionNames') ?? [],
+        ),
+      }),
+    },
+  ],
   ['no-blank-number-coercion', TYPED],
   ['no-chunkwise-stream-text', TYPED],
   [
@@ -120,9 +130,11 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
     },
   ],
   ['no-shadowed-spread-key', TYPED],
+  ['no-shared-test-state', {}],
   ['no-silent-catch', {}],
   ['no-string-as-regex', TYPED],
   ['no-swapped-arguments', TYPED],
+  ['no-switched-off-tests', {}],
   [
     'no-unhandled-void-promise',
     {
@@ -145,6 +157,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ],
   ['no-unbounded-query-array', {}],
   ['no-unordered-query', {}],
+  ['no-unowned-async-assertion', {}],
   ['no-unpaged-listing', {}],
   ['no-unversioned-orm-entity', TYPED],
   ['no-wait-for-with-fake-timers', {}],

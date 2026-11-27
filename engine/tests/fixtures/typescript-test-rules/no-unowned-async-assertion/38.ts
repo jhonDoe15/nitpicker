@@ -1,0 +1,1 @@
+it('x', () => { vi.useFakeTimers(); setTimeout(() => expect(a).toBe(1), 10); });

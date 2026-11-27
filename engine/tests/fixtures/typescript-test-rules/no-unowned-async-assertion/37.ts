@@ -1,0 +1,1 @@
+it('x', () => { vi.useFakeTimers(); process.nextTick(() => expect(a).toBe(1)); vi.advanceTimersByTime(10); });

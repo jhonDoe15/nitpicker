@@ -1,0 +1,1 @@
+it('x', () => { globalThis.queueMicrotask(() => expect(a).to.equal(1)); });

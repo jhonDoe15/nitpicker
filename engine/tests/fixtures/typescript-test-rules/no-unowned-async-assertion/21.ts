@@ -1,0 +1,1 @@
+it('outer', () => { it('inner', () => { setTimeout(() => expect(a).toBe(1)); }); });

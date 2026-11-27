@@ -1,0 +1,1 @@
+it('x', () => { requestAnimationFrame(() => expect(a).toBe(1)); });

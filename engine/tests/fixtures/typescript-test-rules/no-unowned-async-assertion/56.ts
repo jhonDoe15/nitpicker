@@ -1,0 +1,1 @@
+it('x', async () => { const wait = () => new Promise((r) => setTimeout(() => { expect(a).toBe(1); r(); })); await wait(); });

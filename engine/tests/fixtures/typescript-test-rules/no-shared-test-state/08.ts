@@ -1,0 +1,1 @@
+it('counts', () => { let calls = 0; run(() => { calls += 1; }); expect(calls).toBe(1); });
