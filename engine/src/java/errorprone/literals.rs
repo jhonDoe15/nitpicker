@@ -1,6 +1,7 @@
 //! FloatingPointLiteralPrecision: a `float` or `double` literal that cannot hold the digits written.
 use super::Context;
 use super::fixes::Fix;
+use super::java_text::java_scientific;
 use tree_sitter::Node;
 
 const MESSAGE: &str = "Floating point literal loses precision";
@@ -94,10 +95,10 @@ pub fn floating_point_literal_precision(context: &Context, node: Node) {
     let Some(exact) = parse(&trimmed) else { return };
     let scientific = if float {
         let Ok(value) = trimmed.parse::<f32>() else { return };
-        format!("{value:e}")
+        java_scientific(value)
     } else {
         let Ok(value) = trimmed.parse::<f64>() else { return };
-        format!("{value:e}")
+        java_scientific(value)
     };
     let java = java_string(&scientific);
     let Some(value) = parse(&java) else { return };
