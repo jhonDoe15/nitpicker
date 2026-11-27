@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { memberName } from '../../collections/costly-forms/repeated-runs.mts';
-import { variableNamed, type SourceCode } from '../../typed/node-views.mts';
+import type { SourceCode } from '../../typed/node-views.mts';
 import { isFsCall } from '../repeated-calls/call-shapes.mts';
 import { calledName, listedEntry } from './listed-entries.mts';
 
@@ -39,22 +39,28 @@ function endsWithEntry(path: TSESTree.Node, entry: string): boolean {
   return path.type === AST_NODE_TYPES.BinaryExpression && isEntryName(path.right, entry);
 }
 
+function isKindOnlyBinding(
+  sourceCode: SourceCode,
+  declarator: TSESTree.VariableDeclarator,
+): boolean {
+  const reads = sourceCode
+    .getDeclaredVariables(declarator)
+    .flatMap((variable) => variable.references)
+    .filter((reference) => !reference.init);
+  return reads.length > 0 && reads.every((reference) => isKindTest(reference.identifier));
+}
+
 function onlyKindTests(sourceCode: SourceCode, value: TSESTree.Node): boolean {
   if (isKindTest(value)) {
     return true;
   }
   const declarator = value.parent;
-  if (
-    declarator?.type !== AST_NODE_TYPES.VariableDeclarator ||
-    declarator.init !== value ||
-    declarator.id.type !== AST_NODE_TYPES.Identifier
-  ) {
-    return false;
-  }
-  const reads = (variableNamed(sourceCode, declarator.id)?.references ?? []).filter(
-    (reference) => !reference.init,
+  return (
+    declarator?.type === AST_NODE_TYPES.VariableDeclarator &&
+    declarator.init === value &&
+    declarator.id.type === AST_NODE_TYPES.Identifier &&
+    isKindOnlyBinding(sourceCode, declarator)
   );
-  return reads.length > 0 && reads.every((reference) => isKindTest(reference.identifier));
 }
 
 export const rule: TSESLint.RuleModule<'statPerEntry'> = {

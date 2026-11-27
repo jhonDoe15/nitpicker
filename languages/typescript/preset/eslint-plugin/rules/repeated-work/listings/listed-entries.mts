@@ -1,7 +1,8 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { calledMember, memberName } from '../../collections/costly-forms/repeated-runs.mts';
 import { variableNamed, type SourceCode } from '../../typed/node-views.mts';
-import { unwrapped } from '../../typed/syntax-views.mts';
+import { isCallback, unwrapped, type Callback } from '../../typed/syntax-views.mts';
+import { textOf } from '../../../../../../../shared/values/readers.mts';
 import { isFsCall } from '../repeated-calls/call-shapes.mts';
 import { innermostRepeat } from '../support/loop-invariance.mts';
 
@@ -41,17 +42,22 @@ function isListing(sourceCode: SourceCode, node: TSESTree.Node): boolean {
   );
 }
 
-function callbackEntry(sourceCode: SourceCode, fn: TSESTree.Node): TSESTree.Identifier | undefined {
+function listsEntries(sourceCode: SourceCode, call: TSESTree.CallExpression): boolean {
+  const member = calledMember(call);
+  return (
+    member !== undefined &&
+    ENTRY_METHODS.has(textOf(memberName(member))) &&
+    isListing(sourceCode, member.object)
+  );
+}
+
+function callbackEntry(sourceCode: SourceCode, fn: Callback): TSESTree.Identifier | undefined {
   const call = fn.parent;
-  if (call?.type !== AST_NODE_TYPES.CallExpression || call.arguments[0] !== fn) {
+  if (call.type !== AST_NODE_TYPES.CallExpression || call.arguments[0] !== fn) {
     return undefined;
   }
-  const member = calledMember(call);
-  const [entry] = 'params' in fn ? fn.params : [];
-  return member !== undefined &&
-    ENTRY_METHODS.has(memberName(member) ?? '') &&
-    isListing(sourceCode, member.object) &&
-    entry?.type === AST_NODE_TYPES.Identifier
+  const [entry] = fn.params;
+  return listsEntries(sourceCode, call) && entry?.type === AST_NODE_TYPES.Identifier
     ? entry
     : undefined;
 }
@@ -73,7 +79,7 @@ export function listedEntry(
   if (repeat === undefined) {
     return undefined;
   }
-  return repeat.kind === 'loop'
-    ? loopEntry(sourceCode, repeat.node)
-    : callbackEntry(sourceCode, repeat.node);
+  return isCallback(repeat.node)
+    ? callbackEntry(sourceCode, repeat.node)
+    : loopEntry(sourceCode, repeat.node);
 }

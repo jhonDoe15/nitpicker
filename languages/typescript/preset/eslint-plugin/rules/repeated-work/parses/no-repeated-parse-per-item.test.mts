@@ -37,8 +37,15 @@ declare function parse(text: string): string[];
     `${SAVED}\nexport function f(items: Finding[]) { return items.map((item) => counted(item.message)); }`,
     `${ONE_LINE}\nexport function f() { return [{ message: "a" }].map((item) => oneLine(item.message)); }`,
     `${ONE_LINE}\nexport function f(items: Finding[]) { return items.map((item) => oneLine(item.message, 1)); }`,
+    `${ONE_LINE}\nexport function f(items: Finding[]) { return items.map((item) => oneLine(item["message"])); }`,
+    `${ONE_LINE}\nexport function f(items: Finding[]) { return items.map((item) => oneLine(pick(item).message)); }\ndeclare function pick(item: Finding): Finding;`,
+    'const key = "trim";\nfunction bracket(text: string) { return text[key](); }\nexport function f(items: Finding[]) { return items.map((item) => bracket(item.message)); }',
   ],
   invalid: [
+    {
+      code: `${ROUTE}\nfunction wrapped(text: string) { return splitRoute(splitRoute(text).head); }\nexport function f(items: Finding[]) { return items.map((item) => wrapped(item.message)); }`,
+      errors: [PARSE('wrapped', 'message')],
+    },
     {
       code: `${ONE_LINE}\n${ROUTE}\nexport function f(members: Finding[]) { return members.map((finding) => splitRoute(oneLine(finding.message))); }`,
       errors: [PARSE('splitRoute', 'message')],

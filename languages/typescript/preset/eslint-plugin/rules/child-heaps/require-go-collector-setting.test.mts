@@ -19,6 +19,8 @@ tester.run('require-go-collector-setting', rule, {
     `${CP} spawn('tsgo', ['--version']);`,
     `${CP} spawn('node', ['server.js', '--api']);`,
     `${CP} spawn('tsgo', ['--api'], { env: { ...process.env, GOGC: process.env.GOGC ?? '50' } });`,
+    `${CP} spawn('gopls', [], { env: { [key]: 'x' } });`,
+    `${CP} spawn(getBin(), ['run']);`,
     `import { spawn } from 'other'; spawn('tsgo', ['--api']);`,
   ],
   invalid: [
@@ -26,6 +28,8 @@ tester.run('require-go-collector-setting', rule, {
       "export const f = (compilerPath, folder) => spawn(compilerPath, ['--api', '--cwd', folder], { stdio: 'pipe' });",
     ),
     invalid("spawn('tsgolint', ['headless']);"),
+    invalid("spawn('gopls', { stdio: 'pipe' });"),
+    invalid("spawn(tools.gopls, ['serve']);"),
     invalid("execFile('gopls', ['serve'], (error) => done(error));"),
     invalid("spawn('tsgo', ['--api'], { env: process.env });"),
     invalid("spawn('tsgo', ['--api'], { env: { ...process.env, GOGC: undefined } });"),

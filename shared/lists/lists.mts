@@ -27,3 +27,7 @@ export function reachableFrom<T>(start: Iterable<T>, next: (item: T) => Iterable
   }
   return seen;
 }
+
+export function lastOf<T>(items: readonly T[], fallback: T): T {
+  return items.reduce((_previous, item) => item, fallback);
+}

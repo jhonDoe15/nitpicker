@@ -44,7 +44,7 @@ function isNamedInput(node: TSESTree.Node): boolean {
   return (
     node.type === AST_NODE_TYPES.MemberExpression &&
     !node.computed &&
-    INPUT_NAMES.has(nameOf(node.property) ?? '')
+    INPUT_NAMES.has(String(nameOf(node.property)))
   );
 }
 
@@ -71,12 +71,6 @@ export function batchFunction(
   context: SourceContext,
   callback: TSESTree.Node | undefined,
 ): BatchFunction | undefined {
-  if (callback === undefined) {
-    return undefined;
-  }
-  if (isFunctionNode(callback)) {
-    return callback.type === AST_NODE_TYPES.FunctionDeclaration ? undefined : callback;
-  }
-  const resolved = resolveFunction(context, callback);
-  return resolved !== undefined && isFunctionNode(resolved) ? resolved : undefined;
+  const fn = isFunctionNode(callback) ? callback : resolveFunction(context, callback);
+  return isFunctionNode(fn) ? fn : undefined;
 }

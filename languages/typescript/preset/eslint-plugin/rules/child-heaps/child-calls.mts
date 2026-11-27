@@ -57,7 +57,7 @@ export function staticText(
     return value.value;
   }
   if (value?.type === AST_NODE_TYPES.TemplateLiteral) {
-    return value.quasis.map((quasi) => quasi.value.cooked ?? '').join(separator);
+    return value.quasis.map((quasi) => quasi.value.cooked).join(separator);
   }
   return undefined;
 }

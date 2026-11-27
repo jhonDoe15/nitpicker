@@ -14,6 +14,8 @@ tester.run('no-unguarded-recursion-entry', rule, {
     `${SHAPES}${GUARDED_CALL}export function resolveConstructor(created) { return resolveCall(created); }`,
     `${SHAPES}${GUARDED_CALL}export function resolveConstructor(created) { return pick(created, []); }`,
     `${SHAPES}const inProgress = [];\nexport function resolveCall(call) { return pick(call, shapes(call)); }\nexport function resolveConstructor(created) { return pick(created, shapes(created)); }`,
+    `${SHAPES}${GUARDED_CALL}export function resolveConstructor(created) { return lonely(created); }\nfunction lonely(x) { return x; }`,
+    `${SHAPES}${GUARDED_CALL}export function resolveConstructor(created) { return resolveConstructor(created.next); }`,
   ],
   invalid: [
     {

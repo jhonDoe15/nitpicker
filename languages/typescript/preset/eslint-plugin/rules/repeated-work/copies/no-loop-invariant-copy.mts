@@ -77,7 +77,13 @@ export const rule: TSESLint.RuleModule<'copyPerPass'> = {
   },
   create(context) {
     const { sourceCode } = context;
-    function check(node: TSESTree.Node): void {
+    function check(
+      node:
+        | TSESTree.ArrayExpression
+        | TSESTree.ObjectExpression
+        | TSESTree.NewExpression
+        | TSESTree.CallExpression,
+    ): void {
       const source = copiedSource(node);
       const repeat = openRepeat(node);
       if (

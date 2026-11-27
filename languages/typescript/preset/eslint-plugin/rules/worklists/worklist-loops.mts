@@ -26,10 +26,9 @@ function listOf(loop: TSESTree.ForOfStatement | TSESTree.WhileStatement): string
   return taken.find((name) => name !== '');
 }
 
-export function worklistOf(node: TSESTree.Node): Worklist | undefined {
-  if (node.type !== AST_NODE_TYPES.ForOfStatement && node.type !== AST_NODE_TYPES.WhileStatement) {
-    return undefined;
-  }
+export function worklistOf(
+  node: TSESTree.ForOfStatement | TSESTree.WhileStatement,
+): Worklist | undefined {
   const list = listOf(node);
   const pushes =
     list === undefined ? [] : callsWhere(node.body, APPENDS, (receiver) => receiver === list);

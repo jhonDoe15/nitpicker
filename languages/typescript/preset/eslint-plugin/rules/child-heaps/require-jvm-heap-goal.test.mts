@@ -19,8 +19,14 @@ tester.run('require-jvm-heap-goal', rule, {
     `${CP} for (const m of modules) spawn('java', ['-Xmx2g', goalFlag, m]);`,
     `${CP} for (const m of modules) spawn('java', ['-Xmx1g', '-jar', 'a.jar'], { env: { ...process.env, JAVA_TOOL_OPTIONS: '-XX:GCTimeRatio=4' } });`,
     `${CP} for (const m of modules) spawn('gradle', ['build'], { env: { ...process.env, JAVA_TOOL_OPTIONS: '-Xmx1g -XX:GCTimeRatio=4' } });`,
+    `${CP} export const f = (ms) => getMapper()(ms, (m) => spawn('java', ['-Xmx1g', m]));`,
   ],
   invalid: [
+    invalid("for (const m of modules) spawn('java', ['-Xmx2g', opts.dir, m]);"),
+    invalid("for (const m of modules) spawn('java', ['-Xmx2g', compute(), m]);"),
+    invalid("for (const m of modules) spawn('java', ['-Xmx2g', m], { env: { ...extra } });"),
+    invalid("for (const m of modules) spawn(tools.javaPath, ['-Xmx2g', m]);"),
+    invalid("export const f = (ms) => pMap(ms, (m) => spawn('java', ['-Xmx1g', m]));"),
     invalid(
       `for (const m of modules) spawn('java', [\`-XX:MaxRAMPercentage=\${share}\`, '-cp', cp, main, m]);`,
     ),
