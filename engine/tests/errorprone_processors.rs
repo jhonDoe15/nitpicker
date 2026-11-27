@@ -92,7 +92,9 @@ fn classes_lombok_wrote_members_into_are_named_with_the_first_member_their_sourc
         ("crew/Audit.java", 6, "crew.Audit: field static log"),
         ("crew/Badge.java", 6, "crew.Badge: method toString/0"),
         ("crew/Helpers.java", 6, "crew.Helpers: field count"),
+        ("crew/Helpers.java", 9, "crew.Helpers$Nested: class access"),
         ("crew/Helpers.java", 21, "crew.Holder$Inside$Tools: field member"),
+        ("crew/Pass.java", 8, "crew.Pass$PassBuilder: no source"),
         ("crew/Pass.java", 8, "crew.Pass: method static builder/0"),
         ("crew/Roster.java", 8, "crew.Roster$Middle$Inner: method toString/0"),
         ("crew/Shift.java", 7, "crew.Shift: method static builder/0"),
@@ -123,4 +125,31 @@ fn rows_of_messages(fixture: &str, classes: &str) -> Vec<(String, u64, String)> 
         .collect();
     rows.sort();
     rows
+}
+
+/// `fixtures/errorprone-processors-shapes` is the source; its class files were compiled from
+/// `errorprone-processors-shapes-rewritten`, which changes what a rewriting processor could change without touching
+/// member names or counts. `Kept.java` compiles to what it says: javac's own members and repeated forms are no change,
+/// and `Top$Alone.java` is a top-level class whose name only looks like one of `Top`'s.
+#[test]
+fn classes_whose_types_access_annotations_or_local_and_anonymous_classes_differ_from_their_class_files_are_named() {
+    let report = rows_of_messages("errorprone-processors-shapes", "errorprone-processors-shapes-classes");
+    let wanted = [
+        ("audit/Extra.java", 3, "audit.Extra$1: no source"),
+        ("audit/Nested.java", 5, "audit.Nested$Mode$1: method extra/0"),
+        ("audit/Nested.java", 18, "audit.Nested$1Local: method thrice/1"),
+        ("audit/Nested.java", 23, "audit.Nested$1: method added/0"),
+        ("audit/Types.java", 4, "audit.Types$Parameter: method take(Ljava/lang/Object;)V"),
+        ("audit/Types.java", 8, "audit.Types$Returned: method name()Ljava/lang/Object;"),
+        ("audit/Types.java", 14, "audit.Types$FieldType: field count type long"),
+        ("audit/Types.java", 18, "audit.Types$Visibility: method open()V access"),
+        ("audit/Types.java", 22, "audit.Types$Final: method run()V access"),
+        ("audit/Types.java", 26, "audit.Types$Annotated: field label annotation java.lang.Deprecated"),
+        ("audit/Types.java", 30, "audit.Types$Arity: method <init>(II)V"),
+        ("audit/Types.java", 34, "audit.Types$Sealed: class access"),
+        ("audit/Types.java", 36, "audit.Types$Listed: interfaces java.io.Serializable"),
+        ("audit/Types.java", 38, "audit.Types$Spread: method all([Ljava/lang/String;)V access"),
+        ("audit/Types.java", 42, "audit.Types$Dropped: method old()V annotation java.lang.Deprecated dropped"),
+    ];
+    assert_eq!(report, wanted.map(|(file, line, message)| (file.to_string(), line, message.to_string())));
 }

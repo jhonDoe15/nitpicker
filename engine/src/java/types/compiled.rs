@@ -49,6 +49,8 @@ pub struct CompiledMethod {
     pub calls: Vec<Call>,
     /// Its code loads local 0, which is `this` in an instance method.
     pub loads_this: bool,
+    /// The annotations javac kept on it (class and runtime retention), by name with dots.
+    pub annotations: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -60,6 +62,8 @@ pub struct CompiledField {
     pub constant: bool,
     /// Lombok wrote it: it carries `@lombok.Generated`.
     pub generated: bool,
+    /// The annotations javac kept on it (class and runtime retention), by name with dots.
+    pub annotations: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -71,6 +75,11 @@ pub struct CompiledClass {
     pub nested: Option<u16>,
     /// The member classes it declares, by binary name with dots.
     pub members: Vec<String>,
+    /// Its superclass and interfaces, by binary name with dots.
+    pub superclass: Option<String>,
+    pub interfaces: Vec<String>,
+    /// The annotations javac kept on it (class and runtime retention), by name with dots.
+    pub annotations: Vec<String>,
     /// The class as the type index reads class files.
     pub info: Option<super::model::ClassInfo>,
     pub fields: Vec<CompiledField>,
@@ -217,13 +226,19 @@ fn skip_annotation(reader: &mut Reader) -> Option<u16> {
 }
 
 /// Reads a `RuntimeInvisibleAnnotations` attribute: whether it holds `@lombok.Generated`.
-fn marked(reader: &mut Reader, pool: &Pool) -> Option<bool> {
+/// The names of the annotations an annotations attribute lists, with dots, and whether `@lombok.Generated` is one.
+fn marked(reader: &mut Reader, pool: &Pool, names: &mut Vec<String>) -> Option<bool> {
     let mut found = false;
     for _ in 0..reader.u2()? {
-        found |= pool.utf8(skip_annotation(reader)?) == Some(GENERATED);
+        let kind = pool.utf8(skip_annotation(reader)?);
+        found |= kind == Some(GENERATED);
+        let text = kind.and_then(|kind| std::str::from_utf8(kind).ok()).unwrap_or_default();
+        names.push(text.trim_start_matches('L').trim_end_matches(';').replace('/', "."));
     }
     Some(found)
 }
+
+const ANNOTATIONS: [&[u8]; 2] = [b"RuntimeInvisibleAnnotations", b"RuntimeVisibleAnnotations"];
 
 /// How many bytes the instruction at `pc` takes.
 fn width(code: &[u8], pc: usize) -> Option<usize> {
@@ -306,38 +321,40 @@ pub fn parse(data: &[u8]) -> Option<(String, CompiledClass)> {
     let pool = pool(&mut reader)?;
     let access = reader.u2()?;
     let name = pool.class(reader.u2()?)?;
-    reader.skip(2)?;
-    let interfaces = reader.u2()? as usize;
-    reader.skip(interfaces * 2)?;
-    let mut class = CompiledClass { access, ..CompiledClass::default() };
+    let superclass = pool.class(reader.u2()?);
+    let mut interfaces = Vec::new();
+    for _ in 0..reader.u2()? {
+        interfaces.extend(pool.class(reader.u2()?));
+    }
+    let mut class = CompiledClass { access, superclass, interfaces, ..CompiledClass::default() };
     for _ in 0..reader.u2()? {
         let access = reader.u2()?;
         let (name, descriptor) = (pool.text(reader.u2()?)?, pool.text(reader.u2()?)?);
-        let (mut constant, mut generated) = (false, false);
+        let (mut constant, mut generated, mut annotations) = (false, false, Vec::new());
         for _ in 0..reader.u2()? {
             let attribute = pool.utf8(reader.u2()?).unwrap_or_default();
             constant |= attribute == b"ConstantValue";
             let size = reader.u4()? as usize;
             let end = reader.at + size;
-            if attribute == b"RuntimeInvisibleAnnotations" {
-                generated |= marked(&mut reader, &pool)?;
+            if ANNOTATIONS.contains(&attribute) {
+                generated |= marked(&mut reader, &pool, &mut annotations)?;
             }
             reader.at = end;
         }
-        class.fields.push(CompiledField { name, descriptor, access, constant, generated });
+        class.fields.push(CompiledField { name, descriptor, access, constant, generated, annotations });
     }
     for _ in 0..reader.u2()? {
         let access = reader.u2()?;
         let (name, descriptor) = (pool.text(reader.u2()?)?, pool.text(reader.u2()?)?);
-        let mut method = CompiledMethod { name, descriptor, access, generated: false, line: None, entry_line: None, accesses: Vec::new(), calls: Vec::new(), loads_this: false };
+        let mut method = CompiledMethod { name, descriptor, access, generated: false, line: None, entry_line: None, accesses: Vec::new(), calls: Vec::new(), loads_this: false, annotations: Vec::new() };
         for _ in 0..reader.u2()? {
             let attribute = pool.utf8(reader.u2()?).unwrap_or_default();
             let size = reader.u4()? as usize;
             let end = reader.at + size;
             if attribute == b"Code" {
                 code(&mut reader, &pool, &mut method)?;
-            } else if attribute == b"RuntimeInvisibleAnnotations" {
-                method.generated |= marked(&mut reader, &pool)?;
+            } else if ANNOTATIONS.contains(&attribute) {
+                method.generated |= marked(&mut reader, &pool, &mut method.annotations)?;
             }
             reader.at = end;
         }
@@ -347,8 +364,8 @@ pub fn parse(data: &[u8]) -> Option<(String, CompiledClass)> {
         let attribute = pool.utf8(reader.u2()?).unwrap_or_default();
         let size = reader.u4()? as usize;
         let end = reader.at + size;
-        if attribute == b"RuntimeInvisibleAnnotations" {
-            class.generated |= marked(&mut reader, &pool)?;
+        if ANNOTATIONS.contains(&attribute) {
+            class.generated |= marked(&mut reader, &pool, &mut class.annotations)?;
         } else if attribute == b"InnerClasses" {
             for _ in 0..reader.u2()? {
                 let (inner, outer) = (pool.class(reader.u2()?), pool.class(reader.u2()?));

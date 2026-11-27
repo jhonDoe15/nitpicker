@@ -326,15 +326,21 @@ processors wrote (`--processor-output=` in the arguments file) after the source 
 `NP_EP_CONTEXT_ROOTS` to their folders: the engine types code against them and reports nothing there. Error Prone
 checks such as `AutoValueConstructorOrderChecker` need them, since class files keep no parameter names.
 
-With `NP_EP_AUDIT_CLASSES` (the build's class folders), the engine compares each top-level and member class of
-the source with its class file (`src/java/errorprone/processor_audit.rs`): fields by name and `static`, methods by
-name, parameter count and `static`, constructors by count and member classes by name, leaving out what javac adds
-itself (synthetic and bridge members, default constructors, enum and record members). A difference, or a class
-without a class file, is a `_Rewritten` row; the source set then goes whole to Error Prone and the log names the
-class and member. Lombok source sets go to Error Prone without the comparison. Not compared: member types,
-annotations and code, and the members of local and anonymous classes; a processor that changes only these is
-not detected. `tests/errorprone_processors.rs` holds an AutoValue and MapStruct project with Error Prone's rows,
-Java shapes javac adds members to, and the Lombok fixture the comparison flags.
+With `NP_EP_AUDIT_CLASSES` (the build's class folders), the engine compares every class of the source, local and
+anonymous ones by javac's numbering (`Outer$1`, `Outer$1Local`), with its class file
+(`src/java/errorprone/processor_audit.rs`): fields by name and `static`, methods by name, parameter count and
+`static`, constructors by count and member classes by name, leaving out what javac adds itself (synthetic and bridge
+members, default constructors, enum and record members). Then the class's superclass, interfaces and access, each
+member's erased types against the type index, its access bits and the annotations javac kept, added or dropped
+(`processor_shapes.rs`; a dropped one only when the index read its type from a class file); a type the index could
+not resolve compares by its written name, and a repeated annotation by its container. A class file beside the file's classes that none
+of them accounts for, other than javac's synthetic helpers, counts too. A difference, or a class without a class
+file, is a `_Rewritten` row; the source set then goes whole to Error Prone and the log names the class and member.
+Lombok source sets go to Error Prone without the comparison. Not compared: code, constant values, `throws` clauses,
+`transient`, annotation values, parameter and type-use annotations, and the constructors of local and anonymous
+classes (javac adds the captured variables to them). `tests/errorprone_processors.rs` holds an AutoValue and MapStruct project with Error Prone's rows, Java
+shapes javac adds members to, the Lombok fixture the comparison flags and class files compiled from a changed copy
+of their source (`errorprone-processors-shapes`).
 
 ### Error Prone on code Lombok rewrote
 
