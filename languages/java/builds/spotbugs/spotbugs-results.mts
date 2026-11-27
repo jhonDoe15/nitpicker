@@ -160,6 +160,10 @@ function placedNameOf(
   if (placed.placement === 'relative') {
     return relativeName(qualified, finding.symbol ?? '');
   }
+  const shown = (finding.symbol ?? '').lastIndexOf('@');
+  if (placed.placement === 'shown' && shown !== -1) {
+    return (finding.symbol ?? '').slice(shown + 1);
+  }
   return placed.classNamed?.includes(finding.priority ?? 0)
     ? withoutPackage(qualified, owner)
     : placeName(kind, qualified, owner);
@@ -174,7 +178,8 @@ function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): Spotbug
   }
   const kind = place.slice(0, colon);
   const body = place.slice(colon + 1);
-  const at = placed.placement === 'relative' ? body.lastIndexOf('@') : -1;
+  const named = placed.placement === 'relative' || placed.placement === 'shown';
+  const at = named ? body.lastIndexOf('@') : -1;
   const [qualified = '', written] = (at === -1 ? body : body.slice(0, at)).split('|');
   const owner = ownerOf(kind, qualified);
   const subject = placesByArguments(placed) ? (finding.arguments?.[0] ?? owner) : owner;

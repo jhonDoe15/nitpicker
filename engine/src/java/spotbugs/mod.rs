@@ -3,6 +3,7 @@
 mod attributes;
 mod calls;
 mod classes;
+mod compare;
 mod constructors;
 mod dead;
 mod equality;
@@ -248,6 +249,7 @@ impl FileRule for SpotBugs {
                 detector(&context, *node);
             }
         }
+        compare::ref_comparisons(&context);
         nulls::null_dereference(&context, &declared);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
         if context.wants(attributes::PATTERNS) {

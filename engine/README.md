@@ -949,8 +949,49 @@ Guava 0 / 0 / 0, jackson-databind 5 / 1 / 1, javaparser-core 13 / 0 / 0, Nacos 3
 difference is the line of `PotentialCreators.propertiesBased`: SpotBugs visits `PotentialCreators` before
 `POJOPropertiesCollector`, the visiting order model puts both off and visits them the other way round.
 A `@SuppressFBWarnings` on a method also covers these patterns for the fields of its class and of the classes
-nested in it; #2507 lists the suppression cases the engine does not match yet.
+nested in it; #2493 lists the suppression cases the engine does not match yet.
 `FindPublicAttributes`, `MutableStaticFields` and `UnreadFields` still run in SpotBugs for their other patterns.
+
+### Boolean reference comparisons
+
+RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN (#2262, `src/java/spotbugs/compare/`, labs in
+`tests/fixtures/spotbugs/ref_boolean*`), priority 2, level `note`: `==` or `!=` between two `Boolean` objects, or a
+`Boolean` and an object of one of its supertypes. Types are those of the compiled code: a local holds the type of
+what was stored in it (its declared type where stored values meet with different types), a downcast gives its
+type, an upcast keeps the value's, a call gives its erased return type, a parameter typed with a type variable is
+never a `Boolean`. The message names the method around (the lambda's own method in a lambda, each constructor for
+an instance initializer).
+
+SpotBugs numbers values in each method and notes the compared ones, the right one first: the first-declared local
+holding the value (parameters first; a local copied from another, through a cast or a pattern too, holds the same
+value), else the field it was read from (a captured local of an anonymous or local class is its `val$` field), else
+the method that returned it. A field read twice from the same object is one value until that field is stored or a
+monitor is entered; calls do not end it. `Boolean.valueOf(x)` that javac writes for boxing notes what `x` is (a
+local as named, a field), else the call. A final field declared `Boolean` (`Boolean.TRUE`, `val$x`) is the only
+value noted, the left one when both sides are such fields. A value known to be null (`null`, a final field set to
+`null`) is never reported. The SARIF place is the last local noted, named in the last method noted (else the method
+around); else the last field, in the class around, shown with the class that declares it; else the last method;
+else the method around. Comparisons of one method with the same notes are one finding, on the first one's line.
+
+The line is javac's: the last line mark before the comparison's branch. That is the statement's start, a local's
+name, a loop condition's `(`, a lambda body's start, each call after its arguments, and the test and each branch of
+a conditional whose value is kept (none for one that is itself a condition). Some comparisons leave no branch in the
+class file and are not reported:
+- Both outcomes jump to the same code: `if (a == b) {}`, `while (a == b) break;`, both branches breaking out of one
+  loop, `a == b && false`, or a last `break` of a switch. Statements javac emits nothing for count as empty: nested
+  empty blocks, `int x;`, a local class, `if (false) {…}`.
+- The comparison is code javac drops after a condition it knows: `if (DEBUG) {…}`, `DEBUG && a == b`,
+  `true || a == b`.
+- It sits in the update of a `for` loop whose body never reaches it.
+
+A `continue` in a `while`, a `for` without an update or a for-each, an `else` after a branch that falls back to
+such a loop, and a comparison in a `finally` block still give two places. An initializer in an enum constant's body
+is named after that body's constructor (`new p.E$1(String, int)`), and a record's component read in its methods is
+its final field.
+
+On the six comparison code bases, SARIF results, same / missed / extra: commons-lang 1 / 0 / 0, jackson-databind
+15 / 0 / 0, the other four 0 / 0 / 0. Differences left on hand-written edge cases (final fields where values meet,
+the line of a merged finding, `var` loop variables, pattern switch guards) are in #2599. `FindRefComparison` still runs in SpotBugs for its other patterns.
 
 ## Names the compiler makes up
 

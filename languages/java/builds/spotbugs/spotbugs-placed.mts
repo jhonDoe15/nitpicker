@@ -2,7 +2,7 @@ export type Placed = {
   readonly text: string;
   readonly levels: Readonly<Record<number, string>>;
   readonly classNamed?: readonly number[];
-  readonly placement?: 'arguments' | 'relative';
+  readonly placement?: 'arguments' | 'relative' | 'shown';
 };
 
 export function placesByArguments(placed: Placed): boolean {
@@ -145,5 +145,10 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   SS_SHOULD_BE_STATIC: {
     text: 'Unread field: should this field be static?',
     levels: { 2: NOTE },
+  },
+  RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN: {
+    text: 'Suspicious reference comparison of Boolean values',
+    levels: { 2: NOTE },
+    placement: 'shown',
   },
 };

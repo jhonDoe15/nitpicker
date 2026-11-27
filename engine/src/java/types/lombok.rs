@@ -177,6 +177,10 @@ impl Resolver<'_> {
             fixed: None,
             strict: false,
             is_private: true,
+            mock: false,
+            annotations: Vec::new(),
+            guards: Vec::new(),
+            folded: None,
             flags: flag::STATIC | flag::FINAL,
         });
     }
