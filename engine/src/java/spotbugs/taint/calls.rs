@@ -2,7 +2,7 @@
 //! methods, the body of a method of the run, or nothing known.
 use super::flow::{Flow, Mode, Shared, State};
 use super::{Value, jdk};
-use crate::engine::source::{children, named_children};
+use crate::engine::source::{ancestor, children, named_children};
 use crate::java::spotbugs::Context;
 use crate::java::types::expr::Call;
 use std::cell::{Cell, RefCell};
@@ -153,6 +153,9 @@ pub fn create<'a>(flow: &mut Flow<'_, '_, 'a>, node: Node<'a>, copy: usize, stat
     let context = flow.context();
     let given = arguments(node);
     if children(node).iter().any(|part| part.kind() == "class_body") {
+        if let Some(call) = context.resolver.resolve_constructor(node).filter(|call| in_run(context, &call.declaring)) {
+            constructed(flow, &call, &given, copy);
+        }
         return Value::SAFE;
     }
     let Some(call) = context.resolver.resolve_constructor(node) else {
@@ -167,10 +170,36 @@ pub fn create<'a>(flow: &mut Flow<'_, '_, 'a>, node: Node<'a>, copy: usize, stat
         return row.result.at(Value::SAFE, &handed(flow, &call, &given, copy));
     }
     if in_run(context, &call.declaring) {
+        constructed(flow, &call, &given, copy);
         return Value::SAFE;
     }
     flow.spoil(&given, state);
     Value::UNKNOWN
+}
+
+/// Keeps a call of a constructor of the run, so that its parameters know what the calls of the run hand them.
+fn constructed(flow: &mut Flow, call: &Call, given: &[Node], copy: usize) {
+    if flow.mode == Mode::Report {
+        let arguments = handed(flow, call, given, copy);
+        flow.sites.push(Site { callee: constructor(call), this: Value::SAFE, arguments });
+    }
+}
+
+/// The key of the constructor a call names.
+pub fn constructor(call: &Call) -> Key {
+    let (declaring, _, parameters) = key(call);
+    (declaring, "<init>".to_string(), parameters)
+}
+
+/// `this(...)` or `super(...)` of a constructor of the run.
+pub fn delegate<'a>(flow: &mut Flow<'_, '_, 'a>, node: Node<'a>, copy: usize) -> Value {
+    let context = flow.context();
+    if let Some(call) = context.resolver.resolve_delegation(node)
+        && in_run(context, &call.declaring)
+    {
+        constructed(flow, &call, &arguments(node), copy);
+    }
+    Value::SAFE
 }
 
 /// The summary of a method of the run with a body, worked out from that body the first time it is asked for.
@@ -252,6 +281,8 @@ pub fn declared(context: &Context, own: &str, declaration: Node) -> Key {
         "constructor_declaration" | "compact_constructor_declaration" => "<init>".to_string(),
         _ => declaration.child_by_field_name("name").map(|name| context.text(name).to_string()).unwrap_or_default(),
     };
-    let parameters: Vec<String> = context.resolver.parameters(declaration.child_by_field_name("parameters")).0.iter().map(|kind| kind.erased().name()).collect();
+    let listed = if declaration.kind() == "compact_constructor_declaration" { ancestor(declaration, &["record_declaration"]) } else { Some(declaration) };
+    let parameters = listed.and_then(|listed| listed.child_by_field_name("parameters"));
+    let parameters: Vec<String> = context.resolver.parameters(parameters).0.iter().map(|kind| kind.erased().name()).collect();
     (own.to_string(), name, parameters.join(","))
 }

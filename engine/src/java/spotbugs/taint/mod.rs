@@ -25,18 +25,23 @@
 //!   does not store is tainted when a method of the class stores a tainted value, otherwise unknown. Static fields
 //!   read while working out a called method are unknown.
 //! - A sink in a method that its parameter reaches is reported at priority 1 when some call in the run hands that
-//!   parameter a tainted value, directly or through the parameters of other methods.
+//!   parameter a tainted value, directly or through the parameters of other methods; `new`, `this(...)` and
+//!   `super(...)` hand constructors their parameters the same way.
 mod calls;
+mod derived;
 mod flow;
+mod injection;
 mod jdk;
+mod lines;
 mod sinks;
 mod statics;
 
 pub use calls::Summaries;
-pub use sinks::{Derived, path_traversal};
+pub use derived::Derived;
+pub use sinks::injections;
 
 /// How bad a value is, worst last.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Level {
     #[default]
     Safe,

@@ -705,6 +705,44 @@ SpotBugs' SARIF gives for the fixtures, and the SARIF results of real runs match
 Not done: `REC_CATCH_EXCEPTION` needs the checked exceptions each `try` block can throw and the rule for its
 priority (most findings are low priority and hidden at `-medium`); it is left for a later batch (#2262).
 
+### Injection patterns (FindSecBugs)
+
+`PATH_TRAVERSAL_IN`, `PATH_TRAVERSAL_OUT`, `SQL_INJECTION_JDBC`, `SQL_INJECTION_SPRING_JDBC`, `SQL_INJECTION_JPA`,
+`COMMAND_INJECTION` and `LDAP_INJECTION` (#2528) run on the taint layer (`src/java/spotbugs/taint/`, model in its
+`mod.rs`). FindSecBugs 1.14.0 is LGPL and its configuration files were not read: the sinks in
+`taint/injection-sinks.tsv` were found by calling every public method and constructor of the JDK, servlet, JPA,
+Spring JDBC and Spring LDAP classes with a parameter value and keeping those it reported, together with the sink
+files nitpicker hands FindSecBugs (a test checks that each of their rows is in the table). What was measured:
+
+- A call is a sink when the class it names in the compiled code, or any supertype of it, has a row for the
+  method's name and erased parameter types; overriding changes nothing, and constructors count too (`new Sub(p)`
+  of a `File` subclass, and its `super(p)`). The finding names the call as compiled: that class and the JVM
+  descriptor. An anonymous class's `new` is the superclass constructor call in that class's constructor, and
+  a `new` of an inner or local class is no sink, since javac adds parameters to its constructor.
+- With several sink arguments, the last one whose value is not safe decides the finding alone.
+- Priority 1 for a tainted value, 2 for an unknown one (both are SARIF warnings). A value that comes from a
+  parameter waits for the whole run: a call anywhere that hands the parameter (also a constructor's, through
+  `new`, `this(...)` and `super(...)`) a tainted value makes it priority 1, and calls that only hand safe values
+  drop it.
+- The line is javac's: a call's is the line of its `(`, a `new` takes the line javac started last before it (the
+  statement, a declaration's or `try` resource's name, a `do` loop's condition, or a call evaluated before
+  it). Findings alike in all, down to the parameters they come from, collapse into one.
+- `DirContextAdapter.lookup(String)` of Spring LDAP is not a sink, although its interfaces' method is.
+
+Measured on the labs (2,149 findings, one lab difference below) and six code bases, same / missed / extra:
+commons-lang 11 / 0 / 0, mybatis 27 / 0 / 0, jackson-databind 4 / 0 / 0, javaparser-core 5 / 0 / 0, Guava
+10 / 2 / 0, Nacos 246 / 0 / 3. Elasticsearch could not be built for this run. The engine needs the library jars
+to resolve sink calls, so a Gradle run hands it the whole compile class path (SpotBugs there gets only the jars
+the build makes, and finds most sinks by name). Known differences (#2632 for the `for` cases):
+
+- Nacos: FindSecBugs knows the static fields of other classes it visited before, so its result depends on its
+  visiting order (`TlsFileWatcher`, `SelfTrustManager`).
+- Guava (`ClassPath`, `new File(entry)` over `Splitter.split(...)`): an enhanced `for` over an `Iterable` that an
+  anonymous or nested class of the run implements is unknown for FindSecBugs when that class's `iterator()`
+  calls other code; the engine takes the element from the value of the iterable. In the other direction, in a lab
+  only, a `for` over some JDK collections made in the method (`HashSet`, `ArrayDeque`, `LinkedList`, a `keySet()`)
+  is safe for FindSecBugs and unknown for the engine.
+
 ### Lombok
 
 SpotBugs skips the members Lombok writes, because Lombok marks them with `@lombok.Generated` (unless a

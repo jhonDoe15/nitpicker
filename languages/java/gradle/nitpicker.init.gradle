@@ -946,7 +946,8 @@ allprojects {
                     enginePlan.text = groovy.json.JsonOutput.toJson([
                         reportDir    : reportDir.get().asFile.absolutePath,
                         sources      : compileTask.source.files.findAll { it.name.endsWith('.java') }*.absolutePath.sort(),
-                        classpath    : auxiliary.findAll { !classDirs.contains(it) }*.absolutePath,
+                        classpath    : sourceSets.main.compileClasspath.files
+                            .findAll { it.exists() && !classDirs.contains(it) }*.absolutePath,
                         processorPath: (compileTask.options.annotationProcessorPath?.files ?: [])*.absolutePath,
                         javaHome     : (javaLauncher.orNull?.metadata?.installationPath?.asFile
                             ?: new File(System.getProperty('java.home'))).absolutePath,
