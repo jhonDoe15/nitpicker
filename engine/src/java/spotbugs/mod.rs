@@ -27,6 +27,7 @@ mod naming;
 mod nulls;
 mod order;
 mod sequence;
+mod resources;
 mod returns;
 mod serial;
 pub mod place;
@@ -276,6 +277,7 @@ impl FileRule for SpotBugs {
             returns::returns(&context, &self.effects);
         }
         catches::catches(&context);
+        resources::resources(&context);
         nulls::null_dereference(&context, &declared);
         taint::injections(&context, &declared, &self.taint);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
