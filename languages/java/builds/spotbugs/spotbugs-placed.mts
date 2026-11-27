@@ -6,6 +6,16 @@ export type Placed = {
   readonly fieldsUnderMethod?: true;
 };
 
+const NAMED_PLACEMENT: Readonly<Record<NonNullable<Placed['placement']>, boolean>> = {
+  arguments: false,
+  relative: true,
+  shown: true,
+};
+
+export function placesByName(placed: Placed): boolean {
+  return placed.placement !== undefined && NAMED_PLACEMENT[placed.placement];
+}
+
 export function placesByArguments(placed: Placed): boolean {
   return placed.placement === 'arguments';
 }

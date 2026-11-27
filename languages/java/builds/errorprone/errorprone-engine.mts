@@ -37,6 +37,7 @@ import {
   planLine,
   remainingChecks,
   sourceSetPlan,
+  type SourceSetPlan,
 } from './skip/source-set-plan.mts';
 
 export type ErrorProneEnginePlan = {
@@ -108,17 +109,37 @@ function engineReport(
   return parseJson(readFileSync(report, 'utf8'));
 }
 
+function skipsEngine(set: ArgumentSet, name: string, setting: Setting): boolean {
+  const whole =
+    wholeReason(set.head) ??
+    (hasCheckPlugins(set.head) ? 'its processor path brings checks' : undefined);
+  if (whole !== undefined) {
+    setting.log?.write(`nitpicker: Error Prone compiles ${name} whole: ${whole}\n`);
+  }
+  return whole !== undefined || set.sources.length === 0;
+}
+
+function writePlan(
+  file: string,
+  set: ArgumentSet,
+  plan: SourceSetPlan,
+  checks: { readonly remaining: readonly string[]; readonly onEngine: readonly string[] },
+): void {
+  writeFileSync(
+    file,
+    plannedArguments(
+      set,
+      plan,
+      checksOff(plan, checks.remaining, checks.onEngine).map((check) => `-Xep:${check}:OFF`),
+    ),
+  );
+}
+
 function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
   const text = new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(file));
   const set = argumentSetOf(text);
   const name = path.basename(file, '.args');
-  const whole =
-    wholeReason(set.head) ??
-    (hasCheckPlugins(set.head) ? 'its processor path brings checks' : undefined);
-  if (whole !== undefined || set.sources.length === 0) {
-    if (whole !== undefined) {
-      setting.log?.write(`nitpicker: Error Prone compiles ${name} whole: ${whole}\n`);
-    }
+  if (skipsEngine(set, name, setting)) {
     return [];
   }
   const selected = engineChecksFor(set.head);
@@ -134,17 +155,9 @@ function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
     set,
     plan.kind === 'narrowed' ? plan.files : [],
   );
-  const diagnostics = engineDiagnostics(rows);
-  writeFileSync(
-    file,
-    plannedArguments(
-      set,
-      plan,
-      checksOff(plan, remaining, selected.checks).map((check) => `-Xep:${check}:OFF`),
-    ),
-  );
+  writePlan(file, set, plan, { remaining, onEngine: selected.checks });
   setting.log?.write(planLine(name, set, plan));
-  return diagnostics;
+  return engineDiagnostics(rows);
 }
 
 export function errorProneOnEngine(

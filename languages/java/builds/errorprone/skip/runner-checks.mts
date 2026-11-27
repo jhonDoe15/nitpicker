@@ -2,8 +2,12 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import CHECKS from '../../../gradle/errorprone/checks.json' with { type: 'json' };
 import { zipEntryOf } from '../../../../../shared/archives/zip-entry.mts';
-import { readZipOrFailure } from '../../../../../shared/archives/zip-entries.mts';
-import { projectFlags } from '../engine-arguments.mts';
+import {
+  ancestorDirectories,
+  isFile,
+  readTextIfExists,
+} from '../../../../../shared/filesystem.mts';
+import { entryHolds, projectFlags } from '../engine-arguments.mts';
 
 const OFF = new Set([...CHECKS.defaultOff, ...CHECKS.disable]);
 export const ENABLED_CHECKS: readonly string[] = CHECKS.reviewedChecks.filter(
@@ -18,7 +22,6 @@ const STOP_BUBBLING = /^\s*config\.stopBubbling\s*=\s*true\b/mu;
 const IMMUTABLE_CLASS = 'com/google/errorprone/annotations/Immutable.class';
 const IMMUTABLE_USE = /@(?:[\w.]+\.)?Immutable\b|annotations\.Immutable\b/u;
 const CHECKER_SERVICE = 'META-INF/services/com.google.errorprone.bugpatterns.BugChecker';
-/** NullAway's jar registers two more checks; at their default severity, suggestion, they report nothing. */
 const NULL_AWAY_CHECKERS: ReadonlySet<string> = new Set([
   'com.uber.nullaway.NullAway',
   'com.uber.nullaway.JSpecifyUnrecognizedAnnotationLocation',
@@ -27,18 +30,15 @@ const NULL_AWAY_CHECKERS: ReadonlySet<string> = new Set([
 const CHECK_LEVEL = /^-Xep:(\w+)(?::(\w+))?$/u;
 
 function unsuppressedIn(directory: string): boolean {
-  for (let current = directory; ; current = path.dirname(current)) {
+  for (const current of ancestorDirectories(directory)) {
     const config = path.join(current, 'lombok.config');
-    const text =
-      existsSync(config) && statSync(config).isFile() ? readFileSync(config, 'utf8') : '';
+    const text = isFile(config) ? readFileSync(config, 'utf8') : '';
     const setting = ADD_SUPPRESS_WARNINGS.exec(text);
     if (setting !== null || STOP_BUBBLING.test(text)) {
       return setting?.[1]?.toLowerCase() === 'false';
     }
-    if (path.dirname(current) === current) {
-      return false;
-    }
   }
+  return false;
 }
 
 /** The sources under a `lombok.config` that sets `lombok.addSuppressWarnings = false`, as the runner groups them. */
@@ -59,22 +59,11 @@ function optionEntries(head: readonly string[], flag: string): string[] {
   return at === -1 ? [] : (head[at + 1] ?? '').split(path.delimiter).filter(Boolean);
 }
 
-function holdsImmutable(entry: string): boolean {
-  if (!existsSync(entry)) {
-    return false;
-  }
-  if (statSync(entry).isDirectory()) {
-    return existsSync(path.join(entry, IMMUTABLE_CLASS));
-  }
-  const read = readZipOrFailure(entry);
-  return read.kind !== 'zip' || read.zip.names.has(IMMUTABLE_CLASS);
-}
-
 /** Whether the runner leaves Immutable on: its annotation is on the class or module path, or a source names it. */
 export function immutableInReach(head: readonly string[], sources: readonly string[]): boolean {
   const entries = [...optionEntries(head, '-classpath'), ...optionEntries(head, '--module-path')];
   return (
-    entries.some((entry) => holdsImmutable(entry)) ||
+    entries.some((entry) => entryHolds(entry, IMMUTABLE_CLASS)) ||
     sources.some((source) => IMMUTABLE_USE.test(readFileSync(source, 'latin1')))
   );
 }
@@ -84,9 +73,7 @@ function checkersIn(entry: string): string[] {
     return [];
   }
   const text = statSync(entry).isDirectory()
-    ? existsSync(path.join(entry, CHECKER_SERVICE))
-      ? readFileSync(path.join(entry, CHECKER_SERVICE), 'utf8')
-      : ''
+    ? readTextIfExists(path.join(entry, CHECKER_SERVICE))
     : (zipEntryOf(entry, CHECKER_SERVICE) ?? '');
   return text
     .split('\n')

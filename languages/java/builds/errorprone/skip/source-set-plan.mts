@@ -24,6 +24,7 @@ export type SourceSetPlan =
 
 export const NARROWED = '--narrowed';
 const TEST_ONLY = '--test-only';
+const SHOWN_CHECKS = 5;
 
 /** The checks Error Prone's runner would run on the source set that the engine does not run. */
 export function remainingChecks(set: ArgumentSet, onEngine: readonly string[]): string[] {
@@ -39,6 +40,21 @@ export function remainingChecks(set: ArgumentSet, onEngine: readonly string[]): 
   return [...new Set(enabled)].filter((check) => !onEngine.includes(check)).toSorted();
 }
 
+type PlanContext = {
+  readonly remaining: readonly string[];
+  readonly mayReport: ReadonlyMap<string, readonly string[]>;
+  readonly wanted: ReadonlySet<string>;
+  readonly unsuppressed: ReadonlySet<string>;
+};
+
+function fileChecks(file: string, context: PlanContext): string[] {
+  return (context.mayReport.get(file) ?? context.remaining).filter(
+    (check) =>
+      context.wanted.has(check) &&
+      !(context.unsuppressed.has(file) && LOMBOK_UNSUPPRESSED_OFF.includes(check)),
+  );
+}
+
 /**
  * The plan from the engine's answer: for each file, the checks of `remaining` that may report there, all of them for a
  * file the engine did not answer for. A file under a `lombok.config` that turns off `@SuppressWarnings` gets the
@@ -49,18 +65,17 @@ export function sourceSetPlan(
   remaining: readonly string[],
   mayReport: ReadonlyMap<string, readonly string[]>,
 ): SourceSetPlan {
-  const unsuppressed = lombokUnsuppressed(set.sources);
-  const wanted = new Set(remaining);
-  const checksOf = (file: string): string[] =>
-    (mayReport.get(file) ?? remaining).filter(
-      (check) =>
-        wanted.has(check) && !(unsuppressed.has(file) && LOMBOK_UNSUPPRESSED_OFF.includes(check)),
-    );
-  const files = set.sources.filter((file) => checksOf(file).length > 0);
+  const context = {
+    remaining,
+    mayReport,
+    wanted: new Set(remaining),
+    unsuppressed: lombokUnsuppressed(set.sources),
+  };
+  const files = set.sources.filter((file) => fileChecks(file, context).length > 0);
   if (files.length === 0) {
     return { kind: 'none' };
   }
-  const checks = [...new Set(files.flatMap(checksOf))].toSorted();
+  const checks = [...new Set(files.flatMap((file) => fileChecks(file, context)))].toSorted();
   return { kind: 'narrowed', files, checks };
 }
 
@@ -75,7 +90,7 @@ export function checksOff(
 ): string[] {
   const kept = plan.kind === 'narrowed' ? plan.checks : [];
   return [...new Set([...ENABLED_CHECKS, NULL_AWAY, ...onEngine, ...remaining])].filter(
-    (check) => !kept.includes(check) && !CANNOT_BE_OFF.includes(check),
+    (check) => !(kept.includes(check) || CANNOT_BE_OFF.includes(check)),
   );
 }
 
@@ -98,8 +113,9 @@ export function planLine(name: string, set: ArgumentSet, plan: SourceSetPlan): s
   if (plan.kind === 'none') {
     return `nitpicker: Error Prone does not compile ${name}: the engine ran every check that can report there\n`;
   }
-  const shown = plan.checks.slice(0, 5).join(', ');
-  const more = plan.checks.length > 5 ? ` and ${String(plan.checks.length - 5)} more` : '';
+  const shown = plan.checks.slice(0, SHOWN_CHECKS).join(', ');
+  const hidden = plan.checks.length - SHOWN_CHECKS;
+  const more = hidden > 0 ? ` and ${String(hidden)} more` : '';
   return (
     `nitpicker: Error Prone compiles ${String(plan.files.length)} of ${String(set.sources.length)} files of ` +
     `${name} for ${String(plan.checks.length)} checks the engine does not run: ${shown}${more}\n`

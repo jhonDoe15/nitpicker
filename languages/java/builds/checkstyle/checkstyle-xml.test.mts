@@ -39,15 +39,19 @@ describe('fileElements', () => {
       '13.5.0',
       fileElements(['/p/A.java', '/p/B.java'], [ROW, { ...ROW, line: 1, column: 0 }]),
     );
+    const finding = {
+      tool: 'checkstyle',
+      rule: ROW.source,
+      path: 'p/A.java',
+      identity: expect.any(String),
+      message: ROW.message,
+      classification: 'enforceable',
+    };
     expect(ingestCheckstyle(xml, { root: '/' }).findings).toEqual([
-      expect.objectContaining({
-        rule: ROW.source,
-        path: 'p/A.java',
-        location: { line: 3, column: 7 },
-      }),
-      expect.objectContaining({ rule: ROW.source, path: 'p/A.java', location: { line: 1 } }),
+      { ...finding, location: { line: 3, column: 7 } },
+      { ...finding, location: { line: 1 } },
     ]);
-    expect(xml).toContain('<file name="/p/B.java">\n</file>');
+    expect(reportBody(xml).split('\n').slice(-2)).toEqual(['<file name="/p/B.java">', '</file>']);
   });
 });
 
@@ -63,7 +67,10 @@ describe('mergeReports', () => {
     writeFileSync(engine, checkstyleXml('13.5.0', fileElements(['/p/A.java'], [ROW])));
     mergeReports(report, engine);
     const merged = readFileSync(report, 'utf8');
-    expect(reportBody(merged)).toContain('/p/C.java');
+    expect(reportBody(merged).split('\n').slice(0, 2)).toEqual([
+      '<file name="/p/C.java">',
+      '</file>',
+    ]);
     expect(ingestCheckstyle(merged, { root: '/' }).findings.map((finding) => finding.path)).toEqual(
       ['p/A.java'],
     );

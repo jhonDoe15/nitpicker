@@ -116,7 +116,7 @@ describe('errorProneOnEngine', () => {
     });
     const lines = readFileSync(argumentFile, 'utf8').split('\n');
     expect(lines.slice(lines.indexOf('--sources'))).toStrictEqual(['--sources', '']);
-    expect(lines).toContain(`--errorprone-flag=-Xep:${LEFT[0] ?? ''}:OFF`);
+    expect(lines.includes(`--errorprone-flag=-Xep:${LEFT[0] ?? ''}:OFF`)).toBe(true);
     expect(lines).not.toContain('--errorprone-flag=-Xep:UnicodeDirectionalityCharacters:OFF');
     expect(argumentFilesToCompile(plan.argumentFiles)).toStrictEqual([]);
   });
@@ -145,8 +145,12 @@ describe('errorProneOnEngine', () => {
       '',
     ]);
     expect(lines).not.toContain('--errorprone-flag=-Xep:FallThrough:OFF');
-    expect(lines).toContain('--errorprone-flag=-Xep:SwitchDefault:OFF');
-    expect(lines).toContain('--errorprone-flag=-Xep:Immutable:OFF');
+    expect(
+      lines.filter((line) => /-Xep:(?:SwitchDefault|Immutable):OFF$/u.test(line)).toSorted(),
+    ).toStrictEqual([
+      '--errorprone-flag=-Xep:Immutable:OFF',
+      '--errorprone-flag=-Xep:SwitchDefault:OFF',
+    ]);
     const reported = textsOf(
       listOf(parseJson(readFileSync(path.join(plan.reportDir, ENGINE_REPORT), 'utf8'))).map((row) =>
         JSON.stringify([fieldOf(row, 'message'), fieldOf(row, 'classAnnotations')]),

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useTempProjects } from '../../../../../shared/test-support/temp-projects.mts';
 import { argumentSetOf } from '../engine-arguments.mts';
-import { ENABLED_CHECKS } from './runner-checks.mts';
+import { ENABLED_CHECKS, IMMUTABLE } from './runner-checks.mts';
 import {
   checksOff,
   NARROWED,
@@ -40,7 +40,7 @@ describe('remainingChecks', () => {
       '--errorprone-flag=-Xep:FallThrough:OFF',
     );
     const onEngine = ENABLED_CHECKS.filter(
-      (check) => !['FallThrough', 'SwitchDefault', 'Immutable'].includes(check),
+      (check) => !['FallThrough', 'SwitchDefault', IMMUTABLE].includes(check),
     );
 
     expect(remainingChecks(set, onEngine)).toStrictEqual(['Extra', 'NullAway', 'SwitchDefault']);
@@ -56,16 +56,16 @@ describe('remainingChecks', () => {
       path.join(root, 'B.java'),
       '@com.google.errorprone.annotations.Immutable class B {}',
     );
-    const onEngine = ENABLED_CHECKS.filter((check) => check !== 'Immutable');
+    const onEngine = ENABLED_CHECKS.filter((check) => check !== IMMUTABLE);
 
-    expect(remainingChecks(setIn(root, '--test-only'), onEngine)).toStrictEqual(['Immutable']);
+    expect(remainingChecks(setIn(root, '--test-only'), onEngine)).toStrictEqual([IMMUTABLE]);
     expect(remainingChecks(setIn(project(), '--test-only'), onEngine)).toStrictEqual([]);
     expect(
       remainingChecks(
-        setIn(project(), '--test-only', '--errorprone-flag=-Xep:Immutable:WARN'),
+        setIn(project(), '--test-only', `--errorprone-flag=-Xep:${IMMUTABLE}:WARN`),
         onEngine,
       ),
-    ).toStrictEqual(['Immutable']);
+    ).toStrictEqual([IMMUTABLE]);
   });
 });
 
@@ -141,11 +141,11 @@ describe('sourceSetPlan', () => {
       ['UnicodeDirectionalityCharacters', 'SystemOut'],
     );
 
-    expect(off).toContain('SystemOut');
-    expect(off).toContain('Extra');
-    expect(off).toContain('Immutable');
-    expect(off).toContain('NullAway');
-    expect(off).not.toContain('FallThrough');
-    expect(off).not.toContain('UnicodeDirectionalityCharacters');
+    expect(off).toStrictEqual(
+      [...new Set([...ENABLED_CHECKS, 'NullAway', 'SystemOut', 'Extra'])].filter(
+        (check) => !['FallThrough', 'UnicodeDirectionalityCharacters'].includes(check),
+      ),
+    );
+    expect(off.includes(IMMUTABLE)).toBe(true);
   });
 });

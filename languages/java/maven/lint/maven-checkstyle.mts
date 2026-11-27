@@ -236,9 +236,9 @@ function leftByEngine(
       version: pinned.checkstyle,
     },
     environment,
-    { log: process.stderr },
   );
-  return left?.map((file) => files[absolute.indexOf(file)] ?? file);
+  const relative = new Map(absolute.map((file, at) => [file, files[at] ?? file]));
+  return left?.map((file) => relative.get(file) ?? file);
 }
 
 function runCheckstyleReports(options: CheckstyleOptions): void {

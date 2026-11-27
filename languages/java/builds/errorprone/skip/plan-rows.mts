@@ -50,7 +50,9 @@ export function keptRows(
   const unsuppressed = lombokUnsuppressed(set.sources);
   return rows.filter(
     ({ rule, file }) =>
-      !(CANNOT_BE_OFF.includes(rule) && compiled.includes(file)) &&
-      !(LOMBOK_UNSUPPRESSED_OFF.includes(rule) && unsuppressed.has(file)),
+      !(
+        (CANNOT_BE_OFF.includes(rule) && compiled.includes(file)) ||
+        (LOMBOK_UNSUPPRESSED_OFF.includes(rule) && unsuppressed.has(file))
+      ),
   );
 }

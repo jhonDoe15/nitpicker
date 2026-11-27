@@ -16,8 +16,9 @@ const SERVICE = 'META-INF/services/com.google.errorprone.bugpatterns.BugChecker'
 
 describe('ENABLED_CHECKS', () => {
   it('holds the checks the runner turns on, without the ones off by default or by choice', () => {
-    expect(ENABLED_CHECKS).toContain('FallThrough');
-    expect(ENABLED_CHECKS).toContain('AnnotationPosition');
+    expect(
+      ['FallThrough', 'AnnotationPosition'].filter((check) => ENABLED_CHECKS.includes(check)),
+    ).toStrictEqual(['FallThrough', 'AnnotationPosition']);
     expect(ENABLED_CHECKS).not.toContain('AnnotateFormatMethod');
     expect(ENABLED_CHECKS).not.toContain('AddNullMarkedToClass');
   });
