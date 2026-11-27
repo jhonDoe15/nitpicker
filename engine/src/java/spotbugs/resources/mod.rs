@@ -1,6 +1,8 @@
 //! SpotBugs patterns that follow a resource or a lock from where it is taken to every way out of a method.
 mod flow;
 mod locks;
+mod loops;
+mod screen;
 
 use super::Context;
 use crate::engine::source::walk;

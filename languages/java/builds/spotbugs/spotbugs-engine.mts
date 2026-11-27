@@ -10,6 +10,7 @@ import {
 } from '../../../../shared/engine/engine-run.mts';
 import { fieldOf, listOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import { CAST_PATTERNS } from './casts/spotbugs-casts-placed.mts';
+import { UNRELEASED_LOCK_PATTERNS } from './resources/spotbugs-resources-placed.mts';
 import {
   BOUND_PATTERNS,
   BOXING_PATTERNS,
@@ -111,6 +112,7 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   FindDeadLocalStores: DEAD_STORES,
   FindLocalSelfAssignment2: SELF_ASSIGNMENTS,
   FindBadCast2: CAST_PATTERNS,
+  FindUnreleasedLock: UNRELEASED_LOCK_PATTERNS,
   FindJSR166LockMonitorenter: [
     LOCK_MONITORENTER,
     UTIL_MONITORENTER,
