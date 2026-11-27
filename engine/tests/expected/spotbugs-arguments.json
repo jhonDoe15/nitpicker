@@ -10,6 +10,11 @@
 ["lock_places/p/K2.java", "JLM_JSR166_LOCK_MONITORENTER", 12, ["p.K2", "p.K2$1Loc.u()"]],
 ["lock_places/p/K3.java", "JLM_JSR166_LOCK_MONITORENTER", 5, ["java.util.concurrent.locks.ReentrantLock", "p.K3.a(Holder)"]],
 ["lock_places/p/K3.java", "JLM_JSR166_LOCK_MONITORENTER", 6, ["java.util.concurrent.locks.ReentrantLock", "p.K3.b()"]],
+["lock_places2/p/A.java", "JLM_JSR166_LOCK_MONITORENTER", 5, ["java.util.concurrent.locks.ReentrantLock", "p.A.a()"]],
+["lock_places2/p/A.java", "JLM_JSR166_LOCK_MONITORENTER", 7, ["java.util.concurrent.locks.ReentrantLock", "p.A.c()"]],
+["lock_places2/p/A.java", "JLM_JSR166_LOCK_MONITORENTER", 10, ["p.A$In", "new p.A$In(A)"]],
+["lock_places2/p/A.java", "JLM_JSR166_LOCK_MONITORENTER", 12, ["p.A$In", "new p.A$In$In2(A$In)"]],
+["lock_places2/p/A.java", "JLM_JSR166_LOCK_MONITORENTER", 14, ["java.util.concurrent.locks.ReentrantLock", "new p.A$1Loc(A)"]],
 ["lombok_members/p/Named.java", "JLM_JSR166_LOCK_MONITORENTER", 46, ["java.util.concurrent.locks.ReentrantLock", "p.Named.use(Named$Kind, Named$Chained, Named$Fluent, Named$Prefixed, Named$Levels)"]],
 ["lombok_members/p/Named.java", "JLM_JSR166_LOCK_MONITORENTER", 47, ["java.util.concurrent.locks.ReentrantLock", "p.Named.use(Named$Kind, Named$Chained, Named$Fluent, Named$Prefixed, Named$Levels)"]],
 ["lombok_members/p/Named.java", "JLM_JSR166_LOCK_MONITORENTER", 48, ["java.util.concurrent.locks.ReentrantLock", "p.Named.use(Named$Kind, Named$Chained, Named$Fluent, Named$Prefixed, Named$Levels)"]],
@@ -41,10 +46,5 @@
 ["stmt_lock/p/Locks.java", "JLM_JSR166_UTILCONCURRENT_MONITORENTER", 65, ["java.util.concurrent.ConcurrentSkipListMap", "p.Locks.onShared()"]],
 ["stmt_lock/p/Locks.java", "JLM_JSR166_UTILCONCURRENT_MONITORENTER", 71, ["java.util.concurrent.ConcurrentMap", "p.Locks.onParameter(ConcurrentMap)"]],
 ["stmt_lock/p/Locks.java", "JLM_JSR166_UTILCONCURRENT_MONITORENTER", 84, ["java.util.concurrent.ConcurrentHashMap", "p.Locks.onLocal()"]],
-["stmt_lock/p/Locks.java", "JLM_JSR166_UTILCONCURRENT_MONITORENTER", 104, ["java.util.concurrent.ConcurrentHashMap", "p.Locks.onReassigned()"]],
-["lock_places2/p/A.java", "JLM_JSR166_LOCK_MONITORENTER", 5, ["java.util.concurrent.locks.ReentrantLock", "p.A.a()"]],
-["lock_places2/p/A.java", "JLM_JSR166_LOCK_MONITORENTER", 7, ["java.util.concurrent.locks.ReentrantLock", "p.A.c()"]],
-["lock_places2/p/A.java", "JLM_JSR166_LOCK_MONITORENTER", 10, ["p.A$In", "new p.A$In(A)"]],
-["lock_places2/p/A.java", "JLM_JSR166_LOCK_MONITORENTER", 12, ["p.A$In", "new p.A$In$In2(A$In)"]],
-["lock_places2/p/A.java", "JLM_JSR166_LOCK_MONITORENTER", 14, ["java.util.concurrent.locks.ReentrantLock", "new p.A$1Loc(A)"]]
+["stmt_lock/p/Locks.java", "JLM_JSR166_UTILCONCURRENT_MONITORENTER", 104, ["java.util.concurrent.ConcurrentHashMap", "p.Locks.onReassigned()"]]
 ]

@@ -370,7 +370,6 @@ impl<'a> Resolver<'a> {
             .filter_map(|part| self.written(part, false))
             .map(|kind| kind.name())
             .collect();
-        let parts: Vec<String> = if parts.len() > 1 { parts.into_iter().filter(|part| part != OBJECT).collect() } else { parts };
         if parts.is_empty() { Type::class(OBJECT) } else { Type::class(&parts.join("&")) }
     }
 
