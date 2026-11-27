@@ -295,6 +295,7 @@ mod assert_throws;
 mod truth_checks;
 mod three_letter_zones;
 mod wakelock;
+mod may_report;
 mod flogger_args;
 mod no_allocation;
 mod must_be_closed;
@@ -972,6 +973,8 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
 
 pub struct ErrorProne;
 
+/// The row that lists, for each file the engine read, the checks of `NP_EP_MAY_REPORT` that may report there.
+const MAY_REPORT: &str = "_MayReport";
 /// Checks whose findings nitpicker drops inside classes with certain annotations; their rows carry the annotations.
 const CLASS_EXEMPTED: &[&str] = &["IdentifierName", "PrivateConstructorForUtilityClass"];
 const CLASS_KINDS: &[&str] = &[
@@ -1012,5 +1015,19 @@ impl FileRule for ErrorProne {
             check(&context, file.tree.root_node());
         }
         out.append(&mut context.out.into_inner());
+        if let Ok(asked) = std::env::var("NP_EP_MAY_REPORT") {
+            let asked: Vec<&str> = asked.split(',').filter(|name| !name.is_empty()).collect();
+            let found = may_report::may_report(&asked, &file.text, &project.index);
+            out.push(Finding {
+                file: file.path.clone(),
+                line: 1,
+                column: 1,
+                rule: MAY_REPORT.to_string(),
+                message: found.join(","),
+                symbol: None,
+                priority: None,
+                arguments: None,
+            });
+        }
     }
 }
