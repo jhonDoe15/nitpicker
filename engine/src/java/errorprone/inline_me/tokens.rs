@@ -108,8 +108,11 @@ fn number(text: &[char], start: usize) -> (Token, usize) {
         _ if float => "DOUBLELITERAL",
         _ => "INTLITERAL",
     };
-    let digits: String = text[start + if radix == 16 || radix == 2 { 2 } else { 0 }..end].iter().filter(|c| **c != '_').collect();
+    let mut digits: String = text[start + if radix == 16 || radix == 2 { 2 } else { 0 }..end].iter().filter(|c| **c != '_').collect();
     if matches!(suffix, Some('l' | 'f' | 'd')) {
+        if suffix != Some('l') {
+            digits.push(text[end]);
+        }
         end += 1;
     }
     (Token { kind: kind.to_string(), name: None, value: Some(digits), radix: Some(radix) }, end)
@@ -130,9 +133,24 @@ fn quoted(text: &[char], start: usize, quote: char) -> (Token, usize) {
         at += 1;
     }
     let body = &text[body_start..at.min(text.len())];
+    let closed = at < text.len();
     let end = (at + if block { 3 } else { 1 }).min(text.len());
+    let escapes_valid = body.iter().enumerate().all(|(place, character)| {
+        *character != '\\'
+            || body[..place].iter().rev().take_while(|c| **c == '\\').count() % 2 == 1
+            || body.get(place + 1).is_some_and(|next| "btnfrs\"'\\01234567".contains(*next) || block && *next == '\n')
+    });
+    if !closed || !escapes_valid {
+        return (Token::plain("ERROR"), end);
+    }
     let kind = if quote == '\'' { "CHARLITERAL" } else { "STRINGLITERAL" };
-    (Token { kind: kind.to_string(), name: None, value: Some(unescaped(body)), radix: None }, end)
+    let value = if block {
+        let written: String = text[start..end].iter().collect();
+        crate::java::types::expr::string_value(&written).unwrap_or_else(|| unescaped(body))
+    } else {
+        unescaped(body)
+    };
+    (Token { kind: kind.to_string(), name: None, value: Some(value), radix: None }, end)
 }
 
 /// The text with its unicode escapes translated, as javac reads source: `\\uXXXX` after an even run of backslashes.
@@ -163,12 +181,15 @@ fn translated(source: &str) -> Vec<char> {
 }
 
 fn tokens(source: &str) -> Vec<Token> {
-    let text = translated(source);
+    let mut text = translated(source);
+    while text.last().is_some_and(|last| matches!(last, '\u{0}' | '\u{1a}')) {
+        text.pop();
+    }
     let mut found = Vec::new();
     let mut at = 0;
     while at < text.len() {
         let character = text[at];
-        if character.is_whitespace() {
+        if matches!(character, ' ' | '\t' | '\u{c}' | '\n' | '\r') {
             at += 1;
         } else if character == '/' && text.get(at + 1) == Some(&'/') {
             while at < text.len() && text[at] != '\n' {
@@ -233,5 +254,9 @@ mod tests {
         assert!(equivalent("this.f(16,   1000L , 'a', \"A\")  /* c */", "this.f(16, 1000L, 'a', \"\\u0041\")"));
         assert!(!equivalent("this.f(0x10)", "this.f(16)"));
         assert!(!equivalent("a >> b", "a > > b"));
+        assert!(!equivalent("\"\\x\"", "\"x\""));
+        assert!(!equivalent("'a", "'a'"));
+        assert!(equivalent("this.f\u{1a}", "this.f"));
+        assert!(!equivalent("1.0f", "1.0F"));
     }
 }

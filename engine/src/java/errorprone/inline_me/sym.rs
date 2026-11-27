@@ -156,7 +156,17 @@ pub fn invoked(context: &Context, call: Node) -> Option<Sym> {
         "explicit_constructor_invocation" => context.resolver.resolve_delegation(call),
         _ => None,
     }?;
-    Some(method(&resolved))
+    let mut found = method(&resolved);
+    let on_array = call.child_by_field_name("object").and_then(|object| context.resolver.type_of(object)).is_some_and(|kind| matches!(kind, crate::java::types::model::Type::Array(_)));
+    if resolved.method.name == "clone" && on_array {
+        found.visibility = Visibility::Public;
+    }
+    Some(found)
+}
+
+/// The `X.super` of `X.super.m()`: a variable without an access modifier.
+pub fn qualified_super() -> Sym {
+    Sym::new(Kind::Special, "super")
 }
 
 /// The constructor a `new` calls.
@@ -176,9 +186,34 @@ fn type_name(context: &Context, node: Node) -> Option<Sym> {
     context.resolver.class_name(node, name).map(|full| class(context, &full))
 }
 
+/// The record whose component a name found as a local declares, when the name is read outside the compact
+/// constructor: there javac reads the component's private field.
+fn record_component(context: &Context, declared: Node, usage: Node) -> Option<String> {
+    let list = parent(declared)?;
+    let record = parent(list).filter(|record| record.kind() == "record_declaration" && record.child_by_field_name("parameters") == Some(list))?;
+    if crate::engine::source::ancestor(usage, &["compact_constructor_declaration", "record_declaration"]).is_some_and(|around| around.kind() == "compact_constructor_declaration") {
+        return None;
+    }
+    context.resolver.scope.names.get(&record.id()).cloned()
+}
+
+/// A class name of the engine with a local or anonymous class in it (`Outer.1Local`, `Outer.2`).
+fn in_local_class(name: &str) -> bool {
+    name.split('.').any(|part| part.starts_with(|c: char| c.is_ascii_digit()))
+}
+
 /// The symbol of a javac identifier: a name, a method name written without an object, a simple type name, `this` or
-/// `super`.
+/// `super`. A local or anonymous class and its members are local to javac (`isDirectlyOrIndirectlyLocal`).
 pub fn ident(context: &Context, scopes: &Scopes, node: Node) -> Option<Sym> {
+    let mut found = plain_ident(context, scopes, node)?;
+    let local_class = found.kind == Kind::Class && context.resolver.class_name(node, context.text(node)).is_some_and(|full| in_local_class(&full));
+    if local_class || found.owner.as_deref().is_some_and(in_local_class) {
+        found.kind = Kind::Local;
+    }
+    Some(found)
+}
+
+fn plain_ident(context: &Context, scopes: &Scopes, node: Node) -> Option<Sym> {
     match node.kind() {
         "this" => return Some(Sym::new(Kind::Local, "this")),
         "super" => return Some(Sym::new(Kind::Special, "super")),
@@ -190,8 +225,23 @@ pub fn ident(context: &Context, scopes: &Scopes, node: Node) -> Option<Sym> {
     }
     let name = context.text(node);
     match declaration(context.resolver, scopes, node, name) {
-        Some(Found::Local(_)) => return Some(Sym::new(Kind::Local, name)),
+        Some(Found::Local(declared)) => match record_component(context, declared, node) {
+            Some(record) => {
+                let (declaring, found) = context.resolver.index.field(&record, name)?;
+                return Some(field(context, declaring, found));
+            }
+            None => return Some(Sym::new(Kind::Local, name)),
+        },
         Some(Found::Field) | None => {}
+    }
+    for owner in crate::java::types::scope::enclosing_types(context.resolver.scope, node) {
+        let record = context.resolver.index.get(&owner).is_some_and(|info| info.record_components.is_some());
+        if let Some((declaring, found)) = context.resolver.index.field(&owner, name).filter(|_| record) {
+            return Some(field(context, declaring, found));
+        }
+        if context.resolver.index.field(&owner, name).is_some() {
+            break;
+        }
     }
     if let Some(Binding::Field(_, declaring, found)) = context.resolver.binding(node, name) {
         return Some(field(context, declaring, found));
@@ -211,6 +261,7 @@ pub fn select(context: &Context, node: Node) -> Option<Sym> {
             let written = super::tree::selected(node)?;
             let owner = match written.kind() {
                 "array_type" => Some("Array".to_string()),
+                "integral_type" | "floating_point_type" | "boolean_type" | "void_type" => Some(context.text(written).to_string()),
                 _ => context.resolver.class_name(written, &context.text(written).split_whitespace().collect::<String>()),
             };
             Some(Sym { visibility: Visibility::Public, is_static: true, owner, ..Sym::new(Kind::Field, "class") })

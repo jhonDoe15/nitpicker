@@ -244,11 +244,18 @@ impl Printer<'_> {
         }
     }
 
+    /// The declared type of a lambda parameter, of a variable arity one too.
+    fn declared_type(parameter: Node) -> Option<Node> {
+        parameter.child_by_field_name("type").or_else(|| named(parameter).into_iter().find(|part| !matches!(part.kind(), "modifiers" | "variable_declarator")))
+    }
+
     /// `GooglePrinter.visitLambda`: explicit parameters printed in parentheses, implicit ones by name, in
     /// parentheses unless there is exactly one, then ` -> ` and the body.
     fn google_lambda(&self, node: Node, out: &mut String) {
         let parameters = node.child_by_field_name("parameters");
-        let explicit = parameters.is_some_and(|list| list.kind() == "formal_parameters" && !named(list).is_empty());
+        let explicit = parameters.is_some_and(|list| {
+            list.kind() == "formal_parameters" && named(list).first().is_some_and(|first| Self::declared_type(*first).is_some_and(|kind| self.text(kind) != "var"))
+        });
         let listed: Vec<Node> = match parameters {
             Some(list) if list.kind() == "identifier" => vec![list],
             Some(list) => named(list),
@@ -262,10 +269,40 @@ impl Printer<'_> {
             if at > 0 {
                 out.push_str(", ");
             }
-            if explicit {
-                self.parameter(*parameter, out);
-            } else {
-                out.push_str(self.text(*parameter));
+            let name = parameter.child_by_field_name("name").or_else(|| {
+                named(*parameter).into_iter().find(|part| part.kind() == "variable_declarator").and_then(|declarator| declarator.child_by_field_name("name"))
+            });
+            match (explicit, name) {
+                (true, Some(name)) => {
+                    let dimensions: usize = named(*parameter)
+                        .into_iter()
+                        .chain(named(*parameter).into_iter().filter(|part| part.kind() == "variable_declarator").flat_map(named))
+                        .filter(|part| part.kind() == "dimensions")
+                        .map(|part| self.text(part).matches('[').count())
+                        .sum();
+                    if let Some(holder) = named(*parameter).into_iter().find(|part| part.kind() == "modifiers") {
+                        for modifier in parts(holder) {
+                            match modifier.kind() {
+                                "marker_annotation" | "annotation" => {
+                                    out.push_str(&self.collapsed(modifier));
+                                    out.push('\n');
+                                }
+                                word => {
+                                    out.push_str(word);
+                                    out.push(' ');
+                                }
+                            }
+                        }
+                    }
+                    if let Some(kind) = Self::declared_type(*parameter) {
+                        self.expression(kind, out);
+                    }
+                    out.push_str(&"[]".repeat(dimensions));
+                    out.push_str(if parameter.kind() == "spread_parameter" { "... " } else { " " });
+                    out.push_str(self.text(name));
+                }
+                (_, Some(name)) => out.push_str(self.text(name)),
+                (_, None) => out.push_str(self.text(*parameter)),
             }
         }
         if parentheses {

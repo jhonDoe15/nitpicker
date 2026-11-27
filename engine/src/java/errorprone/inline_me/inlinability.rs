@@ -68,8 +68,9 @@ pub fn matches_arg_n(name: &str) -> bool {
     name.strip_prefix("arg").is_some_and(|digits| !digits.is_empty() && digits.chars().all(|c| c.is_ascii_digit()))
 }
 
+/// The statements of a block, an empty statement `;` included.
 fn statements(body: Node) -> Vec<Node> {
-    named_children(body).into_iter().filter(|part| !part.kind().ends_with("comment")).collect()
+    children(body).into_iter().filter(|part| !part.kind().ends_with("comment") && (part.is_named() || part.kind() == ";")).collect()
 }
 
 /// The parameters of a method declaration, the variable arity one last.
@@ -129,7 +130,7 @@ pub fn visibility(method: Node) -> Visibility {
 /// gets an implicit `super()`.
 fn statement_count(method: Node, body: Node) -> usize {
     let listed = statements(body);
-    let implicit = method.kind() == "constructor_declaration" && listed.first().is_none_or(|first| first.kind() != "explicit_constructor_invocation");
+    let implicit = matches!(method.kind(), "constructor_declaration" | "compact_constructor_declaration") && listed.first().is_none_or(|first| first.kind() != "explicit_constructor_invocation");
     listed.len() + usize::from(implicit)
 }
 
@@ -219,11 +220,20 @@ fn hidden_or_deprecated(context: &Context, scopes: &Scopes, body: Node, least: V
             Event::Select(node) => (node, sym::select(context, node)),
             Event::Invocation(node) => (node, sym::invoked(context, node)),
             Event::NewClass(node) => (node, sym::constructed(context, node)),
+            Event::QualifiedSuper(node) => (node, Some(sym::qualified_super())),
         };
         if flagged(symbol) {
             found = Some(match event {
                 Event::Select(node) if node.kind() == "method_invocation" => {
                     let end = node.child_by_field_name("name").map_or(node.end_byte(), |name| name.end_byte());
+                    context.file.text[node.start_byte()..end].to_string()
+                }
+                Event::Invocation(node) | Event::NewClass(node) | Event::Select(node) | Event::Ident(node) | Event::QualifiedSuper(node) if node.kind() == "explicit_constructor_invocation" => {
+                    let end = node.child_by_field_name("arguments").map_or(node.end_byte(), |arguments| arguments.end_byte());
+                    context.file.text[node.start_byte()..end].to_string()
+                }
+                Event::QualifiedSuper(node) => {
+                    let end = crate::engine::source::children(node).into_iter().find(|part| part.kind() == "super").map_or(node.end_byte(), |word| word.end_byte());
                     context.file.text[node.start_byte()..end].to_string()
                 }
                 _ => context.text(node).to_string(),

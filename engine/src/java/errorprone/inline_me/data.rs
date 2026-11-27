@@ -121,7 +121,7 @@ pub fn expected(context: &Context, scopes: &Scopes, method: Node, body: Node) ->
     scan(body, true, &mut |event| {
         match event {
             Event::Select(node) => {
-                if !selected(node).is_some_and(is_select) {
+                if !selected(node).is_some_and(is_select) && !super::tree::qualified_super(node) {
                     if let Some(found) = sym::select(context, node).filter(|found| found.is_static) {
                         if let Some(owner) = &found.owner {
                             add_import(&mut imports, &sym::javac_name(owner));
@@ -157,7 +157,7 @@ pub fn expected(context: &Context, scopes: &Scopes, method: Node, body: Node) ->
                     add_import(&mut imports, &found.qualified);
                 }
             }
-            Event::Invocation(_) | Event::NewClass(_) => {}
+            Event::Invocation(_) | Event::NewClass(_) | Event::QualifiedSuper(_) => {}
         }
         true
     });

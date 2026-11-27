@@ -13,6 +13,8 @@ pub enum Event<'t> {
     /// A method call, or `this(...)` and `super(...)`.
     Invocation(Node<'t>),
     NewClass(Node<'t>),
+    /// `X.super` in a call `X.super.m()`, which the `method_invocation` stands for.
+    QualifiedSuper(Node<'t>),
 }
 
 /// The javac tree an identifier hangs from, as far as the InlineMe checks tell them apart.
@@ -75,6 +77,11 @@ pub fn is_select(node: Node) -> bool {
     }
 }
 
+/// A call `X.super.m()`: javac's method select selects from the member select `X.super`.
+pub fn qualified_super(call: Node) -> bool {
+    call.kind() == "method_invocation" && crate::engine::source::children(call).iter().any(|part| part.kind() == "super")
+}
+
 pub struct Walk<'v, 't> {
     /// Also visit the declared types of explicit lambda parameters; `TreePathScanner` does, the checks' own
     /// `visitLambdaExpression` overrides do not.
@@ -116,13 +123,22 @@ impl<'t> Walk<'_, 't> {
                 self.field(node, "type_arguments");
                 match node.child_by_field_name("object") {
                     Some(object) => {
-                        if (self.visit)(Event::Select(node)) {
+                        if (self.visit)(Event::Select(node)) && (!qualified_super(node) || (self.visit)(Event::QualifiedSuper(node))) {
                             self.scan(object);
                         }
                     }
                     None => self.field(node, "name"),
                 }
                 self.field(node, "arguments");
+            }
+            "variable_declarator" => self.field(node, "value"),
+            "method_declaration" | "constructor_declaration" => {
+                if let Some(list) = node.child_by_field_name("parameters") {
+                    for parameter in parts(list) {
+                        self.field(parameter, "type");
+                    }
+                }
+                self.field(node, "body");
             }
             "explicit_constructor_invocation" => {
                 if !(self.visit)(Event::Invocation(node)) {
@@ -139,8 +155,9 @@ impl<'t> Walk<'_, 't> {
                 if !(self.visit)(Event::NewClass(node)) {
                     return;
                 }
-                let skipped = |part: &Node| part.kind() == "class_body";
-                self.all(parts(node).into_iter().filter(|part| !skipped(part)));
+                let bodies = self.lambda_parameters;
+                let kept: Vec<Node> = parts(node).into_iter().filter(|part| bodies || part.kind() != "class_body").collect();
+                self.all(kept);
             }
             "lambda_expression" => {
                 if self.lambda_parameters {

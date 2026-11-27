@@ -47,7 +47,7 @@ fn mismatch(inferred: &data::Data, written: &data::Data) -> Option<String> {
 }
 
 pub fn inline_me_validator(context: &Context, method: Node) {
-    if !matches!(method.kind(), "method_declaration" | "constructor_declaration") {
+    if !matches!(method.kind(), "method_declaration" | "constructor_declaration" | "compact_constructor_declaration" | "annotation_type_element_declaration") {
         return;
     }
     let Some((annotation, written)) = data::from_declaration(context, method) else { return };
