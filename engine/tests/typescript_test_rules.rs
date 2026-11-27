@@ -1,14 +1,19 @@
 //! The test-quality and test-assertion rules on the engine against what their ESLint-plugin rules report for the same
 //! files. The expected rows come from `parity/typescript-lint-expected.mts <list> <out> <rules>`, run from the folder of
-//! `no-test-helpers-in-source` for that rule, so the paths it sees are the file names.
+//! `no-test-helpers-in-source` for that rule, so the paths it sees are the file names, and with the files of
+//! `no-interval-polling-in-tests` read from a copy outside any `tests/fixtures` folder, which that rule skips.
 use std::path::Path;
 use std::process::Command;
 
 type Row = Vec<serde_json::Value>;
 
-const RULES: [&str; 6] = [
+const RULES: [&str; 10] = [
     "no-assertion-in-loop",
     "no-copy-pasted-tests",
+    "no-git-repository-per-test",
+    "no-interval-polling-in-tests",
+    "no-node-process-per-test",
+    "no-server-or-worker-per-test",
     "no-shared-test-state",
     "no-switched-off-tests",
     "no-test-helpers-in-source",
