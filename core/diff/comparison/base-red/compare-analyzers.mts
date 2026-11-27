@@ -13,6 +13,7 @@ import {
 } from '../../../../shared/rules/finding-parts.mts';
 import { withoutAnsi } from '../../../../shared/messages/terminal/terminal-text.mts';
 import { baseFailuresOf, baseNoteOf, redBaseAnalyzers } from './unknown-base.mts';
+import { removalNotes } from './removal-notes.mts';
 import {
   unknownOnBaseOf,
   withoutHeadUnmeasured,
@@ -101,28 +102,9 @@ export function compareAnalyzers(context: ComparisonRequest): {
     outcomes,
     notes:
       context.touchedCode?.testsRemoved === true
-        ? [...failureNotes, ...removalNotes(failureNotes)]
+        ? [...failureNotes, ...removalNotes(failureNotes, context.touchedCode)]
         : failureNotes,
   };
-}
-
-const TESTS_REMOVED_MESSAGE = [
-  'The change removes tests, so the base cannot show what they covered:',
-  'every coverage, CRAP, mutation, slow-test and test-console result of the head counts as new.',
-].join(' ');
-
-function removalNotes(failureNotes: readonly ReportEntry[]): ReportEntry[] {
-  return failureNotes.length === 0
-    ? []
-    : [
-        {
-          tool: 'nitpicker',
-          snapshot: 'head',
-          rule: 'tests-removed',
-          path: '.',
-          message: TESTS_REMOVED_MESSAGE,
-        },
-      ];
 }
 
 function withoutConsequenceNotes(notes: ReportEntry[]): ReportEntry[] {

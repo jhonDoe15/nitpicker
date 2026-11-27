@@ -445,7 +445,9 @@ SARIF file) and the run is judged as follows.
   below it keep their comparison; a TypeScript or Python project counts as one module.
 - A change that removes tests gets no help from the red base. When a test file loses more lines
   than it gains, or a test file is deleted, every test-dependent result of the head counts as new,
-  as it would on a green base, and a `tests-removed` note says so. A test that is weakened without
+  as it would on a green base, and a `tests-removed` note says so. Test results recorded by your
+  test jobs narrow this to the code the removed tests imported (see "Test results recorded by your
+  test jobs"). A test that is weakened without
   losing lines cannot be told apart from a repaired one, because the base has no mutation data.
 - A base whose tests did not run is not a red base. Code that cannot be loaded (an unresolved
   import in a TypeScript test, a Python collection or syntax error), a project that does not
@@ -558,6 +560,14 @@ NITPICKER_TEST_RESULTS=test-results npx nitpicker --analyzer coverage --analyzer
   red base is: a coverage, CRAP or slow-test finding is new when its file is added by the change or
   it sits on a line the change adds or edits (see "A base whose tests fail"), and the run carries a
   `tests-not-run-on-base` note instead of a tool error.
+- A change that removes tests widens the check only to the code they import: a coverage, CRAP,
+  mutation, slow-test or test-console finding is also new when its file is one that a removed or
+  shrunk test file imports directly with a relative path (`./`, `../`), read at the base. Code the
+  test reached through those files is not included. When one of those test files has no relative
+  import, imports through an alias (`#`, `~`, `@/`), a barrel (`index`), a directory, a computed
+  path or a file outside the project, or cannot be read at the base, every test-dependent result
+  of the head counts as new, as for a base whose tests ran and failed. The `tests-removed` note
+  says which of the two applied.
 - Record them with the coverage settings nitpicker uses: list every source file in
   `coverage.include`, or a source file that no test loads is missing from the report instead of
   showing as uncovered.

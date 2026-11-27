@@ -333,6 +333,51 @@ describe('a base whose tests fail', () => {
     });
   });
 
+  it('counts only the test results of the code a removed test imported when base tests were not run', () => {
+    const { report } = compare({
+      analyzers: crapChain(),
+      base: { coverage: [testsFailed('coverage', 'tests-not-run-on-base')] },
+      head: {
+        specs: {
+          coverage: [],
+          crap: [
+            crap('imported', 'src/target.ts', { line: 2, endLine: 4 }),
+            crap('legacy-untouched', 'src/legacy.py', { line: 2, endLine: 4 }),
+          ],
+        },
+        remove: ['tests/old.test.ts'],
+      },
+      baseFiles: { 'tests/old.test.ts': "import { target } from '../src/target.ts';\n" },
+    });
+
+    expect({
+      new: report.newFindings.map(({ identity }) => identity),
+      unchanged: report.unchangedFindings.map(({ identity }) => identity),
+      notes: report.notes.map((note) => labelOf(note, 'tool', 'snapshot', 'rule')),
+    }).toEqual({
+      new: ['imported'],
+      unchanged: ['legacy-untouched'],
+      notes: ['coverage/base/tests-not-run-on-base', 'nitpicker/head/tests-removed'],
+    });
+  });
+
+  it('counts every test result as new when a removed test imports nothing it can resolve', () => {
+    const { report } = compare({
+      analyzers: crapChain(),
+      base: { coverage: [testsFailed('coverage', 'tests-not-run-on-base')] },
+      head: {
+        specs: {
+          coverage: [],
+          crap: [crap('legacy-untouched', 'src/legacy.py', { line: 2, endLine: 4 })],
+        },
+        remove: ['tests/old.test.ts'],
+      },
+      baseFiles: { 'tests/old.test.ts': "import { target } from '@app/target';\n" },
+    });
+
+    expect(report.newFindings.map(({ identity }) => identity)).toEqual(['legacy-untouched']);
+  });
+
   it('counts a deletion inside a function as an edit of that function', () => {
     const { report } = compare({
       analyzers: crapChain(),
