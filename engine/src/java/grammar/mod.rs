@@ -4,6 +4,7 @@
 pub mod catches;
 mod code;
 pub mod literals;
+pub mod names;
 mod numbers;
 
 use super::annotations_run::before_spread;
@@ -17,7 +18,8 @@ use std::sync::LazyLock;
 /// NUL character, which Java allows in strings, text blocks, character literals and comments: there it becomes a
 /// space. A NUL in code is left, so the file stays broken, as it is for PMD at the end of a file. The grammar rejects
 /// a parenthesized assignment target (`(x) = 2`, `(this.f) += 1`): those parentheses become spaces, and the PMD tree
-/// puts them back from the real text. Annotations after the `|` of a multi-catch become spaces too.
+/// puts them back from the real text. Annotations after the `|` of a multi-catch become spaces too, and the backslash
+/// of a Unicode escape in a name becomes a `_` (`names`).
 pub fn masked(text: &str) -> Option<String> {
     let mut bytes: Option<Vec<u8>> = None;
     if text.contains('\0') {
@@ -25,6 +27,9 @@ pub fn masked(text: &str) -> Option<String> {
     }
     if text.contains("catch") && text.contains('|') && text.contains('@') {
         catches::blank_alternative_annotations(text, &mut bytes);
+    }
+    if text.contains("\\u") {
+        names::mask_escaped_names(text, &mut bytes);
     }
     if text.contains("...") {
         blank_spread_annotations(text, &mut bytes);

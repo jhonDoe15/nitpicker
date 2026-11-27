@@ -4,6 +4,22 @@ pub struct SourceFile {
     pub path: String,
     pub text: String,
     pub tree: Tree,
+    pub names: Names,
+}
+
+/// Names that a language reads other than as written, by byte range: a Java identifier with Unicode escapes.
+#[derive(Default)]
+pub struct Names(Vec<(usize, usize, String)>);
+
+impl Names {
+    pub fn new(mut names: Vec<(usize, usize, String)>) -> Names {
+        names.sort_by_key(|(start, end, _)| (*start, *end));
+        Names(names)
+    }
+    fn get(&self, start: usize, end: usize) -> Option<&str> {
+        let at = self.0.binary_search_by_key(&(start, end), |(from, to, _)| (*from, *to)).ok()?;
+        Some(&self.0[at].2)
+    }
 }
 
 #[derive(Clone)]
@@ -32,6 +48,11 @@ pub fn normalized(text: &str) -> String {
 
 impl SourceFile {
     pub fn text_of(&self, node: Node) -> &str {
+        if !self.names.0.is_empty() {
+            if let Some(name) = self.names.get(node.start_byte(), node.end_byte()) {
+                return name;
+            }
+        }
         &self.text[node.byte_range()]
     }
     pub fn line(&self, node: Node) -> usize {

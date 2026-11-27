@@ -36,7 +36,7 @@ fn valid(written: &str) -> bool {
 
 /// The text with its Unicode escapes translated, as javac reads it before it reads tokens: a `\` starts one only
 /// after an even run of backslashes.
-fn translated(written: &str) -> Vec<char> {
+pub(super) fn translated(written: &str) -> Vec<char> {
     let chars: Vec<char> = written.chars().collect();
     let mut out = Vec::with_capacity(chars.len());
     let mut at = 0;

@@ -10,7 +10,7 @@ fn parse(path: &Path) -> Option<SourceFile> {
     let mut parser = tree_sitter::Parser::new();
     parser.set_language(&tree_sitter_java::LANGUAGE.into()).ok()?;
     let tree = parser.parse(&text, None)?;
-    Some(SourceFile { path: path.display().to_string(), text, tree })
+    Some(SourceFile { path: path.display().to_string(), text, tree, names: Default::default() })
 }
 
 /// The byte offset of each UTF-16 offset.

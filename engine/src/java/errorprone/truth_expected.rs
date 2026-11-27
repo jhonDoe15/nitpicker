@@ -98,7 +98,8 @@ fn constant_creator(context: &Context, node: Node) -> bool {
 fn swap_resolves(context: &Context, call: Node, fix: &Fix) -> Option<bool> {
     let text = fix.applied(&context.file.text)?;
     let tree = crate::engine::runner::parse_text(&text, &crate::java::Java)?;
-    let file = SourceFile { path: context.file.path.clone(), text, tree };
+    let names = crate::java::grammar::names::escaped(&text, &tree);
+    let file = SourceFile { path: context.file.path.clone(), text, tree, names };
     let scope = FileScope::of(&file);
     let resolver = Resolver::new(context.resolver.index, &file, &scope);
     let mut swapped = file.tree.root_node().descendant_for_byte_range(call.start_byte(), call.end_byte())?;
