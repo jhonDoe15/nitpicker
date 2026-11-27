@@ -119,7 +119,8 @@ export function removedTestTargetsOf(
   baseProject: string,
 ): ReadonlySet<string> | undefined {
   const targets = new Set<string>();
-  for (const file of testFiles) {
+  const sources = testFiles.filter((file) => SOURCE_EXTENSIONS.includes(path.posix.extname(file)));
+  for (const file of sources) {
     const text = texts.get(file);
     const imported = text === undefined ? undefined : importedTargets(file, text);
     const found = (imported ?? []).map((target) => insideProject(target, baseProject));

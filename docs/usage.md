@@ -567,7 +567,8 @@ NITPICKER_TEST_RESULTS=test-results npx nitpicker --analyzer coverage --analyzer
   import, imports through an alias (`#`, `~`, `@/`), a barrel (`index`), a directory, a computed
   path or a file outside the project, or cannot be read at the base, every test-dependent result
   of the head counts as new, as for a base whose tests ran and failed. The `tests-removed` note
-  says which of the two applied.
+  says which of the two applied. A removed file under a test folder that is not JavaScript or
+  TypeScript source, such as expected output or fixture data, widens nothing.
 - Record them with the coverage settings nitpicker uses: list every source file in
   `coverage.include`, or a source file that no test loads is missing from the report instead of
   showing as uncovered.
