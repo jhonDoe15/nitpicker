@@ -1,5 +1,6 @@
 [
 ["h/Signatures.java", "ConstructorCallsOverridableMethod", 39, 9, "This method may call an overridable method during object construction: SignaturesPlain.<A extends Number & Comparable<A>> a1(A) (call stack: [SignaturesPlain.<A extends Number & Comparable<A>> a1(A)])"],
 ["h/Signatures.java", "ConstructorCallsOverridableMethod", 40, 9, "This method may call an overridable method during object construction: SignaturesPlain.<A extends Number & Comparable<A>> a2(A) (call stack: [SignaturesPlain.<A extends Number & Comparable<A>> a2(A)])"],
-["h/Signatures.java", "ConstructorCallsOverridableMethod", 41, 9, "This method may call an overridable method during object construction: SignaturesPlain.<A extends Comparable<A>> a6(A) (call stack: [SignaturesPlain.<A extends Comparable<A>> a6(A)])"]
+["h/Signatures.java", "ConstructorCallsOverridableMethod", 41, 9, "This method may call an overridable method during object construction: SignaturesPlain.<A extends Comparable<A>> a6(A) (call stack: [SignaturesPlain.<A extends Comparable<A>> a6(A)])"],
+["j/Overrides.java", "MissingOverride", 57, 10, "The method 'take(List)' is missing an @Override annotation."]
 ]

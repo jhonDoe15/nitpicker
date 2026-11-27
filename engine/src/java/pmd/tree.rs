@@ -5,6 +5,7 @@ use crate::engine::source::{SourceFile, children};
 use crate::java::types::expr::{Receiver, literal_text};
 use crate::java::types::model::Type;
 use crate::java::types::scope::Resolver;
+use std::collections::HashMap;
 use tree_sitter::Node;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -37,7 +38,7 @@ pub struct PmdTree<'t> {
     /// The last node below each node; the node itself when it has no children.
     pub last: Vec<u32>,
     /// The nodes of each name, in document order.
-    pub named: std::collections::HashMap<&'static str, Vec<u32>>,
+    pub named: HashMap<&'static str, Vec<u32>>,
     lines: Vec<usize>,
 }
 
@@ -160,7 +161,7 @@ impl<'t> PmdTree<'t> {
         let mut lines = vec![0];
         lines.extend(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1));
         let (nodes, last) = ordered(builder.nodes);
-        let mut named: std::collections::HashMap<&'static str, Vec<u32>> = std::collections::HashMap::new();
+        let mut named: HashMap<&'static str, Vec<u32>> = HashMap::new();
         for (id, node) in nodes.iter().enumerate() {
             named.entry(node.name).or_default().push(id as u32);
         }
@@ -1121,7 +1122,7 @@ impl<'a, 't> Builder<'a, 't> {
         let index = self.resolver.index;
         let variables = index.get(&own).map(|info| info.type_parameters.iter().map(|(name, _)| Type::Variable(name.clone())).collect()).unwrap_or_default();
         let receiver = Type::Class(own.clone(), variables);
-        let written: Vec<Option<Type>> = method
+        let written: Vec<(Option<Type>, Option<Type>)> = method
             .field("parameters")
             .map(kids)
             .unwrap_or_default()
@@ -1130,11 +1131,24 @@ impl<'a, 't> Builder<'a, 't> {
             .map(|kid| {
                 if kid.kind() == "spread_parameter" {
                     let written = kids(kid).into_iter().find(|part| !matches!(part.kind(), "modifiers" | "variable_declarator"));
-                    written.and_then(|written| self.resolver.type_node(written)).map(|kind| Type::Array(Box::new(kind)))
+                    let array = |kind: Type| Type::Array(Box::new(kind));
+                    (
+                        written.and_then(|written| self.resolver.type_node(written)).map(array),
+                        written.and_then(|written| self.resolver.generic_type_node(written)).map(array),
+                    )
                 } else {
-                    self.resolver.declared_type(kid, None)
+                    (self.resolver.declared_type(kid, None), self.resolver.generic_declared_type(kid, None))
                 }
             })
+            .collect();
+        let own_variables: Vec<String> = method
+            .field("type_parameters")
+            .map(kids)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|kid| kid.kind() == "type_parameter")
+            .filter_map(|kid| kids(kid).into_iter().find(|part| matches!(part.kind(), "type_identifier" | "identifier")))
+            .map(|name| self.text(name).to_string())
             .collect();
         let interface = index.get(&own).is_some_and(|info| info.is_interface);
         let package = index.get(&own).map(|info| info.package.clone()).unwrap_or_default();
@@ -1142,21 +1156,24 @@ impl<'a, 't> Builder<'a, 't> {
             .lineage(&own)
             .iter()
             .skip(1)
-            .filter(|ancestor| !(interface && ancestor.as_str() == "java.lang.Object"))
             .filter_map(|ancestor| index.get(ancestor))
             .any(|info| {
+                let object = info.name == "java.lang.Object";
                 let map = index.member_map(&receiver, &info.name);
                 info.methods.iter().any(|known| {
+                    let renamed: HashMap<&str, &str> = if known.type_parameters.len() == own_variables.len() {
+                        known.type_parameters.iter().map(String::as_str).zip(own_variables.iter().map(String::as_str)).collect()
+                    } else {
+                        HashMap::new()
+                    };
                     known.name == name
                         && known.parameters.len() == arity
                         && !(known.package_private && info.package != package)
+                        && !(interface && object && known.flags & crate::java::types::model::flag::PUBLIC == 0)
                         && !known.is_static
                         && !known.is_private
-                        && known.generic_parameters.iter().zip(&written).all(|(theirs, ours)| {
-                            let theirs = theirs.substitute(&map);
-                            ours.as_ref().is_none_or(|ours| {
-                                matches!(theirs, Type::Variable(_)) || theirs.erased().name() == ours.erased().name()
-                            })
+                        && known.generic_parameters.iter().zip(&known.parameters).zip(&written).all(|((theirs, erased), (ours, generic))| {
+                            super::overridden::same_parameter(&theirs.substitute(&map), erased, ours.as_ref(), generic.as_ref(), &renamed)
                         })
                 })
             })
