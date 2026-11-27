@@ -26,6 +26,7 @@ pub mod place;
 mod observed;
 mod statements;
 mod stores;
+mod taint;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver, TYPE_DECLARATIONS};
@@ -229,6 +230,7 @@ pub struct SpotBugs {
     elsewhere: nulls::Elsewhere,
     serial: serial::Serial,
     attributes: attributes::Attributes,
+    taint: taint::Derived,
 }
 
 impl FileRule for SpotBugs {
@@ -253,6 +255,7 @@ impl FileRule for SpotBugs {
         }
         compare::ref_comparisons(&context);
         nulls::null_dereference(&context, &declared);
+        taint::path_traversal(&context, &declared, &self.taint);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
         if context.wants(attributes::PATTERNS) {
             let names = self.attributes.names(&project.index, &project.sources);
@@ -268,6 +271,7 @@ impl FileRule for SpotBugs {
             self.known.settle(&project.index, out);
             self.serial.settle(project, out);
             self.attributes.settle(&project.index, || self.known.visits(&project.index), out);
+            self.taint.settle(out);
         }
     }
 }
