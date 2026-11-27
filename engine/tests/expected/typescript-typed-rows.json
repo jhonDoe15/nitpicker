@@ -1,0 +1,983 @@
+[
+ [
+  "s01/src/case-0003.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  91,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  120
+ ],
+ [
+  "s01/src/case-0004.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  147,
+  "These rows are loaded only to read their `id` column. Select the column in the query: select: { id: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ id: table.id }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  172
+ ],
+ [
+  "s01/src/case-0032.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  164,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  185
+ ],
+ [
+  "s01/src/case-0033.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  160,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  181
+ ],
+ [
+  "s01/src/case-0034.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  181,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  202
+ ],
+ [
+  "s01/src/case-0035.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  181,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  217
+ ],
+ [
+  "s01/src/case-0036.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  164,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  185
+ ],
+ [
+  "s01/src/case-0037.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  161,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  182
+ ],
+ [
+  "s01/src/case-0038.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  190,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  211
+ ],
+ [
+  "s01/src/case-0039.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  155,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  176
+ ],
+ [
+  "s01/src/case-0040.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  180,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  201
+ ],
+ [
+  "s01/src/case-0041.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  161,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  221
+ ],
+ [
+  "s01/src/case-0042.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  153,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  163
+ ],
+ [
+  "s01/src/case-0043.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  153,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  163
+ ],
+ [
+  "s01/src/case-0044.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  107,
+  "These rows are loaded only to be deleted. Delete them in one statement: delete(criteria) (TypeORM), deleteMany (Prisma), destroy({ where }) (Sequelize), nativeDelete (MikroORM), or delete().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  130
+ ],
+ [
+  "s01/src/case-0045.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  107,
+  "These rows are loaded only to be deleted. Delete them in one statement: delete(criteria) (TypeORM), deleteMany (Prisma), destroy({ where }) (Sequelize), nativeDelete (MikroORM), or delete().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  134
+ ],
+ [
+  "s01/src/case-0046.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  77,
+  "These rows are loaded only to be deleted. Delete them in one statement: delete(criteria) (TypeORM), deleteMany (Prisma), destroy({ where }) (Sequelize), nativeDelete (MikroORM), or delete().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  101
+ ],
+ [
+  "s01/src/case-0047.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  107,
+  "These rows are loaded only to be deleted. Delete them in one statement: delete(criteria) (TypeORM), deleteMany (Prisma), destroy({ where }) (Sequelize), nativeDelete (MikroORM), or delete().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  159
+ ],
+ [
+  "s01/src/case-0048.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  155,
+  "These rows are loaded only to be deleted. Delete them in one statement: delete(criteria) (TypeORM), deleteMany (Prisma), destroy({ where }) (Sequelize), nativeDelete (MikroORM), or delete().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  176
+ ],
+ [
+  "s01/src/case-0049.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  107,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  172
+ ],
+ [
+  "s01/src/case-0050.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  110,
+  "These rows are loaded only to be deleted. Delete them in one statement: delete(criteria) (TypeORM), deleteMany (Prisma), destroy({ where }) (Sequelize), nativeDelete (MikroORM), or delete().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  187
+ ],
+ [
+  "s01/src/case-0051.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  149,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  223
+ ],
+ [
+  "s01/src/case-0052.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  103,
+  "These rows are loaded only to be deleted. Delete them in one statement: delete(criteria) (TypeORM), deleteMany (Prisma), destroy({ where }) (Sequelize), nativeDelete (MikroORM), or delete().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  172
+ ],
+ [
+  "s01/src/case-0057.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  2,
+  124,
+  "These rows are loaded only to be deleted. Delete them in one statement: delete(criteria) (TypeORM), deleteMany (Prisma), destroy({ where }) (Sequelize), nativeDelete (MikroORM), or delete().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  2,
+  194
+ ],
+ [
+  "s01/src/case-0058.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  2,
+  124,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  2,
+  215
+ ],
+ [
+  "s02/src/case-0001.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  119,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  138
+ ],
+ [
+  "s02/src/case-0006.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  121,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  142
+ ],
+ [
+  "s02/src/case-0007.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  123,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  146
+ ],
+ [
+  "s02/src/case-0012.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  120,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  140
+ ],
+ [
+  "s02/src/case-0013.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  120,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  140
+ ],
+ [
+  "s02/src/case-0014.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  119,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  138
+ ],
+ [
+  "s02/src/case-0015.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  120,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  140
+ ],
+ [
+  "s02/src/case-0016.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  154,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  173
+ ],
+ [
+  "s02/src/case-0017.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  99,
+  "These rows are loaded only to be deleted. Delete them in one statement: delete(criteria) (TypeORM), deleteMany (Prisma), destroy({ where }) (Sequelize), nativeDelete (MikroORM), or delete().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  120
+ ],
+ [
+  "s02/src/case-0020.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  117,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  127
+ ],
+ [
+  "s02/src/case-0021.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  121,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  131
+ ],
+ [
+  "s02/src/case-0022.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  117,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  141
+ ],
+ [
+  "s02/src/case-0026.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  113,
+  "These rows are loaded only to be deleted. Delete them in one statement: delete(criteria) (TypeORM), deleteMany (Prisma), destroy({ where }) (Sequelize), nativeDelete (MikroORM), or delete().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  150
+ ],
+ [
+  "s02/src/case-0027.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  148,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  188
+ ],
+ [
+  "s02/src/case-0028.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  22,
+  103,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  22,
+  128
+ ],
+ [
+  "s02/src/case-0029.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  74,
+  "These rows are loaded only to be deleted. Delete them in one statement: delete(criteria) (TypeORM), deleteMany (Prisma), destroy({ where }) (Sequelize), nativeDelete (MikroORM), or delete().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  131
+ ],
+ [
+  "s02/src/case-0035.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  124,
+  "These rows are loaded only to be changed the same way and written back. Update them in one statement: update(criteria, values) (TypeORM), updateMany (Prisma), Model.update(values, { where }) (Sequelize), nativeUpdate (MikroORM), or update().set().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  144
+ ],
+ [
+  "s02/src/case-0036.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  77,
+  "These rows are loaded only to be deleted. Delete them in one statement: delete(criteria) (TypeORM), deleteMany (Prisma), destroy({ where }) (Sequelize), nativeDelete (MikroORM), or delete().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  99
+ ],
+ [
+  "s02/src/case-0039.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  74,
+  "These rows are loaded only to be deleted. Delete them in one statement: delete(criteria) (TypeORM), deleteMany (Prisma), destroy({ where }) (Sequelize), nativeDelete (MikroORM), or delete().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  96
+ ],
+ [
+  "s02/src/case-0041.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  74,
+  "These rows are loaded only to be deleted. Delete them in one statement: delete(criteria) (TypeORM), deleteMany (Prisma), destroy({ where }) (Sequelize), nativeDelete (MikroORM), or delete().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  104
+ ],
+ [
+  "s02/src/case-0043.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  37,
+  "These rows are loaded only to be deleted. Delete them in one statement: delete(criteria) (TypeORM), deleteMany (Prisma), destroy({ where }) (Sequelize), nativeDelete (MikroORM), or delete().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  77
+ ],
+ [
+  "s02/src/case-0048.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  22,
+  74,
+  "These rows are loaded only to be deleted. Delete them in one statement: delete(criteria) (TypeORM), deleteMany (Prisma), destroy({ where }) (Sequelize), nativeDelete (MikroORM), or delete().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  22,
+  96
+ ],
+ [
+  "w01/src/case-0014.ts",
+  "nitpicker/no-loaded-rows-saved-back",
+  18,
+  74,
+  "These rows are loaded only to be deleted. Delete them in one statement: delete(criteria) (TypeORM), deleteMany (Prisma), destroy({ where }) (Sequelize), nativeDelete (MikroORM), or delete().where() (Drizzle). An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.",
+  18,
+  125
+ ],
+ [
+  "w01/src/case-0035.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  38,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  117
+ ],
+ [
+  "w01/src/case-0036.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  38,
+  "These rows are loaded only to read their `total` column. Select the column in the query: select: { total: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ total: table.total }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  107
+ ],
+ [
+  "w01/src/case-0037.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  75,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  108
+ ],
+ [
+  "w01/src/case-0038.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  75,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  107
+ ],
+ [
+  "w01/src/case-0039.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  38,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  103
+ ],
+ [
+  "w01/src/case-0040.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  38,
+  "These rows are loaded only to read their `id` column. Select the column in the query: select: { id: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ id: table.id }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  112
+ ],
+ [
+  "w01/src/case-0041.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  90,
+  "These rows are loaded only to read their `id` column. Select the column in the query: select: { id: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ id: table.id }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  115
+ ],
+ [
+  "w01/src/case-0042.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  38,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  114
+ ],
+ [
+  "w01/src/case-0043.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  38,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  102
+ ],
+ [
+  "w01/src/case-0044.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  38,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  118
+ ],
+ [
+  "w01/src/case-0045.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  45,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  88
+ ],
+ [
+  "w01/src/case-0046.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  45,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  79
+ ],
+ [
+  "w01/src/case-0047.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  45,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  62
+ ],
+ [
+  "w01/src/case-0048.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  45,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  62
+ ],
+ [
+  "w01/src/case-0049.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  49,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  66
+ ],
+ [
+  "w01/src/case-0050.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  45,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  62
+ ],
+ [
+  "w01/src/case-0051.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  51,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  94
+ ],
+ [
+  "w01/src/case-0052.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  41,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  84
+ ],
+ [
+  "w01/src/case-0053.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  45,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  87
+ ],
+ [
+  "w01/src/case-0054.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  45,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  86
+ ],
+ [
+  "w01/src/case-0055.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  45,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  77
+ ],
+ [
+  "w01/src/case-0056.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  47,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  83
+ ],
+ [
+  "w01/src/case-0057.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  47,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  88
+ ],
+ [
+  "w01/src/case-0058.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  47,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  102
+ ],
+ [
+  "w01/src/case-0059.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  45,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  81
+ ],
+ [
+  "w01/src/case-0060.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  45,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  90
+ ],
+ [
+  "w01/src/case-0061.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  41,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  77
+ ],
+ [
+  "w01/src/case-0062.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  54,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  90
+ ],
+ [
+  "w01/src/case-0063.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  54,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  90
+ ],
+ [
+  "w01/src/case-0064.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  54,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  100
+ ],
+ [
+  "w01/src/case-0065.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  54,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  97
+ ],
+ [
+  "w01/src/case-0066.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  18,
+  54,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  18,
+  90
+ ],
+ [
+  "w02/src/case-0001.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  38,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  87
+ ],
+ [
+  "w02/src/case-0005.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  38,
+  "These rows are loaded only to read their `plain` column. Select the column in the query: select: { plain: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ plain: table.plain }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  86
+ ],
+ [
+  "w02/src/case-0006.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  38,
+  "These rows are loaded only to read their `__hidden` column. Select the column in the query: select: { __hidden: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ __hidden: table.__hidden }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  89
+ ],
+ [
+  "w02/src/case-0014.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  38,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  90
+ ],
+ [
+  "w02/src/case-0015.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  38,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  88
+ ],
+ [
+  "w02/src/case-0017.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  38,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  105
+ ],
+ [
+  "w02/src/case-0018.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  38,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  99
+ ],
+ [
+  "w02/src/case-0020.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  38,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  88
+ ],
+ [
+  "w02/src/case-0023.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  75,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  104
+ ],
+ [
+  "w02/src/case-0024.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  98,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  127
+ ],
+ [
+  "w02/src/case-0026.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  38,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  88
+ ],
+ [
+  "w02/src/case-0027.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  38,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  98
+ ],
+ [
+  "w02/src/case-0028.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  38,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  113
+ ],
+ [
+  "w02/src/case-0030.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  38,
+  "These rows are loaded only to read their `status` column. Select the column in the query: select: { status: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ status: table.status }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  104
+ ],
+ [
+  "w02/src/case-0031.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  38,
+  "These rows are loaded only to read their `id` column. Select the column in the query: select: { id: true } (TypeORM, Prisma), attributes (Sequelize), fields (MikroORM), or db.select({ id: table.id }) (Drizzle). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  90
+ ],
+ [
+  "w02/src/case-0032.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  45,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  62
+ ],
+ [
+  "w02/src/case-0033.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  49,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  66
+ ],
+ [
+  "w02/src/case-0034.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  45,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  62
+ ],
+ [
+  "w02/src/case-0036.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  50,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  67
+ ],
+ [
+  "w02/src/case-0037.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  45,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  79
+ ],
+ [
+  "w02/src/case-0038.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  52,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  88
+ ],
+ [
+  "w02/src/case-0039.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  44,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  80
+ ],
+ [
+  "w02/src/case-0040.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  45,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  81
+ ],
+ [
+  "w02/src/case-0041.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  45,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  81
+ ],
+ [
+  "w02/src/case-0042.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  54,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  90
+ ],
+ [
+  "w02/src/case-0043.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  49,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  85
+ ],
+ [
+  "w02/src/case-0049.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  46,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  93
+ ],
+ [
+  "w02/src/case-0050.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  46,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  83
+ ],
+ [
+  "w02/src/case-0051.ts",
+  "nitpicker/no-whole-rows-for-one-value",
+  12,
+  46,
+  "This loads or counts rows only to test whether one exists. Ask the database for existence: exists or existsBy (TypeORM), findFirst({ where, select: { id: true } }) (Prisma), findOne with attributes: ['id'] (Sequelize), findOne with fields (MikroORM). An exception fits only when the rows are used elsewhere too or the model has no cheaper query.",
+  12,
+  83
+ ]
+]

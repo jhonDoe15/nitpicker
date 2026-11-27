@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { WorkspaceMember } from '../project-types.mts';
-import { undeclaredHint, writeUndeclaredProjects } from './messages.mts';
+import { derivedLayoutHint, undeclaredHint, writeUndeclaredProjects } from './messages.mts';
 
 const scratch = mkdtempSync(path.join(tmpdir(), 'nitpicker-messages-'));
 
@@ -106,5 +106,23 @@ describe('writeUndeclaredProjects', () => {
 
     expect(writeUndeclaredProjects(outputRoot, entries(4))).toBe(expected);
     expect(writeUndeclaredProjects(outputRoot, entries(4), repoRoot)).toBe(expected);
+  });
+});
+
+describe('derivedLayoutHint', () => {
+  it('names the projects whose source roots were derived', () => {
+    expect(
+      derivedLayoutHint([
+        { path: 'packages/app', derivedSourceRoots: ['.'] },
+        { path: 'packages/lib' },
+      ]),
+    ).toEqual([
+      'No src folder in packages/app (["."]), so their source roots come from tsconfig.json, ' +
+        'package.json or the package root. Set "layout.sourceRoots" in each project config to pin them.',
+    ]);
+  });
+
+  it('says nothing when every project has its source roots', () => {
+    expect(derivedLayoutHint([{ path: 'packages/lib' }])).toEqual([]);
   });
 });

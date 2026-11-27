@@ -61,4 +61,15 @@ describe('committed-minified-bundle', () => {
       }),
     ).toEqual([]);
   });
+
+  it('skips listed paths that are outside the project, missing or not plain files', () => {
+    const { root } = createGitRepository({ 'src/app.js': MINIFIED });
+
+    expect(
+      minifiedBundleFindings('repository-hygiene', {
+        projectRoot: root,
+        files: ['src/app.js', '../outside.js', 'src/missing.js', 'src'],
+      }).map(({ path }) => path),
+    ).toEqual(['src/app.js']);
+  });
 });

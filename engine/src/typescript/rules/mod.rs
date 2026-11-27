@@ -41,6 +41,7 @@ mod persistence;
 mod presence;
 mod promises;
 mod queries;
+mod query_rows;
 mod react_tests;
 mod recursion;
 mod redirects;
@@ -48,6 +49,7 @@ mod request_inputs;
 mod request_text;
 mod response_json;
 mod route_auth;
+mod saved_rows;
 mod secrets;
 mod security_values;
 mod selectors;
@@ -69,6 +71,7 @@ pub mod typed;
 mod union_members;
 mod unknown_types;
 mod urls;
+mod whole_rows;
 mod wildcards;
 mod writes;
 
@@ -161,7 +164,7 @@ impl<'a> Context<'a, '_> {
 pub type Rule = fn(&mut Context);
 
 /// Rules written against the ESTree-shaped view.
-const ON_VIEW: &[&str] = &["cognitive-complexity", "contract-infrastructure-type", "no-self-recursion", "exhaustive-union-predicate", "handler-entity-type", "hover-test-needs-keyboard", "no-accumulator-concat", "no-add-only-collection", "no-array-spread-arguments", "no-assertion-in-loop", "no-blank-number-coercion", "no-btoa-on-runtime-text", "no-case-mixed-header-merge", "no-case-sensitive-path-compare", "no-chunkwise-stream-text", "no-copied-constant", "no-copy-pasted-tests", "no-disabled-tls-verification", "no-directory-passing-existence-check", "no-double-decode", "no-dropped-delegate-result", "no-dual-write", "no-dynamic-import-of-path", "no-eager-relation", "no-empty-every-signal", "no-error-response-without-status", "no-expanding-replacement-string", "no-external-executables-in-unit-tests", "no-falsy-default", "no-forwarding-method-alias", "no-forwarding-wrapper", "no-git-repository-per-test", "no-hardcoded-secret", "no-in-presence-check", "no-incomplete-escaping", "no-internal-module-mocks", "no-interval-polling-in-tests", "no-io-in-loop", "no-lazy-relation-in-loop", "no-local-time-zone", "no-lookup-as-presence", "no-lossy-utf8-decode", "no-many-to-many-cascade-remove", "no-mutating-method-in-domain", "no-non-latin1-header-value", "no-node-process-per-test", "no-orm-query-logging", "no-orm-schema-sync", "no-parameter-mutation", "no-raw-http-value", "no-remote-call-in-transaction", "no-remote-call-under-lock", "no-retry-without-idempotency", "no-route-without-auth", "no-secret-in-log", "no-send-without-return", "no-server-or-worker-per-test", "no-shadowed-spread-key", "no-shared-test-state", "no-slash-only-redirect-guard", "no-sql-string-building", "no-stale-retry-after-conflict", "no-string-as-regex", "no-swapped-arguments", "no-switched-off-tests", "no-unbounded-query-array", "no-unchecked-response-json", "no-unchecked-url-sink", "no-uncoerced-request-input", "no-unencoded-url-part", "no-unescaped-css-selector", "no-unescaped-filter-value", "no-unescaped-html-interpolation", "no-unescaped-pattern-translation", "no-unhandled-void-promise", "no-union-order-dependence", "no-unisolated-job-loop", "no-unknown-in-domain", "no-unordered-query", "no-unowned-async-assertion", "no-unpaged-listing", "no-unresolved-relative-url", "no-unsafe-deserialization", "no-unstripped-remote-text", "no-untrimmed-request-text", "no-unversioned-orm-entity", "no-wait-for-with-fake-timers", "no-weak-hash", "preserve-error-cause", "react-test-no-implementation-details", "report-module-load-effects", "require-client-timeout", "require-error-listener", "require-http-timeout", "settle-pending-on-close", "structured-catch-logging", "test-must-use-production-runtime", "time-unit-mismatch"];
+const ON_VIEW: &[&str] = &["cognitive-complexity", "contract-infrastructure-type", "no-self-recursion", "exhaustive-union-predicate", "handler-entity-type", "hover-test-needs-keyboard", "no-accumulator-concat", "no-add-only-collection", "no-array-spread-arguments", "no-assertion-in-loop", "no-blank-number-coercion", "no-btoa-on-runtime-text", "no-case-mixed-header-merge", "no-case-sensitive-path-compare", "no-chunkwise-stream-text", "no-copied-constant", "no-copy-pasted-tests", "no-disabled-tls-verification", "no-directory-passing-existence-check", "no-double-decode", "no-dropped-delegate-result", "no-dual-write", "no-dynamic-import-of-path", "no-eager-relation", "no-empty-every-signal", "no-error-response-without-status", "no-expanding-replacement-string", "no-external-executables-in-unit-tests", "no-falsy-default", "no-forwarding-method-alias", "no-forwarding-wrapper", "no-git-repository-per-test", "no-hardcoded-secret", "no-in-presence-check", "no-incomplete-escaping", "no-internal-module-mocks", "no-interval-polling-in-tests", "no-io-in-loop", "no-lazy-relation-in-loop", "no-local-time-zone", "no-loaded-rows-saved-back", "no-lookup-as-presence", "no-lossy-utf8-decode", "no-many-to-many-cascade-remove", "no-mutating-method-in-domain", "no-non-latin1-header-value", "no-node-process-per-test", "no-orm-query-logging", "no-orm-schema-sync", "no-parameter-mutation", "no-raw-http-value", "no-remote-call-in-transaction", "no-remote-call-under-lock", "no-retry-without-idempotency", "no-route-without-auth", "no-secret-in-log", "no-send-without-return", "no-server-or-worker-per-test", "no-shadowed-spread-key", "no-shared-test-state", "no-slash-only-redirect-guard", "no-sql-string-building", "no-stale-retry-after-conflict", "no-string-as-regex", "no-swapped-arguments", "no-switched-off-tests", "no-unbounded-query-array", "no-unchecked-response-json", "no-unchecked-url-sink", "no-uncoerced-request-input", "no-unencoded-url-part", "no-unescaped-css-selector", "no-unescaped-filter-value", "no-unescaped-html-interpolation", "no-unescaped-pattern-translation", "no-unhandled-void-promise", "no-union-order-dependence", "no-unisolated-job-loop", "no-unknown-in-domain", "no-unordered-query", "no-unowned-async-assertion", "no-unpaged-listing", "no-unresolved-relative-url", "no-unsafe-deserialization", "no-unstripped-remote-text", "no-untrimmed-request-text", "no-unversioned-orm-entity", "no-wait-for-with-fake-timers", "no-weak-hash", "no-whole-rows-for-one-value", "preserve-error-cause", "react-test-no-implementation-details", "report-module-load-effects", "require-client-timeout", "require-error-listener", "require-http-timeout", "settle-pending-on-close", "structured-catch-logging", "test-must-use-production-runtime", "time-unit-mismatch"];
 
 pub const ALL: &[(&str, Rule)] = &[
     ("cognitive-complexity", complexity::cognitive_complexity::check),

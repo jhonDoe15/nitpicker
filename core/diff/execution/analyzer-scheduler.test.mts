@@ -1,8 +1,31 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { type ScheduleInput, schedule } from './analyzer-scheduler.mts';
 import { runTaskGraph } from './graph/task-graph.mts';
 import { resolveMaxParallel } from '../../../shared/processes/machine-capacity.mts';
 import type { AnalyzerTask } from './tasks.mts';
 import { flushScheduling, task } from './test-support/analyzer-task.mts';
+
+const SYNTAX_FAILURE =
+  'Analyzer scheduler failed: Unexpected token \'o\', "not json" is not valid JSON\n';
+
+function input(text: string): ScheduleInput {
+  return { read: () => Promise.resolve(Buffer.from(text)), signal: new AbortController().signal };
+}
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+  process.exitCode = undefined;
+});
+
+function written(stream: NodeJS.WriteStream): string[] {
+  const texts: string[] = [];
+  vi.spyOn(stream, 'write').mockImplementation((text: string | Uint8Array) => {
+    texts.push(String(text));
+    return true;
+  });
+  return texts;
+}
 
 const anyNumber: unknown = expect.any(Number);
 
@@ -203,5 +226,45 @@ describe('analyzer scheduler', () => {
         { name: 'eslint-b', elapsedMs: anyNumber },
       ],
     });
+  });
+
+  it('applies the text settings it is handed and prints the task results', async () => {
+    vi.stubEnv('NITPICKER_SCHEDULER_PROBE', undefined);
+    const output = written(process.stdout);
+
+    await schedule(
+      input(
+        JSON.stringify({
+          environment: { NITPICKER_SCHEDULER_PROBE: 'set', NITPICKER_SCHEDULER_COUNT: 3 },
+          tasks: [],
+        }),
+      ),
+    );
+
+    expect(process.env['NITPICKER_SCHEDULER_PROBE']).toBe('set');
+    expect(process.env['NITPICKER_SCHEDULER_COUNT']).toBeUndefined();
+    expect(JSON.parse(output.join(''))).toEqual({ reports: [], errors: [], timings: [] });
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it('reports input it cannot read and exits with status 2', async () => {
+    const errors = written(process.stderr);
+
+    await schedule(input('not json'));
+
+    expect(errors).toEqual([SYNTAX_FAILURE]);
+    expect(process.exitCode).toBe(2);
+  });
+
+  it('reports a thrown value that is not an error', async () => {
+    const errors = written(process.stderr);
+    const failure: unknown = 'broken input';
+
+    await schedule({
+      read: vi.fn<() => Promise<Buffer>>().mockRejectedValue(failure),
+      signal: new AbortController().signal,
+    });
+
+    expect(errors).toEqual(['Analyzer scheduler failed: broken input\n']);
   });
 });

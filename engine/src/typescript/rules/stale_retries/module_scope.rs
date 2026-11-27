@@ -62,3 +62,8 @@ pub fn uses_typeorm(program: Node) -> bool {
     let bindings: HashMap<String, String> = statements(program).into_iter().flat_map(statement_bindings).collect();
     bindings.values().any(|source| source == "typeorm" || source == "@nestjs/typeorm")
 }
+
+/// `moduleScope(...).bindings`: each local name a file binds to a module, with the module's name.
+pub fn module_bindings(program: Node) -> HashMap<String, String> {
+    statements(program).into_iter().flat_map(statement_bindings).collect()
+}

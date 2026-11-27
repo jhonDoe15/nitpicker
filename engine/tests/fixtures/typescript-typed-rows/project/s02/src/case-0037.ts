@@ -1,0 +1,22 @@
+import { Repository, In } from 'typeorm';
+import { Leaf, Child, Bulk, Versioned2, Versioned3, Quoted, NoOrphans, Listed1, Listed2, ByHook, ByInit, Plain2, Shape } from './store';
+import Anonymous from './store';
+declare const leafRepo: Repository<Leaf>;
+declare const childRepo: Repository<Child>;
+declare const bulkRepo: Repository<Bulk>;
+declare const v2Repo: Repository<Versioned2>;
+declare const v3Repo: Repository<Versioned3>;
+declare const quotedRepo: Repository<Quoted>;
+declare const noOrphanRepo: Repository<NoOrphans>;
+declare const l1Repo: Repository<Listed1>;
+declare const l2Repo: Repository<Listed2>;
+declare const hookRepo: Repository<ByHook>;
+declare const initRepo: Repository<ByInit>;
+declare const plainRepo: Repository<Plain2>;
+declare const shapeRepo: { find(): Promise<Shape[]>; save(x: unknown): Promise<void>; remove(x: unknown): Promise<void> };
+declare const anonRepo: Repository<Anonymous>;
+declare const unionRepo: Repository<Plain2> | Repository<Leaf>;
+declare const em: { find<T>(e: new () => T): Promise<T[]>; flush(): Promise<void>; persistAndFlush(x: unknown): Promise<void> };
+declare const Account: { findAll(): Promise<any[]>; bulkCreate(x: unknown, o?: object): Promise<void>; destroy(o: object): Promise<void> };
+declare function use(x: unknown): void;
+export async function run() { const rows = await plainRepo?.find(); await plainRepo.remove(rows); }

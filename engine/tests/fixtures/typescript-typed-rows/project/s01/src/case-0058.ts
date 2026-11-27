@@ -1,0 +1,2 @@
+import { eq, inArray } from "drizzle-orm";
+export async function run(db, orders) { const rows = await db.select().from(orders).where(eq(orders.status, "old")); await db.update(orders).set({ status: "x" }).where(inArray(orders.id, rows.map((row) => row.id))); }
