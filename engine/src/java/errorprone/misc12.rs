@@ -7,17 +7,14 @@ use crate::engine::source::{ancestor, children, parent};
 use crate::java::types::model::Type;
 use tree_sitter::Node;
 
-/// Declaring types in `package-info.java` is flagged at the first of them, and Error Prone reports it twice: javac
-/// analyzes a `package-info.java` with types in it as two units.
+/// Declaring types in `package-info.java` is flagged at the first of them.
 pub fn package_info(context: &Context, root: Node) {
     let path = context.file.path.replace('\\', "/");
     if path.rsplit('/').next() != Some("package-info.java") {
         return;
     }
     if let Some(first) = children(root).into_iter().find(|part| is_class(*part)) {
-        for _ in 0..2 {
-            context.report_always("PackageInfo", class_keyword(first), "Declaring types inside package-info.java files is very bad form");
-        }
+        context.report_always("PackageInfo", class_keyword(first), "Declaring types inside package-info.java files is very bad form");
     }
 }
 

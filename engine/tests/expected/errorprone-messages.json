@@ -13012,5 +13012,17 @@
 ["s23pl2/Wrong.java", "PackageLocation", 1, 15, "[PackageLocation] Expected package s23pl2.sub to be declared in a directory ending with s23pl2/sub, instead found errorprone/s23pl2"],
 ["s23pl3/q/Short.java", "AvoidCommonTypeNames", 3, 1, "[AvoidCommonTypeNames] q.Short clashes with java.lang.Short"],
 ["s23pl4/package-info.java", "PackageLocation", 2, 12, "[PackageLocation] Expected package not.here to be declared in a directory ending with not/here, instead found errorprone/s23pl4"],
-["s26pkg/Lib.java", "NonFinalStaticField", 13, 21, "[NonFinalStaticField] Static fields should almost always be final."]
+["s26pkg/Lib.java", "NonFinalStaticField", 13, 21, "[NonFinalStaticField] Static fields should almost always be final."],
+["s27pi/package-info.java", "ClassName", 1, 9, "[ClassName] Expected a class declaration named package-info inside package-info.java, instead found: First, Second"],
+["s27pi/package-info.java", "ClassName", 1, 9, "[ClassName] Expected a class declaration named package-info inside package-info.java, instead found: First, Second"],
+["s27pi/package-info.java", "EmptyCatch", 7, 11, "[EmptyCatch] Caught exceptions should not be ignored"],
+["s27pi/package-info.java", "EmptyCatch", 7, 11, "[EmptyCatch] Caught exceptions should not be ignored"],
+["s27pi/package-info.java", "InfiniteRecursion", 6, 16, "[InfiniteRecursion] This method calls itself unconditionally; it will throw StackOverflowError"],
+["s27pi/package-info.java", "InfiniteRecursion", 6, 16, "[InfiniteRecursion] This method calls itself unconditionally; it will throw StackOverflowError"],
+["s27pi/package-info.java", "MultipleTopLevelClasses", 3, 1, "[MultipleTopLevelClasses] Expected at most one top-level class declaration, instead found: First, Second"],
+["s27pi/package-info.java", "MultipleTopLevelClasses", 3, 1, "[MultipleTopLevelClasses] Expected at most one top-level class declaration, instead found: First, Second"],
+["s27pi/package-info.java", "MultipleTopLevelClasses", 12, 1, "[MultipleTopLevelClasses] Expected at most one top-level class declaration, instead found: First, Second"],
+["s27pi/package-info.java", "MultipleTopLevelClasses", 12, 1, "[MultipleTopLevelClasses] Expected at most one top-level class declaration, instead found: First, Second"],
+["s27pi/package-info.java", "PackageInfo", 3, 1, "[PackageInfo] Declaring types inside package-info.java files is very bad form"],
+["s27pi/package-info.java", "PackageInfo", 3, 1, "[PackageInfo] Declaring types inside package-info.java files is very bad form"]
 ]

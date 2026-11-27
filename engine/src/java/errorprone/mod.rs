@@ -985,6 +985,12 @@ const CLASS_KINDS: &[&str] = &[
     "annotation_type_declaration",
 ];
 
+/// javac analyzes a `package-info.java` that declares types as two units, so Error Prone reports each finding there twice.
+fn twice_analyzed(file: &SourceFile) -> bool {
+    file.path.replace('\\', "/").rsplit('/').next() == Some("package-info.java")
+        && crate::engine::source::children(file.tree.root_node()).into_iter().any(|part| CLASS_KINDS.contains(&part.kind()))
+}
+
 impl FileRule for ErrorProne {
     fn id(&self) -> &'static str {
         "_ErrorProne"
@@ -1014,7 +1020,11 @@ impl FileRule for ErrorProne {
         for (_, check) in FILE_CHECKS.iter().filter(|(names, _)| wanted(names)) {
             check(&context, file.tree.root_node());
         }
-        out.append(&mut context.out.into_inner());
+        let mut found = context.out.into_inner();
+        if twice_analyzed(file) {
+            found = found.into_iter().flat_map(|finding| [finding.clone(), finding]).collect();
+        }
+        out.append(&mut found);
         if let Ok(asked) = std::env::var("NP_EP_MAY_REPORT") {
             let asked: Vec<&str> = asked.split(',').filter(|name| !name.is_empty()).collect();
             let found = may_report::may_report(&asked, &file.text, &project.index);
