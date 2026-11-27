@@ -1,0 +1,1 @@
+export function find(req, repo) { return repo.findByEmail(req.query.email); }

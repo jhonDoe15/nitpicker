@@ -1,6 +1,6 @@
 //! `no-unescaped-html-interpolation`: a value put into an HTML string, by a template or a `+` chain, without
 //! escaping.
-mod parts;
+pub mod parts;
 mod safe;
 
 use self::parts::{fragment_of, is_diagnostic_text, is_fragment_top, is_markup, is_placed_in_markup};
