@@ -1,0 +1,1 @@
+function check(o) { expect(o.paid).toBe(true); } it('x', () => { check(order); });

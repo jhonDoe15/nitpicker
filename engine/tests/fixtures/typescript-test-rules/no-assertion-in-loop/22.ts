@@ -1,0 +1,1 @@
+it('x', () => { expect.assertions(orders.length); orders.forEach((o) => { expect(o.paid).toBe(true); }); });

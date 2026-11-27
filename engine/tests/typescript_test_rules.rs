@@ -5,7 +5,7 @@ use std::process::Command;
 
 type Row = Vec<serde_json::Value>;
 
-const RULES: [&str; 3] = ["no-shared-test-state", "no-switched-off-tests", "no-unowned-async-assertion"];
+const RULES: [&str; 4] = ["no-assertion-in-loop", "no-shared-test-state", "no-switched-off-tests", "no-unowned-async-assertion"];
 
 fn sorted(mut rows: Vec<Row>) -> Vec<Row> {
     rows.sort_by_key(|row| serde_json::to_string(row).expect("text"));

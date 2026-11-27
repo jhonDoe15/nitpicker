@@ -1,0 +1,1 @@
+it('x', () => { function check(list) { for (const o of list) { expect(o).toBe(1); } } check(orders); });

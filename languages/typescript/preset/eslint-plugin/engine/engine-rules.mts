@@ -62,6 +62,16 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-accumulator-concat', TYPED],
   ['no-add-only-collection', {}],
   ['no-array-spread-arguments', TYPED],
+  [
+    'no-assertion-in-loop',
+    {
+      facts: (_filename, options) => ({
+        'assertion-function-names': JSON.stringify(
+          Reflect.get(Object(options[0]), 'assertionFunctionNames') ?? [],
+        ),
+      }),
+    },
+  ],
   ['no-blank-number-coercion', TYPED],
   ['no-chunkwise-stream-text', TYPED],
   [

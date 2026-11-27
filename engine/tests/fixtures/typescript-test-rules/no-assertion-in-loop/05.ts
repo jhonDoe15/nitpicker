@@ -1,0 +1,1 @@
+it('x', () => { function check(o) { expect(o.paid).toBe(true); } let i = 0; while (i < 3) { check(orders[i]); i += 1; } });

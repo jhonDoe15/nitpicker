@@ -1,0 +1,1 @@
+it('x', () => { for (const c of cases) { for (const d of c.parts) { expect(d).toBe(1); expect(c).toBe(1); } } });
