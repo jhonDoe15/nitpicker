@@ -1,0 +1,1 @@
+const o = data ? { headers: { ...h, "X-Prerender-Data": data } } : { headers: h }; fetch(u, o ?? { headers: { "X-Prerender-Data": data } });
