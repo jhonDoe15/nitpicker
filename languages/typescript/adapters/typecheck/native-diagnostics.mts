@@ -42,28 +42,53 @@ export function apiEntry(
     : 'typescript/unstable/async';
 }
 
+type Checked = {
+  readonly diagnostics: readonly TypeScript.Diagnostic[];
+  readonly files?: ProgramFiles | undefined;
+};
+
 export async function nativeDiagnostics({
   ts,
   configPath,
   projectRoot,
-  apiRoot,
   engineHint,
   entry = apiEntry(),
   scopedConfigPath,
-}: NativeRequest): Promise<NativeOutcome> {
-  const own = apiRoot !== undefined;
-  const { api, startError } = await startedApi({ projectRoot, apiRoot, entry });
+}: Omit<NativeRequest, 'apiRoot'>): Promise<NativeOutcome> {
+  const { api, startError } = await startedApi({ projectRoot, apiRoot: undefined, entry });
   if (api === undefined) {
-    if (own) {
-      throw ownStartError(startError);
-    }
     return { unsupported: true, cause: startError };
   }
-  let collected: Collected;
+  const hint = engineHint ? `\n${ENGINE_HINT}` : '';
+  return settledDiagnostics(ts, await collectedBy(api, { configPath, scopedConfigPath, hint }));
+}
+
+export async function ownNativeDiagnostics({
+  ts,
+  configPath,
+  projectRoot,
+  apiRoot,
+  entry = apiEntry(),
+  scopedConfigPath,
+}: Omit<NativeRequest, 'engineHint'> & { readonly apiRoot: string }): Promise<Checked> {
+  const { api, startError } = await startedApi({ projectRoot, apiRoot, entry });
+  if (api === undefined) {
+    throw ownStartError(startError);
+  }
+  return ownDiagnostics(ts, await collectedBy(api, { configPath, scopedConfigPath, hint: '' }));
+}
+
+async function collectedBy(
+  api: NativeApi,
+  {
+    configPath,
+    scopedConfigPath,
+    hint,
+  }: { configPath: string; scopedConfigPath: string | undefined; hint: string },
+): Promise<Collected> {
   try {
-    collected = await collectedDiagnostics(api, configPath, scopedConfigPath);
+    return await collectedDiagnostics(api, configPath, scopedConfigPath);
   } catch (error) {
-    const hint = own || !engineHint ? '' : `\n${ENGINE_HINT}`;
     throw troubleshootingError(
       `TypeScript 7 type check failed: ${String(fieldOf(error, 'message'))}${hint}`,
       hint === '' ? undefined : TROUBLESHOOTING_ANCHORS.engineUnavailable,
@@ -72,7 +97,6 @@ export async function nativeDiagnostics({
   } finally {
     await api.close();
   }
-  return own ? ownDiagnostics(ts, collected) : settledDiagnostics(ts, collected);
 }
 
 function ownStartError(cause: unknown): Error {
@@ -184,7 +208,7 @@ function settledDiagnostics(
 function ownDiagnostics(
   ts: typeof TypeScript,
   { hasRootFiles, configErrors, diagnostics, files }: Collected,
-): NativeOutcome {
+): Checked {
   const fatalErrors = configErrors.filter(
     ({ code }) => code !== NO_INPUTS_CODE && !isNonFatalConfigCode(code),
   );

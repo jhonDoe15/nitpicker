@@ -68,7 +68,11 @@ describe('config keys computed without ESLint', () => {
     const { ours, eslint } = await bothGroups([
       { files: ['**/*.ts', '**/*.tsx', '**/*.cts'], rules: rule('no-var') },
       { files: ['src/**/__tests__/**', '**/*.{test,spec}.{ts,tsx}'], rules: rule('no-eval') },
-      { files: ['src/**'], ignores: ['src/deep/**', '!src/deep/b.tsx'], rules: rule('eqeqeq') },
+      {
+        files: ['src/**'],
+        ignores: ['src/deep/**', '!src/deep/b.tsx', '!./src/deep/b.spec.tsx'],
+        rules: rule('eqeqeq'),
+      },
       { files: [['**/*.ts', 'src/**']], rules: rule('no-new') },
       { files: ['./scripts/*.cts'], rules: rule('no-alert') },
       { ignores: ['**/*.test.ts'], rules: rule('curly') },
@@ -106,5 +110,7 @@ describe('config keys computed without ESLint', () => {
     expect(configKeyOf(withFunction)).toBeUndefined();
     expect(configKeyOf(withBasePath)).toBeUndefined();
     expect(configKeyOf([[{ files: ['**/*.ts'] }]])).toBeUndefined();
+    expect(configKeyOf([{ ignores: [matcher] }])).toBeUndefined();
+    expect(configKeyOf([null])).toBeUndefined();
   });
 });

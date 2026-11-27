@@ -22,8 +22,9 @@ import type { LintMessage, LintResult } from '../../../adapters/oxlint/plan/oxli
 
 type Rules = Readonly<Record<string, unknown>>;
 type Planned = { readonly file: string; readonly rules: Rules };
+type ConfigSource = Pick<ESLint, 'isPathIgnored' | 'calculateConfigForFile'>;
 type EngineLint = {
-  readonly eslint: ESLint;
+  readonly eslint: ConfigSource;
   readonly root: string;
   readonly files: readonly string[];
   readonly environment: Environment;
@@ -48,7 +49,7 @@ function enabledRules(config: unknown): Rules {
   );
 }
 
-async function planned(eslint: ESLint, file: string): Promise<Planned> {
+async function planned(eslint: ConfigSource, file: string): Promise<Planned> {
   if (await eslint.isPathIgnored(file)) {
     return { file, rules: {} };
   }

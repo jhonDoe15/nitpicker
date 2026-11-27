@@ -2,6 +2,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import type TypeScript from 'typescript';
 import type { Layout } from '../../typed/head-policy.mts';
+import { valueOr } from '../../../../../shared/values/attempt/attempt.mts';
 
 type ProgramContext = {
   readonly ts: typeof TypeScript;
@@ -75,19 +76,9 @@ export type ProgramFileLists = {
   readonly scoped: readonly string[];
 };
 
-function parsedConfig(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      return undefined;
-    }
-    throw error;
-  }
-}
-
 function readConfig(configPath: string): object | undefined {
-  const config = parsedConfig(readFileSync(configPath, 'utf8'));
+  const text = readFileSync(configPath, 'utf8');
+  const config = valueOr((): unknown => JSON.parse(text), undefined);
   return typeof config === 'object' && config !== null ? config : undefined;
 }
 

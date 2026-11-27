@@ -102,6 +102,22 @@ describe('options TypeScript 7 removed', () => {
     expect(readFileSync(configPath, 'utf8')).toBe(before);
   });
 
+  it('has no overrides for a config TypeScript cannot read', () => {
+    expect(typescript7Overrides(path.join(root, 'missing.json'))).toBeUndefined();
+  });
+
+  it('leaves a config it cannot rewrite as JSON to the run as it is', async () => {
+    const configPath = path.join(root, 'tsconfig.commented.json');
+    const text = `// legacy options\n${JSON.stringify({ compilerOptions: LEGACY, include: ['src'] })}`;
+    writeFileSync(configPath, text);
+
+    const seen = await withTypescript7Options(configPath, () =>
+      Promise.resolve(readFileSync(configPath, 'utf8')),
+    );
+
+    expect(seen).toBe(text);
+  });
+
   it('type checks such a project with TypeScript 7 instead of falling back', async () => {
     const configPath = writeConfig('tsconfig.native.json', LEGACY);
     const ts = loadTypeScript(PACKAGE_ROOT);

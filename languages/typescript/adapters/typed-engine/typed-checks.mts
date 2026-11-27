@@ -137,16 +137,13 @@ export type TypedCheckPart = {
   readonly project: unknown;
 };
 
-function projectGroups(parts: readonly TypedCheckPart[]): Map<string, number[]> {
-  const groups = new Map<string, number[]>();
+type IndexedPart = { readonly index: number; readonly part: TypedCheckPart };
+
+function projectGroups(parts: readonly TypedCheckPart[]): Map<string, IndexedPart[]> {
+  const groups = new Map<string, IndexedPart[]>();
   for (const [index, part] of parts.entries()) {
     const key = JSON.stringify(part.project);
-    const group = groups.get(key);
-    if (group === undefined) {
-      groups.set(key, [index]);
-    } else {
-      group.push(index);
-    }
+    groups.set(key, [...(groups.get(key) ?? []), { index, part }]);
   }
   return groups;
 }
@@ -156,22 +153,19 @@ export function runTypedCheckParts(
   environment: Environment,
 ): unknown[] {
   const results: unknown[] = parts.map(() => undefined);
-  for (const [project, indexes] of projectGroups(parts)) {
-    const grouped = indexes.map((index) => ({ index, part: parts[index] }));
+  for (const [project, grouped] of projectGroups(parts)) {
     const outcome = runTypedChecks({
       project(folder) {
         const configPath = path.join(folder, 'tsconfig.json');
         writeFileSync(configPath, project);
         return configPath;
       },
-      checks: grouped.flatMap(({ part }) => (part === undefined ? [] : [part.check])),
-      inputs: Object.fromEntries(
-        grouped.flatMap(({ part }) => (part === undefined ? [] : [[part.check, part.input]])),
-      ),
+      checks: grouped.map(({ part }) => part.check),
+      inputs: Object.fromEntries(grouped.map(({ part }) => [part.check, part.input])),
       environment,
     });
     for (const { index, part } of grouped) {
-      results[index] = part === undefined ? undefined : outcome.checks?.[part.check];
+      results[index] = outcome.checks?.[part.check];
     }
   }
   return results;

@@ -47,16 +47,14 @@ export function eslintShapedResults(
   const located = reported.flatMap((diagnostic) =>
     stagedFiles(diagnostic.filename).map((file) => ({ ...file, diagnostic })),
   );
-  const byFile = Map.groupBy(located, ({ filePath }) => filePath);
-  return [...byFile].map(([filePath, entries]) =>
-    fileResult({
-      filePath,
-      full: entries[0]?.full ?? filePath,
-      fileDiagnostics: distinctDiagnostics(
-        entries.map(({ diagnostic }) => ({ ...diagnostic, filename: filePath })),
-      ),
-      naming,
-    }),
+  const byFile = new Map<string, { full: string; diagnostics: OxlintDiagnostic[] }>();
+  for (const { filePath, full, diagnostic } of located) {
+    const entry = byFile.get(filePath) ?? { full, diagnostics: [] };
+    entry.diagnostics.push({ ...diagnostic, filename: filePath });
+    byFile.set(filePath, entry);
+  }
+  return [...byFile].map(([filePath, { full, diagnostics }]) =>
+    fileResult({ filePath, full, fileDiagnostics: distinctDiagnostics(diagnostics), naming }),
   );
 }
 
