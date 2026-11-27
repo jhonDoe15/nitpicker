@@ -144,13 +144,13 @@ fn same_as_error_prone((found, expected): (Rows, Rows), checks: usize) {
 
 #[test]
 fn error_prone_checks_report_what_error_prone_reports() {
-    same_as_error_prone(rows_of("errorprone", "_ErrorProne", "all"), 546);
+    same_as_error_prone(rows_of("errorprone", "_ErrorProne", "all"), 548);
 }
 
 /// `--test-only` is Error Prone's `-XepCompilingTestOnlyCode`; the rows come from Error Prone run with that flag.
 #[test]
 fn error_prone_checks_report_what_error_prone_reports_on_test_only_code() {
-    same_as_error_prone(rows_with("errorprone", "_ErrorProne", "all", None, &["--test-only"], "errorprone-test-only"), 533);
+    same_as_error_prone(rows_with("errorprone", "_ErrorProne", "all", None, &["--test-only"], "errorprone-test-only"), 535);
 }
 
 /// A Java run selects some checks (`NP_EP_ONLY`); the others are skipped, and each selected check reports what it

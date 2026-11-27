@@ -4,6 +4,8 @@ mod compiled;
 mod doc;
 mod javac_print;
 mod formatter;
+mod regex;
+mod temporal_fields;
 mod format_validation;
 mod format_string;
 mod format_annotation;
@@ -857,6 +859,8 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["CacheLoaderNull"], async_nulls::cache_loader_null),
     (&["DoNotMockAutoValue"], do_not_mock::do_not_mock_auto_value),
     (&["BareDotMetacharacter"], misc_defect_calls::bare_dot_metacharacter),
+    (&["InvalidPatternSyntax"], misc_defect_calls::invalid_pattern_syntax),
+    (&["TemporalAccessorGetChronoField"], temporal_fields::temporal_accessor_get_chrono_field),
     (&["CharacterGetNumericValue"], misc_defect_calls::character_get_numeric_value),
     (&["GetClassOnEnum"], misc_defect_calls::get_class_on_enum),
     (&["BigDecimalEquals"], misc_defect_calls::big_decimal_equals),
