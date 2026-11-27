@@ -137,7 +137,10 @@ pub fn unused_private_method(ctx: &Ctx, out: &mut Vec<Hit>) {
     usages.sort_unstable();
     for usage in usages {
         let target = if ctx.is(usage, "MethodCall") {
-            ctx.resolved(usage).map(|(call, _)| (call.declaring, call.method))
+            ctx.resolved(usage).map(|(call, _)| (call.declaring, call.method)).or_else(|| {
+                let source = ctx.tree.nodes[usage as usize].source?;
+                ctx.machine.resolver.resolve_call_as_pmd(source).map(|call| (call.declaring, call.method))
+            })
         } else {
             reference_target(ctx, usage)
         };
