@@ -1,0 +1,1 @@
+import { Repository } from "typeorm"; import _ from "lodash"; export async function run(repo, prisma, db, em, Order, id, ids) { return _.map(await repo.find(), "id"); }

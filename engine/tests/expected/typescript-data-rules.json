@@ -243,6 +243,879 @@
   51
  ],
  [
+  "no-in-memory-query/025.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  136,
+  "take: 100 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  145
+ ],
+ [
+  "no-in-memory-query/026.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  131,
+  "take: 10 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  139
+ ],
+ [
+  "no-in-memory-query/027.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  132,
+  "limit: 20 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  141
+ ],
+ [
+  "no-in-memory-query/028.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  105,
+  "take: 10 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  113
+ ],
+ [
+  "no-in-memory-query/029.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  151,
+  "limit: 5 picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  159
+ ],
+ [
+  "no-in-memory-query/030.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  140,
+  "limit(5) picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  145
+ ],
+ [
+  "no-in-memory-query/031.ts",
+  "nitpicker/no-unordered-query",
+  1,
+  148,
+  "take(5) picks a page of rows that has no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key before the page, or add a tie-breaker after a non-unique key: .orderBy('createdAt', 'desc').orderBy('id'). An exception fits only a query whose rows are known to come back in one order anyway, such as a primary-key lookup.",
+  1,
+  152
+ ],
+ [
+  "no-in-memory-query/049.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  144,
+  "These rows are loaded and then filtered on their columns in memory. Put the condition in the query: where (TypeORM, Prisma, Sequelize), the filter argument of MikroORM find, or .where() in Drizzle; for some, every or find, an exists, count or findFirst query. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  190
+ ],
+ [
+  "no-in-memory-query/050.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  171,
+  "These rows are loaded and then filtered on their columns in memory. Put the condition in the query: where (TypeORM, Prisma, Sequelize), the filter argument of MikroORM find, or .where() in Drizzle; for some, every or find, an exists, count or findFirst query. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  209
+ ],
+ [
+  "no-in-memory-query/051.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  112,
+  "These rows are loaded and then filtered on their columns in memory. Put the condition in the query: where (TypeORM, Prisma, Sequelize), the filter argument of MikroORM find, or .where() in Drizzle; for some, every or find, an exists, count or findFirst query. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  167
+ ],
+ [
+  "no-in-memory-query/052.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  112,
+  "These rows are loaded and then filtered on their columns in memory. Put the condition in the query: where (TypeORM, Prisma, Sequelize), the filter argument of MikroORM find, or .where() in Drizzle; for some, every or find, an exists, count or findFirst query. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  173
+ ],
+ [
+  "no-in-memory-query/053.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  144,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  155
+ ],
+ [
+  "no-in-memory-query/054.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  112,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  164
+ ],
+ [
+  "no-in-memory-query/055.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  112,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  167
+ ],
+ [
+  "no-in-memory-query/056.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  112,
+  "These rows are loaded and then filtered on their columns in memory. Put the condition in the query: where (TypeORM, Prisma, Sequelize), the filter argument of MikroORM find, or .where() in Drizzle; for some, every or find, an exists, count or findFirst query. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  196
+ ],
+ [
+  "no-in-memory-query/057.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  112,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  158
+ ],
+ [
+  "no-in-memory-query/058.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  112,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  155
+ ],
+ [
+  "no-in-memory-query/059.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  121,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  172
+ ],
+ [
+  "no-in-memory-query/060.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  108,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  149
+ ],
+ [
+  "no-in-memory-query/061.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  112,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  146
+ ],
+ [
+  "no-in-memory-query/062.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  75,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  129
+ ],
+ [
+  "no-in-memory-query/063.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  162,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  173
+ ],
+ [
+  "no-in-memory-query/064.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  166,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  177
+ ],
+ [
+  "no-in-memory-query/065.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  178,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  189
+ ],
+ [
+  "no-in-memory-query/066.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  144,
+  "These rows are loaded and then filtered on their columns in memory. Put the condition in the query: where (TypeORM, Prisma, Sequelize), the filter argument of MikroORM find, or .where() in Drizzle; for some, every or find, an exists, count or findFirst query. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  187
+ ],
+ [
+  "no-in-memory-query/067.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  144,
+  "These rows are loaded and then filtered on their columns in memory. Put the condition in the query: where (TypeORM, Prisma, Sequelize), the filter argument of MikroORM find, or .where() in Drizzle; for some, every or find, an exists, count or findFirst query. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  184
+ ],
+ [
+  "no-in-memory-query/068.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  112,
+  "These rows are loaded and then filtered on their columns in memory. Put the condition in the query: where (TypeORM, Prisma, Sequelize), the filter argument of MikroORM find, or .where() in Drizzle; for some, every or find, an exists, count or findFirst query. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  169
+ ],
+ [
+  "no-in-memory-query/069.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  112,
+  "These rows are loaded and then filtered on their columns in memory. Put the condition in the query: where (TypeORM, Prisma, Sequelize), the filter argument of MikroORM find, or .where() in Drizzle; for some, every or find, an exists, count or findFirst query. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  185
+ ],
+ [
+  "no-in-memory-query/070.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  112,
+  "These rows are loaded and then filtered on their columns in memory. Put the condition in the query: where (TypeORM, Prisma, Sequelize), the filter argument of MikroORM find, or .where() in Drizzle; for some, every or find, an exists, count or findFirst query. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  186
+ ],
+ [
+  "no-in-memory-query/071.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  144,
+  "These rows are sorted in memory by their columns. Sort in the query: order (TypeORM, Sequelize), orderBy (Prisma, MikroORM), or .orderBy() in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  193
+ ],
+ [
+  "no-in-memory-query/072.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  112,
+  "These rows are sorted in memory by their columns. Sort in the query: order (TypeORM, Sequelize), orderBy (Prisma, MikroORM), or .orderBy() in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  197
+ ],
+ [
+  "no-in-memory-query/073.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  112,
+  "These rows are loaded only to sum, find the largest or smallest, or group them in memory. Let the database aggregate: sum, maximum or minimum (TypeORM), aggregate or groupBy (Prisma), sum, max, min or group (Sequelize), a query builder with groupBy (MikroORM), or sum(), max() and groupBy() in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  172
+ ],
+ [
+  "no-in-memory-query/074.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  112,
+  "These rows are loaded only to sum, find the largest or smallest, or group them in memory. Let the database aggregate: sum, maximum or minimum (TypeORM), aggregate or groupBy (Prisma), sum, max, min or group (Sequelize), a query builder with groupBy (MikroORM), or sum(), max() and groupBy() in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  212
+ ],
+ [
+  "no-in-memory-query/075.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  112,
+  "These rows are loaded only to sum, find the largest or smallest, or group them in memory. Let the database aggregate: sum, maximum or minimum (TypeORM), aggregate or groupBy (Prisma), sum, max, min or group (Sequelize), a query builder with groupBy (MikroORM), or sum(), max() and groupBy() in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  168
+ ],
+ [
+  "no-in-memory-query/076.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  144,
+  "These rows are loaded only to sum, find the largest or smallest, or group them in memory. Let the database aggregate: sum, maximum or minimum (TypeORM), aggregate or groupBy (Prisma), sum, max, min or group (Sequelize), a query builder with groupBy (MikroORM), or sum(), max() and groupBy() in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  185
+ ],
+ [
+  "no-in-memory-query/077.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  136,
+  "These rows are loaded only to sum, find the largest or smallest, or group them in memory. Let the database aggregate: sum, maximum or minimum (TypeORM), aggregate or groupBy (Prisma), sum, max, min or group (Sequelize), a query builder with groupBy (MikroORM), or sum(), max() and groupBy() in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  171
+ ],
+ [
+  "no-in-memory-query/078.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  136,
+  "These rows are sorted in memory by their columns. Sort in the query: order (TypeORM, Sequelize), orderBy (Prisma, MikroORM), or .orderBy() in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  179
+ ],
+ [
+  "no-in-memory-query/079.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  149,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  175
+ ],
+ [
+  "no-in-memory-query/080.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  155,
+  "These rows are loaded and then filtered on their columns in memory. Put the condition in the query: where (TypeORM, Prisma, Sequelize), the filter argument of MikroORM find, or .where() in Drizzle; for some, every or find, an exists, count or findFirst query. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  181
+ ],
+ [
+  "no-in-memory-query/081.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  112,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  193
+ ],
+ [
+  "no-in-memory-query/082.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  95
+ ],
+ [
+  "no-in-memory-query/083.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  117
+ ],
+ [
+  "no-in-memory-query/084.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  117
+ ],
+ [
+  "no-in-memory-query/085.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  119
+ ],
+ [
+  "no-in-memory-query/086.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  117
+ ],
+ [
+  "no-in-memory-query/087.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  99
+ ],
+ [
+  "no-in-memory-query/088.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  75
+ ],
+ [
+  "no-in-memory-query/089.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  114
+ ],
+ [
+  "no-in-memory-query/090.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  77
+ ],
+ [
+  "no-in-memory-query/091.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  84
+ ],
+ [
+  "no-in-memory-query/092.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  84
+ ],
+ [
+  "no-in-memory-query/093.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  35,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  81
+ ],
+ [
+  "no-in-memory-query/094.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  44,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  90
+ ],
+ [
+  "no-in-memory-query/095.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  47,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  93
+ ],
+ [
+  "no-in-memory-query/096.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  45,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  91
+ ],
+ [
+  "no-in-memory-query/097.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  112,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  123
+ ],
+ [
+  "no-in-memory-query/098.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  81,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  92
+ ],
+ [
+  "no-in-memory-query/099.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  104
+ ],
+ [
+  "no-in-memory-query/100.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  62,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  103
+ ],
+ [
+  "no-in-memory-query/101.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  87
+ ],
+ [
+  "no-in-memory-query/102.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  91
+ ],
+ [
+  "no-in-memory-query/103.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  94
+ ],
+ [
+  "no-in-memory-query/104.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  85
+ ],
+ [
+  "no-in-memory-query/105.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  99
+ ],
+ [
+  "no-in-memory-query/106.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  101,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  112
+ ],
+ [
+  "no-in-memory-query/107.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  103
+ ],
+ [
+  "no-in-memory-query/108.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  74,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  120
+ ],
+ [
+  "no-in-memory-query/109.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  78
+ ],
+ [
+  "no-in-memory-query/110.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  86
+ ],
+ [
+  "no-in-memory-query/111.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  100
+ ],
+ [
+  "no-in-memory-query/112.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  100
+ ],
+ [
+  "no-in-memory-query/113.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  100
+ ],
+ [
+  "no-in-memory-query/114.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  97
+ ],
+ [
+  "no-in-memory-query/115.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  119
+ ],
+ [
+  "no-in-memory-query/116.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  93
+ ],
+ [
+  "no-in-memory-query/117.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  69
+ ],
+ [
+  "no-in-memory-query/118.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  105
+ ],
+ [
+  "no-in-memory-query/119.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  83
+ ],
+ [
+  "no-in-memory-query/120.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  98
+ ],
+ [
+  "no-in-memory-query/121.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  81
+ ],
+ [
+  "no-in-memory-query/122.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  106,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  117
+ ],
+ [
+  "no-in-memory-query/123.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  82,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  93
+ ],
+ [
+  "no-in-memory-query/124.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  91
+ ],
+ [
+  "no-in-memory-query/125.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  97
+ ],
+ [
+  "no-in-memory-query/126.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  109
+ ],
+ [
+  "no-in-memory-query/127.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  118
+ ],
+ [
+  "no-in-memory-query/128.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  81
+ ],
+ [
+  "no-in-memory-query/129.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  65,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  103
+ ],
+ [
+  "no-in-memory-query/130.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  85
+ ],
+ [
+  "no-in-memory-query/131.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  77
+ ],
+ [
+  "no-in-memory-query/132.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  96
+ ],
+ [
+  "no-in-memory-query/133.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  88
+ ],
+ [
+  "no-in-memory-query/134.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  96
+ ],
+ [
+  "no-in-memory-query/135.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  38,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  79
+ ],
+ [
+  "no-in-memory-query/136.ts",
+  "nitpicker/no-in-memory-query",
+  1,
+  80,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  1,
+  125
+ ],
+ [
+  "no-in-memory-query/r-lone-surrogate.ts",
+  "nitpicker/no-in-memory-query",
+  10,
+  10,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  10,
+  21
+ ],
+ [
+  "no-in-memory-query/r-type-query.ts",
+  "nitpicker/no-in-memory-query",
+  20,
+  10,
+  "These rows are loaded only to count them or to check that there are none. Ask the database instead: count (TypeORM, Prisma, Sequelize, MikroORM), exists or existsBy (TypeORM), findFirst (Prisma), or select({ value: count() }) in Drizzle. An exception fits only for a small fixed lookup list that is meant to be loaded whole.",
+  20,
+  21
+ ],
+ [
   "no-many-to-many-cascade-remove/11.ts",
   "nitpicker/no-many-to-many-cascade-remove",
   2,

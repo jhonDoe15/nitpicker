@@ -1,0 +1,1 @@
+class S { find() { return this.em.find(Asset, { owner: 1 }); } }

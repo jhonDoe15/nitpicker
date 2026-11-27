@@ -1,0 +1,1 @@
+async function f(knex) { return knex('assets').where({ id: 1 }).first(); }
