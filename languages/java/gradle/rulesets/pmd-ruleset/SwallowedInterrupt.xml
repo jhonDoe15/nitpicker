@@ -60,8 +60,12 @@
                  $else := if ($s/*[3]) then $self($self, $s/*[3], $loop) else (true(), false()),
                  $guard := exists($s/*[1][self::InfixExpression[@Operator = 'instanceof'] or self::UnaryExpression[@Operator = '!']]
                              /descendant-or-self::InfixExpression[@Operator = 'instanceof'][1]/*[1][self::VariableAccess][@Name = $caught]),
-                 $stopped := not($then[1] or $then[2]) or not($else[1] or $else[2])
-             return if ($guard and $stopped) then (false(), false())
+                 $stopped := not($then[1] or $then[2]) or not($else[1] or $else[2]),
+                 $other := exists($s/*[1][self::UnaryExpression[@Operator = '!']]
+                             /*[1][self::InfixExpression[@Operator = 'instanceof']][*[1][self::VariableAccess][@Name = $caught]]
+                             /*[2]/descendant-or-self::ClassType[1][pmd-java:typeIsExactly('java.lang.InterruptedException')])
+             return if ($other) then $else
+                    else if ($guard and $stopped) then (false(), false())
                     else ($then[1] or $else[1], $then[2] or $else[2])
          else if ($s/self::DoStatement) then
            let $f := $self($self, $s/*[1], true())
