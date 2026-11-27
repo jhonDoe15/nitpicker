@@ -8,6 +8,7 @@ mod concurrent;
 mod compare;
 mod constructors;
 mod dead;
+mod dumb;
 mod equality;
 mod expose;
 mod fields;
@@ -236,6 +237,7 @@ const DETECTORS: &[Detector] = &[
     idioms::idioms as Detector,
     naming::naming as Detector,
     sequence::sequence as Detector,
+    dumb::dumb as Detector,
 ];
 
 #[derive(Default)]

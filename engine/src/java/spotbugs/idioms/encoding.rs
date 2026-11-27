@@ -97,7 +97,7 @@ fn field_tracked(context: &Context, key: &(String, String), declared: Type, publ
 
 /// The type SpotBugs tracks for a value: a local is what was stored in it, or its declared type where different
 /// types meet; a conditional of two types is unknown.
-fn tracked(context: &Context, value: Node, depth: usize) -> Option<Type> {
+pub fn tracked(context: &Context, value: Node, depth: usize) -> Option<Type> {
     let value = unwrap(value);
     let resolver = context.resolver;
     if depth > DEPTH {
@@ -145,7 +145,7 @@ fn superclass(context: &Context, own: &str) -> Option<String> {
 
 /// The class javac names in the call it writes: the receiver's declared type, the class itself for a call on
 /// `this`, its superclass for `super`.
-fn written_owner(context: &Context, own: &str, call: Node) -> Option<String> {
+pub fn written_owner(context: &Context, own: &str, call: Node) -> Option<String> {
     match call.child_by_field_name("object") {
         None => Some(own.to_string()),
         Some(object) if object.kind() == "this" => Some(own.to_string()),

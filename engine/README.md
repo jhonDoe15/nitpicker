@@ -1339,6 +1339,98 @@ labs (`no_side_effect` and the lab notes):
   judged wrong.
 The SpotBugs detectors behind these patterns still run in SpotBugs for their other patterns.
 
+### URLs in maps and sets
+
+URLProblems' two patterns of #2532 (`src/java/spotbugs/dumb/urls.rs`), labs in
+`tests/fixtures/spotbugs/url_maps*`, all priority 1 and level `note`. SpotBugs no longer runs URLProblems.
+
+DMI_COLLECTION_OF_URLS:
+- A field, method or class whose generic signature holds a type whose simple name ends in `Map`, `Set` or
+  `Hashtable` (any class, by name only: `XHashtable<URL>` counts, `Dictionary<URL, …>` and `List<URL>` do not)
+  with `java.net.URL` itself as first type argument, at any depth (`Map<String, Set<URL>>`, `Set<URL>[]`,
+  `Comparable<Set<URL>>`, a type parameter bound, `Map<@A URL, …>`). Wildcards (`? extends URL`), a type
+  variable bounded by `URL` and later arguments do not count;
+  lambdas have no signature. A field has no line; a method sits on its first line of code, without one when
+  abstract; the accessor and canonical constructor javac writes for a record on the `record` line; a class on
+  its first line of code, an anonymous class on the `{` of its body.
+- A call on a receiver tracked as exactly `java.util.HashMap` (`put`, `get`, `containsKey`, `remove`) or
+  `java.util.HashSet` (`add`, `contains`, `remove`) whose first argument is tracked as `java.net.URL`; the type
+  is tracked as for DM_DEFAULT_ENCODING (what was stored; a cast to `Object` keeps `URL`). One finding per method
+  and called method; the SARIF place is the called method of `HashMap` or `HashSet`. Calls through `super.` and
+  arguments returned as a type variable (`requireNonNull(url)`) do not count, here and in the next kind.
+- A call javac writes against `java.util.Map` or `java.util.HashMap` named `get`, or `java.util.Set` or
+  `java.util.HashSet` named `contains` (not `TreeMap.get`, `Collection.contains`, `containsKey`), with an argument
+  tracked as `java.net.URL`, whatever the receiver holds: one finding per method, at the first, placed on the
+  method. It comes on top of the previous kind and of a signature finding of the same method.
+
+DMI_BLOCKING_METHODS_ON_URL: `equals(Object)` or `hashCode()` called on a receiver declared `java.net.URL`
+(`((Object) url).equals(…)` and `Objects.equals` are not); one finding per method and called method.
+
+Methods of enum constant bodies count like those of anonymous classes. Known gap (#2668): SpotBugs
+types a `final` field initialised with `null` as `Object`, which the engine does not.
+
+On the six comparison code bases, SARIF results, same / missed / extra: Nacos 2 / 0 / 0 (two blocking calls),
+the others 0 / 0 / 0.
+
+### String and boxing calls
+
+Eight patterns of DumbMethods (#2532, `src/java/spotbugs/dumb/boxing.rs`), labs in
+`tests/fixtures/spotbugs/boxed_calls*`, all level `note`. Each is reported once per method (the parsing and
+compare patterns once per method and box class), and of two findings the better priority is kept.
+- DM_STRING_CTOR (`new String(String)`), DM_STRING_VOID_CTOR (`new String()`) and DM_BOOLEAN_CTOR (any
+  `new Boolean(…)`): priority 2, on the line of the constructor call, which comes after its arguments.
+- DM_BOXED_PRIMITIVE_FOR_PARSING: `Integer`, `Long`, `Double` or `Float` `.valueOf(String)` unboxed right away to
+  its own primitive: `.intValue()` and the like, a primitive target (`long x = Integer.valueOf(s)` counts), an
+  operand of arithmetic, a comparison with a primitive, a unary operator, an array index or size, a cast to a
+  primitive, a switch selector, a compound assignment, or a ternary whose type is primitive (not one with two
+  boxed branches). Not `Short`, `Byte`,
+  `Boolean`, `valueOf(s, radix)`, `Integer.valueOf(s).longValue()`, nor a value stored first. Priority 1, on the
+  line of the unboxing call, else where the `valueOf` expression starts; the SARIF place is `Integer.parseInt(String)` and so on.
+- DM_BOXED_PRIMITIVE_TOSTRING: `toString()` on `Integer.valueOf(int)` or on a cast of an `int` to `Integer`,
+  priority 1 (the same with the other boxes is not reported), or on `new Box(primitive)` of any box, priority 2.
+  On the `toString` call's line, placed at `Integer.toString(int)`.
+- DM_BOXED_PRIMITIVE_FOR_COMPARE: `compareTo` of a box whose receiver was boxed from a primitive (`valueOf`, a
+  cast, a ternary of those, or a local that holds only such values; not `new`) and whose argument is a primitive or such a value.
+  Priority 1, `Byte` 2, `Boolean` 3; on the `compareTo` call's line, placed at `Integer.compare(int, int)`.
+- DM_NEW_FOR_GETCLASS: `getClass()` right on a `new` object, also through a cast, anonymous classes too, not
+  arrays; priority 2.
+- Known gap (#2667): SpotBugs keeps the first finding of a method in bytecode order (a `for` update after
+  its body, a `finally` copy before the `catch` handlers); the engine keeps the first in source order.
+- DM_STRING_TOSTRING (`toString()` on a `String`) is priority 3, which `-medium` hides, so the engine reports none.
+
+On the six comparison code bases, SARIF results, same / missed / extra: Guava 1 / 0 / 0, jackson-databind
+1 / 0 / 0, MyBatis 1 / 0 / 0, the others 0 / 0 / 0. DumbMethods still runs in SpotBugs for its other patterns.
+
+### Threads, exits and the collector
+
+Eight patterns of DumbMethods (#2532, `src/java/spotbugs/dumb/threads.rs`), labs in
+`tests/fixtures/spotbugs/thread_calls*` and `finalizers_on_exit` (compiled with `--release 8`, the only JDK
+where the method exists).
+- DM_GC: `System.gc()` or `Runtime.gc()`, priority 1, once per method; not in a method whose name starts or ends
+  with `gc` (case-sensitive: `doGc` and `agcb` are reported) or starts with `test`, nor in a non-private
+  `void main()` or `void main(String[])` (other `main` methods are reported).
+- DM_EXIT: `System.exit(int)`, priority 2, once per method; not `Runtime.exit` or `halt`, not in a method whose
+  name contains `exit`, `Exit` or `main` (`EXIT` and `Main` are reported), and priority 3 (hidden) in a static method or initializer and in
+  a lambda that does not use `this`.
+- DM_RUN_FINALIZERS_ON_EXIT: `System.` or `Runtime.runFinalizersOnExit(…)`, matched by name, priority 1.
+- DMI_THREAD_PASSED_WHERE_RUNNABLE_EXPECTED: an argument declared exactly `java.lang.Thread` (not a subclass, not
+  a call returning a type variable) for a parameter declared `Runnable` of any method or constructor, not through
+  `super.`; priority 2, once per method and called method, placed at the called method as javac writes it (owned
+  by the receiver's class), shown without the current class and package. Known gaps (#2669): `super(t)`
+  and `this(t)`, anonymous classes (`new B(t) { }`), `(Runnable) t` and ternary arguments.
+- DMI_FUTILE_ATTEMPT_TO_CHANGE_MAXPOOL_SIZE_OF_SCHEDULED_THREAD_POOL_EXECUTOR: `setMaximumPoolSize` on a receiver
+  declared `ScheduledThreadPoolExecutor` itself (not a subclass, `super.` or an anonymous subclass), priority 1,
+  once per method.
+- DM_MONITOR_WAIT_ON_CONDITION: `wait(…)` on a receiver declared as a class that implements `Condition`; javac
+  writes `Object.wait` for a receiver declared `Condition`, which SpotBugs does not report; a cast to `Object` is
+  seen through. Priority 1.
+- DM_USELESS_THREAD is priority 3 only, and DMI_SCHEDULED_THREAD_POOL_EXECUTOR_WITH_ZERO_CORE_THREADS is not
+  reported for `new ScheduledThreadPoolExecutor(0)` or `Executors.newScheduledThreadPool(0)`; the engine reports
+  neither.
+
+On the six comparison code bases, SARIF results: Nacos 1 / 0 / 0 (a thread passed as a `Runnable`), the others
+0 / 0 / 0.
+
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in
