@@ -234,6 +234,11 @@ impl<'a> Resolver<'a> {
         Resolver { bounded: true, ..self.symbolic() }
     }
 
+    /// A second resolver for the same file whose types keep bounded wildcards.
+    pub fn wildcards(&self) -> Resolver<'a> {
+        Resolver { bounded: true, ..Resolver::new(self.index, self.file, self.scope) }
+    }
+
     /// The class a simple name stands for at a place. Every place directly inside the same block or class body
     /// gets the same answer, so it is kept per block or body.
     fn simple(&self, at: Node, name: &str) -> Option<String> {

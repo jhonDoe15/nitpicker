@@ -795,6 +795,9 @@ impl<'a> Resolver<'a> {
     /// The class a call gives whatever its type variables stand for: enough to pick among overloads while the
     /// type arguments still wait for the context.
     fn erased_result(&self, argument: Node) -> Option<Type> {
+        if argument.kind() == "object_creation_expression" {
+            return self.written_creation(argument).map(|written| written.erased());
+        }
         if argument.kind() != "method_invocation" {
             return None;
         }
@@ -1144,12 +1147,50 @@ impl<'a> Resolver<'a> {
         if creation.field("type").is_none_or(|kind| kind.kind() != "generic_type") {
             return Some(written);
         }
-        let Some(call) = self.resolve_constructor(creation) else { return Some(written) };
+        let Some(call) = self.resolve_constructor(creation) else { return Some(self.diamond_from_target(creation, info).unwrap_or(written)) };
         let map = self.call_map(&call, creation, true);
         let inferred: Vec<Type> = info.type_parameters.iter().map(|(name, _)| Type::Variable(name.clone()).substitute(&map)).collect();
         // PMD leaves the type raw when a type parameter bounded by the class itself, `B extends X<B>`, stays undecided.
         let circular = info.type_parameters.iter().zip(&inferred).any(|((_, bound), found)| bound.name() == written.name() && found == bound);
         if circular || inferred.iter().any(Type::open) { Some(written) } else { Some(Type::Class(written.name(), inferred)) }
+    }
+
+    /// The type of a diamond whose constructor is not known, an argument's type being unknown: the type the place
+    /// asks for decides the type arguments, as PMD infers them.
+    fn diamond_from_target(&self, creation: Node, info: &ClassInfo) -> Option<Type> {
+        if !call_arguments(creation).into_iter().any(|argument| self.is_busy(unwrap(argument)) || self.type_of(argument).is_none()) {
+            return None;
+        }
+        if !self.busy.borrow_mut().insert(creation.id()) {
+            return None;
+        }
+        let wanted = self.target(creation, true);
+        // The second resolver keeps bounded wildcards; it starts with what this one is already working on, so that
+        // it does not come back to this creation.
+        let wildcards = self.wildcards();
+        wildcards.busy.borrow_mut().extend(self.busy.borrow().iter().copied());
+        self.busy.borrow_mut().remove(&creation.id());
+        let Some(wanted @ Type::Class(..)) = wanted else { return None };
+        // PMD leaves the type arguments open when the place asks for a wildcard.
+        fn wild(kind: &Type) -> bool {
+            match kind {
+                Type::Wildcard | Type::Bounded(..) => true,
+                Type::Class(_, parts) => parts.iter().any(wild),
+                Type::Array(element) => wild(element),
+                _ => false,
+            }
+        }
+        if wildcards.target(creation, true).is_none_or(|written| wild(&written)) {
+            return None;
+        }
+        let to = wanted.name();
+        let variables: Vec<String> = info.type_parameters.iter().map(|(name, _)| name.clone()).collect();
+        let made = Type::Class(info.name.clone(), variables.iter().cloned().map(Type::Variable).collect());
+        let parts = self.index.arguments_as(&made, &to)?;
+        let mut map = HashMap::new();
+        self.unify(&Type::Class(to.clone(), parts), &wanted, &variables, &mut map);
+        let inferred: Option<Vec<Type>> = variables.iter().map(|name| map.get(name).cloned()).collect();
+        inferred.filter(|inferred| !inferred.iter().any(Type::open)).map(|inferred| Type::Class(info.name.clone(), inferred))
     }
 
     fn unify(&self, pattern: &Type, actual: &Type, variables: &[String], map: &mut HashMap<String, Type>) {
@@ -1662,6 +1703,13 @@ impl<'a> Resolver<'a> {
                 (!returned.open() && returned != Type::Primitive("void")).then_some(returned)
             }
             "ternary_expression" if holder.field("condition") != Some(inner) => self.target(holder, arguments),
+            // An arm of a switch expression, `case 1 -> value;` or `yield value;`, is typed like the whole switch.
+            "expression_statement" => {
+                let rule = crate::engine::source::parent(holder).filter(|rule| rule.kind() == "switch_rule")?;
+                let switch = crate::engine::source::parent(crate::engine::source::parent(rule)?)?;
+                (switch.kind() == "switch_expression").then(|| self.target(switch, arguments)).flatten()
+            }
+            "yield_statement" => self.target(crate::engine::source::ancestor(holder, &["switch_expression"])?, arguments),
             "array_initializer" => match self.type_of(holder)? {
                 Type::Array(element) => Some(*element),
                 _ => None,
@@ -2040,3 +2088,4 @@ impl<'a> Resolver<'a> {
             && wanted.iter().zip(&method.parameters).all(|(want, formal)| *want == "_" || formal.name() == *want)
     }
 }
+
