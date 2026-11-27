@@ -367,16 +367,32 @@ utility class, a private method that only a generated `toString` or delegate cal
 generated code keeps the class around it from being static, as in Error Prone. `tests/fixtures/errorprone-lombok-members`
 comes with its class files. Without class files these differences stay (#2583).
 
-Lombok moves the `@deprecated` and `@param` sections of a field's doc comment to the accessors it writes, and
-Error Prone then reports `EmptyBlockTag` at the field instead of at the tag: one of the rewrites of written code
-(#2584).
+Lombok also rewrites code the programmer wrote, and Error Prone checks the rewritten statements. The engine does
+not model these rewrites yet (#2723); with `--lombok` it lists each place as a `_LombokRewrite` row whose message
+names the feature (`src/java/errorprone/lombok_rewrites.rs`), so a run can leave that file to Error Prone instead of
+guessing (#2584):
+
+- `SneakyThrows`, `Cleanup`, `Synchronized`, `Locked`: the body or the rest of the block wrapped in a
+  try/catch, a try/finally, a synchronized block or lock calls.
+- `NonNull` on a parameter or record component: a null check before the written statements.
+- `ExtensionMethod` and `Helper`: calls rewritten to static calls or to a helper instance.
+- `Builder.Default` and `Getter(lazy)`: the field's initializer moved into a generated method.
+- `onX`: an `onMethod`, `onParam` or `onConstructor` argument, which Lombok takes off the annotation.
+- `val`: a `val` or Lombok `var` local with modifiers or annotations, after which Lombok adds a `@val` annotation.
+- `Javadoc`: a field with a doc comment that gets a getter, setter, wither or builder setter. Lombok copies the
+  comment to the accessor and strips sections and `@param` or `@return` lines from the field's own; Error Prone
+  then reports every finding in that comment at the start of the field.
+
+`tests/fixtures/errorprone-lombok-rewrites` uses each of them, also through on-demand and static imports.
 
 `parity/errorprone/lombok/corpus.sh <work folder> <Lombok version>...` compares the engine with Error Prone on
 Lombok's own transformation test sources (`test/transform/resource/before`, fetched with the release, not kept
 here): each file compiled alone with javac 21, its `//CONF:` lines as a `lombok.config` (its `//version`
 lines are not followed: a file that does not compile on 21 is counted as such), Lombok on the processor
 path, the libraries of Lombok's own tests and its stubs on the class path, and Error Prone with the preset's
-`checks.json` (NullAway off). A check that crashes is switched off and the file compiled again, as Java runs do.
+`checks.json` (NullAway off). A check that crashes is switched off and the file compiled again, as Java runs do;
+the engine's findings of that check are then not compared in that file. Files with a `_LombokRewrite` row are
+counted per feature and not compared, since a run leaves them to Error Prone.
 It prints a table per version: files compared, findings the same, only from Error Prone, only from the engine,
 with another sentence, and inside generated code; `ONLY=<file pattern>` runs part of the files. Real runs read the
 Lombok version from the `Lombok-Version` line of the jar's manifest and keep a source set on Error Prone with
@@ -385,21 +401,25 @@ the reason in the log when the version is outside the range compared (`TESTED_LO
 Prone (see the list above); the comparison runs the engine with `--lombok` and the class files Error Prone's
 compile wrote, as those runs will.
 
-Measured on 2026-11-27 with the class files (#2583; all ported checks, NullAway off; findings same / only Error
-Prone / only engine / other sentence). Of the findings only from Error Prone, about 70 per version sit on a class
-annotation at the start of a file without a package statement:
+Measured on 2026-11-27 with the class files and the rewrite rows (#2583, #2584; all ported checks, NullAway off;
+findings same / only Error Prone / only engine / other sentence). The findings only from Error Prone sit on a class
+annotation at the start of a file without a package statement, except one `NonCanonicalType` that does not depend on
+Lombok (#2724); the other sentences are Error Prone fixes printed from positions Lombok moved. Lombok 1.18.36 shares
+the annotations it copies from a field to the accessors and constructors it writes, so Error Prone reports a
+`UnnecessarilyFullyQualified` on a written `@lombok.NonNull` at the generated position: the 12 findings only from
+the engine there. The range compared (`TESTED_LOMBOK`) therefore starts at 1.18.38.
 
-| Lombok | Compared | Do not compile alone | Identical | Findings | Inside generated code |
-| --- | ---: | ---: | ---: | --- | ---: |
-| 1.18.36 | 354 | 61 | 268 | 1680 / 80 / 97 / 35 | 989 |
-| 1.18.38 | 355 | 61 | 279 | 1720 / 76 / 82 / 18 | 974 |
-| 1.18.40 | 356 | 61 | 279 | 1725 / 77 / 82 / 18 | 975 |
-| 1.18.42 | 365 | 61 | 288 | 1836 / 77 / 82 / 18 | 975 |
-| 1.18.44 | 367 | 61 | 288 | 1824 / 78 / 83 / 20 | 976 |
-| 1.18.46 | 371 | 61 | 290 | 1831 / 81 / 85 / 20 | 985 |
-| 1.18.48 | 374 | 63 | 290 | 1828 / 85 / 86 / 20 | 985 |
+| Lombok | Compared | Left to Error Prone | Do not compile alone | Identical | Findings | Inside generated code |
+| --- | ---: | ---: | ---: | ---: | --- | ---: |
+| 1.18.36 | 269 | 85 | 61 | 227 | 1254 / 62 / 12 / 10 | 592 |
+| 1.18.38 | 270 | 85 | 61 | 235 | 1269 / 57 / 0 / 10 | 582 |
+| 1.18.40 | 271 | 85 | 61 | 235 | 1274 / 58 / 0 / 10 | 583 |
+| 1.18.42 | 280 | 85 | 61 | 244 | 1385 / 58 / 0 / 10 | 583 |
+| 1.18.44 | 282 | 85 | 61 | 245 | 1373 / 59 / 0 / 12 | 584 |
+| 1.18.46 | 286 | 85 | 61 | 248 | 1380 / 62 / 0 / 12 | 593 |
+| 1.18.48 | 289 | 85 | 63 | 248 | 1377 / 66 / 0 / 12 | 593 |
 
-Error Prone's rows on the 351 files compared in all seven are the same for 1.18.40 and 1.18.42 and for 1.18.44 and
+Error Prone's own rows on the 351 files that compile alone in all seven (rewrite rows aside) are the same for 1.18.40 and 1.18.42 and for 1.18.44 and
 1.18.46; each other step changes some (16 files from 1.18.36 to 1.18.38, 32 files, most of them `@SuperBuilder`, from 1.18.46 to
 1.18.48).
 
@@ -765,6 +785,39 @@ runs and SpotBugs no longer runs the detector. Measured (`tests/fixtures/spotbug
 - Instance initializer blocks and field initializers are reported once per constructor that does not start with
   `this(...)`, as javac copies them there; static ones in the static initializer.
 
+### Unreleased locks
+
+`src/java/spotbugs/resources/` rebuilds FindUnreleasedLock: `UL_UNRELEASED_LOCK` and
+`UL_UNRELEASED_LOCK_EXCEPTION_PATH`. On the seven code bases SpotBugs reports 5 (Elasticsearch `server` 4, Guava 1);
+the engine gives the same 4 of them, misses `Cache.forEach` and adds `IndexShard.withEngine` on Elasticsearch, so
+SpotBugs still runs FindUnreleasedLock in real runs until those are explained.
+`resources/flow.rs` follows each `lock()` call (a site) over the flow graph to every way out of the method, telling
+paths that took an exception edge from those that did not. SpotBugs never reports `CWO_CLOSED_WITHOUT_OPENED` on
+lab code (an `unlock()` with no `lock()` before it, twice in a row or on some paths only), so the engine does not
+either.
+
+What SpotBugs does, as measured (`tests/fixtures/spotbugs/unreleased*`):
+
+- Only `lock()` without arguments on a value whose type is `java.util.concurrent.locks.Lock` or a subtype takes a
+  lock; `lockInterruptibly()` and `tryLock()` take nothing, and calls named `lock`/`unlock` on other classes count
+  for nothing. A method that never calls `unlock()` on a `Lock` is not reported (it takes the lock for its caller);
+  an `unlock()` of another lock is enough. Methods whose name holds `lock` in any case are skipped, lambdas too
+  when the method around them is (javac names them after it).
+- `unlock()` releases the locks taken on the same object as the code names it: a field by its name (even after a
+  store to it), the same parameter or local value, any array element (`a[0]` and `b[1]` alike), and any call result
+  (`readLock()` and `writeLock()` alike). A call result, a field, a parameter and each `new` are told apart. A lock
+  taken twice is released by one `unlock()`. A lock reached through the instance around an inner class (javac's
+  `this$0`) takes nothing, nor does a field of the file that nothing stores into (SpotBugs takes it to be null).
+- A way out still holding a lock is a `return`, the end of the method, or an exception leaving it. Exception edges
+  are those of dead stores (above), except that `lock()` and `unlock()` themselves, a `ReadWriteLock`'s
+  `readLock()` and `writeLock()`, reading a field of another
+  object, a cast to a type the value already has and arithmetic on two literals throw nothing; writing a field of
+  another object, `++` on it and an array's `length` do throw, and so does a failing `assert`.
+- `UL_UNRELEASED_LOCK` (priority 1) when a path that took no exception edge holds the lock where it leaves,
+  `UL_UNRELEASED_LOCK_EXCEPTION_PATH` (priority 2) when only paths through an exception edge do (a `catch` that
+  returns counts as such a path). Each pattern at most once per method, on the line of the first such `lock()` call;
+  both when one lock leaks on a normal path and another only on exception paths. Lambda bodies count as methods.
+
 ### Unchecked reads and uninitialized reads
 
 `src/java/spotbugs/values/` rebuilds ReadReturnShouldBeChecked (`SR_NOT_CHECKED`, `RR_NOT_CHECKED`) and
@@ -804,6 +857,106 @@ initializers too. Measured (`tests/fixtures/spotbugs/values_reads*`, `values_uni
 - Not measured: the hidden parameters of local classes, an `int` parameter only ever incremented (`iinc`).
   Anonymous classes and enum constant bodies are not checked yet, though SpotBugs checks their implicit
   constructors.
+
+### Hard-coded passwords and keys
+
+`src/java/spotbugs/values/secrets/` rebuilds `HARD_CODE_PASSWORD` and `HARD_CODE_KEY`, which four FindSecBugs
+detectors report. Both run on the engine in real runs; SpotBugs filters them out. Measured
+(`tests/fixtures/spotbugs/secrets_*`):
+
+- Each class is followed method by method: the static initializer, then the constructors and methods in source
+  order (field initializers inside each constructor that does not start with `this(...)`), then the lambdas. A
+  hard-coded value is a string constant, or a `char[]`, `byte[]` or `BigInteger` made from constants: a
+  `toCharArray()`, `getBytes()` or `getBytes(String)` of a constant (or `null`), a non-empty array of constant
+  elements, a `BigInteger` whose `String` and `byte[]` arguments are all hard-coded. `trim()`, `toString()`,
+  `intern()` and `new StringBuilder(constant).toString()` keep a constant. A local holds one only when every path
+  gives one; a string ternary needs the same constant on both arms. A string field holds the constant the file
+  stores in it when it stores only one; a field with a store of a hard-coded array or number holds it for the
+  methods visited after the store.
+- Priority 1 for a hard-coded argument at a checked position of a JDK call (`secrets/sinks.tsv`), matched on the
+  class javac names in the call: subclasses are not checked. The place is a field an argument was read from, else
+  the call that made the hard-coded value, else the sink.
+- Priority 2, once per class on its first line, when the class stores a hard-coded array or number in a field whose
+  name holds `pass`, `pwd`, `psw`, `secret`, `key`, `cipher`, `crypt`, `des`, `aes`, `mac`, `cert` or `sign`, in
+  any case: `HARD_CODE_PASSWORD` when one of them is a `char[]`, else `HARD_CODE_KEY`.
+- `HARD_CODE_PASSWORD` at priority 2 on the calling method for a constant handed to a method named `password` or
+  `pwd` with one `String` parameter, or one whose name starts with `set` and holds one of them; to `put`, `putIfAbsent` or
+  `setProperty` returning `Object` with a constant key holding `password` or `pwd`; and as the passphrase of
+  `JSch.addIdentity(String, String)`. A constant here also follows the taint table's one-source JDK methods and
+  methods of the file that return a constant or their argument.
+- Not measured: fields of other files, sinks of libraries beyond the stubs in `secrets_libraries`.
+
+### Useless conditions
+
+`src/java/spotbugs/values/conditions/` rebuilds RedundantConditions: `UC_USELESS_CONDITION` and
+`UC_USELESS_CONDITION_TYPE`. Both run on the engine in real runs except in Lombok modules, whose generated setters
+the engine does not see. Measured (`tests/fixtures/spotbugs/values_uc_*`):
+
+- Followed values: locals and parameters of the integer types, `char` and `boolean` (boxed ones too, named as the
+  variable, also through `intValue()` and the like), instance fields of those types (boxed too) except `long` read
+  through `this`, `this$0` (a field of the class just
+  outside, from an inner class) or a chain of fields from a local (`this.next.f`, `o.f`), the `length` of an array
+  and `length()` of a `String` held that way. Static fields, `long` fields, `double`, `float`, other calls and a value
+  compared with another variable are not followed; neither is code of lambdas, field initializers or instance
+  initializer blocks.
+- Only a comparison with a constant (`x < 3`, `3 > x`, a constant field, a `char` literal, `flag`, `flag == true`)
+  narrows a value; a store forgets it, even of a constant. `int v = f` makes `v` stand for `this.f` until either
+  changes. A side a known test rules out still runs on, with no value left for the variable: it decides no later
+  test and adds nothing where paths meet. Paths that meet keep the union of what each knows. The failing side of an `assert` ends the method, and the
+  test of an `assert` is never reported.
+- A field read is forgotten by a store into the same field on any object, and by a call when some code of the run
+  stores into the field outside constructors and initializers, unless the call has no side effect for SpotBugs: a
+  JDK method the return-value table (`returns/jdk.rs`) marks so, made on a JDK class (`E.A.name()` on an enum of the
+  run forgets) and without varargs (`Objects.hash` forgets), or a method of the file whose body is not empty, stores
+  only into locals and calls only such methods, itself included. Making an object of the file forgets the same
+  fields when its constructor stores elsewhere than into its own fields or makes such calls; of the JDK, only
+  `Thread`, `File`, `Random`, `Scanner`, `Date`, `ThreadLocal` and `ReentrantLock` were measured to forget. Making a
+  lambda, an anonymous class or an array and an array store forget nothing; entering a `synchronized` block is a
+  call.
+- `UC_USELESS_CONDITION`: what the method knows decides the comparison. `UC_USELESS_CONDITION_TYPE`: the range of
+  a `short` or `char` decides it alone, whatever else is known; never for a `char` against 0 or less; for a `byte`
+  only against -128 (`b < -128`, `b >= -128`); never for other types (an `int` against `Integer.MAX_VALUE` is
+  silent).
+- Priority 1 when the side the comparison rules out starts code that no path reaches without taking a side some
+  known test of the method rules out; the `0`/`1` arms of
+  `test ? 1 : 0` do not count, nor does a comparison javac compiles to a value (`q = x > 3`, `return x > 3`), which
+  is always 2. A priority 2 finding is dropped when another test compared the value with the same constant before
+  (for the type, when the constant is inside the type's range or next to it). A test whose two sides reach the same
+  code (`if (x < 3) {}`) is not reported. Of the findings of a method with the same pattern and fact, only one is
+  kept: the first in priority, then the last in the code (a test in a `finally` block counts for each copy javac
+  makes of it).
+- The message states what is known: the comparison when it always holds, its negation when it never does
+  (`x >= 3`, `this.flag == false`), on the line javac gives the comparison. A constant from 32 to 127 shows its
+  character, `x >= 50 ('2')` (not for a `long`), one above 128 its hex form, `x >= 200 (0xc8)`, a `long` beyond the
+  `int` range `L`; a `char` shows its literal (`'\n'`, `'\\'`, `'\''`) where it has one.
+- Not measured: purity of methods and constructors of other files (methods are treated as changing fields,
+  constructors as not), JDK constructors beyond the measured ones (treated as not changing fields), a `char` against
+  a negative constant inside a narrowed range.
+
+### Optional nulls and end-of-stream casts
+
+Two detectors SpotBugs never fired on the benchmark projects: OptionalReturnNull (`NP_OPTIONAL_RETURN_NULL`, in
+`src/java/spotbugs/methods/booleans.rs`) and FindBadEndOfStreamCheck (`EOS_BAD_END_OF_STREAM_CHECK`,
+`src/java/spotbugs/values/streams/`). `NP_OPTIONAL_RETURN_NULL` runs on the engine in real runs and SpotBugs no
+longer runs its detector; `EOS_BAD_END_OF_STREAM_CHECK` is rebuilt but stays on SpotBugs until the gaps below are
+closed. Measured one class per SpotBugs run (`tests/fixtures/spotbugs/optional_returns`, `end_of_stream*`):
+
+- `NP_OPTIONAL_RETURN_NULL` follows `NP_BOOLEAN_RETURN_NULL` (a `null` handed straight to `return`, also as the
+  last arm of `?:`, the arm javac keeps of a `?:` with a constant condition, or the last case of a `switch`
+  expression, and in lambda bodies; one per method) for a method that returns `java.util.Optional` or Guava's
+  `Optional` (not `OptionalInt` and the like), always priority 1. For both, a `finally` with no statements is no
+  cleanup: javac writes no handler for it.
+- `EOS_BAD_END_OF_STREAM_CHECK`: an `int` returned by a `read` the compiled code makes on `FileInputStream` or
+  `FileReader` (or a subclass of `FileInputStream` that does not declare it), cast to `byte` or `char` (through
+  `(int)` casts and unary `+`) and compared with -1 (`==`, `!=`) or with a literal 0 (`< 0`, `>= 0`, `0 > x`,
+  `0 <= x`). The cast value counts on the stack, or in variables once the `read` result was kept in one, until
+  that first variable is written again. Priority 2, one per method. SpotBugs keeps the detector's state from one
+  method and class to the next, so a cast in one class can be reported at a comparison in the next one it
+  analyses; that order-dependent leak is not copied.
+- Not copied yet: for `EOS_BAD_END_OF_STREAM_CHECK`, code in initializer blocks, and how SpotBugs merges the
+  state where paths meet (a write of the first variable in a branch that returns, or after the comparison inside
+  a loop); for both patterns, a result marked nullable in other ways SpotBugs honours (an inherited JSR-305 or
+  SpotBugs `@Nullable`, `@Nonnull(when = MAYBE)` and the like, `@UnknownNullness`).
 
 ### Casts and `instanceof`
 
@@ -937,6 +1090,115 @@ the build makes, and finds most sinks by name). Known differences (#2632 for the
   calls other code; the engine takes the element from the value of the iterable. In the other direction, in a lab
   only, a `for` over some JDK collections made in the method (`HashSet`, `ArrayDeque`, `LinkedList`, a `keySet()`)
   is safe for FindSecBugs and unknown for the engine.
+
+### Crypto patterns (FindSecBugs)
+
+Ten FindSecBugs detectors that look at one call, constructor or class (#2534, `src/java/spotbugs/crypto/`), labs in
+`tests/fixtures/spotbugs/crypto_*`. FindSecBugs 1.14.0 is LGPL: what follows was measured on labs, its code and
+configuration were not read. The detectors still run in SpotBugs (on Gradle `-omitVisitors` cannot name plugin
+detectors yet, #2633); their patterns are excluded there and come from the engine.
+
+- WEAK_MESSAGE_DIGEST_MD5 (priority 1) and WEAK_MESSAGE_DIGEST_SHA1 (priority 2): `MessageDigest.getInstance` and
+  Commons Codec `DigestUtils.getDigest(String)` of a name that is `MD2`, `MD4`, `MD5` or `SHA`, `SHA1`, `SHA-1` in
+  any case (the message shows it in capitals); `Signature.getInstance` judges the part before the first `with`
+  (case kept: `SHA1WithRSA` is not reported); `DigestUtils.md2*`, `md5*`, `sha`, `sha1*`, `shaHex` and the
+  `get…Digest()` methods by their fixed name. Not `Mac` (`HmacMD5`), `getDigest(name, fallback)` or `new
+  DigestUtils(…)`.
+- `Cipher.getInstance`, every overload: CIPHER_INTEGRITY unless the name starts with `RSA`, is `ECIES`, or holds
+  `/GCM/`, `/CCM/`, `/EAX/`, `/OCB/`, `/CWC/` or `/GCM-SIV/`; ECB_MODE for `AES`, `DES` or `DESede` alone or
+  followed by `/ECB/`; PADDING_ORACLE when the name holds `/CBC/PKCS5Padding` (all priority 1, case kept).
+- DES_USAGE (`DES` or `DES/…` in any case) and RSA_NO_PADDING (`RSA/…/NoPadding`) for `Cipher.getInstance` and
+  `KeyGenerator.getInstance`, priority 2. TDES_USAGE is priority 3 and never shown.
+- The name is what SpotBugs' operand stack knows: constants, `+` of known parts, `toString()` and `intern()` of
+  one, a `?:` with the same string on both sides, a local whose reaching stores all give one string, and a field
+  whose stores in the whole run all give one string (an instance field also needs every constructor not starting
+  with `this(...)` to set it, in its own code, an initializer or an initializer block; a field Lombok may set holds
+  nothing known). Findings that read a field wait until every file is read. Parameters, calls such as
+  `String.valueOf` or `toUpperCase`, and values captured by lambdas are unknown.
+  DES_USAGE is never reported for a value read from a field (#2766); more folds SpotBugs makes are #2767.
+- CUSTOM_MESSAGE_DIGEST: a class whose direct superclass is `java.security.MessageDigest` (abstract, local and
+  anonymous ones too, not `MessageDigestSpi` or a subclass of such a class), on the first line of the class.
+- NULL_CIPHER and HAZELCAST_SYMMETRIC_ENCRYPTION: each call of the constructor of `NullCipher` or Hazelcast's
+  `SymmetricEncryptionConfig`, also in an anonymous class and in the constructors of a class extending one.
+- ESAPI_ENCRYPTOR: `encrypt` and `decrypt` called on a value written as ESAPI's `Encryptor` itself (not a
+  subinterface or `JavaEncryptor`).
+- BAD_HEXA_CONVERSION: `Integer.toHexString` after a call of `digest` written against `MessageDigest` in a method's
+  instructions (javac's order: a `for` update after the body, a `finally` block after the `try` block and after
+  each `catch` block); what is converted does not matter. Once per method, on the line of its first instruction.
+- RSA_KEY_SIZE, BLOWFISH_KEY_SIZE and STATIC_IV (priority 2). A size is an `int` or `char` constant from -32768 up,
+  outside -1 to 5 (values javac pushes with `iconst` or `ldc` are not seen); of a `?:` with two constant sides it is
+  the second. A local that is not a constant variable is not one.
+  - RSA_KEY_SIZE: each `initialize(size)` or `initialize(size, random)` written against `KeyPairGenerator` itself,
+    size under 1024, when a call of `KeyPairGenerator.getInstance(name)` or `getInstance(name, provider name)` with a
+    name starting with `RSA` in any case always runs before it in the method (paths of exceptions left out), on any
+    generator. SpotBugs' path rule is looser than "always" in places (#2778).
+  - BLOWFISH_KEY_SIZE: once per method, on the last `init(size)` or `init(size, random)` written against
+    `KeyGenerator` itself, size under 128, when the method calls `KeyGenerator.getInstance` with the constant
+    `Blowfish` as its last argument, anywhere.
+  - STATIC_IV: each `new IvParameterSpec(..)` and constructor of a direct subclass, unless the method calls
+    `Cipher.getIV()` anywhere, or calls `nextBytes` on a value written as `SecureRandom` that always runs before it.
+- Calls are on the line of their `(`. Findings with the same pattern and message on one line of a method are one.
+
+Labs: 435 findings same, none missed or extra. On the comparison code bases, SARIF results: Nacos 2 / 0 / 0
+(WEAK_MESSAGE_DIGEST_MD5, BAD_HEXA_CONVERSION), commons-lang, guava, jackson-databind, javaparser-core and
+mybatis-3 0 / 0 / 0. Elasticsearch could not be built for this run.
+
+### TLS patterns (FindSecBugs)
+
+Eight FindSecBugs patterns of TLS, sockets, mail and LDAP settings (#2534, `src/java/spotbugs/tls/`), labs in
+`tests/fixtures/spotbugs/tls_*`, measured the same way as the crypto patterns and left to the engine the same way.
+
+- WEAK_TRUST_MANAGER and WEAK_HOSTNAME_VERIFIER (priority 2): in a class or interface that is an
+  `X509TrustManager` (directly, through a superclass or a subinterface; `TrustManager` alone does not count), each
+  `checkClientTrusted`, `checkServerTrusted` and `getAcceptedIssuers`, and in a `HostnameVerifier` each `verify`,
+  whose code makes no call and reads no instance field, whatever its parameters. A call is also a `new`, a lambda or
+  method reference, joined strings, boxing, a `for` over a collection, a `switch` on strings or enums, `try` with
+  resources and `assert`; `throw e`, `return null`, static fields, constants, strings javac folds (`"a" + 1`) and
+  stores to fields are not. A local captured by an anonymous class, `Outer.this` and a record component are field
+  reads. On the line of the method's first instruction.
+  Lambdas are not classes and never count.
+- UNENCRYPTED_SOCKET, UNENCRYPTED_SERVER_SOCKET and DEFAULT_HTTP_CLIENT (priority 2): each call of a constructor of
+  `java.net.Socket`, `java.net.ServerSocket` and the no-argument one of Apache HttpClient's `DefaultHttpClient`:
+  `new`, an anonymous class, and a direct subclass's constructors (`super(..)` written or not). The socket message
+  names the class whose code makes the call (the anonymous class for one). Factories are not calls. The body of an
+  enum constant is not followed yet (#2796).
+- INSECURE_SMTP_SSL (priority 1, with FindSecBugs' leading space and spelling): each `setSSLOnConnect(true)` in a
+  method that never calls `setSSLCheckServerIdentity(true)` written against the same class, for calls written
+  against Commons Email's `Email`, `MultiPartEmail`, `HtmlEmail` or `ImageHtmlEmail` (not `SimpleEmail`, not a
+  class of one's own). The argument must be what javac writes as the constant `true` (a constant `?:` or a `final`
+  constant local too); a plain local holding it does not count. A lambda is a method of its own.
+- SSL_CONTEXT (priority 2): `SSLContext.getInstance(protocol)` without a provider, protocol `SSL` in any case.
+- LDAP_ENTRY_POISONING (priority 2): `true` as the flag of `setReturningObjFlag` or the fifth argument of the
+  six-argument `SearchControls` constructor, written against `SearchControls` itself (a direct subclass's
+  `super(..)` counts).
+- SSL_CONTEXT and LDAP_ENTRY_POISONING judge the value as the crypto names are judged: `boolean` constants, locals
+  and fields are followed as strings are. LDAP_ANONYMOUS is priority 3 and never shown.
+
+Labs: all findings and places the same. Nacos (the comparison code base with such findings): WEAK_TRUST_MANAGER 3
+and UNENCRYPTED_SERVER_SOCKET 1, same / missed / extra 4 / 0 / 0.
+
+### Cookie patterns (FindSecBugs)
+
+Four FindSecBugs cookie patterns (#2534, `src/java/spotbugs/cookies/`), labs in `tests/fixtures/spotbugs/cookies`,
+measured and left to the engine like the crypto patterns. Servlet's `javax` and `jakarta` classes behave the same.
+
+- HTTPONLY_COOKIE and INSECURE_COOKIE (priority 2): each `new Cookie(..)` (the class itself) stored straight into a
+  local, unless `setHttpOnly(true)` or `setSecure(true)` is called later in the method's code on a local in the
+  same slot javac gives it, written against that `Cookie` class. Slots, not variables: a call through an alias does
+  not count, and a variable that reuses the slot later covers every cookie stored there before it. Only the
+  constant `true` counts (a constant `?:` or `final` constant local too), wherever the call is. Parentheses and a
+  cast between the `new` and the local do not matter; a cookie returned, passed or stored without a local is not
+  followed. On the line of the `new`. Lambdas, static initializers and the initializers a constructor runs are
+  methods like any other. Code javac leaves out (a `catch` of an empty `try`) is still read (#2796).
+- COOKIE_PERSISTENT (priority 2): `setMaxAge(age)` written against `Cookie` itself with an age of 31536000 seconds
+  or more, the age judged as the crypto names are (`int` and `Integer` fields and locals too, arithmetic of known
+  numbers, `x++`, `x--` and `x op= v`, casts to `int` or `long`, `Integer.valueOf`; a `for` loop's update makes its
+  variable unknown).
+- URL_REWRITING (priority 1): each call of `encodeURL`, `encodeRedirectURL`, `encodeUrl` or `encodeRedirectUrl`
+  written against `HttpServletResponse` itself; method references are not calls.
+- COOKIE_USAGE is excluded by nitpicker's SpotBugs configuration, so CookieReadDetector is not ported.
+
+Labs: all findings and places the same. Nacos: HTTPONLY_COOKIE 2 and INSECURE_COOKIE 2, 4 / 0 / 0.
 
 ### Lombok
 
@@ -1104,8 +1366,8 @@ a `?:` over several lines were not modelled.
 On the six comparison code bases built here, SARIF results, same / missed / extra:
 commons-lang 1 / 0 / 0, MyBatis 1 / 0 / 0, Guava 5 / 0 / 0, jackson-databind 9 / 0 / 0, javaparser-core 1 / 0 / 0,
 Nacos 13 / 0 / 0 (Elasticsearch not built). The jackson-databind results are the seven BC findings, one
-EQ_COMPARETO and one EQ_DOESNT. Real runs give the three patterns to the engine; `FindHEmismatch` and `DumbMethods`
-still run in SpotBugs for their other patterns.
+EQ_COMPARETO and one EQ_DOESNT. Real runs give the three patterns to the engine; `FindHEmismatch` still runs in
+SpotBugs for its other patterns.
 
 Serialization patterns (#2261, `src/java/spotbugs/serial/`, labs in `tests/fixtures/spotbugs/serial_*`). Both look at
 a class that is `Serializable`, not `Externalizable`, not abstract, not an interface, enum or record:
@@ -1541,7 +1803,7 @@ compare patterns once per method and box class), and of two findings the better 
 - DM_STRING_TOSTRING (`toString()` on a `String`) is priority 3, which `-medium` hides, so the engine reports none.
 
 On the six comparison code bases, SARIF results, same / missed / extra: Guava 1 / 0 / 0, jackson-databind
-1 / 0 / 0, MyBatis 1 / 0 / 0, the others 0 / 0 / 0. DumbMethods still runs in SpotBugs for its other patterns.
+1 / 0 / 0, MyBatis 1 / 0 / 0, the others 0 / 0 / 0.
 
 ### Threads, exits and the collector
 
@@ -1685,6 +1947,162 @@ SpotBugs no longer runs IDivResultCastToDouble, WaitInLoop, StartInConstructor a
 On the comparison code bases, SARIF results: guava 2 / 0 / 0 (WA_AWAIT_NOT_IN_LOOP), Nacos 1 / 0 / 0
 (ME_ENUM_FIELD_SETTER), commons-lang, jackson-databind, javaparser-core and mybatis-3 0 / 0 / 0. The saved
 Elasticsearch report has one each of the CEIL cast, WA_NOT_IN_LOOP and SC_START_IN_CTOR, not checked here.
+
+### Bounds, helper calls and the rest of DumbMethods
+
+The last eleven patterns of DumbMethods (#2532, `src/java/spotbugs/dumb/ranges/` and `src/java/spotbugs/dumb/calls/`),
+labs in `tests/fixtures/spotbugs/dumb_ranges*`, `dumb_strings*` and the other `dumb_*` folders added with them. With
+these DumbMethods no longer runs in SpotBugs.
+- RANGE_ARRAY_INDEX: an element read or written (also `a[i]++`, `a[i] += v`) at a known index outside
+  `0..=length-1`; placed on the method. RANGE_ARRAY_OFFSET, RANGE_ARRAY_LENGTH: `System.arraycopy`, `read` and
+  `write(array, offset, length)` written against a class directly in `java.io` (not `GZIPOutputStream`, not a
+  subclass elsewhere) and `new String(array, offset, length)`. An offset is allowed in `0..=size` (`0..=size-1` for
+  `arraycopy`), a length in `0..=size-offset`, an unknown offset counting as 0 and `arraycopy` taking the smaller
+  room of its two arrays; both offsets are checked, then the length. RANGE_STRING_INDEX: `charAt` and
+  `codePointAt` need `0..=length-1`, `substring(begin)` `0..=length`, `substring` and `subSequence(begin, end)`
+  `0..=length` for the begin and `begin..=length` for the end, on a receiver written as `String`. Priority 2,
+  placed on the called method.
+- A finding carries the broken bound: the lowest allowed value below the range, the highest above it, none when
+  the range is empty (then the string message names `File.java:[line N]` instead of the method). An unknown size
+  counts as `Integer.MAX_VALUE`, so only negative values break it, and size minus offset wraps as `int` does. Each
+  value, bound and called method is reported once per method. Code in the branch a constant `if` or `?:` never
+  takes (also a `final` local constant) is skipped, as javac leaves it out.
+- Known sizes and values: a local's stores that reach the use, array creations with a size or initializer, string
+  constants (UTF-16 units), `trim`, `intern` and `toString` of a known string, `new StringBuilder(s).toString()`.
+  A field is followed when it is private or final and declared in the same file: its initializer, the stores in
+  the file, and its default value unless it is final or every constructor (a static initializer for a static
+  field) sets it; a field Lombok may set (`@Setter`, `@Data`, `@Builder` and the like) is not followed. A parameter
+  holds an unknown value until a store that always runs; a store on the other arm of an `if` does not count.
+  SpotBugs also follows other fields across the whole run; the engine does not (#2719).
+  Compound stores to a local (`i += 2`, `i++`) end what is known (#2720); a field holding `System.out` is named
+  by its declared type (#2721).
+- NP_IMMEDIATE_DEREFERENCE_OF_READLINE: a call written against `String` with no arguments right on the result of
+  `readLine()` returning `String`; priority 2, once per method.
+- DMI_CALLING_NEXT_FROM_HASNEXT: an instance `hasNext()` returning `boolean` that calls `next()` on `this` (not on
+  another object, not in a lambda), where `next` erases to an `Object` return; once per method, placed on the
+  class's `next()`.
+- DMI_ANNOTATION_IS_NOT_VISIBLE_TO_REFLECTION: `isAnnotationPresent(X.class)` against a class, not an interface,
+  where `X` lacks `@Retention(RUNTIME)`; the class literal may sit in a local or both arms of `?:`. Not
+  `getAnnotation` and its relatives. Priority 1, once per method and annotation.
+- DMI_DOH, DMI_ARGUMENTS_WRONG_ORDER: Guava's `Preconditions.checkNotNull` with a constant first argument (a
+  string constant or class literal, also through a local) is wrong order when exactly one other argument follows
+  and it is not constant, else D'oh. `assertNotNull` written against `org.junit.Assert` or
+  `junit.framework.Assert` (not `TestCase`): one constant argument is D'oh; of two with the second constant, D'oh
+  when the first is constant too, else wrong order, placed where the first comes from (a boxed primitive at its
+  `valueOf`). Every call is reported. `FindRefComparison` also reports DMI_DOH and still runs in
+  SpotBugs.
+- DMI_VACUOUS_CALL_TO_EASYMOCK_METHOD: `EasyMock.verify`, `replay`, `reset`, `resetToDefault`, `resetToNice` or
+  `resetToStrict` with no mocks or `new Object[0]` written in the call; priority 2.
+- SW_SWING_METHODS_INVOKED_IN_SWING_THREAD is priority 3 only, which `-medium` hides.
+
+On commons-lang, MyBatis, jackson-databind and Guava all 48 patterns of DumbMethods give SARIF results same / missed /
+extra 0 / 0 / 0, 1 / 0 / 0, 8 / 0 / 0 and 2 / 0 / 0.
+
+### Float equality, non-short-circuit logic and static calendars
+
+Three more detectors of the long tail (#2535): `src/java/spotbugs/floats/`, `circuit/` and `calendars/`, labs in
+`tests/fixtures/spotbugs/tail_floats*`, `tail_circuits*` and `tail_calendars*`. SpotBugs no longer runs
+FindFloatEquality, FindNonShortCircuit and StaticCalendarDetector.
+- FE_TEST_IF_EQUAL_TO_NOT_A_NUMBER: an `==` or `!=` comparing as `double` or `float` (two boxed values compare
+  references) with a side javac folds to NaN, also through a local; priority 1, once per method.
+- FE_FLOATING_POINT_EQUALITY: such a comparison is left out when a side folds to a whole number or an infinity
+  (`0`, `-0.0`, `1e10`, `MAX_VALUE`, `2 * D` for a constant `D = 180`; a local holding one counts, but arithmetic
+  on a local that is not `final` is not folded), both fold to one number, or both read one local or one field of
+  one object (a static field through any class name). Priority 1 when a side is floating point arithmetic javac
+  does not fold: `+ - * / %` typed `double` or `float`, kept through casts that change nothing, conditionals and
+  locals any reaching store of which is one (`+=` and `++` too), and a field not `public` that any class of the run
+  stores arithmetic in, so findings wait for the whole run. A negation, a call or a conversion (`int` or `float` to
+  `double`) is not arithmetic. Else, with a side folding to another number, priority 3 (hidden) when the other side
+  holds a parameter as passed (a parameter, an unboxed `Double` one, a local a lambda or an inner class captures, a
+  local or conditional holding only such values, a `final` field not `public` the class stores only parameters
+  in) and 2 otherwise; anything else is 3. Once per method, the first of the best priority, at javac's line.
+- NS_NON_SHORT_CIRCUIT and NS_DANGEROUS_NON_SHORT_CIRCUIT: SpotBugs follows the bytecode, so the engine walks each
+  method in javac's order (constructors with the field initializers and initializer blocks after `super(...)`,
+  static initializers with the static ones). Jumps reset what it tracks: an `else` after a branch that runs into
+  it, the end of a `while`, `for` or `for`-each loop, `break`, `continue`, `switch`, `try`, `synchronized` and a
+  conditional whose first value is not `0`, `1` or a boolean javac materializes (not `do` loops, `throw`, `return`
+  or an `if` without `else`). In between, windows close at each boolean javac materializes (a comparison, `!`,
+  `&&`, `||` used as a value, a conditional `c ? true : false` or `x == null ? 1 : …`, a switch whose branches are
+  all `true` or `false`) and at each call returning `boolean` (unboxing a `Boolean` too). A window notes a call
+  (any but `String.length()`, constructors and unboxing included), a null test, and an array read or an integer
+  `/` or `%`. A boolean `&` (on `Boolean` values too) is judged when javac tests its value next (a condition, the
+  operand of `!`, `&&` or `||`, a branch of a conditional or switch that is tested), returns it as a `boolean` or
+  stores it into a `boolean` field (`&=` too); a `|` only when tested. The value right before the operator decides:
+  the right side, or the right side of the `&`, `|` or `^` the right side is. A local or a constant is never
+  reported, nor, after such an operator, a value that does not end with a materialized boolean or a `boolean` call.
+  S is the last window closed and P the one before. A null test in an earlier window not closed by a call, with a
+  call or array read in S or P closed by a call, gives NS_NON_SHORT_CIRCUIT priority 1; else a call in S or P
+  closed by a call gives NS_DANGEROUS_NON_SHORT_CIRCUIT priority 1; else an array read in S gives
+  NS_NON_SHORT_CIRCUIT priority 2; else priority 3 (hidden). Each pattern once per method; the line is that of the
+  test, `return` (javac starts the line of a `return` again) or store after the operator.
+- STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE and STCAL_STATIC_CALENDAR_INSTANCE: a public or protected static field
+  (interface fields too) declared as `java.text.DateFormat` or `java.util.Calendar` or a class below them, or an
+  array of those, written or not. Priority 1 for a date format and 2 for a calendar, one more when the field is not
+  final or is protected, one more when its type is the declaring class, one less when that class has a
+  `synchronized` method or block or a `volatile` field (Lombok's `@Synchronized` counts; classes declared inside
+  count on their own). No line.
+- STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE and STCAL_INVOKE_ON_STATIC_CALENDAR_INSTANCE: a call on the value of
+  such a static field of any class and access, read straight, through casts or through a local whose one reaching
+  store reads it, unless it is cast to a class above both types (`Format`). Names starting with `get`, `equals` and
+  methods `Object` declares are left out; `set…`, `add`, `clear`, `format`, `parse` and `applyPattern` are
+  priority 2, others 3 (hidden); one less in a class as above. The static initializer of the class declaring the
+  field, `synchronized` methods and blocks are left out. Once per method, field and called method with its
+  parameter types, the method named by the class it is called on when that is a class of the run, else by the class
+  declaring it. The SARIF place is the field under the calling class, shown under the class that declares it.
+
+On the comparison code bases, SARIF results: guava 4 / 0 / 0 (one FE, three NS_DANGEROUS), jackson-databind
+2 / 0 / 0 (STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE), javaparser-core 1 / 0 / 0 (NS_NON_SHORT_CIRCUIT), commons-lang,
+mybatis-3 and Nacos 0 / 0 / 0. On the Elasticsearch server sources the engine reports the three FE findings of the
+saved SpotBugs report and nothing else of these patterns.
+
+### Field self assignment and local double assignment
+
+FindFieldSelfAssignment of the long tail (#2535): `src/java/spotbugs/assign/`, labs in
+`tests/fixtures/spotbugs/tail_assign*`. SpotBugs no longer runs it.
+- SA_FIELD_SELF_ASSIGNMENT: a store into an instance field of `this` (also through `super.` or a local holding
+  `this`) or of the object in a local variable or parameter, of the value read from that same field of that same
+  object: `f = f`, `x.f = x.f`, `f = (f)`, `f = (int) f` for an `int`, `f = g = f`, and through locals
+  (`v = f; ...; f = v`, copies of copies, any type), and `x.f = x.f++`. Locals follow each path (paths that meet
+  must agree, as for `c ? f : f`), but what makes the value read out of date counts for all code after it in
+  javac's order, on any path: a call (`new` too, one on a path that returns or throws too, an `assert`), a store
+  into the field of any object, the head of a loop that javac writes a jump back to (none when the body never gets
+  to its end or a `continue`, none for `do { } while (false)`). Calls javac writes without a call in the source
+  count too: boxing and unboxing (`Integer i = 1`, `int i = boxed`, `boxed++`, `-boxed`, `boxed > 2`, not
+  `boxed == null` or `"a" + boxed`), a `switch` on anything but a primitive (`ordinal`, `hashCode`, a pattern
+  switch) and a for-each over an `Iterable` (not an array). A lambda, a string concatenation, a cast javac writes
+  no code for, a store into another field, a static field or an array, and `synchronized` change nothing. A
+  `finally` block counts where javac copies it, and code after a statement that cannot complete is not there.
+  Catch parameters, pattern variables and for-each variables hold a new value. A cast of `this` or of a local
+  (`((B) this).f = ((B) this).f`) keeps the object and names the field by the cast's class. Static fields and
+  `o.f = o.f` with `o` a field are not reported; fields of the object around are reported only in the body of a
+  constructor of an inner or local class (`k = k`, `X.this.k = X.this.k`, javac reads its hidden parameter
+  there), not in its initializers, its methods or a lambda. One finding per class the code names the field by,
+  field, line and priority of a method; the message names the field by that class (`super.f` names the
+  superclass, `b.f` the type of `b`).
+- The SARIF place is the parameter SpotBugs suggests, else the field (always under the class whose code it is).
+  Candidates are the parameters of the field's erased type (a varargs one is its array), javac's hidden ones
+  first: the name and number of an enum constant (named `$enum$name` and `$enum$ordinal`), the outer object of an
+  inner or local class (`this$0`), the captured variables of a lambda. SpotBugs looks each one
+  up at slot index + 1 (index in a static method), as if no parameter took two slots: the name of the parameter
+  starting there or `?`, and whether the method reads that slot (`x++` and `x += 1` read, `x = 1` does not). Of
+  the unread candidates, or of all when all are read, the first without a name wins, else the nearest name to the
+  field's when no other is as near (edit distance where a change of case costs half); a read one must be at most
+  2 away. Priority 1 for every finding of a method when one of them has its object outside slot 0 (a local, the
+  object around), else when the chosen slot is unread or for `x.f = x.f++`; else 2.
+  SpotBugs also makes every finding priority 1 once the run has seen a `dup` that javac follows with a store into
+  a local (`synchronized`, `x = y = 1`, `while ((n = read()) > 0)`, `y = (x += z)`), in class visiting order; the
+  engine does not follow that, since both priorities have the same SARIF level.
+- SA_LOCAL_DOUBLE_ASSIGNMENT: `x = x = value` (parentheses or not) for a local or parameter of one slot (not
+  `long` or `double`), priority 2, when nothing uses its value (a statement, or the init or a reachable update of
+  a `for`) and the stores into locals chained right after it are even in number: `x = x = 1`, `x = x = y = z = 1`
+  and `x = x = x = x = 1` are reported, `x = x = y = 1`, `x = x = x = 1` and `y = x = x = 1` are not. A store
+  counts when it is `=` (any type) or compound, except `+=` or `-=` of a number into an `int`, `short`, `byte` or
+  `char`; the chain stops at anything else (a cast, an operator, a field, an array, a `long` or `double`, `y++`).
+  Once per variable and line of a method.
+
+On the comparison code bases, SARIF results: guava 1 / 0 / 0, commons-lang, jackson-databind, javaparser-core and
+mybatis-3 0 / 0 / 0. The saved Nacos and Elasticsearch server reports have none of these patterns, and the engine
+reports none on their sources.
 
 ### Comparators and equals operand types
 

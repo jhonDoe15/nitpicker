@@ -1,0 +1,1 @@
+import knex from "knex"; export const db = knex({ client: "pg", connection: process.env.URL, pool: { afterCreate: (conn, done) => conn.query("SET statement_timeout = 30000", done) } });

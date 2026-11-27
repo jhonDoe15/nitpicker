@@ -1,0 +1,1 @@
+function f(req, res) { if (!res.writableEnded) { res.end(); } report(); }

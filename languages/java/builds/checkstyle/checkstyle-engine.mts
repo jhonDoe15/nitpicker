@@ -65,12 +65,12 @@ export function engineCoversConfig(
 }
 
 function moduleOf(source: string): string {
-  const name = source.slice(source.lastIndexOf('.') + 1).split('#')[0] ?? '';
+  const name = textOf(source.slice(source.lastIndexOf('.') + 1).split('#')[0]);
   return name.endsWith('Check') ? name.slice(0, -'Check'.length) : name;
 }
 
 function configModules(config: string): Set<string> {
-  return new Set([...config.matchAll(CONFIG_MODULE)].map(([, name]) => name ?? ''));
+  return new Set([...config.matchAll(CONFIG_MODULE)].map(([, name]) => textOf(name)));
 }
 
 function rowOf(finding: unknown): CheckstyleRow & { readonly rule: string } {
@@ -196,7 +196,7 @@ function removeOutputs(plan: CheckstyleEnginePlan): void {
 export function checkstyleOnEngine(
   plan: CheckstyleEnginePlan,
   environment: EngineEnvironment,
-  { run = (argumentList, options) => runEngineSync(argumentList, options), log }: EngineHooks = {},
+  { run = runEngineSync, log }: EngineHooks = {},
 ): string[] | undefined {
   removeOutputs(plan);
   const binary = findEngine(environment);

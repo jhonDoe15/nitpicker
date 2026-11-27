@@ -1,0 +1,1 @@
+import { deserialize as read } from "v8"; export const data = read(bytes);

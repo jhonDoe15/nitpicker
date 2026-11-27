@@ -1,0 +1,1 @@
+import got from "got"; export const get = (u) => got(u, { https: { rejectUnauthorized: false } });

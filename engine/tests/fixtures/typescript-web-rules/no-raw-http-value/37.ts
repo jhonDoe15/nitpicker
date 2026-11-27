@@ -1,0 +1,1 @@
+const proto = req.headers['x-forwarded-proto'] ?? ''; if (proto === 'https') { run(); }

@@ -1,0 +1,1 @@
+export const a = (t: string, u: string) => `<img alt="${t}" title="${u}">`;

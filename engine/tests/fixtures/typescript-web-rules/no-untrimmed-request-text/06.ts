@@ -1,0 +1,1 @@
+export function find(c, db) { const q = c.req.query('q')?.trim(); return db.where('name', q); }

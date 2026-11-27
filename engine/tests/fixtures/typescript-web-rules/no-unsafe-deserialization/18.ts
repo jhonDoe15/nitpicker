@@ -1,0 +1,1 @@
+import * as v8 from "node:v8"; export const reader = new v8.Deserializer(bytes);

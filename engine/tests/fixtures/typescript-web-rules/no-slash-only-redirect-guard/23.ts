@@ -1,0 +1,1 @@
+function go(returnTo) { if (!returnTo.startsWith("/")) { return "/"; } return returnTo; }

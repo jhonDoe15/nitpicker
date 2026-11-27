@@ -1,0 +1,1 @@
+async function f(url) { const res = await fetch(url); if (!res.ok) { throw new Error(String(res.status)); } return res.json(); }

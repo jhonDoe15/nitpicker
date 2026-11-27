@@ -11,7 +11,7 @@ import {
   spotbugsArguments,
 } from '../adapters/tool-config/declared/spotbugs-declared.mts';
 import { type JavaSpawn, callUntyped } from '../adapters/typed/java-values.mts';
-import { fieldOf, textsOf } from '../../../shared/values/readers.mts';
+import { fieldOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import type { Classpaths } from './typed/maven-values.mts';
 import type { ToolClasspaths } from './typed/kotlin-types.mts';
 import { javaFiles } from './lint/java-files.mts';
@@ -150,11 +150,6 @@ function pmdArguments(files: { report: string; rulesets: string[]; aux: string; 
   ];
 }
 
-function stderrOf(result: unknown): string {
-  const stderr = fieldOf(result, 'stderr');
-  return typeof stderr === 'string' ? stderr : '';
-}
-
 export function runPmd(options: PmdOptions): void {
   const { module, reportDir, tools, classpaths, configs, spawn, timeoutMs } = options;
   const report = path.join(reportDir, 'pmd.sarif');
@@ -185,7 +180,7 @@ export function runPmd(options: PmdOptions): void {
     spawn,
     timeoutMs,
   });
-  writeFileSync(path.join(reportDir, PMD_LOG), stderrOf(result));
+  writeFileSync(path.join(reportDir, PMD_LOG), textOf(fieldOf(result, 'stderr')));
 }
 
 function auxiliaryEntries(outputDirectory: string, auxClasspath: readonly string[]): string[] {

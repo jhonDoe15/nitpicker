@@ -1,0 +1,1 @@
+root.querySelector(`.${CLS.banner}`);

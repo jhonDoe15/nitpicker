@@ -21,12 +21,16 @@ pub struct JavaProject {
     pub null_finals: HashSet<(String, String)>,
     /// Integer constants the project declares, by field name; `None` when two declarations disagree.
     pub numbers: HashMap<String, Option<i64>>,
+    /// Names of the fields the code stores into outside constructors and initializers, read when first asked.
+    pub rewritten: std::sync::OnceLock<HashSet<(String, String)>>,
     /// The classes some class of the sources extends.
     pub extended: HashSet<String>,
     /// With Lombok: the class files of the source classes, by binary name (see `compiled`).
     pub compiled: HashMap<String, super::compiled::CompiledClass>,
     /// With Lombok: the index name of each source class that has a class file, by binary name.
     pub binaries: HashMap<String, String>,
+    /// How the code uses the fields some Error Prone fixes change (see `field_uses`).
+    pub field_uses: HashMap<(String, String), u8>,
 }
 
 fn jdk_home() -> PathBuf {
@@ -231,7 +235,22 @@ pub fn build(files: &[SourceFile], options: &crate::engine::Options) -> JavaProj
     });
     let numbers = integer_constants(files);
     let extended = declared.iter().flatten().filter_map(|(_, name)| index.get(name)?.superclass.clone()).collect();
-    JavaProject { index, sources, literals, volatiles, null_finals, numbers, extended, compiled, binaries }
+    let targets = fix_targets(files, &scopes, &index);
+    let paths: Vec<&str> = files.iter().map(|file| file.path.as_str()).collect();
+    let field_uses = super::field_uses::field_uses(&paths, options.encoding, &index, &targets);
+    JavaProject {
+        index,
+        sources,
+        literals,
+        volatiles,
+        null_finals,
+        numbers,
+        extended,
+        compiled,
+        binaries,
+        field_uses,
+        rewritten: Default::default(),
+    }
 }
 
 /// Puts back, as statements of the blanked body, the class literals, `forName` calls and `assert` statements that
@@ -259,6 +278,26 @@ fn keep_class_objects(file: &SourceFile, body: Node, bytes: &mut [u8]) {
 }
 
 type FieldTest = fn(&SourceFile, Node, Node) -> bool;
+
+fn mock_annotated(file: &SourceFile, field: Node) -> bool {
+    let Some(holder) = crate::java::helpers::modifiers(field) else { return false };
+    crate::engine::source::children(holder).into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation")).any(|annotation| {
+        annotation.child_by_field_name("name").is_some_and(|name| matches!(file.text_of(name), "Mock" | "org.mockito.Mock"))
+    })
+}
+
+/// Fields whose uses StaticMockMember and MutableGuiceModule ask about: static `@Mock` fields, and the instance fields
+/// that are not final in subclasses of Guice's `AbstractModule`.
+fn fix_targets(files: &[SourceFile], scopes: &[FileScope], index: &TypeIndex) -> HashSet<(String, String)> {
+    let mut targets = fields_where(files, scopes, |file, field, _| {
+        crate::java::helpers::has_modifier(field, "static") && mock_annotated(file, field)
+    });
+    let modules = fields_where(files, scopes, |_, field, _| {
+        field.kind() == "field_declaration" && !crate::java::helpers::has_modifier(field, "static") && !crate::java::helpers::has_modifier(field, "final")
+    });
+    targets.extend(modules.into_iter().filter(|(class, _)| index.is_subtype(class, "com.google.inject.AbstractModule")));
+    targets
+}
 
 fn fields_where(files: &[SourceFile], scopes: &[FileScope], test: FieldTest) -> HashSet<(String, String)> {
     files

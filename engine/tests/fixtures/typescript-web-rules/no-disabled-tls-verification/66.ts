@@ -1,0 +1,1 @@
+import { execSync } from "node:child_process"; export const run = (script) => execSync(`NODE_TLS_REJECT_UNAUTHORIZED=0 node ${script}`);

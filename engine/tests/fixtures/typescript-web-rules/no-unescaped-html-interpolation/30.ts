@@ -1,0 +1,1 @@
+export const a = (e: string) => `<p>${e.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>`;

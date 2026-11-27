@@ -1,0 +1,1 @@
+import yaml from "js-yaml"; export const write = (v: unknown) => yaml.dump(v, { schema: yaml.DEFAULT_SCHEMA });

@@ -63,6 +63,11 @@ const RUNTIME: &str = "java.lang.RuntimeException";
 const BROAD: &[&str] = &["java.lang.Throwable", "java.lang.Exception", RUNTIME];
 
 pub fn handlers(context: &Context, block: &Block, thrown: &Thrown) -> Vec<usize> {
+    handled(context, block, thrown).0
+}
+
+/// The handlers an exception can reach, and whether one of them surely takes it, so that it cannot leave the method.
+pub fn handled(context: &Context, block: &Block, thrown: &Thrown) -> (Vec<usize>, bool) {
     let index = &context.resolver.index;
     let under = |name: &str, of: &str| name == of || index.is_subtype(name, of);
     let mut found = Vec::new();
@@ -70,7 +75,7 @@ pub fn handlers(context: &Context, block: &Block, thrown: &Thrown) -> Vec<usize>
         for catch in frame {
             if catch.types.is_empty() {
                 found.push(catch.block);
-                return found;
+                return (found, true);
             }
             for written in &catch.types {
                 let Some(name) = context.resolver.type_node(*written).map(|kind| kind.erased().name()) else {
@@ -94,10 +99,10 @@ pub fn handlers(context: &Context, block: &Block, thrown: &Thrown) -> Vec<usize>
                     found.push(catch.block);
                 }
                 if certain {
-                    return found;
+                    return (found, true);
                 }
             }
         }
     }
-    found
+    (found, false)
 }

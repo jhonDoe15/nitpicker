@@ -1,0 +1,1 @@
+export const a = (t: string) => { let x = escapeHtml(t); x = `<b>${x}</b>`; return x; };

@@ -25,21 +25,20 @@ function shapeOf(glob: string): readonly [number, string] | undefined {
 }
 
 export function excludePatternOf(globs: readonly string[]): string | undefined {
-  const grouped: string[][] = SHAPES.map(() => []);
+  const grouped = SHAPES.map(([, folded]) => ({ folded, alternatives: new Array<string>() }));
   const others: string[] = [];
   for (const glob of globs) {
     const shape = shapeOf(glob);
     if (shape === undefined) {
       others.push(globToRegExpSource(glob));
     } else {
-      grouped[shape[0]]?.push(shape[1]);
+      grouped[shape[0]]?.alternatives.push(shape[1]);
     }
   }
   const parts = [
-    ...SHAPES.flatMap(([, folded], index) => {
-      const alternatives = grouped[index] ?? [];
-      return alternatives.length === 0 ? [] : [folded(alternatives.join('|'))];
-    }),
+    ...grouped.flatMap(({ folded, alternatives }) =>
+      alternatives.length === 0 ? [] : [folded(alternatives.join('|'))],
+    ),
     ...others,
   ];
   return parts.length === 0 ? undefined : parts.join('|');

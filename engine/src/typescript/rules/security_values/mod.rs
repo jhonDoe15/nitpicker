@@ -14,10 +14,35 @@ const FREEZE_STEPS: usize = 64;
 const ASSERTIONS: &[&str] = &["TSAsExpression", "TSSatisfiesExpression", "TSNonNullExpression", "TSTypeAssertion"];
 const FUNCTIONS: [&str; 3] = ["ArrowFunctionExpression", "FunctionExpression", "FunctionDeclaration"];
 
-/// `findVariable(...)?.defs`: the definitions of the variable a name has where the node is.
+/// The `catch` parameter pattern a node is in, and the clause's body.
+fn catch_pattern(node: Node) -> Option<(Node, Node)> {
+    let mut child = node;
+    for ancestor in node.ancestors() {
+        if ancestor.is("CatchClause") {
+            let param = ancestor.node("param").filter(|param| *param == child)?;
+            return Some((param, ancestor.node("body")?));
+        }
+        child = ancestor;
+    }
+    None
+}
+
+/// `findVariable(...)`: the variable a name has where the node is. ESLint scopes a `catch` parameter pattern, and
+/// the functions in it, inside the clause, where oxc gives the clause's names only to its body.
+pub fn variable_of(scopes: &Scopes, identifier: Node) -> Option<oxc_semantic::SymbolId> {
+    let name = identifier.name()?;
+    let found = scopes.variable_by_name(&name, identifier.start());
+    let Some((param, body)) = catch_pattern(identifier) else { return found };
+    let inside = found.is_some_and(|variable| scopes.defs(variable).iter().any(|definition| param.contains(definition.name)));
+    if inside { found } else { scopes.variable_by_name(&name, body.start()).or(found) }
+}
+
+/// `findVariable(...)?.defs`: the definitions of the variable a name has where the node is, in ESLint's order: a
+/// function's parameters before its type parameters, the rest as declared.
 pub fn defs<'s>(scopes: &Scopes<'_, 's>, identifier: Node<'s>) -> Vec<Def<'s>> {
-    let Some(name) = identifier.name() else { return Vec::new() };
-    scopes.variable_by_name(&name, identifier.start()).map(|variable| scopes.defs(variable)).unwrap_or_default()
+    let mut found = variable_of(scopes, identifier).map(|variable| scopes.defs(variable)).unwrap_or_default();
+    found.sort_by_key(|definition| (definition.kind != DefKind::Parameter, definition.name.start()));
+    found
 }
 
 /// `isFunctionNode`.

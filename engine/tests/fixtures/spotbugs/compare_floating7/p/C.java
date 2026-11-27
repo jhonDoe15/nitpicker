@@ -92,11 +92,11 @@ class H12 implements Comparator<double[]> { // 0 constants: 0.0 vs 0 int literal
     return 0;
   }
 }
-class H13 implements Comparator<double[]> { // NaN/Infinity constants
+class H13 implements Comparator<double[]> { // MAX_VALUE constants
   public int compare(double[] x, double[] y) {
     double a = x[0];
-    if (a > Double.NaN) return 1;
-    if (a < Double.NaN) return -1;
+    if (a > Double.MAX_VALUE) return 1;
+    if (a < Double.MAX_VALUE) return -1;
     return 0;
   }
 }

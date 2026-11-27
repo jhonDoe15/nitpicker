@@ -1,0 +1,1 @@
+const OPTIONS = { method: "GET" }; export const get = (url) => fetch(url, OPTIONS);

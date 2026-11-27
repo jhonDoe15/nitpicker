@@ -1,0 +1,1 @@
+export function f(bytes: Uint8Array) { let s = ""; for (const b of bytes) { s += String.fromCharCode(b); } return btoa(s); }

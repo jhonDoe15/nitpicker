@@ -69,6 +69,19 @@ describe('the workspace packages a project program reaches', () => {
     ]);
   });
 
+  it('reaches only the project when it is missing or names a dependency outside the dependency folder', () => {
+    const root = repository({
+      'apps/web/package.json': manifest('web', { '../../packages/ui': '*' }),
+      'packages/ui/package.json': manifest('@org/ui'),
+    });
+    const missing = path.join(root, 'apps/missing');
+
+    expect(workspaceDependencyFolders(missing)).toEqual([missing]);
+    expect(relative(root, workspaceDependencyFolders(path.join(root, 'apps/web')))).toEqual([
+      'apps/web',
+    ]);
+  });
+
   it('holds a program when the project or a covering ancestor has a tsconfig', () => {
     const root = repository({
       '.git/HEAD': '',

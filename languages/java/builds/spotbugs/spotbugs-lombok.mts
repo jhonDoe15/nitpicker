@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { ancestorDirectories } from '../../../../shared/filesystem.mts';
 import { zipEntryOf } from '../../../../shared/archives/zip-entry.mts';
+import { textOf } from '../../../../shared/values/readers.mts';
 import { LOMBOK_WITHOUT_CLASSES, LOMBOK_WRITES } from './spotbugs-patterns.mts';
 
 export type ProcessorKind = 'none' | 'lombok' | 'other';
@@ -58,7 +59,7 @@ const RENAMING =
   /^(?:clear\s+)?(?:lombok\.accessors\.(?:fluent|prefix|capitalization)|lombok\.getter\.noisprefix)\b/iu;
 
 type Marked = boolean | undefined;
-type Unreadable = { readonly unreadable: Error };
+type Unreadable = { readonly unreadable: unknown };
 type Entry = { readonly line: string; readonly config: string; readonly seen: ReadonlySet<string> };
 
 const OTHER: ProcessorKind = 'other';
@@ -92,9 +93,7 @@ function readable(read: () => string[]): string[] | Unreadable {
   try {
     return read();
   } catch (error) {
-    return {
-      unreadable: error instanceof Error ? error : new Error(String(error), { cause: error }),
-    };
+    return { unreadable: error };
   }
 }
 
@@ -169,7 +168,7 @@ function entriesOf(config: string, seen: ReadonlySet<string>): Entry[] | Unreada
     return lines;
   }
   if (seen.has(config)) {
-    return { unreadable: new Error(`${config} imports itself`) };
+    return { unreadable: config };
   }
   const inside = new Set([...seen, config]);
   return lines.map((line) => ({ line, config, seen: inside }));
@@ -177,26 +176,36 @@ function entriesOf(config: string, seen: ReadonlySet<string>): Entry[] | Unreada
 
 type Position = { readonly queue: Entry[]; readonly index: number; readonly byDefault: boolean };
 
-function applyEntry(entry: Entry, value: Marked, { queue, index, byDefault }: Position): Marked {
+function isSetting(line: string, key: string): boolean {
+  return textOf(SETTING.exec(line)?.[1]).toLowerCase() === key;
+}
+
+function settingValue(line: string): Marked {
+  return flag(textOf(SETTING.exec(line)?.[2]));
+}
+
+function importEntry(entry: Entry, value: Marked, { queue, index }: Position): Marked {
+  const file = imported(entry.config, textOf(IMPORT.exec(entry.line)?.[1]));
+  const nested = file === undefined ? undefined : entriesOf(file, entry.seen);
+  if (nested === undefined || isUnreadable(nested)) {
+    return undefined;
+  }
+  const rest = queue.splice(index + 1);
+  for (const item of [...nested, ...rest]) {
+    queue.push(item);
+  }
+  return value;
+}
+
+function applyEntry(entry: Entry, value: Marked, position: Position): Marked {
   const cleared = CLEAR.exec(entry.line);
   if (cleared !== null) {
-    return cleared[1]?.toLowerCase() === GENERATED_KEY ? byDefault : value;
+    return textOf(cleared[1]).toLowerCase() === GENERATED_KEY ? position.byDefault : value;
   }
-  const importing = IMPORT.exec(entry.line);
-  if (importing !== null) {
-    const file = imported(entry.config, importing[1] ?? '');
-    const nested = file === undefined ? undefined : entriesOf(file, entry.seen);
-    if (nested === undefined || isUnreadable(nested)) {
-      return undefined;
-    }
-    const rest = queue.splice(index + 1);
-    for (const item of [...nested, ...rest]) {
-      queue.push(item);
-    }
-    return value;
+  if (IMPORT.test(entry.line)) {
+    return importEntry(entry, value, position);
   }
-  const setting = SETTING.exec(entry.line);
-  return setting?.[1]?.toLowerCase() === GENERATED_KEY ? flag(setting[2] ?? '') : value;
+  return isSetting(entry.line, GENERATED_KEY) ? settingValue(entry.line) : value;
 }
 
 function applied(config: string, marked: Marked, byDefault: boolean): Marked {
@@ -214,10 +223,9 @@ function applied(config: string, marked: Marked, byDefault: boolean): Marked {
 
 function stopsBubbling(config: string): boolean {
   const lines = linesOf(config);
-  return (isUnreadable(lines) ? [] : lines).some((line) => {
-    const setting = SETTING.exec(line);
-    return setting?.[1]?.toLowerCase() === STOP_KEY && flag(setting[2] ?? '') === true;
-  });
+  return (isUnreadable(lines) ? [] : lines).some(
+    (line) => isSetting(line, STOP_KEY) && settingValue(line) === true,
+  );
 }
 
 function configsAbove(directory: string): string[] {
@@ -238,7 +246,7 @@ function configsAbove(directory: string): string[] {
 function importsIn(config: string, lines: readonly string[]): string[] {
   return lines.flatMap((line) => {
     const importing = IMPORT.exec(line);
-    const file = importing === null ? undefined : imported(config, importing[1] ?? '');
+    const file = importing === null ? undefined : imported(config, textOf(importing[1]));
     return file === undefined ? [] : [file];
   });
 }

@@ -1,0 +1,1 @@
+export const r = async (s: string) => { const ns = await import("node-serialize"); return ns.unserialize(s); };

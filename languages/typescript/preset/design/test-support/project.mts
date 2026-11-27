@@ -8,7 +8,7 @@ import {
 } from '../../head-policy.mts';
 import { resolveLayoutFor } from '../../layout.mts';
 import { layoutTransformFor } from '../../tool-configs.mts';
-import { analyzeDesignSignals, projectDesignFacts } from '../analyze.mts';
+import { analyzeDesignSignals, designPlan, projectDesignFacts } from '../analyze.mts';
 import type { DesignFacts } from '../design-types.mts';
 import { analyzeTypedStructure } from '../typed-structure.mts';
 
@@ -83,6 +83,14 @@ function withProject<T>(root: string, policy: Policy, run: (options: ProjectOpti
 
 export function factsOf(root: string, policy: Policy = {}): ProjectFacts {
   return withProject(root, policy, projectDesignFacts);
+}
+
+export function designPartOf(root: string, policy: Policy = {}): unknown {
+  return withProject(
+    root,
+    policy,
+    (options) => designPlan({ ...options, analyzerName: 'structure' }).part,
+  );
 }
 
 export function findingsOf(root: string, policy: Policy = {}): Finding[] {

@@ -1,8 +1,10 @@
+pub mod annotation_values;
 pub mod classfile;
 pub mod constant;
 pub mod compiled;
 mod compiled_members;
 pub mod expr;
+pub mod field_uses;
 pub mod guards;
 pub mod index;
 pub mod model;

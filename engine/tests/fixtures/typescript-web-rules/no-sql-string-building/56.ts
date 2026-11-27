@@ -1,0 +1,3 @@
+declare const id: string;
+const SS = new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(new Set(["a"])))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
+function f(c: string){ if(!SS.has(c)) throw 1; return `SELECT ${c} FROM t`;}

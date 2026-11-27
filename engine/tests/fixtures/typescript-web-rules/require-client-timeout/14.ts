@@ -1,0 +1,1 @@
+import { Pool, Client } from "pg"; import { dbOptions } from "./db.js"; export const pool = new Pool(dbOptions());

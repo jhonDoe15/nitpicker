@@ -33,11 +33,10 @@ import { checkstyleOnEngine } from '../../builds/checkstyle/checkstyle-engine.mt
 import { mergeReports } from '../../builds/checkstyle/checkstyle-xml.mts';
 
 type CheckstylePinned = { readonly checkstyle: string };
-type CheckstyleSetup = {
-  readonly config: string;
-  readonly properties: string;
-  readonly bundled?: string;
-  readonly guards?: readonly string[];
+type CheckstyleSetup = { readonly config: string; readonly properties: string };
+type EngineSetup = CheckstyleSetup & {
+  readonly bundled: string;
+  readonly guards: readonly string[];
 };
 type CheckstyleOptions = {
   readonly module: SourceModule;
@@ -61,7 +60,7 @@ type ReportRequest = Pick<
   CheckstyleOptions,
   'module' | 'tools' | 'spawn' | 'timeoutMs' | 'environment'
 > & {
-  readonly setup: CheckstyleSetup;
+  readonly setup: EngineSetup;
   readonly pinned: CheckstylePinned;
   readonly roots: readonly string[];
   readonly report: string;
@@ -100,7 +99,7 @@ function propertiesLine(name: string, value: string): string {
 function checkstyleSetup(
   { reportDir, tools, configs, pinned, style, spawn }: CheckstyleOptions,
   test: boolean,
-): CheckstyleSetup {
+): EngineSetup {
   const jar = (tools[CHECKSTYLE] ?? []).find(
     (entry) => path.basename(entry) === `checkstyle-${pinned.checkstyle}.jar`,
   );
@@ -185,7 +184,7 @@ function checkstyleReport(options: ReportRequest): void {
   }
   rmSync(report, { force: true });
   runJava({
-    java: toolJava({ tool: TOOL, environment }),
+    java: toolJava({ tool: TOOL, spawn, environment }),
     tool: TOOL,
     classpath: tools[CHECKSTYLE],
     mainClass: 'com.puppycrawl.tools.checkstyle.Main',
@@ -210,7 +209,7 @@ function checkstyleReport(options: ReportRequest): void {
   }
 }
 
-function engineReportOf(setup: CheckstyleSetup): string {
+function engineReportOf(setup: EngineSetup): string {
   return path.join(path.dirname(setup.config), 'checkstyle-engine.xml');
 }
 
@@ -218,9 +217,6 @@ function leftByEngine(
   { module, setup, pinned, environment }: ReportRequest,
   files: readonly string[],
 ): string[] | undefined {
-  if (setup.bundled === undefined || setup.guards === undefined) {
-    return undefined;
-  }
   const directory = path.dirname(setup.config);
   const list = path.join(directory, 'files.txt');
   const absolute = files.map((file) => path.resolve(module.basedir, file));
@@ -237,8 +233,11 @@ function leftByEngine(
     },
     environment,
   );
-  const relative = new Map(absolute.map((file, at) => [file, files[at] ?? file]));
-  return left?.map((file) => relative.get(file) ?? file);
+  if (left === undefined) {
+    return undefined;
+  }
+  const kept = new Set(left);
+  return files.filter((file) => kept.has(path.resolve(module.basedir, file)));
 }
 
 function runCheckstyleReports(options: CheckstyleOptions): void {

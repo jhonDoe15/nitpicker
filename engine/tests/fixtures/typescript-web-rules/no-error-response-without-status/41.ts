@@ -1,0 +1,1 @@
+async function f(c) { try { await save(); } catch (e) { return c.json({ error: e.message }); } }

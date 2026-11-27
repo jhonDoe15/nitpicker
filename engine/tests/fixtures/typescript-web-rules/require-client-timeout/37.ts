@@ -1,0 +1,1 @@
+import { DataSource } from "typeorm"; export const db = new DataSource({ type: "postgres", url: "postgres://db/app?options=-c%20statement_timeout%3D30000" });

@@ -1,0 +1,1 @@
+function run(input, cb) { if (!input) { cb(new Error("x")); } parse(input); }

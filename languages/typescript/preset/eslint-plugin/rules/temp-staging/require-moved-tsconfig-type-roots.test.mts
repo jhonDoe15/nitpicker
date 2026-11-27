@@ -7,6 +7,11 @@ function invalid(code: string) {
   return { code, errors: [{ messageId: 'typeRoots' }] };
 }
 
+let deepTarget = 'tmpdir()';
+for (let level = 0; level < 10; level += 1) {
+  deepTarget = `path.join(${deepTarget}, 'tsconfig.json')`;
+}
+
 tester.run('require-moved-tsconfig-type-roots', rule, {
   valid: [
     `const folder = mkdtempSync(path.join(tmpdir(), 'x-'));
@@ -44,8 +49,14 @@ tester.run('require-moved-tsconfig-type-roots', rule, {
      const config = { extends: configPath };
      Object.assign(config, extra);
      writeFileSync(path.join(folder, 'tsconfig.json'), JSON.stringify(config));`,
+    `writeFileSync(${deepTarget}, JSON.stringify({ extends: configPath }));`,
   ],
   invalid: [
+    invalid(`const folder = mkdtempSync(path.join(tmpdir(), 'x-'));
+      writeFileSync(folder + '/tsconfig.json', JSON.stringify({ extends: configPath }));`),
+    invalid(
+      `writeFileSync(path.join(tmpdir(), 0, 'tsconfig.json'), JSON.stringify({ extends: configPath }));`,
+    ),
     invalid(
       `writeFileSync(\`\${tmpdir()}/tsconfig.build.json\`, JSON.stringify({ extends: configPath }));`,
     ),

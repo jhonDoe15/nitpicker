@@ -1,0 +1,1 @@
+import got from "got"; export const client = got.extend({ prefixUrl: "https://api.test" });

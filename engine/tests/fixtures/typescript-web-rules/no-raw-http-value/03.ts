@@ -1,0 +1,1 @@
+const type = headers.get('Content-Type'); if (/^application\/json/i.test(type)) { run(); }

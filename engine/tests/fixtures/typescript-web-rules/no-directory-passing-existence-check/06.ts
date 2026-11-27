@@ -1,0 +1,1 @@
+if (fs.existsSync(options.dir + "/package.json")) { fs.readFileSync(options.dir + "/package.json", "utf8"); }

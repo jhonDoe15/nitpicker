@@ -16,14 +16,7 @@ const NONE: EntryMatch = 'none';
 const UNIVERSAL: EntryMatch = 'universal';
 const SPECIFIC: EntryMatch = 'specific';
 
-function globallyIgnored(globalIgnores: readonly Entry[], relativePath: GlobPath) {
-  return globalIgnores.reduce(
-    (isIgnored, entry) => ignored(entry.ignores ?? [], relativePath, isIgnored),
-    false,
-  );
-}
-
-function directoryIgnored(globalIgnores: readonly Entry[], cache: Map<string, boolean>) {
+function directoryIgnored(globalIgnores: readonly Pattern[], cache: Map<string, boolean>) {
   return (relativeDirectory: string) => {
     if (relativeDirectory === '' || relativeDirectory === '.') {
       return false;
@@ -31,7 +24,7 @@ function directoryIgnored(globalIgnores: readonly Entry[], cache: Map<string, bo
     let checked = '';
     for (const part of relativeDirectory.split('/')) {
       checked += `${part}/`;
-      const known = cache.get(checked) ?? globallyIgnored(globalIgnores, globPath(checked));
+      const known = cache.get(checked) ?? ignored(globalIgnores, globPath(checked), false);
       cache.set(checked, known);
       if (known) {
         return true;
@@ -41,12 +34,16 @@ function directoryIgnored(globalIgnores: readonly Entry[], cache: Map<string, bo
   };
 }
 
+function ignoresMatch({ ignores, globalIgnores }: Entry, relativeFile: GlobPath): EntryMatch {
+  if (ignores === undefined) {
+    return UNIVERSAL;
+  }
+  return globalIgnores !== undefined || ignored(ignores, relativeFile, false) ? NONE : UNIVERSAL;
+}
+
 function entryMatch(entry: Entry, relativeFile: GlobPath): EntryMatch {
   if (entry.files === undefined) {
-    if (entry.ignores === undefined) {
-      return UNIVERSAL;
-    }
-    return entry.globalIgnore || ignored(entry.ignores, relativeFile, false) ? NONE : UNIVERSAL;
+    return ignoresMatch(entry, relativeFile);
   }
   const { specific, universal } = entry;
   if (universal.length === 0) {
@@ -79,7 +76,7 @@ export function configKeyOf(policyEntries: readonly unknown[]): ConfigKey | unde
   if (!compiled.every((entry) => entry !== undefined)) {
     return undefined;
   }
-  const globalIgnores = compiled.filter((entry) => entry.globalIgnore);
+  const globalIgnores = compiled.flatMap((entry) => entry.globalIgnores ?? []);
   const isDirectoryIgnored = directoryIgnored(globalIgnores, new Map());
   return (relativeFile) => {
     const file = globPath(relativeFile);
@@ -87,7 +84,7 @@ export function configKeyOf(policyEntries: readonly unknown[]): ConfigKey | unde
     if (
       EXTERNAL.test(relativeFile) ||
       isDirectoryIgnored(slash === -1 ? '' : relativeFile.slice(0, slash)) ||
-      globallyIgnored(globalIgnores, file)
+      ignored(globalIgnores, file, false)
     ) {
       return undefined;
     }

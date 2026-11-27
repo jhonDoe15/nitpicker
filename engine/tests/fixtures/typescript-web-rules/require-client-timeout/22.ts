@@ -1,0 +1,1 @@
+import { DataSource } from "typeorm"; export const db = new DataSource({ type: "sqlite", database: "app.db" });

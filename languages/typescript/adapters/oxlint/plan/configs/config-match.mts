@@ -9,8 +9,9 @@ type Entry = {
   readonly specific: readonly FilesElement[];
   readonly universal: readonly FilesElement[];
   readonly ignores: readonly Pattern[] | undefined;
-  readonly globalIgnore: boolean;
+  readonly globalIgnores: readonly Pattern[] | undefined;
 };
+type Compiled<Value> = { readonly value: Value | undefined };
 
 const META_FIELDS = new Set(['name', 'basePath']);
 const UNIVERSAL = /^\*$|^!|\/\*{1,2}$/u;
@@ -72,29 +73,48 @@ function compiledFiles(files: unknown, cache: Map<string, Pattern>) {
   return allCompiled(listOf(files), (element) => filesElement(element, cache));
 }
 
+function isPlainEntry(entry: unknown): entry is object {
+  return (
+    typeof entry === 'object' &&
+    entry !== null &&
+    !Array.isArray(entry) &&
+    fieldOf(entry, 'basePath') === undefined
+  );
+}
+
+function compiledField<Value>(
+  value: unknown,
+  compile: (value: unknown) => Value | undefined,
+): Compiled<Value> | undefined {
+  if (value === undefined) {
+    return { value: undefined };
+  }
+  const compiled = compile(value);
+  return compiled === undefined ? undefined : { value: compiled };
+}
+
+function hasOneField(entry: object): boolean {
+  return Object.keys(entry).filter((key) => !META_FIELDS.has(key)).length === 1;
+}
+
 function compiledEntry(entry: unknown, cache: Map<string, Pattern>): Entry | undefined {
-  const files = fieldOf(entry, 'files');
-  const ignores = fieldOf(entry, 'ignores');
-  const entryFiles = files === undefined ? undefined : compiledFiles(files, cache);
-  const entryIgnores = ignores === undefined ? undefined : compiledPatterns(listOf(ignores), cache);
-  if (
-    typeof entry !== 'object' ||
-    entry === null ||
-    Array.isArray(entry) ||
-    fieldOf(entry, 'basePath') !== undefined ||
-    (files !== undefined && entryFiles === undefined) ||
-    (ignores !== undefined && entryIgnores === undefined)
-  ) {
+  if (!isPlainEntry(entry)) {
     return undefined;
   }
+  const files = compiledField(fieldOf(entry, 'files'), (value) => compiledFiles(value, cache));
+  const ignores = compiledField(fieldOf(entry, 'ignores'), (value) =>
+    compiledPatterns(listOf(value), cache),
+  );
+  if (files === undefined || ignores === undefined) {
+    return undefined;
+  }
+  const elements = files.value ?? [];
   return {
-    files: entryFiles,
-    specific: (entryFiles ?? []).filter((element) => !element.universal),
-    universal: (entryFiles ?? []).filter((element) => element.universal),
-    ignores: entryIgnores,
-    globalIgnore:
-      ignores !== undefined &&
-      Object.keys(entry).filter((key) => !META_FIELDS.has(key)).length === 1,
+    files: files.value,
+    specific: elements.filter((element) => !element.universal),
+    universal: elements.filter((element) => element.universal),
+    ignores: ignores.value,
+    globalIgnores: hasOneField(entry) ? ignores.value : undefined,
   };
 }
 

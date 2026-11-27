@@ -1,7 +1,7 @@
 //! Patterns about the local variables of one method: SA_LOCAL_SELF_ASSIGNMENT and
 //! SA_LOCAL_SELF_ASSIGNMENT_INSTEAD_OF_FIELD (FindLocalSelfAssignment2, see `assign`).
 mod assign;
-mod lambdas;
+pub(super) mod lambdas;
 
 use super::Context;
 use crate::engine::source::{children, parent};

@@ -17,7 +17,7 @@ const SOURCE = '--source=';
 const PROCESSOR_SERVICE = 'META-INF/services/javax.annotation.processing.Processor';
 const MANIFEST = 'META-INF/MANIFEST.MF';
 const LOMBOK_VERSION = /^Lombok-Version:\s*(\S+)\s*$/mu;
-export const TESTED_LOMBOK = { lowest: '1.18.36', highest: '1.18.48' } as const;
+export const TESTED_LOMBOK = { lowest: '1.18.38', highest: '1.18.48' } as const;
 const JDK_MODULE = /^--(?:add-exports|patch-module)=(?:java|jdk)\./u;
 const PAIRED = ['--add-exports', '--patch-module'];
 
@@ -48,6 +48,11 @@ export function encodingOf(head: readonly string[]): string | undefined {
 
 export function projectFlags(head: readonly string[]): string[] {
   return valuesAfter(head, PROJECT_FLAG);
+}
+
+/** The project's own compiler arguments, as the build passed them to javac. */
+export function projectArguments(head: readonly string[]): string[] {
+  return valuesAfter(head, PROJECT_ARG);
 }
 
 export function ownClasses(head: readonly string[]): string[] {

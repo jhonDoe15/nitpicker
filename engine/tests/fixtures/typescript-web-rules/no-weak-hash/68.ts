@@ -1,0 +1,1 @@
+declare function setHash(s: string): void; export const tab = () => setHash("md5-calculator");

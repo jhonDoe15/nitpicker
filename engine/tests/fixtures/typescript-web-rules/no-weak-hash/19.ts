@@ -1,0 +1,1 @@
+import CryptoJS from "crypto-js"; export const id = (s) => CryptoJS.SHA256(s);

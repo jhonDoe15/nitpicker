@@ -1,0 +1,1 @@
+export const options = { checkServerIdentity: (host, cert) => verify(host, cert) };

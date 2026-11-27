@@ -1,0 +1,1 @@
+export const log = (m) => logger.warn("md5 is not supported");

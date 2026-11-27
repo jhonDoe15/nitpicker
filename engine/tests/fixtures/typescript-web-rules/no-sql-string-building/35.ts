@@ -1,0 +1,1 @@
+export const find = (id) => sequelize.query("SELECT * FROM users WHERE id = " + id, { type: "SELECT" });

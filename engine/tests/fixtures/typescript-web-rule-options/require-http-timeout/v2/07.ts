@@ -1,0 +1,1 @@
+export const get = (url) => globalThis.fetch(url, { signal: AbortSignal.timeout(5000) });

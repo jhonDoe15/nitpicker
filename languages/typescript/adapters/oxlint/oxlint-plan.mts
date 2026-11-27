@@ -68,13 +68,19 @@ function planningFailure(error: unknown): string {
 async function lintPlan(root: string, globs: readonly string[]) {
   const [nativeRules, plan] = await Promise.all([
     listNativeRules(process.env),
-    filePlan(root, globs),
+    filePlan(root, globs, () => configResolver(root, wrapperConfigPath)),
   ]);
   return { ...plan, nativeRules };
 }
 
-async function filePlan(root: string, globs: readonly string[]) {
-  let configOf: ((file: string) => Promise<unknown>) | undefined;
+type ConfigOf = (file: string) => Promise<unknown>;
+
+export async function filePlan(
+  root: string,
+  globs: readonly string[],
+  resolver: () => Promise<ConfigOf>,
+) {
+  let configOf: ConfigOf | undefined;
   const plan: Plan = {
     groups: new Map(),
     noInlineConfig: [],
@@ -84,7 +90,7 @@ async function filePlan(root: string, globs: readonly string[]) {
     derived: new WeakMap(),
   };
   for (const file of candidateFiles(root, globs)) {
-    configOf ??= await configResolver(root, wrapperConfigPath);
+    configOf ??= await resolver();
     const config = await configOf(file);
     if (config !== undefined) {
       addFile(plan, { root, file }, config);

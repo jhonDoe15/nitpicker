@@ -1,0 +1,1 @@
+import fs from "node:fs/promises"; export async function f(file: string) { const content = await fs.readFile(file, "utf-8"); await fs.writeFile(file, transform(content)); }

@@ -1,5 +1,6 @@
 import { CAST_PATTERNS } from './casts/spotbugs-casts-placed.mts';
 import {
+  BOUND_PATTERNS,
   BOXING_PATTERNS,
   INVOCATION_PATTERNS,
   NUMBER_PATTERNS,
@@ -7,14 +8,24 @@ import {
   THREAD_PATTERNS,
   URL_PATTERNS,
 } from './spotbugs-dumb-placed.mts';
+import { COOKIE_PATTERNS } from './cookies/spotbugs-cookies-placed.mts';
+import { CRYPTO_PATTERNS } from './crypto/spotbugs-crypto-placed.mts';
 import { COMPARATOR_PATTERNS } from './equality/spotbugs-equality-placed.mts';
 import { INJECTIONS } from './spotbugs-placed.mts';
+import { TLS_PATTERNS } from './tls/spotbugs-tls-placed.mts';
 import {
   DIVISION_PATTERNS,
   ENUM_PATTERNS,
   START_PATTERNS,
   WAIT_PATTERNS,
 } from './tail/spotbugs-tail-placed.mts';
+import {
+  ASSIGNMENT_PATTERNS,
+  CALENDAR_PATTERNS,
+  CIRCUIT_PATTERNS,
+  FLOAT_PATTERNS,
+} from './tail/spotbugs-tail-logic-placed.mts';
+import { VALUE_DETECTORS } from './values/spotbugs-values-placed.mts';
 
 export const WRONG_MAP_ITERATOR = 'WMI_WRONG_MAP_ITERATOR';
 export const LOCK_MONITORENTER = 'JLM_JSR166_LOCK_MONITORENTER';
@@ -40,7 +51,18 @@ export const SEQUENCE_ON_CONCURRENT = 'AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTR
 export const UNSYNC_GET = 'UG_SYNC_SET_UNSYNC_GET';
 export const UNCHECKED_READS: readonly string[] = ['RR_NOT_CHECKED', 'SR_NOT_CHECKED'];
 export const UNINITIALIZED_READ = 'UR_UNINIT_READ';
-const VALUE_PATTERNS: readonly string[] = [...UNCHECKED_READS, UNINITIALIZED_READ];
+export const HARD_CODED: readonly string[] = ['HARD_CODE_PASSWORD', 'HARD_CODE_KEY'];
+export const USELESS_CONDITIONS: readonly string[] = [
+  'UC_USELESS_CONDITION',
+  'UC_USELESS_CONDITION_TYPE',
+];
+const VALUE_PATTERNS: readonly string[] = [
+  ...UNCHECKED_READS,
+  UNINITIALIZED_READ,
+  ...HARD_CODED,
+  ...USELESS_CONDITIONS,
+  ...Object.values(VALUE_DETECTORS).flat(),
+];
 export const ON_ENGINE: readonly string[] = [
   'CT_CONSTRUCTOR_THROW',
   'EI_EXPOSE_REP',
@@ -114,6 +136,14 @@ export const ON_ENGINE: readonly string[] = [
   ...START_PATTERNS,
   ...ENUM_PATTERNS,
   ...VALUE_PATTERNS,
+  ...BOUND_PATTERNS,
+  ...FLOAT_PATTERNS,
+  ...CIRCUIT_PATTERNS,
+  ...CALENDAR_PATTERNS,
+  ...CRYPTO_PATTERNS,
+  ...TLS_PATTERNS,
+  ...COOKIE_PATTERNS,
+  ...ASSIGNMENT_PATTERNS,
   ...COMPARATOR_PATTERNS,
 ];
 
@@ -132,6 +162,7 @@ export const LOMBOK_WRITES: readonly string[] = [
   'UG_',
   'URF_',
   'UR_',
+  'UC_',
   'NM_METHOD_NAMING_CONVENTION',
   'ME_ENUM_FIELD_SETTER',
 ];

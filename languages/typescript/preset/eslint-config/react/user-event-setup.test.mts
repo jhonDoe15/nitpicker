@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
+import { replayEngineFindingsFrom } from '../../../../../shared/engine/engine-findings-file.mts';
+import { writeReplay } from '../../eslint-plugin/replay/replay-file.mts';
 import { resolveLayout } from '../../layout.mts';
 import { reactSyntaxConfigFor } from './react-scope.mts';
 
@@ -56,5 +58,31 @@ describe('testing-library/prefer-user-event-setup', () => {
     const importLine = "import * as UE from '@testing-library/user-event';";
 
     expect(await setupMessages(importLine, receiver)).toEqual([{ line: 3, method: 'click' }]);
+  });
+});
+
+describe('testing-library rules the engine ran', () => {
+  afterAll(() => {
+    replayEngineFindingsFrom(undefined);
+  });
+
+  it('replays the engine findings in place of its own', async () => {
+    const replay = path.join(root, 'replay.jsonl');
+    const ruleId = 'testing-library/prefer-user-event-setup';
+    writeReplay(replay, {
+      file: ['test/b.test.tsx'],
+      rule: [ruleId],
+      typedFile: [],
+      typedRule: [],
+      finding: [['test/b.test.tsx', ruleId, 1, 1, 'replayed']],
+    });
+    replayEngineFindingsFrom(replay);
+    const [result] = await eslint.lintText('export const a = 1;\n', {
+      filePath: path.join(root, 'test/b.test.tsx'),
+    });
+
+    expect(
+      result?.messages.filter((message) => message.ruleId === ruleId).map(({ message }) => message),
+    ).toEqual([expect.stringContaining('replayed')]);
   });
 });

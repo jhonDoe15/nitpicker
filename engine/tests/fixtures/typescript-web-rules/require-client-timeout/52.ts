@@ -1,0 +1,1 @@
+import { Pool, Client } from "pg"; export const client = new Client(process.env.DATABASE_URL);

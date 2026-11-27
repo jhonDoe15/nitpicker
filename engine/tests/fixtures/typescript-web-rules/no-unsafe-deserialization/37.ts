@@ -1,0 +1,1 @@
+import v8 from "node:v8"; export const clone = <T>(value: T): T => v8.deserialize(v8.serialize(value)) as T;

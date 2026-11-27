@@ -1,0 +1,1 @@
+function go(item) { location.href = item.url; }

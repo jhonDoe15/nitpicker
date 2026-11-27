@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
+mod handed;
 
 static RUNS: AtomicUsize = AtomicUsize::new(0);
 
@@ -53,9 +54,9 @@ fn rows_with(case: &str, rule: &str, rules: &str, only: Option<&str>, options: &
     let report: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&out).expect("report")).expect("json");
     let _ = std::fs::remove_file(&out);
     let prefix = format!("{}/", source.display());
-    let found = counted(report["findings"]
-        .as_array()
-        .expect("findings")
+    let (findings, handed) = (report["findings"].as_array().expect("findings"), handed::handed_back(report["findings"].as_array().expect("findings"), &prefix));
+    let kept = |file: &str, rule: &str| rule != "_HandBack" && !handed.contains(&(file.to_string(), rule.to_string()));
+    let found = counted(findings
         .iter()
         .map(|finding| {
             let file = finding["file"].as_str().expect("file");
@@ -67,10 +68,10 @@ fn rows_with(case: &str, rule: &str, rules: &str, only: Option<&str>, options: &
                 if failed { 0 } else { finding["column"].as_u64().expect("column") },
             )
         })
+        .filter(|row| kept(&row.0, &row.1))
         .collect::<Vec<Row>>());
-    let expected: Vec<Row> =
-        serde_json::from_str(&std::fs::read_to_string(root.join("expected").join(format!("{expected}.json"))).expect("expected")).expect("rows");
-    (found, counted(expected))
+    let expected: Vec<Row> = serde_json::from_str(&std::fs::read_to_string(root.join("expected").join(format!("{expected}.json"))).expect("expected")).expect("rows");
+    (found, counted(expected.into_iter().filter(|row| kept(&row.0, &row.1))))
 }
 
 fn same_as_pmd(case: &str, rules: &str) {
@@ -135,7 +136,7 @@ fn concurrency_and_value_rules_report_what_pmd_reports() {
 }
 
 fn same_as_error_prone((found, expected): (Rows, Rows), checks: usize) {
-    let found: BTreeMap<Row, _> = found.into_iter().filter(|(row, _)| row.1 != "NullAway").collect();
+    let found: BTreeMap<Row, _> = found.into_iter().filter(|(row, _)| row.1 != "NullAway" && row.1 != "_HandBack").collect();
     let missed: Vec<&Row> = expected.iter().filter(|(row, count)| found.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     let extra: Vec<&Row> = found.iter().filter(|(row, count)| expected.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
@@ -144,13 +145,13 @@ fn same_as_error_prone((found, expected): (Rows, Rows), checks: usize) {
 
 #[test]
 fn error_prone_checks_report_what_error_prone_reports() {
-    same_as_error_prone(rows_of("errorprone", "_ErrorProne", "all"), 554);
+    same_as_error_prone(rows_of("errorprone", "_ErrorProne", "all"), 562);
 }
 
 /// `--test-only` is Error Prone's `-XepCompilingTestOnlyCode`; the rows come from Error Prone run with that flag.
 #[test]
 fn error_prone_checks_report_what_error_prone_reports_on_test_only_code() {
-    same_as_error_prone(rows_with("errorprone", "_ErrorProne", "all", None, &["--test-only"], "errorprone-test-only"), 541);
+    same_as_error_prone(rows_with("errorprone", "_ErrorProne", "all", None, &["--test-only"], "errorprone-test-only"), 548);
 }
 
 /// A Java run selects some checks (`NP_EP_ONLY`); the others are skipped, and each selected check reports what it
@@ -387,7 +388,7 @@ fn null_away_reports_what_null_away_reports_on_the_error_prone_fixtures() {
     let top: Vec<&str> = found.iter().filter(|name| !found.iter().any(|other| name.starts_with(&format!("{other}.")))).map(String::as_str).collect();
     let (missed, extra, count) = null_away_differences(&source, &source, &top.join(","), None, "nullaway-errorprone.json");
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(count, 763);
+    assert_eq!(count, 824);
 }
 
 /// A module (`module-info.java` with `requires` and a package it does not export) against a `@NullMarked` library

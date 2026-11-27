@@ -1,0 +1,1 @@
+export const serverOptions = (key, cert, ca) => ({ key, cert, ca, requestCert: true, rejectUnauthorized: false });

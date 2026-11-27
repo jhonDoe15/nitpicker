@@ -1,0 +1,22 @@
+declare const x: any;
+let A: any = 1;
+[(A as any)] = "ab";
+export const a = `<p>${A}</p>`;
+let B: any = 1;
+({ a: (B as any) = 1 } = "x");
+export const b = `<p>${B}</p>`;
+let C: any = 1;
+((C as any) as any) = x;
+export const c = `<p>${C}</p>`;
+let D: any = 1;
+(D!)!++;
+export const d = `<p>${D}</p>`;
+let E: any = 1;
+for (((E as any) as any) of "ab") {}
+export const e = `<p>${E}</p>`;
+let G: any = 1;
+(G satisfies any) = x;
+export const g = `<p>${G}</p>`;
+let H: any = 1;
+(H as any) = x;
+export const h = `<p>${H}</p>`;

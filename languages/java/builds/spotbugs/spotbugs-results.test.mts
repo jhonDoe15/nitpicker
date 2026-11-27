@@ -376,6 +376,72 @@ describe('spotbugsResultOf', () => {
     });
   });
 
+  it('places a class and a constructor of the default package without a package', () => {
+    const finding = {
+      file: '/src/A.java',
+      rule: 'DCN_NULLPOINTER_EXCEPTION',
+      line: 3,
+      message: '',
+    };
+    const placed = spotbugsResultOf({ ...finding, symbol: 'type:A', priority: 2 });
+    const thrown = resultOf(
+      'CT_CONSTRUCTOR_THROW',
+      'Exception thrown in class A at new A() will leave the constructor.',
+    );
+
+    expect(placed.locations[0].physicalLocation.artifactLocation.uri).toBe('A.java');
+    expect(placed.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'A',
+      kind: 'type',
+      fullyQualifiedName: 'A',
+    });
+    expect(thrown.locations[0].logicalLocations[0].name).toBe('new A()');
+  });
+
+  it('names a lock field of a class in the default package by its field name', () => {
+    const result = spotbugsResultOf({
+      file: '/src/K.java',
+      rule: 'JLM_JSR166_LOCK_MONITORENTER',
+      line: 5,
+      message: '',
+      symbol: 'member:K.lk',
+      priority: 1,
+      arguments: ['java.util.concurrent.locks.ReentrantLock', 'K.a()'],
+    });
+
+    expect(result.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'lk',
+      kind: 'member',
+      fullyQualifiedName: 'K.lk',
+    });
+  });
+
+  it('falls back to the place for a class finding the engine gives no values for', () => {
+    const result = spotbugsResultOf({
+      file: '/src/p/A.java',
+      rule: 'EQ_DOESNT_OVERRIDE_EQUALS',
+      line: 4,
+      message: '',
+      symbol: 'type:p.A',
+      priority: 2,
+    });
+
+    expect(result.locations[0].physicalLocation.artifactLocation.uri).toBe('p/A.java');
+    expect(result.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'p.A',
+      kind: 'type',
+      fullyQualifiedName: 'p.A',
+    });
+  });
+
+  it('refuses a placed finding without a priority', () => {
+    const finding = { file: '/A.java', rule: 'DCN_NULLPOINTER_EXCEPTION', line: 1, message: '' };
+
+    expect(() => spotbugsResultOf({ ...finding, symbol: 'function:p.A.a()' })).toThrow(
+      /cannot place/u,
+    );
+  });
+
   it('refuses a message it cannot read', () => {
     expect(() => resultOf('EI_EXPOSE_REP', 'something else')).toThrow(/cannot read/u);
     expect(() => resultOf('OTHER_PATTERN', 'x')).toThrow(/OTHER_PATTERN/u);

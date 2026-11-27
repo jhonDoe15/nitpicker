@@ -99,23 +99,35 @@ function isHookCall(node: TSESTree.Node, context: FileContext): boolean {
   );
 }
 
-function browserFlag(node: TSESTree.Node, context: FileContext): boolean {
-  if (node.type !== AST_NODE_TYPES.Identifier || !namesValue(node)) {
-    return false;
-  }
-  const { sourceCode } = context;
-  const definition = findVariable({ sourceCode }, node, node.name)?.defs[0];
-  const declarator = definition?.node;
+function constInitializer(
+  node: TSESTree.Identifier,
+  sourceCode: SourceCode,
+): { readonly init: TSESTree.Expression; readonly topLevel: boolean } | undefined {
+  const declarator = findVariable({ sourceCode }, node, node.name)?.defs[0]?.node;
   if (
     declarator?.type !== AST_NODE_TYPES.VariableDeclarator ||
     declarator.parent.kind !== 'const' ||
     declarator.init === null
   ) {
+    return undefined;
+  }
+  return {
+    init: declarator.init,
+    topLevel: declarator.parent.parent.type === AST_NODE_TYPES.Program,
+  };
+}
+
+function browserFlag(node: TSESTree.Node, context: FileContext): boolean {
+  if (node.type !== AST_NODE_TYPES.Identifier || !namesValue(node)) {
     return false;
   }
-  return declarator.parent.parent.type === AST_NODE_TYPES.Program
-    ? combinesTypeofTests(declarator.init, sourceCode)
-    : isHookCall(declarator.init, context);
+  const found = constInitializer(node, context.sourceCode);
+  if (found === undefined) {
+    return false;
+  }
+  return found.topLevel
+    ? combinesTypeofTests(found.init, context.sourceCode)
+    : isHookCall(found.init, context);
 }
 
 export function testsBrowser(node: TSESTree.Node, context: FileContext): boolean {

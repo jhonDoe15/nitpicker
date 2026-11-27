@@ -163,6 +163,16 @@ function shellWrapper(text: string | undefined): string | undefined {
   return fileWrapper(first, rest);
 }
 
+function shellOptionWrapper(
+  context: SourceContext,
+  call: TSESTree.CallExpression,
+  options: TSESTree.Node | undefined,
+): string | undefined {
+  const shell = literalOption(context, options, 'shell');
+  const text = staticText(context, call.arguments[0], ' X ') ?? '';
+  return shell !== undefined && shell !== false && isCompound(text) ? 'a shell' : undefined;
+}
+
 function wrapperOf(
   context: SourceContext,
   call: TSESTree.CallExpression,
@@ -179,12 +189,7 @@ function wrapperOf(
   if (wrapper !== undefined) {
     return wrapper;
   }
-  const shell = literalOption(context, options, 'shell');
-  return shell !== undefined &&
-    shell !== false &&
-    isCompound(staticText(context, call.arguments[0], ' X ') ?? '')
-    ? 'a shell'
-    : undefined;
+  return shellOptionWrapper(context, call, options);
 }
 
 function killsGroup(

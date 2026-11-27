@@ -9,7 +9,7 @@
 //!   `int` local holding only such values.
 use super::super::super::Context;
 use super::super::super::observed::BODIES;
-pub use super::stores::{held, local, stores};
+pub use super::stores::{held, local, reaching, stores, writes};
 use crate::engine::source::{ancestor, walk};
 use crate::java::types::constant::Constant;
 use crate::java::types::expr::{Binding, unwrap};

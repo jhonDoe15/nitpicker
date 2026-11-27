@@ -92,6 +92,7 @@ tester.run('no-io-in-loop with types', ioInLoop, {
       '`viaHelper()`, which calls `loadOrder()`, which calls `pool.query()`',
     ),
     caseOf(loop('await loadPrice(id);'), 'request', '`loadPrice()`, which calls `axios.get()`'),
+    caseOf(loop('await axios(id);', "import * as axios from 'axios';\n"), 'request'),
     caseOf(loop('await new OrderService(pool).find(id);'), 'query'),
     caseOf(
       loop('const store = createOrderStore(pool); await store.find(id);'),

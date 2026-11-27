@@ -19,7 +19,7 @@ function readClock(node: TSESTree.Node): Clock | undefined {
   return isPerformanceNow ? PERFORMANCE : undefined;
 }
 
-function writtenValues(variable: TSESLint.Scope.Variable): (TSESTree.Node | undefined)[] {
+function writtenValues(variable: TSESLint.Scope.Variable): (TSESTree.Node | null | undefined)[] {
   const initial = variable.defs.flatMap((definition) => {
     if (definition.node.type !== AST_NODE_TYPES.VariableDeclarator) {
       return [undefined];
@@ -28,11 +28,11 @@ function writtenValues(variable: TSESLint.Scope.Variable): (TSESTree.Node | unde
   });
   const assigned = variable.references
     .filter((reference) => reference.isWrite() && reference.init !== true)
-    .map((reference) => reference.writeExpr ?? undefined);
+    .map((reference) => reference.writeExpr);
   return [...initial, ...assigned];
 }
 
-function heldValues(context: Context, node: TSESTree.Node): (TSESTree.Node | undefined)[] {
+function heldValues(context: Context, node: TSESTree.Node): (TSESTree.Node | null | undefined)[] {
   if (node.type !== AST_NODE_TYPES.Identifier) {
     return [node];
   }
@@ -82,7 +82,7 @@ export function isMeasuredDuration(context: Context, node: TSESTree.Node): boole
   const values = heldValues(context, node);
   return (
     values.length > 0 &&
-    values.every((value) => value !== undefined && isClockDifference(context, value))
+    values.every((value) => (value ? isClockDifference(context, value) : false))
   );
 }
 
@@ -94,21 +94,28 @@ function stringArgument(node: TSESTree.Node | undefined): unknown {
   return node?.type === AST_NODE_TYPES.Literal ? node.value : undefined;
 }
 
-function replacesByCall(call: TSESTree.CallExpression): boolean {
-  const { callee } = call;
-  const method = nameOf(callee.type === AST_NODE_TYPES.MemberExpression ? callee.property : callee);
+function replacesSpied(call: TSESTree.CallExpression): boolean {
   const [first, second] = call.arguments;
-  if (SPIES.has(method ?? '')) {
-    return CLOCK_OWNERS.has(nameOf(first) ?? '') && stringArgument(second) === 'now';
-  }
-  if (method === 'stubGlobal') {
-    return CLOCK_OWNERS.has(String(stringArgument(first)));
-  }
+  return CLOCK_OWNERS.has(nameOf(first) ?? '') && stringArgument(second) === 'now';
+}
+
+function installsFakeClock(callee: TSESTree.Node): boolean {
   return (
-    method === 'install' &&
     callee.type === AST_NODE_TYPES.MemberExpression &&
     FAKE_CLOCK_LIBRARIES.has(nameOf(callee.object) ?? '')
   );
+}
+
+function replacesByCall(call: TSESTree.CallExpression): boolean {
+  const { callee } = call;
+  const method = nameOf(callee.type === AST_NODE_TYPES.MemberExpression ? callee.property : callee);
+  if (SPIES.has(method ?? '')) {
+    return replacesSpied(call);
+  }
+  if (method === 'stubGlobal') {
+    return CLOCK_OWNERS.has(String(stringArgument(call.arguments[0])));
+  }
+  return method === 'install' && installsFakeClock(callee);
 }
 
 export function replacesClock(node: TSESTree.Node): boolean {

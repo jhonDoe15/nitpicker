@@ -1,0 +1,1 @@
+import * as c from "crypto"; export const id = (s) => c.createHash("md5").update(s).digest();

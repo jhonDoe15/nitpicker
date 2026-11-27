@@ -1,0 +1,1 @@
+export const a = (t: string) => `<p>${DOMPurify.sanitize(t)}</p>`;

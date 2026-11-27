@@ -36,6 +36,10 @@ tester.run('no-fixed-port-in-tests', rule, {
     inTest(
       'try { app.listen({ port: 1234, signal: {} }); t.assert.fail("should throw"); } catch {}',
     ),
+    inTest('try { app.listen(3000); fail("should throw"); } catch {}'),
+    inTest('try { app.listen(3000); a.expect.fail("should throw"); } catch {}'),
+    inTest('const wss = new a.b.Server({ port: 8081 });'),
+    'it(`port ${n} in use`, () => { blocker.listen(4211); });',
   ],
   invalid: [
     flagged(inTest('const server = app.listen(3000);')),
@@ -59,5 +63,8 @@ tester.run('no-fixed-port-in-tests', rule, {
     flagged('it("serves taken slots", () => { server.listen(3000); });'),
     flagged('describe("busy hours", () => { it("serves", () => { server.listen(3000); }); });'),
     flagged(inTest('try { server.listen(3000); report.fail(); } catch {}')),
+    flagged(inTest('try { server.listen(3000); other(); } catch {}')),
+    flagged(inTest('try { server.listen(3000); x[0].fail(); foo().fail(); } catch {}')),
+    flagged('it(`serves ${n}`, () => { server.listen(3000); });'),
   ],
 });

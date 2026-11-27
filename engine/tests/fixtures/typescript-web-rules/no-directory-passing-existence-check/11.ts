@@ -1,0 +1,1 @@
+if (!fs.existsSync(options.file)) { return; } fs.statSync(options.file).isFile();

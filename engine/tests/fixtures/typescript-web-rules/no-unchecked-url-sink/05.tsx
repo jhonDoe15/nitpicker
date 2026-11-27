@@ -1,0 +1,1 @@
+const a = <a href={safeUrl}>x</a>;

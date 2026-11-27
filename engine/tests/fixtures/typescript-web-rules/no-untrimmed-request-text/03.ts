@@ -1,0 +1,1 @@
+export function find(req, repo) { return repo.findById(req.query.id); }

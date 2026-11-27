@@ -40,14 +40,13 @@ function simpleName(named: Named, name: string, from: TypeDecl): TypeDecl | unde
 }
 
 function qualifiedName(named: Named, name: string, from: TypeDecl): TypeDecl | undefined {
-  const parts = name.split('.');
-  const last = parts.at(-1) ?? '';
+  const last = name.slice(name.lastIndexOf('.') + 1);
   const exact = named(last).filter((type) => importPath(type) === name);
   if (exact.length > 0) {
     return exact.length === 1 ? exact[0] : undefined;
   }
-  let current = simpleName(named, parts[0] ?? '', from);
-  for (const part of parts.slice(1)) {
+  let current = simpleName(named, name.slice(0, name.indexOf('.')), from);
+  for (const part of name.split('.').slice(1)) {
     const outer = current === undefined ? '' : importPath(current);
     current = named(part).find((type) => type.scope === outer);
   }

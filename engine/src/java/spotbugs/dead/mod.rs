@@ -26,9 +26,9 @@
 //! - Findings of one method with the same pattern, name and priority make one, on the first line; for SHADOWS_FIELD
 //!   the priorities merge too, on the line of the best. A variable the compiled code's table of names does not
 //!   cover right after the store is named `$L` and its slot.
-mod flow;
+pub mod flow;
 mod report;
-mod slots;
+pub(super) mod slots;
 mod value;
 mod walk;
 

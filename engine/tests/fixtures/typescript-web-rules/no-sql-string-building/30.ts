@@ -1,0 +1,1 @@
+export const find = (id) => { const sql = `SELECT * FROM users WHERE id = ${id}`; return pool.query(sql); };

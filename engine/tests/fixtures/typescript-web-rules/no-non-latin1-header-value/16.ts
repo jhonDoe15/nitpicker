@@ -1,0 +1,1 @@
+res.setHeader("x-file-path", file.relative);

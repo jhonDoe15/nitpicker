@@ -1,7 +1,10 @@
 //! The messages of the Error Prone checks, with Error Prone's "Did you mean" sentence, are the ones Error Prone writes.
-use std::collections::BTreeMap;
+//! A file's checks that the engine hands back to Error Prone are left out: a Java run takes Error Prone's rows there.
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::process::Command;
+
+mod handed;
 
 type Row = (String, String, u64, u64, String);
 
@@ -44,7 +47,15 @@ fn error_prone_messages_and_suggestions_match_error_prone() {
     let report: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&out).expect("report")).expect("json");
     let _ = std::fs::remove_file(&out);
     let prefix = format!("{}/", source.display());
-    let found = counted(report["findings"].as_array().expect("findings").iter().filter(|finding| finding["rule"] != "NullAway").map(|finding| {
+    let findings = report["findings"].as_array().expect("findings");
+    let handed = handed::handed_back(findings, &prefix);
+    let listed = std::fs::read_to_string(root.join("expected").join("errorprone-handed-back.json")).expect("handed back");
+    assert_eq!(handed, serde_json::from_str::<BTreeSet<(String, String)>>(&listed).expect("pairs"), "files whose checks go back to Error Prone");
+    let kept = |file: &str, rule: &str| rule != "NullAway" && rule != "_HandBack" && !handed.contains(&(file.to_string(), rule.to_string()));
+    let found = counted(findings.iter().filter(|finding| {
+        let file = finding["file"].as_str().expect("file");
+        kept(file.strip_prefix(&prefix).unwrap_or(file), finding["rule"].as_str().expect("rule"))
+    }).map(|finding| {
         let file = finding["file"].as_str().expect("file");
         (
             file.strip_prefix(&prefix).unwrap_or(file).to_string(),
@@ -56,7 +67,7 @@ fn error_prone_messages_and_suggestions_match_error_prone() {
     }));
     let listed = std::fs::read_to_string(root.join("expected").join("errorprone-messages.json")).expect("expected");
     let rows = serde_json::from_str::<Vec<Row>>(&listed).expect("rows");
-    let expected = counted(rows.into_iter().map(|(file, rule, line, column, message)| (file, rule, line, column, unordered_fields(message))));
+    let expected = counted(rows.into_iter().filter(|(file, rule, ..)| kept(file, rule)).map(|(file, rule, line, column, message)| (file, rule, line, column, unordered_fields(message))));
     let missed: Vec<&Row> = expected.iter().filter(|(row, count)| found.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     let extra: Vec<&Row> = found.iter().filter(|(row, count)| expected.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:#?}, extra {extra:#?}");

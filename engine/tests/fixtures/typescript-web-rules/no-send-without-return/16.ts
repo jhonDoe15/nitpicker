@@ -1,0 +1,1 @@
+function f(req, res, next) { if (!ok) { next(); } }

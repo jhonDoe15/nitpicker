@@ -1,0 +1,1 @@
+import * as OTPAuth from "otpauth"; export const totp = (secret: string) => new OTPAuth.TOTP({ issuer: "App", algorithm: "SHA1", digits: 6, period: 30, secret });

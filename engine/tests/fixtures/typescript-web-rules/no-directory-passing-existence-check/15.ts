@@ -1,0 +1,1 @@
+async function f() { await fsp.access(options.file, fs.constants.X_OK); return fsp.readFile(options.file); }

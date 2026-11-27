@@ -1,0 +1,1 @@
+import got from "got"; export const get = (url) => got(url, { timeout: { request: 5000 } });

@@ -1,0 +1,1 @@
+import { createHash as digestOf } from "crypto"; export const id = (s) => digestOf("md5").update(s).digest();

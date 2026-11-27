@@ -1,0 +1,1 @@
+export function f(t: string) { try { return 1; } catch { return btoa(t); } }

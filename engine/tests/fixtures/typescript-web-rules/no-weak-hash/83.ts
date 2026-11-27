@@ -1,0 +1,1 @@
+import { createHash } from "node:crypto"; export class Hasher { private readonly algorithm = "sha1"; run(s: string) { return createHash(this.algorithm).update(s).digest("hex"); } }
