@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use tree_sitter::Node;
 
-const BODIES: &[&str] = &["method_declaration", "constructor_declaration", "compact_constructor_declaration", "lambda_expression", "static_initializer"];
+pub(super) const BODIES: &[&str] = &["method_declaration", "constructor_declaration", "compact_constructor_declaration", "lambda_expression", "static_initializer"];
 const DEPTH: usize = 6;
 
 pub type Stores<'t> = HashMap<(String, String), Vec<Node<'t>>>;
@@ -123,7 +123,7 @@ const BRANCHES: &[&str] = &[
 ];
 
 /// Whether a store always runs before a use: no branch around it that leaves the use out.
-fn always_before(store: Node, usage: Node, body: Node) -> bool {
+pub(super) fn always_before(store: Node, usage: Node, body: Node) -> bool {
     let mut at = parent(store);
     while let Some(node) = at {
         if node.id() == body.id() {
