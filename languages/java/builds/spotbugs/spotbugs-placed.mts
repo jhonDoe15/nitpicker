@@ -1,5 +1,6 @@
 import { CAST_PLACED } from './casts/spotbugs-casts-placed.mts';
 import { DUMB_PLACED } from './spotbugs-dumb-placed.mts';
+import { TAIL_PLACED } from './tail/spotbugs-tail-placed.mts';
 
 export type Placed = {
   readonly text: string;
@@ -293,4 +294,5 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   },
   ...DUMB_PLACED,
   ...CAST_PLACED,
+  ...TAIL_PLACED,
 };
