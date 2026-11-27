@@ -1817,6 +1817,63 @@ these DumbMethods no longer runs in SpotBugs.
 On commons-lang, MyBatis, jackson-databind and Guava all 48 patterns of DumbMethods give SARIF results same / missed /
 extra 0 / 0 / 0, 1 / 0 / 0, 8 / 0 / 0 and 2 / 0 / 0.
 
+### Float equality, non-short-circuit logic and static calendars
+
+Three more detectors of the long tail (#2535): `src/java/spotbugs/floats/`, `circuit/` and `calendars/`, labs in
+`tests/fixtures/spotbugs/tail_floats*`, `tail_circuits*` and `tail_calendars*`. SpotBugs no longer runs
+FindFloatEquality, FindNonShortCircuit and StaticCalendarDetector.
+- FE_TEST_IF_EQUAL_TO_NOT_A_NUMBER: an `==` or `!=` comparing as `double` or `float` (two boxed values compare
+  references) with a side javac folds to NaN, also through a local; priority 1, once per method.
+- FE_FLOATING_POINT_EQUALITY: such a comparison is left out when a side folds to a whole number or an infinity
+  (`0`, `-0.0`, `1e10`, `MAX_VALUE`, `2 * D` for a constant `D = 180`; a local holding one counts, but arithmetic
+  on a local that is not `final` is not folded), both fold to one number, or both read one local or one field of
+  one object (a static field through any class name). Priority 1 when a side is floating point arithmetic javac
+  does not fold: `+ - * / %` typed `double` or `float`, kept through casts that change nothing, conditionals and
+  locals any reaching store of which is one (`+=` and `++` too), and a field not `public` that any class of the run
+  stores arithmetic in, so findings wait for the whole run. A negation, a call or a conversion (`int` or `float` to
+  `double`) is not arithmetic. Else, with a side folding to another number, priority 3 (hidden) when the other side
+  holds a parameter as passed (a parameter, an unboxed `Double` one, a local a lambda or an inner class captures, a
+  local or conditional holding only such values, a `final` field not `public` the class stores only parameters
+  in) and 2 otherwise; anything else is 3. Once per method, the first of the best priority, at javac's line.
+- NS_NON_SHORT_CIRCUIT and NS_DANGEROUS_NON_SHORT_CIRCUIT: SpotBugs follows the bytecode, so the engine walks each
+  method in javac's order (constructors with the field initializers and initializer blocks after `super(...)`,
+  static initializers with the static ones). Jumps reset what it tracks: an `else` after a branch that runs into
+  it, the end of a `while`, `for` or `for`-each loop, `break`, `continue`, `switch`, `try`, `synchronized` and a
+  conditional whose first value is not `0`, `1` or a boolean javac materializes (not `do` loops, `throw`, `return`
+  or an `if` without `else`). In between, windows close at each boolean javac materializes (a comparison, `!`,
+  `&&`, `||` used as a value, a conditional `c ? true : false` or `x == null ? 1 : …`, a switch whose branches are
+  all `true` or `false`) and at each call returning `boolean` (unboxing a `Boolean` too). A window notes a call
+  (any but `String.length()`, constructors and unboxing included), a null test, and an array read or an integer
+  `/` or `%`. A boolean `&` (on `Boolean` values too) is judged when javac tests its value next (a condition, the
+  operand of `!`, `&&` or `||`, a branch of a conditional or switch that is tested), returns it as a `boolean` or
+  stores it into a `boolean` field (`&=` too); a `|` only when tested. The value right before the operator decides:
+  the right side, or the right side of the `&`, `|` or `^` the right side is. A local or a constant is never
+  reported, nor, after such an operator, a value that does not end with a materialized boolean or a `boolean` call.
+  S is the last window closed and P the one before. A null test in an earlier window not closed by a call, with a
+  call or array read in S or P closed by a call, gives NS_NON_SHORT_CIRCUIT priority 1; else a call in S or P
+  closed by a call gives NS_DANGEROUS_NON_SHORT_CIRCUIT priority 1; else an array read in S gives
+  NS_NON_SHORT_CIRCUIT priority 2; else priority 3 (hidden). Each pattern once per method; the line is that of the
+  test, `return` (javac starts the line of a `return` again) or store after the operator.
+- STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE and STCAL_STATIC_CALENDAR_INSTANCE: a public or protected static field
+  (interface fields too) declared as `java.text.DateFormat` or `java.util.Calendar` or a class below them, or an
+  array of those, written or not. Priority 1 for a date format and 2 for a calendar, one more when the field is not
+  final or is protected, one more when its type is the declaring class, one less when that class has a
+  `synchronized` method or block or a `volatile` field (Lombok's `@Synchronized` counts; classes declared inside
+  count on their own). No line.
+- STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE and STCAL_INVOKE_ON_STATIC_CALENDAR_INSTANCE: a call on the value of
+  such a static field of any class and access, read straight, through casts or through a local whose one reaching
+  store reads it, unless it is cast to a class above both types (`Format`). Names starting with `get`, `equals` and
+  methods `Object` declares are left out; `set…`, `add`, `clear`, `format`, `parse` and `applyPattern` are
+  priority 2, others 3 (hidden); one less in a class as above. The static initializer of the class declaring the
+  field, `synchronized` methods and blocks are left out. Once per method, field and called method with its
+  parameter types, the method named by the class it is called on when that is a class of the run, else by the class
+  declaring it. The SARIF place is the field under the calling class, shown under the class that declares it.
+
+On the comparison code bases, SARIF results: guava 4 / 0 / 0 (one FE, three NS_DANGEROUS), jackson-databind
+2 / 0 / 0 (STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE), javaparser-core 1 / 0 / 0 (NS_NON_SHORT_CIRCUIT), commons-lang,
+mybatis-3 and Nacos 0 / 0 / 0. On the Elasticsearch server sources the engine reports the three FE findings of the
+saved SpotBugs report and nothing else of these patterns.
+
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in

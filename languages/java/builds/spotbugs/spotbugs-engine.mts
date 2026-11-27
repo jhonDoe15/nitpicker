@@ -19,12 +19,7 @@ import {
   THREAD_PATTERNS,
   URL_PATTERNS,
 } from './spotbugs-dumb-placed.mts';
-import {
-  DIVISION_PATTERNS,
-  ENUM_PATTERNS,
-  START_PATTERNS,
-  WAIT_PATTERNS,
-} from './tail/spotbugs-tail-placed.mts';
+import { TAIL_DETECTORS } from './tail/spotbugs-tail-placed.mts';
 import { engineSpotbugsFindingOf, spotbugsResultOf } from './spotbugs-results.mts';
 import {
   type ProcessorKind,
@@ -101,10 +96,7 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
     'DMI_RANDOM_USED_ONLY_ONCE',
     'DMI_COLLECTION_OF_URLS',
   ],
-  IDivResultCastToDouble: DIVISION_PATTERNS,
-  WaitInLoop: WAIT_PATTERNS,
-  StartInConstructor: START_PATTERNS,
-  MutableEnum: ENUM_PATTERNS,
+  ...TAIL_DETECTORS,
   DontCatchNullPointerException: ['DCN_NULLPOINTER_EXCEPTION'],
   WrongMapIterator: [WRONG_MAP_ITERATOR],
   BooleanReturnNull: ['NP_BOOLEAN_RETURN_NULL'],
