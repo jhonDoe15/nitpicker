@@ -568,5 +568,6 @@
  "TryFailRefactoring",
  "AssertThrowsMinimizer",
  "InlineMeValidator",
- "ASTHelpersSuggestions"
+ "ASTHelpersSuggestions",
+ "DeeplyNested"
 ]

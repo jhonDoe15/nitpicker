@@ -66,17 +66,3 @@ fn inline_me_inliner_cannot_report_without_inline_me_members() {
     let files = [("Calls.java", "package p;\nclass Calls { void f(StringBuilder b) { b.reverse(); } }\n".to_string())];
     assert_eq!(may_report("none", &files, "InlineMeInliner"), vec![row("Calls.java", "")]);
 }
-
-#[test]
-fn deeply_nested_needs_a_deep_tree() {
-    let chain = format!("class Deep {{ Object f(StringBuilder b) {{ return b{}; }} }}\n", ".append(1)".repeat(400));
-    let files = [
-        ("Deep.java", chain),
-        ("Flat.java", "class Flat { int f(int x) { return x + 1; } }\n".to_string()),
-        ("Broken.java", "class Broken { int f( { }\n".to_string()),
-    ];
-    assert_eq!(
-        may_report("deep", &files, "DeeplyNested"),
-        vec![row("Broken.java", "DeeplyNested"), row("Deep.java", "DeeplyNested"), row("Flat.java", "")]
-    );
-}
