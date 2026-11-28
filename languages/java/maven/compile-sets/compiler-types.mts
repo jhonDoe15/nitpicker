@@ -17,6 +17,7 @@ export type SourcePatterns = { readonly includes: string[]; readonly excludes: s
 type TestCompiler = CompilerLevel & {
   readonly compilerArgs: string[];
   readonly sources?: SourcePatterns | undefined;
+  readonly generatedSources?: string | undefined;
 };
 export type ExtraCompile = TestCompiler & { readonly id: string };
 export type CompilerSettings = TestCompiler & {
@@ -44,6 +45,7 @@ function testCompilerOf(value: unknown): TestCompiler {
     target: optionalText(fieldOf(value, 'target')),
     compilerArgs: textsOf(fieldOf(value, 'compilerArgs')),
     sources: patternsOf(fieldOf(value, 'sources')),
+    generatedSources: optionalText(fieldOf(value, 'generatedSources')),
   };
 }
 

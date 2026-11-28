@@ -338,6 +338,7 @@ mod no_allocation;
 mod must_be_closed;
 mod must_be_closed_fix;
 mod processor_audit;
+mod processor_shapes;
 mod lombok_rewrites;
 
 use super::types::project::JavaProject;
@@ -1129,7 +1130,7 @@ impl FileRule for ErrorProne {
         let scope = &FileScope::of(file);
         let audited = paths_of("NP_EP_AUDIT_CLASSES");
         if !audited.is_empty() {
-            for found in processor_audit::rewritten(file, &scope.package, &audited) {
+            for found in processor_audit::rewritten(file, scope, &audited, &project.index) {
                 out.push(Finding {
                     file: file.path.clone(),
                     line: found.line,

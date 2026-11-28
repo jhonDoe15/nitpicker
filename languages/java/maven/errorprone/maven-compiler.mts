@@ -230,6 +230,16 @@ function patternsField(patterns: SourcePatterns): { readonly sources?: SourcePat
     : { sources: patterns };
 }
 
+function generatedField(
+  configurations: readonly XmlElement[],
+  name: string,
+): { readonly generatedSources?: string } {
+  const folder = configurations
+    .map((configuration) => textAt(configuration, name)?.trim())
+    .find((value) => isArgument(value) && !value.includes(PLACEHOLDER_OPEN));
+  return folder === undefined ? {} : { generatedSources: folder };
+}
+
 export function compilerSettings(project: XmlElement): CompilerSettings {
   const plugin = compilerPlugin(project);
   const pluginVersion = textAt(plugin, 'version');
@@ -244,6 +254,7 @@ export function compilerSettings(project: XmlElement): CompilerSettings {
       textAt(project, 'properties', 'project.build.sourceEncoding'),
     compilerArgs: argumentsOf(configurations, setting),
     ...patternsField(sourcePatterns(configurations, false)),
+    ...generatedField(configurations, 'generatedSourcesDirectory'),
     proc: setting('proc', 'maven.compiler.proc'),
     processorPaths: processorPaths(project, configurations),
     ...repositoriesField(processorRepositories(project)),
@@ -251,6 +262,7 @@ export function compilerSettings(project: XmlElement): CompilerSettings {
       ...levelOf(testSetting, true, pluginVersion),
       compilerArgs: argumentsOf(testConfigurations, testSetting),
       ...patternsField(sourcePatterns(testConfigurations, true)),
+      ...generatedField(testConfigurations, 'generatedTestSourcesDirectory'),
     },
     ...executionsField(extraCompiles(project, plugin, pluginVersion)),
   };

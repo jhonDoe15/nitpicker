@@ -184,6 +184,29 @@ describe('compilerSettings', () => {
     expect([settings.release, settings.compilerArgs]).toStrictEqual(['11', ['-Aquiet=true']]);
   });
 
+  it('reads the processor output folders from default-compile, default-testCompile or the plugin', () => {
+    const settings = compilerSettings(
+      project(`<build><plugins><plugin><artifactId>maven-compiler-plugin</artifactId>
+        <configuration><generatedSourcesDirectory> /work/gen </generatedSourcesDirectory></configuration>
+        <executions><execution><id>default-testCompile</id><configuration>
+          <generatedTestSourcesDirectory>gen-tests</generatedTestSourcesDirectory>
+        </configuration></execution></executions></plugin></plugins></build>`),
+    );
+    const unresolved = compilerSettings(
+      project(`<build><plugins><plugin><artifactId>maven-compiler-plugin</artifactId><configuration>
+        <generatedSourcesDirectory>\${gen}</generatedSourcesDirectory></configuration></plugin></plugins></build>`),
+    );
+
+    expect([settings.generatedSources, settings.test?.generatedSources]).toStrictEqual([
+      '/work/gen',
+      'gen-tests',
+    ]);
+    expect([unresolved.generatedSources, unresolved.test?.generatedSources]).toStrictEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+
   it('names the coordinate when a processor path has no version the effective POM resolves', () => {
     const withPath = (path: string, managed = '') =>
       project(`<dependencyManagement><dependencies>${managed}</dependencies></dependencyManagement>

@@ -62,22 +62,8 @@ const LOMBOK_ANNOTATIONS = new Set([
   'lombok.extern.slf4j.Slf4j',
   'lombok.extern.slf4j.XSlf4j',
 ]);
-const GENERATED_CODE_CHECKS = new Set([
-  'CheckReturnValue',
-  'ExtendsObject',
-  'PatternMatchingInstanceof',
-  'RedundantNullCheck',
-  'SuppressWarningsWithoutExplanation',
-  'UnnecessarilyFullyQualified',
-  'UnnecessarySemicolon',
-  'UnrecognisedJavadocTag',
-]);
-const GENERATED_AT = new Map([
-  ['lombok.experimental.FieldNameConstants', new Set(['PrivateConstructorForUtilityClass'])],
-]);
 const GENERATED_NULLAWAY =
   /^\[NullAway\] (?:passing @Nullable parameter|returning @Nullable expression)/u;
-const CHECK = /^\[(\w+)\]/u;
 const ANNOTATION = /^@\s*((?:\w+\s*\.\s*)*\w+)/u;
 const COMMENT_BEFORE = /\/\/|\/\*|^\s*\*/u;
 const IMPORT = /^\s*import\s+((?:\w+\s*\.\s*)*)(\w+|\*)\s*;/gmu;
@@ -147,17 +133,6 @@ export function lombokAnnotationAt(
   return candidates(name, text, file).find((candidate) => LOMBOK_ANNOTATIONS.has(candidate));
 }
 
-function onlyInGeneratedCode(message: string, annotation: string): boolean {
-  const check = CHECK.exec(message)?.[1];
-  if (check === 'NullAway') {
-    return GENERATED_NULLAWAY.test(message);
-  }
-  return (
-    check !== undefined &&
-    (GENERATED_CODE_CHECKS.has(check) || GENERATED_AT.get(annotation)?.has(check) === true)
-  );
-}
-
 export function isLombokGenerated(diagnostic: unknown, text: unknown): boolean {
   const position = fieldOf(diagnostic, 'position');
   const message = fieldOf(diagnostic, 'message');
@@ -169,6 +144,8 @@ export function isLombokGenerated(diagnostic: unknown, text: unknown): boolean {
   ) {
     return false;
   }
-  const annotation = lombokAnnotationAt(String(text), position, fieldOf(diagnostic, 'file'));
-  return annotation !== undefined && onlyInGeneratedCode(message, annotation);
+  return (
+    GENERATED_NULLAWAY.test(message) &&
+    lombokAnnotationAt(String(text), position, fieldOf(diagnostic, 'file')) !== undefined
+  );
 }

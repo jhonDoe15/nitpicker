@@ -186,6 +186,20 @@ export function runnerFlags(
     : pool;
 }
 
+export function processorOutput(
+  module: Pick<SourceModule, 'basedir' | 'outputDirectory'>,
+  compiler: Pick<CompilerSettings, 'generatedSources' | 'test'>,
+  test: boolean,
+): string {
+  const configured = test ? compiler.test?.generatedSources : compiler.generatedSources;
+  return configured === undefined
+    ? path.join(
+        path.dirname(module.outputDirectory),
+        test ? 'generated-test-sources/test-annotations' : 'generated-sources/annotations',
+      )
+    : path.resolve(module.basedir, configured);
+}
+
 function argumentFilesOf(
   { module, reportDir, tools, classpaths, configs }: ErrorProneContext,
   compiler: CompilerSettings,
@@ -204,10 +218,7 @@ function argumentFilesOf(
       ],
       flags: declaredFlags,
       skipRoots: analyzesGenerated(configs) ? undefined : generatedRoots(module, set.roots),
-      processorOutput: path.join(
-        path.dirname(module.outputDirectory),
-        set.test ? 'generated-test-sources/test-annotations' : 'generated-sources/annotations',
-      ),
+      processorOutput: processorOutput(module, compiler, set.test),
     }),
   );
 }

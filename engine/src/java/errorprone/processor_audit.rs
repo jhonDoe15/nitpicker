@@ -2,18 +2,23 @@
 //! against the members the source declares and the ones the language itself adds (default constructors, enum and record
 //! members; synthetic and bridge members). A processor that only writes new files leaves every class as its source
 //! says; one that rewrites trees (Lombok and the like) adds members Error Prone's checks see and the engine does not.
-//! Fields are compared by name and `static`, methods by name, parameter count and `static`; member types, annotations,
-//! code and local or anonymous classes are not.
-use crate::engine::source::{SourceFile, children, named_children};
+//! Fields are compared by name and `static`, methods by name, parameter count and `static`, then each member's erased
+//! types, access bits and kept annotations against the type index (`processor_shapes`). Every class the file writes is
+//! audited: members, local and anonymous ones by the compiler's numbering, and a class file next to them that no class
+//! of the file accounts for counts as a change too. Code is not compared.
+use super::processor_shapes::{shape_difference, unaccounted};
+use crate::engine::source::{SourceFile, named_children, walk};
 use crate::java::helpers::has_modifier;
 use crate::java::types::compiled::{ACC_STATIC, CompiledClass, shown_parameters};
+use crate::java::types::index::TypeIndex;
+use crate::java::types::scope::FileScope;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use tree_sitter::Node;
 
 const ACC_BRIDGE: u16 = 0x0040;
 const ACC_SYNTHETIC: u16 = 0x1000;
-const TYPE_KINDS: &[&str] =
+pub(super) const TYPE_KINDS: &[&str] =
     &["class_declaration", "interface_declaration", "enum_declaration", "record_declaration", "annotation_type_declaration"];
 
 /// The members of one class, by kind: field names, method names, how many constructors, member classes by binary name.
@@ -49,34 +54,47 @@ pub struct Rewritten {
     pub message: String,
 }
 
-/// Every top-level and member class of the file whose class file differs from its source, or has none.
-pub fn rewritten(file: &SourceFile, package: &str, directories: &[PathBuf]) -> Vec<Rewritten> {
+/// Every class of the file whose class file differs from its source, or has none, and every class file next to the
+/// file's top-level classes that none of its classes accounts for.
+pub fn rewritten(file: &SourceFile, scope: &FileScope, directories: &[PathBuf], index: &TypeIndex) -> Vec<Rewritten> {
     let mut found = Vec::new();
-    let prefix = if package.is_empty() { String::new() } else { format!("{package}.") };
-    for declaration in children(file.tree.root_node()).into_iter().filter(|node| TYPE_KINDS.contains(&node.kind())) {
-        audit(file, declaration, &prefix, directories, &mut found);
+    let mut classes = Vec::new();
+    walk(file.tree.root_node(), |node| {
+        if let Some(name) = scope.names.get(&node.id()) {
+            classes.push((node, name.clone()));
+        }
+    });
+    let binaries: Vec<String> = classes.iter().map(|(_, name)| binary_name(&scope.package, name)).collect();
+    for ((declaration, name), binary) in classes.iter().zip(&binaries) {
+        let place = declaration.child_by_field_name("name").unwrap_or(*declaration).start_position();
+        let message = match class_file(binary, directories) {
+            None => Some("no class file".to_string()),
+            Some(class) => written(file, *declaration, binary)
+                .first_difference(&compiled_members(&class))
+                .or_else(|| index.get(name).and_then(|info| shape_difference(file, *declaration, info, &class, index))),
+        };
+        if let Some(what) = message {
+            found.push(Rewritten { line: place.row + 1, column: place.column + 1, message: format!("{binary}: {what}") });
+        }
+    }
+    for ((declaration, _), binary) in classes.iter().zip(&binaries).filter(|((node, _), _)| node.parent().is_some_and(|holder| holder.kind() == "program")) {
+        let place = declaration.child_by_field_name("name").unwrap_or(*declaration).start_position();
+        for extra in unaccounted(binary, &binaries, directories) {
+            found.push(Rewritten { line: place.row + 1, column: place.column + 1, message: format!("{extra}: no source") });
+        }
     }
     found
 }
 
-fn audit(file: &SourceFile, declaration: Node, outer: &str, directories: &[PathBuf], found: &mut Vec<Rewritten>) {
-    let Some(name) = declaration.child_by_field_name("name") else { return };
-    let binary = format!("{outer}{}", file.text_of(name));
-    let place = name.start_position();
-    let compiled = class_file(&binary, directories);
-    let message = match &compiled {
-        None => Some(format!("{binary}: no class file")),
-        Some(class) => written(file, declaration, &binary).first_difference(&compiled_members(class)).map(|what| format!("{binary}: {what}")),
-    };
-    if let Some(message) = message {
-        found.push(Rewritten { line: place.row + 1, column: place.column + 1, message });
-    }
-    for member in body_members(declaration).into_iter().filter(|node| TYPE_KINDS.contains(&node.kind())) {
-        audit(file, member, &format!("{binary}$"), directories, found);
+/// The binary name of a class the type index names `package.Outer.1Local`: `package.Outer$1Local`.
+fn binary_name(package: &str, name: &str) -> String {
+    match name.strip_prefix(package).and_then(|rest| rest.strip_prefix('.')).filter(|_| !package.is_empty()) {
+        Some(rest) => format!("{package}.{}", rest.replace('.', "$")),
+        None => name.replace('.', "$"),
     }
 }
 
-fn class_file(binary: &str, directories: &[PathBuf]) -> Option<CompiledClass> {
+pub(super) fn class_file(binary: &str, directories: &[PathBuf]) -> Option<CompiledClass> {
     let relative = format!("{}.class", binary.replace('.', "/"));
     directories.iter().map(|directory| directory.join(Path::new(&relative))).find_map(|path| {
         let data = std::fs::read(path).ok()?;
@@ -84,9 +102,14 @@ fn class_file(binary: &str, directories: &[PathBuf]) -> Option<CompiledClass> {
     })
 }
 
+/// The body of a class declaration, an anonymous class or an enum constant with one.
+pub(super) fn body_of(declaration: Node) -> Option<Node> {
+    declaration.child_by_field_name("body").or_else(|| named_children(declaration).into_iter().find(|part| part.kind() == "class_body"))
+}
+
 /// The declarations of a class body; for an enum, those after its constants.
-fn body_members(declaration: Node) -> Vec<Node> {
-    let Some(body) = declaration.child_by_field_name("body") else { return Vec::new() };
+pub(super) fn body_members(declaration: Node) -> Vec<Node> {
+    let Some(body) = body_of(declaration) else { return Vec::new() };
     let mut members = Vec::new();
     for part in named_children(body) {
         if part.kind() == "enum_body_declarations" {
@@ -107,7 +130,7 @@ fn written(file: &SourceFile, declaration: Node, binary: &str) -> Members {
     for (name, _) in &components {
         Members::add(&mut members.fields, &field_key(name, false));
     }
-    if let Some(body) = declaration.child_by_field_name("body") {
+    if let Some(body) = declaration.child_by_field_name("body").filter(|_| kind == "enum_declaration") {
         for constant in named_children(body).into_iter().filter(|part| part.kind() == "enum_constant") {
             if let Some(name) = constant.child_by_field_name("name") {
                 Members::add(&mut members.fields, &field_key(file.text_of(name), true));
@@ -133,7 +156,8 @@ fn written(file: &SourceFile, declaration: Node, binary: &str) -> Members {
             }
             "constructor_declaration" => {
                 members.constructors += 1;
-                canonical |= !components.is_empty() && parameter_types(file, member) == components.iter().map(|(_, kind)| kind.clone()).collect::<Vec<_>>();
+                let erased = |types: Vec<String>| types.iter().map(|kind| erased_text(kind)).collect::<Vec<_>>();
+                canonical |= !components.is_empty() && erased(parameter_types(file, member)) == erased(components.iter().map(|(_, kind)| kind.clone()).collect());
             }
             "compact_constructor_declaration" => {
                 members.constructors += 1;
@@ -148,6 +172,7 @@ fn written(file: &SourceFile, declaration: Node, binary: &str) -> Members {
         }
     }
     match kind {
+        "object_creation_expression" | "enum_constant" => members.constructors = 1,
         "class_declaration" | "enum_declaration" if members.constructors == 0 => members.constructors = 1,
         "enum_declaration" => {}
         "record_declaration" => {
@@ -170,17 +195,38 @@ fn written(file: &SourceFile, declaration: Node, binary: &str) -> Members {
     members
 }
 
-/// Whether the record declares a method of that name and parameter count, which javac then does not add.
+/// Whether the record declares the method javac would otherwise add: same name, no parameters, or `equals` taking an
+/// `Object`.
 fn declares(file: &SourceFile, declaration: Node, name: &str, parameters: usize) -> bool {
     body_members(declaration).into_iter().any(|member| {
+        let types = parameter_types(file, member);
         member.kind() == "method_declaration"
             && member.child_by_field_name("name").is_some_and(|found| file.text_of(found) == name)
-            && parameter_types(file, member).len() == parameters
+            && types.len() == parameters
+            && types.iter().all(|kind| matches!(erased_text(kind).as_str(), "Object" | "java.lang.Object"))
     })
 }
 
+/// A type as written without its type arguments, spaces or annotations, and without a package or outer class.
+fn erased_text(kind: &str) -> String {
+    let mut depth = 0;
+    let mut kept = String::new();
+    for letter in kind.chars() {
+        match letter {
+            '<' => depth += 1,
+            '>' => depth -= 1,
+            _ if depth == 0 => kept.push(letter),
+            _ => {}
+        }
+    }
+    let kept: String = kept.split_whitespace().collect();
+    let base = kept.trim_end_matches("...").trim_end_matches("[]");
+    let suffix = &kept[base.len()..];
+    format!("{}{suffix}", base.rsplit('.').next().unwrap_or(base))
+}
+
 /// A record's components: name and type as written, without spaces or annotations.
-fn record_components(file: &SourceFile, declaration: Node) -> Vec<(String, String)> {
+pub(super) fn record_components(file: &SourceFile, declaration: Node) -> Vec<(String, String)> {
     if declaration.kind() != "record_declaration" {
         return Vec::new();
     }
