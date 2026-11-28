@@ -3,7 +3,7 @@
 mod doubles;
 mod mocks;
 
-pub use doubles::{TimerChange, fake_timer_change, spied_member, wait_kind};
+pub use doubles::{TimerChange, fake_timer_change, sets_fake_clock, spied_member, spied_pair, wait_kind};
 pub use mocks::module_mocks;
 
 use crate::typescript::rules::support::view::Node;

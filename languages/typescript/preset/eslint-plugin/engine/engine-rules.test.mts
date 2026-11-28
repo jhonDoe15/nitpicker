@@ -86,6 +86,11 @@ describe('facts the engine rules get from the project', () => {
       'no-partial-output-assertion.whole-value=`toEqual`',
       expect.stringMatching(/^no-partial-output-assertion\.partial-forms=`toMatchObject`/u),
       'no-partial-output-assertion.varied-field=Use `expect.any(Type)` for a field that varies.',
+      'no-real-time-random-or-network.fake-clock=`vi.useFakeTimers()` and `vi.setSystemTime(...)`',
+      'no-real-time-random-or-network.fix-random=`vi.spyOn(Math, "random")`',
+      'no-real-time-random-or-network.network=false',
+      'no-uncollected-tests.collect-it=Rename it `*.test.ts` (or `*.spec.ts`).',
+      'no-uncollected-tests.collected=false',
       'no-worker-state-in-concurrent-tests.concurrent=false',
     ]);
   });

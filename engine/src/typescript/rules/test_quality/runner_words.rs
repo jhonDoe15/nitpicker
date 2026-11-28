@@ -13,6 +13,9 @@ const VITEST: &[(&str, &str)] = &[
     ("varied-field", "Use `expect.any(Type)` for a field that varies."),
     ("wait-on-condition", "vi.waitFor or expect.poll"),
     ("advance-fake-time", "vi.advanceTimersByTime"),
+    ("fake-clock", "`vi.useFakeTimers()` and `vi.setSystemTime(...)`"),
+    ("fix-random", "`vi.spyOn(Math, \"random\")`"),
+    ("collect-it", "Rename it `*.test.ts` (or `*.spec.ts`)."),
 ];
 
 /// The runner's word for `word` in messages of `rule`.
