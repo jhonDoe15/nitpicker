@@ -1,7 +1,5 @@
 === block.ts
 export function run(a: string) { { var a: unknown; function a() {} } return a; }
-=== 036.js
-await `t`
 === 055.ts
 function o() { const enum x { A }
 { var x = 1; }
@@ -133,3 +131,19 @@ class C { get constructor() {} }
 === 286.ts
 const x = 1;
 export { await };
+=== class-over-var.ts
+var a;
+class a { m(){ return a } }
+=== class-twice.ts
+class a {}
+class a {}
+=== class.ts
+export function run(a: string) { class a {} return a; }
+=== 089.ts
+function o(x) { class x {}
+try {} catch { var x; }
+x; }
+=== 121.ts
+const o = (x) => { class x {}
+async function x() {}
+x; };

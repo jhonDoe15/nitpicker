@@ -76,5 +76,8 @@
  "283.tsx",
  "284.tsx",
  "287.mjs",
- "293.js"
+ "293.js",
+ "await-in.js",
+ "yield-instanceof.ts",
+ "await-power.ts"
 ]

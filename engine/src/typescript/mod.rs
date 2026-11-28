@@ -62,14 +62,22 @@ pub fn with_parsed<R>(path: &str, text: &str, run: impl FnOnce(&ParsedFile) -> R
     parsed(path, text, false, run)
 }
 
+/// Like `with_parsed`, reading the file as a module whatever its extension says.
+pub fn with_parsed_module<R>(path: &str, text: &str, run: impl FnOnce(&ParsedFile) -> R) -> R {
+    parsed_as(path, text, false, source_type_of(path).with_module(true), run)
+}
+
 /// Like `with_parsed`, and keeps the tokens the parser lexed.
 pub fn with_tokens<R>(path: &str, text: &str, run: impl FnOnce(&ParsedFile) -> R) -> R {
     parsed(path, text, true, run)
 }
 
 fn parsed<R>(path: &str, text: &str, tokens: bool, run: impl FnOnce(&ParsedFile) -> R) -> R {
+    parsed_as(path, text, tokens, source_type_of(path), run)
+}
+
+fn parsed_as<R>(path: &str, text: &str, tokens: bool, source_type: SourceType, run: impl FnOnce(&ParsedFile) -> R) -> R {
     let allocator = Allocator::default();
-    let source_type = source_type_of(path);
     let options = ParseOptions { preserve_parens: true, allow_return_outside_function: true, ..ParseOptions::default() };
     let parsed = if tokens {
         Parser::new(&allocator, text, source_type).with_options(options).with_config(TokensParserConfig).parse()

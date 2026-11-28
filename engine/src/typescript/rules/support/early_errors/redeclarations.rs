@@ -24,7 +24,6 @@ fn shared(semantic: &Semantic, symbol: SymbolId, (flags, declaration): (SymbolFl
     let hoisted = match node.kind() {
         AstKind::VariableDeclarator(_) => flags.contains(SymbolFlags::FunctionScopedVariable),
         AstKind::Function(function) if function.is_declaration() && function.body.is_some() => false,
-        AstKind::Class(class) if class.is_declaration() && !class.declare => false,
         AstKind::FormalParameter(_) | AstKind::FormalParameterRest(_) | AstKind::CatchParameter(_) => false,
         _ => return false,
     };

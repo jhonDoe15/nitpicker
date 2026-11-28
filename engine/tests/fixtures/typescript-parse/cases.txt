@@ -6,8 +6,6 @@ export function run(...a: string[]) { function a() {} return a; }
 export function run({ a }: { a: string }) { async function a() {} return a; }
 === arrow.ts
 export const run = (a: string) => { function* a() {} return a; };
-=== class.ts
-export function run(a: string) { class a {} return a; }
 === lexical.ts
 export function run(a: string) { let a = 1; return a; }
 === parameters.ts
@@ -236,10 +234,6 @@ x; } }
 function o() { { var x = 1;
 for (var x of y) {}
 x; } }
-=== 089.ts
-function o(x) { class x {}
-try {} catch { var x; }
-x; }
 === 092.ts
 function o() { { declare function x(): void; }
 try {} catch { var x; }
@@ -322,10 +316,6 @@ x;
 function o() { { function x() {} }
 function x() {}
 x; }
-=== 121.ts
-const o = (x) => { class x {}
-async function x() {}
-x; };
 === 124.ts
 function f(a, ...a) { const a = 1; a; }
 === 125.ts
@@ -656,3 +646,25 @@ function f(){ await; }
 "use strict"; x = f`\01`;
 === 293.js
 class C { ["\01"] = 1 }
+=== tla-1.ts
+await (async () => { console.log(1) })();
+=== tla-2.ts
+const r = await (fetch(u));
+=== tla-3.js
+await [1].map(f);
+=== tla-4.mjs
+const v = await -x;
+=== tla-5.mts
+const d = await (p as Promise<number>);
+=== tla-6.tsx
+if (c) { await (d()); }
+=== tla-7.cts
+await (x);
+=== await-in.js
+function f(){ await in x; }
+=== yield-instanceof.ts
+yield instanceof x;
+=== await-power.ts
+function f(){ await ** 2; }
+=== 036.js
+await `t`

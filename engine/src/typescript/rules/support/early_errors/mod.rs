@@ -25,10 +25,15 @@ const CHECKED_PLACEMENTS: [&str; 7] = [
     "Cannot use 'await using' in class static initialization block",
 ];
 
+pub use syntax::Verdict;
+
 /// Whether typescript-estree refuses the parsed file: a parse error other than an `await` or `yield` placement, or
-/// syntax its own checks reject.
-pub fn refused_parse(file: &ParsedFile) -> bool {
-    file.panicked || file.errors.iter().any(|error| !PLACEMENTS.contains(&error.as_str())) || syntax::refused(file.program, file.text, file.path)
+/// syntax its own checks reject. A file oxc read as a script that ESLint reads as a module is to be parsed again.
+pub fn parsed(file: &ParsedFile) -> Verdict {
+    if file.panicked || file.errors.iter().any(|error| !PLACEMENTS.contains(&error.as_str())) {
+        return Verdict::Refused;
+    }
+    syntax::verdict(file.program, file.text, file.path)
 }
 
 pub fn refused(built: &SemanticBuilderReturn) -> bool {

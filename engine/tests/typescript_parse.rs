@@ -1,6 +1,6 @@
 //! Which files the engine's TypeScript lint leaves to ESLint as `!parse`: those typescript-estree refuses, listed by
 //! `parity/typescript-parse-expected.mts` over the same cases, and the few `stricter.txt` holds, which it parses but
-//! where ESLint's scope manager binds a name otherwise than oxc does, or oxc reads `await` as a name.
+//! where ESLint's scope manager binds a name otherwise than oxc does, or oxc reports an error of its own.
 use std::path::{Path, PathBuf};
 use std::process::Command;
 

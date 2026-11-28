@@ -1,5 +1,6 @@
-//! Syntax oxc accepts that typescript-estree refuses: its own checks on decorators, modifiers and enum names, and
-//! the TypeScript scanner's legacy octal and decimal forms. A file with any of them is `!parse`, as ESLint cannot
+//! Syntax oxc accepts that typescript-estree refuses: its own checks on decorators, modifiers and enum names, the
+//! TypeScript scanner's legacy octal and decimal forms, and `await` or `yield` read as a name before `in`,
+//! `instanceof` or `**`, where TypeScript reads an operator. A file with any of them is `!parse`, as ESLint cannot
 //! lint it either.
 use oxc_ast::ast::*;
 use oxc_ast_visit::{Visit, walk};
@@ -7,17 +8,33 @@ use oxc_span::{GetSpan, Span};
 use oxc_syntax::scope::ScopeFlags;
 use std::collections::HashSet;
 
-pub fn refused(program: &Program, text: &str, path: &str) -> bool {
+/// What the checks make of a file: linted, refused, or one ESLint reads as a module where oxc read `await` at the
+/// top level as a name, so that it has to be parsed again as a module.
+#[derive(PartialEq)]
+pub enum Verdict {
+    Linted,
+    Refused,
+    Module,
+}
+
+pub fn verdict(program: &Program, text: &str, path: &str) -> Verdict {
     let module = !path.to_ascii_lowercase().ends_with(".cjs") || program.body.iter().any(Statement::is_module_declaration);
-    let mut check = Check { text, module, refused: false, declarations: Vec::new(), decorable: HashSet::new(), nested: Vec::new(), skipped: HashSet::new() };
+    let mut check = Check { text, module, refused: false, awaited: false, declarations: Vec::new(), decorable: HashSet::new(), nested: Vec::new(), skipped: HashSet::new() };
     check.visit_program(program);
-    check.refused
+    match (check.refused, check.awaited) {
+        (true, _) => Verdict::Refused,
+        (false, true) if program.source_type.is_module() => Verdict::Refused,
+        (false, true) => Verdict::Module,
+        (false, false) => Verdict::Linted,
+    }
 }
 
 struct Check<'t> {
     text: &'t str,
     module: bool,
     refused: bool,
+    /// `await` written as a name at the top level of a module.
+    awaited: bool,
     /// For each class being walked, whether it is a class declaration.
     declarations: Vec<bool>,
     /// Parameters of method implementations of class declarations, which may be decorated.
@@ -34,7 +51,7 @@ impl Check<'_> {
     }
 
     fn top_level_await(&mut self, name: &str, span: Span) {
-        self.refused |= self.module && name == "await" && !self.skipped.contains(&span.start) && self.at_top(span);
+        self.awaited |= self.module && name == "await" && !self.skipped.contains(&span.start) && self.at_top(span);
     }
 
     /// The words written before a class member's key, after its decorators: its modifiers.
@@ -169,6 +186,12 @@ impl<'a> Visit<'a> for Check<'_> {
 
     fn visit_label_identifier(&mut self, it: &LabelIdentifier<'a>) {
         self.top_level_await(&it.name, it.span);
+    }
+
+    fn visit_binary_expression(&mut self, it: &BinaryExpression<'a>) {
+        let operator = matches!(it.operator, BinaryOperator::In | BinaryOperator::Instanceof | BinaryOperator::Exponential);
+        self.refused |= operator && matches!(&it.left, Expression::Identifier(name) if name.name == "await" || name.name == "yield");
+        walk::walk_binary_expression(self, it);
     }
 
     fn visit_for_in_statement(&mut self, it: &ForInStatement<'a>) {
