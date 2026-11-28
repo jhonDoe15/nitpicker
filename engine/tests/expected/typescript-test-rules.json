@@ -1906,5 +1906,212 @@
   "Fixed sleeps are non-deterministic; wait on a condition with vi.waitFor or expect.poll. An exception fits only when a real wait is unavoidable.",
   3,
   62
+ ],
+ [
+  "no-fixed-port-in-tests/01.ts",
+  "nitpicker/no-fixed-port-in-tests",
+  1,
+  43,
+  "This test starts a server on port 3000, so it fails when that port is taken: by parallel test workers, a second run of the suite, a running app or a socket of the previous test still closing. Listen on port 0 and read the port the server got (`server.address().port`).",
+  1,
+  59
+ ],
+ [
+  "no-fixed-port-in-tests/02.ts",
+  "nitpicker/no-fixed-port-in-tests",
+  1,
+  41,
+  "This test starts a server on port 4000, so it fails when that port is taken: by parallel test workers, a second run of the suite, a running app or a socket of the previous test still closing. Listen on port 0 and read the port the server got (`server.address().port`).",
+  1,
+  57
+ ],
+ [
+  "no-fixed-port-in-tests/03.ts",
+  "nitpicker/no-fixed-port-in-tests",
+  1,
+  44,
+  "This test starts a server on port 3002, so it fails when that port is taken: by parallel test workers, a second run of the suite, a running app or a socket of the previous test still closing. Listen on port 0 and read the port the server got (`server.address().port`).",
+  1,
+  73
+ ],
+ [
+  "no-fixed-port-in-tests/03.ts",
+  "nitpicker/no-fixed-port-in-tests",
+  2,
+  40,
+  "This test starts a server on port 8081, so it fails when that port is taken: by parallel test workers, a second run of the suite, a running app or a socket of the previous test still closing. Listen on port 0 and read the port the server got (`server.address().port`).",
+  2,
+  76
+ ],
+ [
+  "no-fixed-port-in-tests/05.ts",
+  "nitpicker/no-fixed-port-in-tests",
+  2,
+  34,
+  "This test starts a server on port 3000, so it fails when that port is taken: by parallel test workers, a second run of the suite, a running app or a socket of the previous test still closing. Listen on port 0 and read the port the server got (`server.address().port`).",
+  2,
+  53
+ ],
+ [
+  "no-fixed-port-in-tests/06.ts",
+  "nitpicker/no-fixed-port-in-tests",
+  2,
+  40,
+  "This test starts a server on port 9000, so it fails when that port is taken: by parallel test workers, a second run of the suite, a running app or a socket of the previous test still closing. Listen on port 0 and read the port the server got (`server.address().port`).",
+  2,
+  56
+ ],
+ [
+  "no-uncleared-shared-mock/01.ts",
+  "nitpicker/no-uncleared-shared-mock",
+  2,
+  7,
+  "`send` is shared by 2 tests and keeps its calls between them, so `toHaveBeenCalledTimes` also counts the calls of earlier tests and the result depends on test order. Clear it before each test (`beforeEach(() => { send.mockClear(); })`, or `clearMocks: true` in the runner config), or create the mock inside the test.",
+  2,
+  11
+ ],
+ [
+  "no-uncleared-shared-mock/02.ts",
+  "nitpicker/no-uncleared-shared-mock",
+  3,
+  9,
+  "`onClick` is shared by 2 tests and keeps its calls between them, so `toBeCalledTimes` also counts the calls of earlier tests and the result depends on test order. Clear it before each test (`beforeEach(() => { onClick.mockClear(); })`, or `clearMocks: true` in the runner config), or create the mock inside the test.",
+  3,
+  16
+ ],
+ [
+  "no-uncleared-shared-mock/03.ts",
+  "nitpicker/no-uncleared-shared-mock",
+  2,
+  10,
+  "`send` is shared by 2 tests and keeps its calls between them, so `toHaveBeenCalledTimes` also counts the calls of earlier tests and the result depends on test order. Clear it before each test (`beforeEach(() => { send.mockClear(); })`, or `clearMocks: true` in the runner config), or create the mock inside the test.",
+  2,
+  14
+ ],
+ [
+  "no-uncleared-shared-mock/04.ts",
+  "nitpicker/no-uncleared-shared-mock",
+  2,
+  9,
+  "`send` is shared by 2 tests and keeps its calls between them, so `mock.calls` also counts the calls of earlier tests and the result depends on test order. Clear it before each test (`beforeEach(() => { send.mockClear(); })`, or `clearMocks: true` in the runner config), or create the mock inside the test.",
+  2,
+  13
+ ],
+ [
+  "no-uncleared-shared-mock/05.ts",
+  "nitpicker/no-uncleared-shared-mock",
+  2,
+  7,
+  "`send` is shared by 2 tests and keeps its calls between them, so `mock.callCount` also counts the calls of earlier tests and the result depends on test order. Clear it before each test (`beforeEach(() => { send.mock.resetCalls(); })`, or `clearMocks: true` in the runner config), or create the mock inside the test.",
+  2,
+  11
+ ],
+ [
+  "no-worker-state-in-concurrent-tests/01.ts",
+  "nitpicker/no-worker-state-in-concurrent-tests",
+  4,
+  22,
+  "Concurrent tests interleave in one worker, so a spy is also live in the other concurrent tests of this file while they await, and which test sees it depends on timing. Run the tests that change worker-wide state in sequence (`describe.sequential`, or drop `.concurrent`), or keep the state inside the test.",
+  4,
+  47
+ ],
+ [
+  "no-worker-state-in-concurrent-tests/01.ts",
+  "nitpicker/no-worker-state-in-concurrent-tests",
+  5,
+  30,
+  "Concurrent tests interleave in one worker, so fake timers is also live in the other concurrent tests of this file while they await, and which test sees it depends on timing. Run the tests that change worker-wide state in sequence (`describe.sequential`, or drop `.concurrent`), or keep the state inside the test.",
+  5,
+  48
+ ],
+ [
+  "no-worker-state-in-concurrent-tests/01.ts",
+  "nitpicker/no-worker-state-in-concurrent-tests",
+  5,
+  50,
+  "Concurrent tests interleave in one worker, so the fake clock is also live in the other concurrent tests of this file while they await, and which test sees it depends on timing. Run the tests that change worker-wide state in sequence (`describe.sequential`, or drop `.concurrent`), or keep the state inside the test.",
+  5,
+  69
+ ],
+ [
+  "no-worker-state-in-concurrent-tests/01.ts",
+  "nitpicker/no-worker-state-in-concurrent-tests",
+  6,
+  29,
+  "Concurrent tests interleave in one worker, so the write to `process.env` is also live in the other concurrent tests of this file while they await, and which test sees it depends on timing. Run the tests that change worker-wide state in sequence (`describe.sequential`, or drop `.concurrent`), or keep the state inside the test.",
+  6,
+  51
+ ],
+ [
+  "no-worker-state-in-concurrent-tests/01.ts",
+  "nitpicker/no-worker-state-in-concurrent-tests",
+  6,
+  53,
+  "Concurrent tests interleave in one worker, so the write to `process.env` is also live in the other concurrent tests of this file while they await, and which test sees it depends on timing. Run the tests that change worker-wide state in sequence (`describe.sequential`, or drop `.concurrent`), or keep the state inside the test.",
+  6,
+  77
+ ],
+ [
+  "no-worker-state-in-concurrent-tests/01.ts",
+  "nitpicker/no-worker-state-in-concurrent-tests",
+  6,
+  79,
+  "Concurrent tests interleave in one worker, so the implementation set on a mock declared outside the test is also live in the other concurrent tests of this file while they await, and which test sees it depends on timing. Run the tests that change worker-wide state in sequence (`describe.sequential`, or drop `.concurrent`), or keep the state inside the test.",
+  6,
+  104
+ ],
+ [
+  "no-worker-state-in-concurrent-tests/02.ts",
+  "nitpicker/no-worker-state-in-concurrent-tests",
+  2,
+  36,
+  "Concurrent tests interleave in one worker, so a stubbed environment variable is also live in the other concurrent tests of this file while they await, and which test sees it depends on timing. Run the tests that change worker-wide state in sequence (`describe.sequential`, or drop `.concurrent`), or keep the state inside the test.",
+  2,
+  59
+ ],
+ [
+  "no-worker-state-in-concurrent-tests/02.ts",
+  "nitpicker/no-worker-state-in-concurrent-tests",
+  2,
+  61,
+  "Concurrent tests interleave in one worker, so the working directory change is also live in the other concurrent tests of this file while they await, and which test sees it depends on timing. Run the tests that change worker-wide state in sequence (`describe.sequential`, or drop `.concurrent`), or keep the state inside the test.",
+  2,
+  82
+ ],
+ [
+  "no-worker-state-in-concurrent-tests/02.ts",
+  "nitpicker/no-worker-state-in-concurrent-tests",
+  3,
+  36,
+  "Concurrent tests interleave in one worker, so a stubbed global is also live in the other concurrent tests of this file while they await, and which test sees it depends on timing. Run the tests that change worker-wide state in sequence (`describe.sequential`, or drop `.concurrent`), or keep the state inside the test.",
+  3,
+  63
+ ],
+ [
+  "no-worker-state-in-concurrent-tests/03.ts",
+  "nitpicker/no-worker-state-in-concurrent-tests",
+  2,
+  50,
+  "Concurrent tests interleave in one worker, so fake timers is also live in the other concurrent tests of this file while they await, and which test sees it depends on timing. Run the tests that change worker-wide state in sequence (`describe.sequential`, or drop `.concurrent`), or keep the state inside the test.",
+  2,
+  68
+ ],
+ [
+  "no-worker-state-in-concurrent-tests/05.ts",
+  "nitpicker/no-worker-state-in-concurrent-tests",
+  5,
+  25,
+  "Concurrent tests interleave in one worker, so fake timers is also live in the other concurrent tests of this file while they await, and which test sees it depends on timing. Run the tests that change worker-wide state in sequence (`describe.sequential`, or drop `.concurrent`), or keep the state inside the test.",
+  5,
+  43
+ ],
+ [
+  "no-worker-state-in-concurrent-tests/06.ts",
+  "nitpicker/no-worker-state-in-concurrent-tests",
+  4,
+  25,
+  "Concurrent tests interleave in one worker, so fake timers is also live in the other concurrent tests of this file while they await, and which test sees it depends on timing. Run the tests that change worker-wide state in sequence (`describe.sequential`, or drop `.concurrent`), or keep the state inside the test.",
+  4,
+  43
  ]
 ]
