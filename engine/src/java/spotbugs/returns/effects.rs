@@ -30,6 +30,8 @@ pub struct Summary {
     pub direct_calls: Vec<Key>,
     /// It only returns a default value and code outside the run may override it.
     pub open_default: bool,
+    /// A method that returns nothing and has no code, which FindSelfComparison2 takes as having an effect.
+    pub empty_void: bool,
 }
 
 pub fn key_of(call: &Call) -> Key {
@@ -38,6 +40,9 @@ pub fn key_of(call: &Call) -> Key {
 
 struct Scan<'c, 'a> {
     context: &'c Context<'a>,
+    /// Judging for FindSelfComparison2: a `throw`, a JDK constructor and a JDK method whose result SpotBugs reports
+    /// as ignored have no effect.
+    lenient: bool,
     constructor: bool,
     /// The class whose fields a constructor may store into.
     owner: Option<String>,
@@ -82,19 +87,14 @@ impl Scan<'_, '_> {
             if direct { self.summary.direct_calls.push(key) } else { self.summary.virtual_calls.push(key) }
             return;
         }
-        let on = match &call.receiver {
-            Type::Class(name, _) if !call.method.is_static && call.method.name != "<init>" && !index.from_source(name) => name.clone(),
-            _ => call.declaring.clone(),
-        };
-        let parameters = jdk::parameters(&call.method.parameters);
-        let pure = call.declaring == "java.lang.Object" && call.method.name == "<init>" || jdk::known(&on, &call.method.name, &parameters).is_some_and(|known| known.pure);
-        self.summary.clean &= pure;
+        self.summary.clean &= if self.lenient { jdk::quiet(self.context, &call) } else { jdk::pure(self.context, &call) };
     }
 
     fn visit(&mut self, node: Node) {
         let resolver = self.context.resolver;
         match node.kind() {
-            "throw_statement" | "assert_statement" | "lambda_expression" | "method_reference" | "class_body" | "try_with_resources_statement" | "synchronized_statement" => self.summary.clean = false,
+            "throw_statement" => self.summary.clean &= self.lenient,
+            "assert_statement" | "lambda_expression" | "method_reference" | "class_body" | "try_with_resources_statement" | "synchronized_statement" => self.summary.clean = false,
             kind if TYPE_DECLARATIONS.contains(&kind) => self.summary.clean = false,
             "assignment_expression" => {
                 let target = node.child_by_field_name("left");
@@ -149,7 +149,7 @@ fn parameter_key(context: &Context, member: Node) -> String {
 }
 
 /// The summaries of every method and constructor of the file; a class without a constructor gets its default one.
-pub fn summaries(context: &Context) -> Vec<Summary> {
+pub fn summaries(context: &Context, lenient: bool) -> Vec<Summary> {
     let mut found = Vec::new();
     for (own, class) in &context.classes {
         let Some(body) = class.child_by_field_name("body").or_else(|| children(*class).into_iter().find(|part| part.kind() == "class_body")) else { continue };
@@ -171,7 +171,7 @@ pub fn summaries(context: &Context) -> Vec<Summary> {
             constructors += usize::from(constructor);
             let parameters = if member.kind() == "compact_constructor_declaration" { components(context, own) } else { parameter_key(context, *member) };
             let key = (own.clone(), name, parameters);
-            let mut scan = Scan { context, constructor, owner: Some(own.clone()), initializing: None, summary: Summary { key, clean: plain || !constructor, virtual_calls: Vec::new(), direct_calls: Vec::new(), open_default: false } };
+            let mut scan = Scan { context, lenient, constructor, owner: Some(own.clone()), initializing: None, summary: Summary { key, clean: plain || !constructor, virtual_calls: Vec::new(), direct_calls: Vec::new(), open_default: false, empty_void: false } };
             if let Some(code) = member.child_by_field_name("body") {
                 scan.visit(code);
                 let delegates = code.named_child(0).is_some_and(|first| first.kind() == "explicit_constructor_invocation");
@@ -186,24 +186,25 @@ pub fn summaries(context: &Context) -> Vec<Summary> {
                 scan.summary.clean = false;
             }
             scan.summary.open_default = stub(context, *class, *member, &scan.summary.key);
+            scan.summary.empty_void = jdk::empty_void(context, *member);
             found.push(scan.summary);
         }
         if class.kind() == "object_creation_expression" {
             let creation = *class;
-            let mut scan = Scan { context, constructor: true, owner: Some(own.clone()), initializing: None, summary: Summary { key: (own.clone(), "<init>".to_string(), String::new()), clean: true, virtual_calls: Vec::new(), direct_calls: Vec::new(), open_default: false } };
+            let mut scan = Scan { context, lenient, constructor: true, owner: Some(own.clone()), initializing: None, summary: Summary { key: (own.clone(), "<init>".to_string(), String::new()), clean: true, virtual_calls: Vec::new(), direct_calls: Vec::new(), open_default: false, empty_void: false } };
             anonymous_super(&mut scan, creation);
             initializers.iter().for_each(|initializer| scan.visit(*initializer));
             found.push(scan.summary);
         }
         if constructors == 0 && plain {
             let parameters = if record { components(context, own) } else { String::new() };
-            let mut scan = Scan { context, constructor: true, owner: Some(own.clone()), initializing: None, summary: Summary { key: (own.clone(), "<init>".to_string(), parameters), clean: true, virtual_calls: Vec::new(), direct_calls: Vec::new(), open_default: false } };
+            let mut scan = Scan { context, lenient, constructor: true, owner: Some(own.clone()), initializing: None, summary: Summary { key: (own.clone(), "<init>".to_string(), parameters), clean: true, virtual_calls: Vec::new(), direct_calls: Vec::new(), open_default: false, empty_void: false } };
             super_call(&mut scan, *class);
             initializers.iter().for_each(|initializer| scan.visit(*initializer));
             found.push(scan.summary);
         }
         let key = (own.clone(), CLINIT.to_string(), String::new());
-        let mut scan = Scan { context, constructor: false, owner: None, initializing: Some(own.clone()), summary: Summary { key, clean: true, virtual_calls: Vec::new(), direct_calls: Vec::new(), open_default: false } };
+        let mut scan = Scan { context, lenient, constructor: false, owner: None, initializing: Some(own.clone()), summary: Summary { key, clean: true, virtual_calls: Vec::new(), direct_calls: Vec::new(), open_default: false, empty_void: false } };
         let statics = members.iter().filter(|member| {
             matches!(member.kind(), "static_initializer" | "constant_declaration") || (member.kind() == "field_declaration" && (crate::java::helpers::has_modifier(**member, "static") || class.kind() == "interface_declaration"))
         });
@@ -281,7 +282,6 @@ fn super_call(scan: &mut Scan, class: Node) {
         scan.summary.clean &= jdk::known(&superclass, "<init>", "").is_some_and(|known| known.pure);
     }
 }
-
 
 /// Whether a method only returns a default value, `this` or a parameter, and code outside the run may override it:
 /// a public or protected method of a public class, neither static nor final, that overrides no method of a

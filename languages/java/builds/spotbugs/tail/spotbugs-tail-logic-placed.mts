@@ -27,6 +27,19 @@ export const ASSIGNMENT_PATTERNS: readonly string[] = [
   'SA_LOCAL_DOUBLE_ASSIGNMENT',
 ];
 
+export const SELF_COMPARISON_PATTERNS: readonly string[] = [
+  'SA_FIELD_SELF_COMPARISON',
+  'SA_LOCAL_SELF_COMPARISON',
+  'SA_FIELD_SELF_COMPUTATION',
+  'SA_LOCAL_SELF_COMPUTATION',
+  'SA_FIELD_DOUBLE_ASSIGNMENT',
+];
+
+export const VALUE_NUMBER_PATTERNS: readonly string[] = [
+  'SA_LOCAL_SELF_COMPARISON',
+  'SA_LOCAL_SELF_COMPUTATION',
+];
+
 export const LOGIC_PLACED: Readonly<Record<string, Placed>> = {
   FE_FLOATING_POINT_EQUALITY: {
     text: 'Test for floating point equality',
@@ -52,6 +65,29 @@ export const LOGIC_PLACED: Readonly<Record<string, Placed>> = {
   SA_LOCAL_DOUBLE_ASSIGNMENT: {
     text: 'Double assignment of local variable',
     levels: { 2: NOTE },
+  },
+  SA_FIELD_SELF_COMPARISON: {
+    text: 'Self comparison of field with itself',
+    levels: { 2: ERROR },
+    placement: SHOWN,
+  },
+  SA_LOCAL_SELF_COMPARISON: {
+    text: 'Self comparison of value with itself',
+    levels: { 1: ERROR, 2: ERROR },
+  },
+  SA_FIELD_SELF_COMPUTATION: {
+    text: 'Nonsensical self computation involving a field (e.g., x & x)',
+    levels: { 2: ERROR },
+    placement: SHOWN,
+  },
+  SA_LOCAL_SELF_COMPUTATION: {
+    text: 'Nonsensical self computation involving a variable (e.g., x & x)',
+    levels: { 1: ERROR, 2: ERROR },
+  },
+  SA_FIELD_DOUBLE_ASSIGNMENT: {
+    text: 'Double assignment of field',
+    levels: { 1: NOTE, 2: NOTE },
+    placement: SHOWN,
   },
   STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE: {
     text: 'Static DateFormat',

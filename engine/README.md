@@ -1923,6 +1923,47 @@ On the comparison code bases, SARIF results: guava 1 / 0 / 0, commons-lang, jack
 mybatis-3 0 / 0 / 0. The saved Nacos and Elasticsearch server reports have none of these patterns, and the engine
 reports none on their sources.
 
+### Self comparison and double assignment of a field
+
+FindSelfComparison and FindSelfComparison2 of the long tail (#2535): `src/java/spotbugs/assign/same/`, on the walk
+of `assign/flow/`, labs in `tests/fixtures/spotbugs/tail_selfcmp*`. SpotBugs no longer runs them. A value compared
+with itself (`==`, `!=`, `<`, `<=`, `>`, `>=`, or a used `equals`, `compareTo`, `equalsIgnoreCase`,
+`compareToIgnoreCase`, `startsWith`, `endsWith`, `contains` not on `super`) or combined with itself (`-`, `&`, `|`,
+`^`, also `-=` and the others), never for `float` or `double`.
+- FindSelfComparison follows the values javac leaves on the stack. A call changes nothing, a store into the field
+  (of any object) does; a conversion javac writes an instruction for keeps the variable (binary numeric promotion
+  included), not the field. Two reads of the same field of the same object (`this`, a variable or the class, not a
+  `volatile` field): SA_FIELD_SELF_COMPARISON or SA_FIELD_SELF_COMPUTATION, priority 2, only when the two reads are
+  on one line, or on lines next to each other with no call (also `new`, boxing) after the first read up to the
+  operator (the head of a loop is not a call here). Else the same value of a variable, through copies and
+  conversions: SA_LOCAL_*, priority 1, named after the first variable that held it (a value made where paths meet
+  or at a loop head is named after the variable holding it). One finding per method, pattern and field or name, on
+  its first line.
+- FindSelfComparison2 follows value numbers: each conversion is a new value, and a read of a field gives the value
+  read before only while nothing made it out of date. A store into the field does; a call does only when the
+  callee has an effect, judged with the whole run: constructors of the JDK and JDK methods without effect do not,
+  methods of the run do not when they write no field (throwing is fine) and are not empty `void` methods, calls
+  through them included; a field stored only in constructors and initializers (Lombok setters count as stores)
+  is never out of date. SA_LOCAL_SELF_COMPARISON or SA_LOCAL_SELF_COMPUTATION, priority 1, named after the first
+  declared variable holding it, every one reported, not when a read of the field would still give it; `-` only on
+  `long`, priority 2. Two calls compared: SA_LOCAL_SELF_COMPARISON at priority 2, named after the called method.
+  A row FindSelfComparison saw on more than one line stays apart from the same row of FindSelfComparison2.
+- SA_FIELD_DOUBLE_ASSIGNMENT: a store into an instance field of the same object at most 9 bytes of code after
+  another store into that field ends (`f = a; f = b;`, `f = f = a`, `x = (x = 3) + 1`, `f++; f = a`, `int v = f++;
+  f = v`, a field initializer then the constructor: initializers and init blocks run after `super(...)`, not when
+  the constructor calls `this(...)`), on the same line or the next, unless the first stores a default value
+  (`null`, `0`, `false`), with no jump, no other store into an instance field and no read of that field in between
+  (`try`/`finally` and `synchronized` laid out as javac writes them); static fields count for nothing. Priority 1
+  when the class declares another field of the same type, else 2, one more when both stores store the same value;
+  reported at priority 2 or less, once per method, field and priority, on the line of the second store.
+- Known differences: SpotBugs judges a static empty `void` method by the order it analyses classes in; `new
+  Thread()` and other JDK constructors with an effect count as having none; a method writing an array it created
+  itself counts as having an effect.
+
+On the comparison code bases, SARIF results: Elasticsearch server 2 (SA_FIELD_SELF_COMPARISON and
+SA_LOCAL_SELF_COMPUTATION, as SpotBugs), guava, commons-lang, jackson-databind, javaparser-core, mybatis-3 and
+Nacos 0.
+
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in

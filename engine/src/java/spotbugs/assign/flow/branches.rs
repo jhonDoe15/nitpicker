@@ -9,7 +9,7 @@ impl<'c, 'a> Walk<'c, 'a> {
     pub fn switched(&mut self, node: Node<'a>, state: &mut State) {
         self.condition(node.child_by_field_name("condition"), state);
         if self.selects_by_call(node) {
-            self.called();
+            self.converting();
         }
         let Some(body) = node.child_by_field_name("body") else { return };
         let entry = state.clone();

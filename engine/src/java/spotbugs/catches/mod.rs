@@ -10,6 +10,7 @@
 mod code;
 mod resources;
 mod size;
+pub use size::store_gap;
 mod slots;
 mod thrown;
 

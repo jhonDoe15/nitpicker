@@ -2,28 +2,14 @@
 //! to the `State`. A call (also `new`) makes every value read from a field out of date, a store into a field makes
 //! the values read from that field out of date; a lambda, a string concatenation, a cast that javac writes no code
 //! for and a store into an array or a static field change nothing.
-use super::values::{Key, State, Val, merge};
-use super::{Store, Walk};
+use super::access::{Access, Object};
+use super::values::{Mode, Seen, Site, State, Val, merge};
+use super::{Put, Store, Walk};
 use crate::engine::source::named_children;
-use crate::java::types::expr::Binding;
-use crate::java::types::model::{Type, flag};
+use crate::java::types::model::Type;
 use tree_sitter::Node;
 
 const PRIMITIVES: &[&str] = &["boolean", "byte", "char", "short", "int", "long", "float", "double"];
-
-/// Where the object of a field access comes from.
-enum Object<'a> {
-    This,
-    Outer,
-    Local(Node<'a>),
-    Other,
-}
-
-struct Access<'a> {
-    field: Key,
-    object: Object<'a>,
-    qualifying: String,
-}
 
 impl<'c, 'a> Walk<'c, 'a> {
     pub fn expression(&mut self, node: Node<'a>, state: &mut State) -> Val {
@@ -37,11 +23,15 @@ impl<'c, 'a> Walk<'c, 'a> {
             "update_expression" => {
                 let target = named_children(node).into_iter().next();
                 if target.is_some_and(|target| super::convert::converts(&self.type_of(target), &Some(Type::Primitive("int")))) {
-                    self.called();
+                    self.converting();
                 }
                 if let Some(target) = target.filter(|target| target.kind() != "identifier" || self.field(*target).is_some()) {
-                    self.read_field(target, state);
+                    let read = self.read_field(target, state);
                     if let Some(access) = self.field(target) {
+                        if self.mode == Mode::Stack {
+                            let receiver = if let Val::Load { receiver, .. } = read { *receiver } else { self.object(target, &access, state) };
+                            self.puts.push(Put { at: node, field: access.field.clone(), qualifying: access.qualifying.clone(), receiver, value: self.numbers.fresh() });
+                        }
                         self.stored(&access.field);
                     }
                 } else if let Some(target) = target {
@@ -49,26 +39,28 @@ impl<'c, 'a> Walk<'c, 'a> {
                 }
                 self.numbers.fresh()
             }
-            "method_invocation" | "object_creation_expression" | "explicit_constructor_invocation" => {
+            "method_invocation" => self.invocation(node, state),
+            "object_creation_expression" | "explicit_constructor_invocation" => {
                 for part in named_children(node).into_iter().filter(|part| part.kind() != "class_body") {
                     self.expression(part, state);
                 }
-                self.called();
+                self.invoked(vec![node]);
                 self.numbers.fresh()
             }
             "binary_expression" => {
                 let operator = node.child_by_field_name("operator").map(|operator| self.context.text(operator));
                 let (left, right) = (node.child_by_field_name("left"), node.child_by_field_name("right"));
-                left.map(|left| self.expression(left, state));
+                let first = left.map(|left| self.expression(left, state));
                 if matches!(operator, Some("&&" | "||")) {
                     let mut taken = state.clone();
                     right.map(|right| self.expression(right, &mut taken));
                     *state = merge(Some(state.clone()), Some(taken), &self.numbers).unwrap_or_default();
-                } else {
-                    right.map(|right| self.expression(right, state));
+                } else if let (Some(first), Some(second)) = (first, right.map(|right| self.expression(right, state))) {
+                    let (first, second) = self.promoted(node, first, second);
+                    self.site(node, first, second, state);
                 }
                 if self.unboxes(node) {
-                    self.called();
+                    self.converting();
                 }
                 self.numbers.fresh()
             }
@@ -94,12 +86,14 @@ impl<'c, 'a> Walk<'c, 'a> {
                 let value = match node.child_by_field_name("value") {
                     Some(value) => {
                         let kept = self.expression(value, state);
-                        if self.convert(value, &declared) { self.numbers.fresh() } else { kept }
+                        let converted = self.convert(value, &declared);
+                        let kept = self.widened(kept, value, &declared);
+                        self.converted(kept, converted)
                     }
                     None => self.numbers.fresh(),
                 };
                 if let Some(name) = node.child_by_field_name("name") {
-                    state.locals.insert(self.context.text(name).to_string(), value);
+                    self.hold(self.context.text(name), value, state);
                 }
                 self.numbers.fresh()
             }
@@ -110,7 +104,7 @@ impl<'c, 'a> Walk<'c, 'a> {
                 if node.kind() == "instanceof_expression" {
                     self.bind(node, state);
                 } else if self.unboxes(node) {
-                    self.called();
+                    self.converting();
                 }
                 self.numbers.fresh()
             }
@@ -124,84 +118,18 @@ impl<'c, 'a> Walk<'c, 'a> {
         }
     }
 
-    /// The instance field a name or a field access stands for, with where its object comes from.
-    fn field(&self, node: Node<'a>) -> Option<Access<'a>> {
-        let context = self.context;
-        let node = crate::java::types::expr::unwrap(node);
-        let (declaring, name) = super::super::super::fields::field_key(context, node)?;
-        let info = context.resolver.index.get(&declaring)?;
-        let declared = info.fields.iter().find(|field| field.name == name)?;
-        if declared.flags & flag::STATIC != 0 {
-            return None;
-        }
-        let around = |class: &str| class == self.own || context.resolver.index.is_subtype(&self.own, class);
-        let outer = self.outer.clone().filter(|outer| *outer == declaring || context.resolver.index.is_subtype(outer, &declaring));
-        let class_of = |node: Node| context.resolver.type_of(node).and_then(|kind| if let Type::Class(name, _) = kind { Some(name) } else { None });
-        let (object, qualifying) = match node.kind() {
-            "identifier" if around(&declaring) => (Object::This, self.own.clone()),
-            "identifier" => match outer {
-                Some(outer) => (Object::Outer, outer),
-                None => (Object::Other, declaring.clone()),
-            },
-            _ => {
-                let written = node.child_by_field_name("object")?;
-                let object = stripped(written);
-                let cast = (object.id() != crate::java::types::expr::unwrap(written).id()).then(|| class_of(written)).flatten();
-                match object.kind() {
-                    "this" => (Object::This, cast.unwrap_or_else(|| self.own.clone())),
-                    "super" => (Object::This, info_super(context, &self.own).unwrap_or_else(|| declaring.clone())),
-                    "field_access" if object.child_by_field_name("field").is_some_and(|part| part.kind() == "this") => match class_of(object) {
-                        Some(named) if named == self.own => (Object::This, cast.unwrap_or(named)),
-                        Some(named) if outer.as_ref() == Some(&named) => (Object::Outer, cast.unwrap_or(named)),
-                        _ => (Object::Other, declaring.clone()),
-                    },
-                    "identifier" if matches!(context.resolver.binding(object, context.text(object)), Some(Binding::Local(_))) => {
-                        (Object::Local(object), cast.or_else(|| class_of(object)).unwrap_or_else(|| declaring.clone()))
-                    }
-                    _ => (Object::Other, declaring.clone()),
-                }
-            }
-        };
-        Some(Access { field: (declaring, name), object, qualifying })
-    }
-
-    fn object(&mut self, node: Node<'a>, access: &Access<'a>, state: &mut State) -> Val {
-        match access.object {
-            Object::This => Val::This,
-            Object::Outer => Val::Outer,
-            Object::Local(local) => self.identifier(local, state),
-            Object::Other => match node.child_by_field_name("object") {
-                Some(object) => {
-                    self.expression(object, state);
-                    self.numbers.fresh()
-                }
-                None => self.numbers.fresh(),
-            },
-        }
-    }
-
-    fn read_field(&mut self, node: Node<'a>, state: &mut State) -> Val {
-        let Some(access) = self.field(node) else {
-            for part in named_children(node) {
-                self.expression(part, state);
-            }
-            return self.numbers.fresh();
-        };
-        let receiver = self.object(node, &access, state);
-        if matches!(access.object, Object::Other) {
-            return self.numbers.fresh();
-        }
-        let epoch = self.epoch(&access.field);
-        Val::Load { field: access.field, receiver: Box::new(receiver), epoch }
-    }
-
-    fn identifier(&mut self, node: Node<'a>, state: &mut State) -> Val {
+    pub(super) fn identifier(&mut self, node: Node<'a>, state: &mut State) -> Val {
         if self.field(node).is_some() {
             return self.read_field(node, state);
         }
         let name = self.context.text(node).to_string();
         if let Some(value) = state.locals.get(&name) {
             return value.clone();
+        }
+        if self.captured.as_ref().is_some_and(|parameters| !parameters.contains(&name)) {
+            let field = (self.own.clone(), format!("val${name}"));
+            let epoch = self.epoch(&field);
+            return Val::Load { field, receiver: Box::new(Val::This), epoch, seen: self.seen(node) };
         }
         let value = self.first(&name);
         state.locals.insert(name, value.clone());
@@ -213,8 +141,9 @@ impl<'c, 'a> Walk<'c, 'a> {
         let kept = self.expression(value, state);
         let written = node.child_by_field_name("type").map(|kind| self.context.text(kind).to_string());
         match (written.as_deref(), self.context.resolver.type_of(value)) {
+            (Some(written), Some(Type::Primitive(from))) if self.mode != Mode::Assign => self.widen(kept, from, written),
             (Some(written), Some(Type::Primitive(from))) if written == from => kept,
-            (Some(written), _) if PRIMITIVES.contains(&written) => self.numbers.fresh(),
+            (Some(written), _) if PRIMITIVES.contains(&written) => self.converted(kept, true),
             _ => kept,
         }
     }
@@ -225,9 +154,13 @@ impl<'c, 'a> Walk<'c, 'a> {
         let left = crate::java::types::expr::unwrap(left);
         let Some(access) = self.field(left) else {
             if left.kind() == "identifier" {
+                let before = if plain { None } else { Some(self.identifier(left, state)) };
                 let value = self.stored_value(left, right, plain, state);
+                if let Some(before) = before {
+                    self.site(node, before, value.clone(), state);
+                }
                 let kept = if plain { value } else { self.numbers.fresh() };
-                state.locals.insert(self.context.text(left).to_string(), kept.clone());
+                self.hold(self.context.text(left), kept.clone(), state);
                 return kept;
             }
             for part in named_children(left) {
@@ -237,7 +170,15 @@ impl<'c, 'a> Walk<'c, 'a> {
             return if plain { value } else { self.numbers.fresh() };
         };
         let receiver = self.object(left, &access, state);
+        let before = (!plain).then(|| Val::Load { field: access.field.clone(), receiver: Box::new(receiver.clone()), epoch: self.epoch(&access.field), seen: self.seen(left) });
+        let before = before.filter(|_| !matches!(access.object, Object::Other)).unwrap_or_else(|| self.numbers.fresh());
         let value = self.stored_value(left, right, plain, state);
+        if !plain {
+            self.site(node, before, value.clone(), state);
+        }
+        if self.mode == Mode::Stack {
+            self.puts.push(Put { at: node, field: access.field.clone(), qualifying: access.qualifying.clone(), receiver: receiver.clone(), value: value.clone() });
+        }
         let register = match access.object {
             Object::This | Object::Outer => Some(None),
             Object::Local(local) => Some(Some(local)),
@@ -245,7 +186,7 @@ impl<'c, 'a> Walk<'c, 'a> {
         };
         let outer = matches!(access.object, Object::Outer);
         let postfix = self.postfix(right, &access, &receiver);
-        let same = value == Val::Load { field: access.field.clone(), receiver: Box::new(receiver), epoch: self.epoch(&access.field) };
+        let same = value == Val::Load { field: access.field.clone(), receiver: Box::new(receiver), epoch: self.epoch(&access.field), seen: Seen::default() };
         if let Some(register) = register.filter(|_| plain && (same || postfix)) {
             self.found.push(Store { at: node, field: access.field.clone(), qualifying: access.qualifying.clone(), register, outer, postfix });
         }
@@ -259,9 +200,10 @@ impl<'c, 'a> Walk<'c, 'a> {
         let target = self.type_of(left);
         let converted = if plain { self.convert(right, &target) } else { super::convert::converts(&target, &Some(Type::Primitive("int"))) };
         if converted && !plain {
-            self.called();
+            self.converting();
         }
-        if converted { self.numbers.fresh() } else { value }
+        let value = if plain { self.widened(value, right, &target) } else { value };
+        if plain { self.converted(value, converted) } else if converted { self.numbers.fresh() } else { value }
     }
 
     /// `o.f = o.f++`: javac stores the old value back after the increment.
@@ -278,17 +220,53 @@ impl<'c, 'a> Walk<'c, 'a> {
         };
         target.field == access.field && same_object
     }
-}
 
-/// The object of a field access without the parentheses and casts around it.
-fn stripped(node: Node) -> Node {
-    let node = crate::java::types::expr::unwrap(node);
-    match node.kind() {
-        "cast_expression" => node.child_by_field_name("value").map(stripped).unwrap_or(node),
-        _ => node,
+    /// A field initializer javac copies into a constructor: a store into the field of `this`.
+    pub(super) fn initialized(&mut self, declarator: Node<'a>, name: String, value: Val) {
+        let field = (self.own.clone(), name);
+        if self.mode == Mode::Stack {
+            self.puts.push(Put { at: declarator, field: field.clone(), qualifying: self.own.clone(), receiver: Val::This, value });
+        }
+        self.stored(&field);
     }
-}
 
-fn info_super(context: &super::super::super::Context, own: &str) -> Option<String> {
-    context.resolver.index.get(own)?.superclass.clone()
+    /// Stores a value into a local variable. The comparisons name a value after the first variable that held it.
+    pub(super) fn hold(&mut self, name: &str, value: Val, state: &mut State) {
+        if self.mode != Mode::Assign {
+            self.named(state);
+            self.origins.entry(value.clone()).or_insert_with(|| name.to_string());
+        }
+        state.locals.insert(name.to_string(), value);
+    }
+
+    /// `Mode::Stack`: a value made where paths meet or at the head of a loop is named after the variable holding it.
+    fn named(&mut self, state: &State) {
+        if self.mode != Mode::Stack {
+            return;
+        }
+        let mut held: Vec<(&String, &Val)> = state.locals.iter().filter(|(_, value)| !self.origins.contains_key(*value)).collect();
+        held.sort_by(|one, two| one.0.cmp(two.0));
+        for (name, value) in held {
+            self.origins.entry(value.clone()).or_insert_with(|| name.clone());
+        }
+    }
+
+    /// The two operands of an operator or a call, for the comparisons, with the variables holding the second.
+    pub(super) fn site(&mut self, node: Node<'a>, left: Val, right: Val, state: &State) {
+        if self.mode == Mode::Assign {
+            return;
+        }
+        self.named(state);
+        let holders = state.locals.iter().filter(|(_, value)| **value == right).map(|(name, _)| name.clone()).collect();
+        let current = matches!(&right, Val::Load { field, epoch, .. } if *epoch == self.epoch(field));
+        let causes = self.causes(&right);
+        self.sites.push(Site { node, left, right, holders, current, causes, calls: self.calls });
+    }
+
+    /// The value after a conversion javac writes code for: a new one, but `Mode::Stack` keeps the variable a value
+    /// came from (not the field).
+    pub(super) fn converted(&self, kept: Val, converted: bool) -> Val {
+        let keeps = self.mode == Mode::Stack && !matches!(kept, Val::Load { .. });
+        if converted && !keeps { self.numbers.fresh() } else { kept }
+    }
 }

@@ -14,6 +14,8 @@
 //!   class the code names it by.
 mod doubled;
 mod flow;
+mod reach;
+mod same;
 mod suggest;
 
 use super::idioms::{Compiled, compiled, initializes};
@@ -29,7 +31,7 @@ use flow::values::State;
 
 pub const SELF: &str = "SA_FIELD_SELF_ASSIGNMENT";
 pub use doubled::DOUBLE;
-pub const PATTERNS: &[&str] = &[SELF, DOUBLE];
+pub const PATTERNS: &[&str] = &[SELF, DOUBLE, same::FIELD_COMPARISON, same::LOCAL_COMPARISON, same::FIELD_COMPUTATION, same::LOCAL_COMPUTATION, same::DOUBLE];
 
 pub fn assignments<'a>(context: &Context<'a>, class: Node<'a>) {
     if !context.wants(PATTERNS) {
@@ -45,6 +47,22 @@ pub fn assignments<'a>(context: &Context<'a>, class: Node<'a>) {
             self_assignments(context, &own, class, &method);
         }
     }
+}
+
+/// FindSelfComparison and FindSelfComparison2 on the classes of the file; findings that hang on what other files
+/// do wait for `effects`.
+pub fn comparisons<'a>(context: &Context<'a>, declared: &[Node<'a>], effects: &super::returns::Effects) {
+    if !context.wants(same::PATTERNS) {
+        return;
+    }
+    let mut waiting = Vec::new();
+    for class in declared.iter().copied().filter(|class| TYPE_DECLARATIONS.contains(&class.kind()) || matches!(class.kind(), "object_creation_expression" | "enum_constant")) {
+        let Some(own) = context.resolver.scope.names.get(&class.id()).cloned() else { continue };
+        for method in compiled(context, &own, class) {
+            waiting.extend(same::check(context, &own, class, &method));
+        }
+    }
+    same::note(context, effects, waiting);
 }
 
 fn interface(class: Node) -> bool {
@@ -74,7 +92,7 @@ fn initializers<'a>(class: Node<'a>, wanted_static: bool) -> Vec<Node<'a>> {
     members.map(|member| if member.kind() == "static_initializer" { named_children(member).into_iter().next().unwrap_or(member) } else { member }).collect()
 }
 
-fn walk_method<'c, 'a>(walk: &mut Walk<'c, 'a>, class: Node<'a>, method: &Compiled<'a>) {
+pub(super) fn walk_method<'c, 'a>(walk: &mut Walk<'c, 'a>, class: Node<'a>, method: &Compiled<'a>) {
     let member = method.member;
     let state = Some(State::default());
     if method.lambda {

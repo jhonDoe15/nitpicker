@@ -5,6 +5,8 @@ import {
   CIRCUIT_PATTERNS,
   FLOAT_PATTERNS,
   LOGIC_PLACED,
+  SELF_COMPARISON_PATTERNS,
+  VALUE_NUMBER_PATTERNS,
 } from './spotbugs-tail-logic-placed.mts';
 
 const ERROR = 'error';
@@ -36,6 +38,8 @@ export const TAIL_DETECTORS: Readonly<Record<string, readonly string[]>> = {
   FindNonShortCircuit: CIRCUIT_PATTERNS,
   StaticCalendarDetector: CALENDAR_PATTERNS,
   FindFieldSelfAssignment: ASSIGNMENT_PATTERNS,
+  FindSelfComparison: SELF_COMPARISON_PATTERNS,
+  FindSelfComparison2: VALUE_NUMBER_PATTERNS,
 };
 
 export const TAIL_PLACED: Readonly<Record<string, Placed>> = {

@@ -1,12 +1,15 @@
 //! Code javac writes that is a call although the source shows none: boxing and unboxing (`Integer.valueOf`,
 //! `intValue`), and a `switch` on anything but an `int` (`ordinal`, `hashCode`, a pattern switch). And the
-//! variables a pattern binds, which hold a value nothing else is known about.
+//! variables a pattern binds, which hold a value nothing else is known about. The calls FindSelfComparison looks at.
 use super::Walk;
-use super::values::State;
+use super::values::{Mode, Seen, State, Val};
 use crate::engine::source::{named_children, walk};
 use crate::java::types::expr::{Binding, unwrap};
 use crate::java::types::model::Type;
 use tree_sitter::Node;
+
+/// The calls whose object and only argument the comparisons look at.
+const COMPARED: &[&str] = &["equals", "compareTo", "equalsIgnoreCase", "compareToIgnoreCase", "startsWith", "endsWith", "contains"];
 
 fn boxed(kind: &Option<Type>) -> bool {
     matches!(kind, Some(Type::Class(..))) && kind.clone().is_some_and(|kind| matches!(kind.unboxed_or_same(), Type::Primitive(_)))
@@ -35,9 +38,40 @@ impl<'c, 'a> Walk<'c, 'a> {
     pub fn convert(&mut self, from: Node<'a>, to: &Option<Type>) -> bool {
         let converted = converts(&self.type_of(from), to);
         if converted {
-            self.called();
+            self.converting();
         }
         converted
+    }
+
+    /// A primitive value converted to another primitive type: `Mode::Stack` keeps the variable it came from (not
+    /// the field) when javac writes an instruction for it; else a new value when javac does.
+    pub fn widen(&self, kept: Val, from: &str, to: &str) -> Val {
+        let category = |name: &str| if matches!(name, "long" | "float" | "double") { name.to_string() } else { "int".to_string() };
+        let emitted = category(from) != category(to) || (matches!(to, "byte" | "short" | "char") && from != to);
+        match (emitted, self.mode, &kept) {
+            (false, _, _) => kept,
+            (true, Mode::Stack, Val::This | Val::Fresh(_) | Val::Converted(..)) => Val::Converted(Box::new(kept), to.to_string()),
+            _ => self.numbers.fresh(),
+        }
+    }
+
+    /// `widen` for a value stored where a primitive type is declared.
+    pub fn widened(&self, kept: Val, value: Node<'a>, declared: &Option<Type>) -> Val {
+        match (self.mode, self.type_of(value), declared) {
+            (Mode::Stack | Mode::Numbers, Some(Type::Primitive(from)), Some(Type::Primitive(to))) => self.widen(kept, from, to),
+            _ => kept,
+        }
+    }
+
+    /// `Mode::Stack`: the two operands of a binary operator after binary numeric promotion.
+    pub fn promoted(&self, node: Node<'a>, left: Val, right: Val) -> (Val, Val) {
+        let kind = |name: &str| node.child_by_field_name(name).and_then(|part| self.type_of(part)).map(|kind| kind.unboxed_or_same());
+        let (Some(Type::Primitive(one)), Some(Type::Primitive(two))) = (kind("left"), kind("right")) else { return (left, right) };
+        if self.mode != Mode::Stack || one == "boolean" || two == "boolean" {
+            return (left, right);
+        }
+        let target = ["double", "float", "long"].into_iter().find(|wide| one == *wide || two == *wide).unwrap_or("int");
+        (self.widen(left, one, target), self.widen(right, two, target))
     }
 
     /// Whether javac unboxes an operand of this operator.
@@ -91,6 +125,70 @@ impl<'c, 'a> Walk<'c, 'a> {
         });
         for name in names {
             state.locals.insert(self.context.text(name).to_string(), self.numbers.fresh());
+        }
+    }
+
+    /// A call: no value read from a field before is known to be what the field holds.
+    pub fn called(&mut self) {
+        self.calls = self.numbers.next();
+        if self.mode != Mode::Stack {
+            self.kills.push((self.calls, None));
+        }
+    }
+
+    /// A call javac writes to box or unbox a value or to pick the case of a `switch` on a string: one with no
+    /// effect for FindSelfComparison2.
+    pub fn converting(&mut self) {
+        if self.mode != Mode::Numbers {
+            self.called();
+        }
+    }
+
+    /// The calls in the code: FindSelfComparison2 keeps them, to judge with the whole run whether one has an effect.
+    pub fn invoked(&mut self, calls: Vec<Node<'a>>) {
+        match self.mode {
+            Mode::Stack | Mode::Assign => self.called(),
+            Mode::Numbers => {
+                self.calls = self.numbers.next();
+                self.kills.extend(calls.into_iter().map(|call| (self.calls, Some(call))));
+            }
+        }
+    }
+
+    /// `Mode::Stack`: where a load of a field runs.
+    pub fn seen(&self, node: Node<'a>) -> Seen {
+        Seen { line: super::super::super::nulls::redundant::line_before(self.context, node, node.start_byte()), calls: self.calls }
+    }
+
+    /// The calls that made a value read from a field out of date, when nothing else did.
+    pub fn causes(&self, value: &Val) -> Option<Vec<Option<Node<'a>>>> {
+        let Val::Load { field, epoch, .. } = value else { return None };
+        let (calls, stores) = self.epoch(field);
+        (epoch.1 == stores && epoch.0 != calls).then(|| self.kills.iter().filter(|(at, _)| *at > epoch.0 && *at <= calls).map(|(_, call)| *call).collect())
+    }
+
+    /// A call: its object, then its arguments. `Mode::Stack` keeps the variable through `valueOf` and `intValue`.
+    pub fn invocation(&mut self, node: Node<'a>, state: &mut State) -> Val {
+        let object = node.child_by_field_name("object");
+        let receiver = object.map(|object| self.expression(object, state));
+        let arguments: Vec<Node> = node.child_by_field_name("arguments").map(named_children).unwrap_or_default();
+        let values: Vec<Val> = arguments.iter().map(|argument| self.expression(*argument, state)).collect();
+        let name = node.child_by_field_name("name").map_or("", |name| self.context.text(name));
+        if let (Some(receiver), [argument]) = (receiver.clone(), &values[..]) {
+            if COMPARED.contains(&name) && object.is_none_or(|object| object.kind() != "super") {
+                self.site(node, receiver, argument.clone(), state);
+            }
+        }
+        self.invoked(vec![node]);
+        let boxes = |part: Node<'a>| boxed(&self.type_of(part));
+        let kept = match (&receiver, &values[..]) {
+            (Some(receiver), []) if name.ends_with("Value") && object.is_some_and(boxes) => Some(receiver.clone()),
+            (_, [argument]) if name == "valueOf" && boxes(node) && arguments.first().is_some_and(|part| primitive(&self.type_of(*part))) => Some(argument.clone()),
+            _ => None,
+        };
+        match kept.filter(|_| self.mode == Mode::Stack) {
+            Some(kept) => self.converted(kept, true),
+            None => self.numbers.fresh(),
         }
     }
 }

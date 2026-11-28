@@ -66,7 +66,7 @@ fn unused(context: &Context, node: Node) -> bool {
         "for_statement" => {
             let mut cursor = above.walk();
             let update = above.children_by_field_name("update", &mut cursor).any(|part| part.id() == at.id());
-            above.child_by_field_name("condition").is_none_or(|condition| condition.id() != at.id()) && (!update || super::flow::reach::loops_back(context, above))
+            above.child_by_field_name("condition").is_none_or(|condition| condition.id() != at.id()) && (!update || super::reach::loops_back(context, above))
         }
         _ => false,
     }

@@ -5,6 +5,7 @@
 //! of an abstract method with a `throws` clause, and a method of the run that implements a JDK interface method. A
 //! reported call of a static method or constructor must also run no static initializer with an effect. A JDK method
 //! a class inherits is known to SpotBugs only when the code of the run names its class.
+//! FindSelfComparison2 findings wait on whether a call can have an effect, judged the same way (`Wait::Stale`).
 use super::effects::{Key, Summary};
 use crate::engine::finding::Finding;
 use crate::java::types::index::TypeIndex;
@@ -19,6 +20,9 @@ pub enum Wait {
     Run(Key),
     /// The code of the run names the JDK class that declares the method it calls, so SpotBugs reads that class.
     Referenced(String),
+    /// FindSelfComparison2: calls made a value read from the field out of date. It counts when the run stores into
+    /// the field outside constructors and initializers, and a call surely has an effect or one of the run has.
+    Stale { field: (String, String), calls: Vec<Key>, certain: bool },
 }
 
 #[derive(Default)]
@@ -26,6 +30,10 @@ pub struct Effects {
     summaries: Mutex<Vec<Summary>>,
     referenced: Mutex<HashSet<String>>,
     waiting: Mutex<Vec<(Wait, Finding)>>,
+    /// The summaries as FindSelfComparison2 judges them (`effects::summaries` lenient).
+    quiet: Mutex<Vec<Summary>>,
+    /// The fields of the run stored into outside constructors and initializers.
+    written: Mutex<HashSet<(String, String)>>,
 }
 
 /// The methods each class of the run declares, by name and parameters (also those of a method above it that it
@@ -76,9 +84,9 @@ pub fn bridged(method: &Method, above: &Method) -> bool {
 
 struct Judge<'p> {
     index: &'p TypeIndex,
-    declared: Declared,
+    declared: &'p Declared,
     clean: HashSet<Key>,
-    summaries: HashMap<Key, Summary>,
+    summaries: &'p HashMap<Key, Summary>,
 }
 
 impl Judge<'_> {
@@ -175,6 +183,14 @@ impl Effects {
         self.referenced.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).extend(classes);
     }
 
+    pub fn note_quiet(&self, summaries: Vec<Summary>) {
+        self.quiet.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).extend(summaries);
+    }
+
+    pub fn write(&self, fields: HashSet<(String, String)>) {
+        self.written.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).extend(fields);
+    }
+
     pub fn wait(&self, waiting: Vec<(Wait, Finding)>) {
         self.waiting.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).extend(waiting);
     }
@@ -188,13 +204,26 @@ impl Effects {
             .into_iter()
             .map(|summary| (summary.key.clone(), summary))
             .collect();
+        let quiet: HashMap<Key, Summary> = std::mem::take(&mut *self.quiet.lock().unwrap_or_else(|poisoned| poisoned.into_inner()))
+            .into_iter()
+            .map(|summary| (summary.key.clone(), summary))
+            .collect();
         let clean = summaries.values().filter(|summary| summary.clean).map(|summary| summary.key.clone()).collect();
-        let mut judge = Judge { index: &project.index, declared: Declared::of(project), clean, summaries };
+        let declared = Declared::of(project);
+        let mut judge = Judge { index: &project.index, declared: &declared, clean, summaries: &summaries };
         judge.settle();
+        let clean = quiet.values().filter(|summary| summary.clean && !summary.empty_void).map(|summary| summary.key.clone()).collect();
+        let mut kills = Judge { index: &project.index, declared: &declared, clean, summaries: &quiet };
+        kills.settle();
+        let written = std::mem::take(&mut *self.written.lock().unwrap_or_else(|poisoned| poisoned.into_inner()));
         let referenced = std::mem::take(&mut *self.referenced.lock().unwrap_or_else(|poisoned| poisoned.into_inner()));
         let kept = waiting.into_iter().filter(|(wait, _)| match wait {
             Wait::Run(key) => judge.dispatched(key) && judge.initializes_clean(key),
             Wait::Referenced(class) => referenced.contains(class),
+            Wait::Stale { field, calls, certain } => {
+                let stored = !project.index.from_source(&field.0) || written.contains(field);
+                stored && (*certain || calls.iter().any(|key| !(kills.dispatched(key) && kills.initializes_clean(key))))
+            }
         });
         out.extend(kept.map(|(_, finding)| finding));
     }

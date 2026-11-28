@@ -283,9 +283,8 @@ impl FileRule for SpotBugs {
             }
         }
         compare::ref_comparisons(&context);
-        if context.wants(returns::PATTERNS) {
-            returns::returns(&context, &self.effects);
-        }
+        returns::returns(&context, &self.effects);
+        assign::comparisons(&context, &declared, &self.effects);
         catches::catches(&context);
         resources::resources(&context);
         values::values(&context, &declared);

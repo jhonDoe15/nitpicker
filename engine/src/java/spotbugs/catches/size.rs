@@ -229,3 +229,19 @@ impl<'t> Size<'_, '_, 't> {
         parts.iter().filter(|part| !constant(part)).map(|part| self.expression(*part)).sum::<usize>() + 5
     }
 }
+
+/// The bytes javac writes from the end of a store into a field to the end of a later store: the store into the
+/// local the first one's value goes to, the statements between (a statement, or a value with the bytes written
+/// after it) and the second store (its object, its value and the store).
+pub fn store_gap(context: &Context, local: Option<Node>, between: &[(Node, Option<usize>)], second: Node) -> usize {
+    let root = crate::engine::source::ancestor(second, &["class_body"]).unwrap_or(second);
+    let mut size = Size { context, slots: Slots::of(context, second), scopes: Scopes::of(context.file, root), tried: second, finally: false, closes: 0, total: 0, entries: Vec::new() };
+    size.total += local.map_or(0, |local| Size::slot_bytes(size.slots.slot(local).unwrap_or(4)));
+    for (part, after) in between {
+        match after {
+            Some(after) => size.total += size.value(*part) + after,
+            None => size.statement(*part),
+        }
+    }
+    size.total + size.assignment(second, false)
+}

@@ -1,6 +1,6 @@
 //! Which code javac writes: a statement that cannot complete leaves no code after it, and a loop whose body never
 //! gets back to its condition (no end reached, no `continue`) has no jump back, so no loop head.
-use super::super::super::Context;
+use super::super::Context;
 use crate::engine::source::{children, named_children, parent};
 use tree_sitter::Node;
 

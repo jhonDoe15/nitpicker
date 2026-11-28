@@ -6,7 +6,10 @@
 //! when that is not the class the call is made on: `i` its result is reported as ignored by
 //! RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT, `p` the call has no side effect, `c` it is reported by
 //! RV_RETURN_VALUE_IGNORED_BAD_PRACTICE at priority 2.
+use super::super::Context;
+use crate::java::types::expr::Call;
 use crate::java::types::model::Type;
+use tree_sitter::Node;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
@@ -52,4 +55,30 @@ pub fn parameters(list: &[Type]) -> String {
 /// What SpotBugs knows about a call made on `class`.
 pub fn known(class: &str, method: &str, parameters: &str) -> Option<Known> {
     TABLE.get(&(class, method, parameters)).copied()
+}
+
+/// What the JDK table says of a call, looked up on the class it is made on.
+fn lookup(context: &Context, call: &Call) -> Option<Known> {
+    let on = match &call.receiver {
+        Type::Class(name, _) if !call.method.is_static && call.method.name != "<init>" && !context.resolver.index.from_source(name) => name.clone(),
+        _ => call.declaring.clone(),
+    };
+    known(&on, &call.method.name, &parameters(&call.method.parameters))
+}
+
+/// Whether a call of a JDK method has no side effect for SpotBugs.
+pub fn pure(context: &Context, call: &Call) -> bool {
+    call.declaring == "java.lang.Object" && call.method.name == "<init>" || lookup(context, call).is_some_and(|known| known.pure)
+}
+
+/// `pure` for FindSelfComparison2: also any constructor and any method whose ignored result SpotBugs reports.
+pub fn quiet(context: &Context, call: &Call) -> bool {
+    call.method.name == "<init>" || lookup(context, call).is_some_and(|known| known.pure || known.ignored)
+}
+
+/// A method returning `void` whose body has no statement.
+pub fn empty_void(context: &Context, member: Node) -> bool {
+    let void = member.child_by_field_name("type").is_some_and(|kind| context.text(kind) == "void");
+    let body = member.child_by_field_name("body");
+    void && body.is_some_and(|body| crate::engine::source::named_children(body).iter().all(|part| part.kind().ends_with("comment")))
 }

@@ -4,14 +4,14 @@
 //! store into the field, the head of a loop that javac writes a jump back to (even one without calls).
 mod branches;
 mod convert;
+mod access;
 mod exprs;
-pub mod reach;
 pub mod values;
 
 use super::super::Context;
 use crate::engine::source::{named_children, walk};
-use values::{Key, Numbers, State, Val, merge, merge_all};
-use std::collections::HashMap;
+use values::{Key, Mode, Numbers, Site, State, Val, merge, merge_all};
+use std::collections::{HashMap, HashSet};
 use tree_sitter::Node;
 
 /// A store into a field of the object in a local variable (or `this`) of the value just read from that field.
@@ -26,6 +26,15 @@ pub struct Store<'a> {
     pub outer: bool,
     /// `o.f = o.f++`.
     pub postfix: bool,
+}
+
+/// A store into an instance field (`Mode::Stack`): the object and the value, as the comparisons see them.
+pub struct Put<'a> {
+    pub at: Node<'a>,
+    pub field: Key,
+    pub qualifying: String,
+    pub receiver: Val,
+    pub value: Val,
 }
 
 struct Target {
@@ -49,20 +58,31 @@ pub struct Walk<'c, 'a> {
     first: HashMap<String, Val>,
     /// The class around, while walking the body of a constructor of an inner class.
     pub outer: Option<String>,
+    pub mode: Mode,
+    pub sites: Vec<Site<'a>>,
+    pub puts: Vec<Put<'a>>,
+    /// The first variable each value was stored into.
+    pub origins: HashMap<Val, String>,
+    /// In a method of an anonymous or local class: its parameters. Other variables are its `val$` fields.
+    pub captured: Option<HashSet<String>>,
+    /// `Mode::Numbers`: each time values read from fields went out of date, with the call that did it (none for
+    /// code that surely has an effect).
+    pub kills: Vec<(u32, Option<Node<'a>>)>,
 }
 
 impl<'c, 'a> Walk<'c, 'a> {
     pub fn new(context: &'c Context<'a>, own: &str) -> Self {
-        Walk { context, own: own.to_string(), numbers: Numbers::default(), found: Vec::new(), targets: Vec::new(), calls: 0, fields: HashMap::new(), first: HashMap::new(), outer: None }
+        Self::with_mode(context, own, Mode::Assign)
+    }
+
+    pub fn with_mode(context: &'c Context<'a>, own: &str, mode: Mode) -> Self {
+        let origins = HashMap::from([(Val::This, "this".to_string())]);
+        let (found, sites, puts) = (Vec::new(), Vec::new(), Vec::new());
+        Walk { context, own: own.to_string(), numbers: Numbers::default(), found, targets: Vec::new(), calls: 0, fields: HashMap::new(), first: HashMap::new(), outer: None, mode, sites, puts, origins, captured: None, kills: Vec::new() }
     }
 
     pub fn epoch(&self, field: &Key) -> (u32, u32) {
-        (self.calls, self.fields.get(field).copied().unwrap_or(0))
-    }
-
-    /// A call: no value read from a field before is known to be what the field holds.
-    pub fn called(&mut self) {
-        self.calls = self.numbers.next();
+        (if self.mode == Mode::Stack { 0 } else { self.calls }, self.fields.get(field).copied().unwrap_or(0))
     }
 
     pub fn stored(&mut self, field: &Key) {
@@ -73,7 +93,9 @@ impl<'c, 'a> Walk<'c, 'a> {
     /// The value a variable holds where it is first used without a store before.
     pub fn first(&mut self, name: &str) -> Val {
         let numbers = &self.numbers;
-        self.first.entry(name.to_string()).or_insert_with(|| numbers.fresh()).clone()
+        let value = self.first.entry(name.to_string()).or_insert_with(|| numbers.fresh()).clone();
+        self.origins.entry(value.clone()).or_insert_with(|| name.to_string());
+        value
     }
 
     pub fn statements(&mut self, nodes: &[Node<'a>], state: Option<State>) -> Option<State> {
@@ -88,11 +110,11 @@ impl<'c, 'a> Walk<'c, 'a> {
             "field_declaration" => {
                 for declarator in crate::java::helpers::declarators(node) {
                     let Some(value) = declarator.child_by_field_name("value") else { continue };
-                    self.expression(value, &mut state);
+                    let kept = self.expression(value, &mut state);
                     let declared = node.child_by_field_name("type").and_then(|kind| self.context.resolver.type_node(kind));
                     self.convert(value, &declared);
                     let name = declarator.child_by_field_name("name").map(|name| self.context.text(name).to_string()).unwrap_or_default();
-                    self.stored(&(self.own.clone(), name));
+                    self.initialized(declarator, name, kept);
                 }
                 Some(state)
             }
@@ -193,7 +215,7 @@ impl<'c, 'a> Walk<'c, 'a> {
 
     /// The body of a loop: the state at its end merged with the `continue`s, and the states of its `break`s.
     fn body(&mut self, node: Node<'a>, state: State) -> (Option<State>, Vec<Option<State>>) {
-        let label = reach::loop_label(self.context, node);
+        let label = super::reach::loop_label(self.context, node);
         self.targets.push(Target { label: None, breakable: true, states: Vec::new(), looping: Some(label), continues: Vec::new() });
         let end = node.child_by_field_name("body").and_then(|body| self.statement(body, Some(state)));
         let target = self.targets.pop().expect("target");
@@ -204,8 +226,8 @@ impl<'c, 'a> Walk<'c, 'a> {
 
     /// The head of a loop: values read from fields before are out of date, and so is each local the loop changes.
     fn head(&mut self, node: Node<'a>, state: &mut State) {
-        self.called();
         let mut changed = Vec::new();
+        let (mut stores, mut calls) = (Vec::new(), Vec::new());
         walk(node, |part| {
             let target = match part.kind() {
                 "assignment_expression" => part.child_by_field_name("left"),
@@ -213,8 +235,18 @@ impl<'c, 'a> Walk<'c, 'a> {
                 "enhanced_for_statement" => part.child_by_field_name("name"),
                 _ => None,
             };
+            if matches!(part.kind(), "method_invocation" | "object_creation_expression") {
+                calls.push(part);
+            }
+            stores.extend(target.and_then(|target| self.field(target)).map(|access| access.field));
             changed.extend(target.filter(|target| target.kind() == "identifier").map(|target| self.context.text(target).to_string()));
         });
+        if self.mode == Mode::Assign || (self.mode == Mode::Numbers && !calls.is_empty()) {
+            self.invoked(calls);
+        }
+        if self.mode != Mode::Assign {
+            stores.iter().for_each(|field| self.stored(field));
+        }
         for name in changed {
             if state.locals.contains_key(&name) {
                 state.locals.insert(name, self.numbers.fresh());
@@ -235,7 +267,7 @@ impl<'c, 'a> Walk<'c, 'a> {
             self.condition(field("value"), &mut state);
         }
         let never_again = node.kind() == "do_statement" && field("condition").is_some_and(|condition| self.context.text(condition).replace(['(', ')', ' '], "") == "false");
-        if !never_again && reach::loops_back(self.context, node) {
+        if !never_again && super::reach::loops_back(self.context, node) {
             self.head(node, &mut state);
         }
         if node.kind() == "do_statement" {

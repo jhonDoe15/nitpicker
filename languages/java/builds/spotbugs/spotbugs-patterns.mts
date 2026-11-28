@@ -20,6 +20,7 @@ import {
   CALENDAR_PATTERNS,
   CIRCUIT_PATTERNS,
   FLOAT_PATTERNS,
+  SELF_COMPARISON_PATTERNS,
 } from './tail/spotbugs-tail-logic-placed.mts';
 
 export const WRONG_MAP_ITERATOR = 'WMI_WRONG_MAP_ITERATOR';
@@ -126,6 +127,7 @@ export const ON_ENGINE: readonly string[] = [
   ...CIRCUIT_PATTERNS,
   ...CALENDAR_PATTERNS,
   ...ASSIGNMENT_PATTERNS,
+  ...SELF_COMPARISON_PATTERNS,
 ];
 
 export const LOMBOK_WITHOUT_CLASSES: readonly string[] = [

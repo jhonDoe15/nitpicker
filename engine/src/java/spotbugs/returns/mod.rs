@@ -14,7 +14,7 @@ mod effects;
 mod jdk;
 mod settle;
 
-pub use settle::Effects;
+pub use {effects::{key_of, summaries}, jdk::quiet as jdk_quiet, settle::{Effects, Wait}};
 
 use super::{Context, names};
 use crate::engine::source::{children, parent};
@@ -179,7 +179,7 @@ pub struct Dropped<'a> {
     pub line: usize,
 }
 
-fn call_of(context: &Context, node: Node) -> Option<Call> {
+pub(super) fn call_of(context: &Context, node: Node) -> Option<Call> {
     match node.kind() {
         "method_invocation" => context.resolver.resolve_call(node),
         "object_creation_expression" => {
@@ -254,7 +254,7 @@ pub fn returns(context: &Context, effects: &Effects) {
     let bad = context.wants(&[BAD_PRACTICE]);
     let side = context.wants(&[NO_SIDE_EFFECT]);
     if side {
-        effects.note(effects::summaries(context));
+        effects.note(effects::summaries(context, false));
         effects.refer(settle::referenced(context));
     }
     if !bad && !side {
