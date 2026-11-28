@@ -283,7 +283,7 @@ fn lint_file(path: &str, display: &str, settings: &[String], (selected, rules, v
         return unparsed(display, "!types");
     }
     super::with_parsed(path, &text, |file| {
-        if file.panicked || !file.errors.is_empty() {
+        if support::early_errors::refused_parse(file) {
             return unparsed(display, "!parse");
         }
         let built = SemanticBuilder::new().with_build_nodes(true).with_check_syntax_error(true).build(file.program);
