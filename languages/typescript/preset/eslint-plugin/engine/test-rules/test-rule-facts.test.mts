@@ -3,6 +3,14 @@ import { TEST_ENGINE_RULES } from './test-rule-facts.mts';
 
 const project = { root: '/project', environment: {} };
 
+function conditionOf(rule: string, kind: string): (value: string, filename: string) => boolean {
+  const found = TEST_ENGINE_RULES.find(([name]) => name === rule)?.[1].conditions?.[kind];
+  if (found === undefined) {
+    throw new Error(`${rule} has no ${kind} condition`);
+  }
+  return found;
+}
+
 function factsOf(rule: string, filename: string, options: readonly unknown[] = []) {
   const entry = TEST_ENGINE_RULES.find(([name]) => name === rule)?.[1];
   return entry?.facts?.(filename, options, project);
@@ -42,5 +50,29 @@ describe('facts of the test rules on the engine', () => {
       concurrent: 'true',
     });
     expect(factsOf('no-worker-state-in-concurrent-tests', file)).toEqual({ concurrent: 'false' });
+  });
+
+  it('passes on whether network calls are checked', () => {
+    expect(
+      factsOf('no-real-time-random-or-network', '/project/test/a.test.ts', [{ network: true }]),
+    ).toMatchObject({ network: 'true' });
+  });
+
+  it('tells a file the runner collects from one it does not', () => {
+    expect(factsOf('no-uncollected-tests', '/project/test/a.test.ts')).toMatchObject({
+      collected: 'true',
+    });
+    expect(factsOf('no-uncollected-tests', '/project/test/helpers/a.ts')).toMatchObject({
+      collected: 'false',
+    });
+  });
+
+  it('keeps only production modules as mocked subjects and setup imports', () => {
+    const subject = conditionOf('no-mocking-subject-under-test', 'production-subject');
+    expect(subject('../src/orders', 'C:\\project\\test\\a.test.ts')).toBe(true);
+    expect(subject('./helpers/build', '/project/test/a.test.ts')).toBe(false);
+    const setup = conditionOf('no-production-imports-in-setup-files', 'production-module');
+    expect(setup('../src/orders', '/project/test/setup.ts')).toBe(true);
+    expect(setup('vitest', '/project/test/setup.ts')).toBe(false);
   });
 });

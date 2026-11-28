@@ -9,7 +9,7 @@ import {
 
 const TYPE_TEST_NAME = /\.(?:test|spec)-d\.[cm]?[jt]sx?$/u;
 
-function isCollected(context: Parameters<typeof isCollectedByRunner>[0]): boolean {
+export function isCollected(context: Parameters<typeof isCollectedByRunner>[0]): boolean {
   return (
     isCollectedByRunner(context) ||
     (runnerOf(context) === 'vitest' && TYPE_TEST_NAME.test(context.filename))

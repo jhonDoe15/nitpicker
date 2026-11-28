@@ -13,7 +13,7 @@ const PRODUCTION: &str = "not-production-runtime";
 const BROWSER: &str = "not-browser-test-module";
 const DEFAULT_HELPER_FILE: &str = "a file the test runner does not run as a test";
 
-fn is_runtime_import(node: Node) -> bool {
+pub fn is_runtime_import(node: Node) -> bool {
     if node.text("importKind").as_deref() == Some("type") {
         return false;
     }

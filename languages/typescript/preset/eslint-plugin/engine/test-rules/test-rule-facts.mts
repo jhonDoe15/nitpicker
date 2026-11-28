@@ -1,5 +1,8 @@
 import { vocabularyOf } from '../../rules/runner-apis/runner-option.mts';
 import { readLayout } from '../../rules/typed/policy-views.mts';
+import { isProductionModule } from '../../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
+import { isCollected } from '../../test-isolation/no-uncollected-tests.mts';
+import { productionModulePath } from '../../test-isolation/production-source.mts';
 import type { RunnerVocabulary } from '../../../test-runner/vocabulary/typed-vocabulary.mts';
 import type { EngineRule, FileFacts } from '../engine-rules.mts';
 
@@ -50,15 +53,52 @@ export const TEST_ENGINE_RULES: readonly (readonly [string, EngineRule])[] = [
   ],
   ['no-listing-order-in-assertions', {}],
   [
+    'no-mocking-subject-under-test',
+    {
+      conditions: {
+        'production-subject': (value, filename) =>
+          isProductionModule(filename.replaceAll('\\', '/'), value),
+      },
+    },
+  ],
+  [
     'no-partial-output-assertion',
     {
       facts: runnerWords('wholeOutput', 'fragmentForms', 'wholeValue', 'partialForms', 'variedField'),
     },
   ],
+  [
+    'no-production-imports-in-setup-files',
+    {
+      conditions: {
+        'production-module': (value, filename) =>
+          productionModulePath(value, filename) !== undefined,
+      },
+    },
+  ],
+  [
+    'no-real-time-random-or-network',
+    {
+      facts: (filename, options, project) => ({
+        ...runnerWords('fakeClock', 'fixRandom')(filename, options, project),
+        network: String(Reflect.get(Object(options[0]), 'network') === true),
+      }),
+    },
+  ],
   ['no-shared-temp-path-in-tests', {}],
   ['no-uncleared-shared-mock', {}],
+  [
+    'no-uncollected-tests',
+    {
+      facts: (filename, options, project) => ({
+        ...runnerWords('collectIt')(filename, options, project),
+        collected: String(isCollected({ options, filename, cwd: project.root })),
+      }),
+    },
+  ],
   ['no-uninjectable-delay', {}],
   ['no-unpinned-assertion', {}],
+  ['no-wall-clock-bound-in-tests', {}],
   ['no-weak-assertion', {}],
   [
     'no-worker-state-in-concurrent-tests',

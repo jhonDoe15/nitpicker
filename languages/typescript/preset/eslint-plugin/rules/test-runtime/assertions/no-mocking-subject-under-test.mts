@@ -19,7 +19,7 @@ function isRuntimeImport(node: TSESTree.ImportDeclaration): boolean {
   );
 }
 
-function isProductionModule(filename: string, source: string): boolean {
+export function isProductionModule(filename: string, source: string): boolean {
   if (!source.startsWith('.')) {
     return layout.sourceRootOf(source) !== undefined;
   }
