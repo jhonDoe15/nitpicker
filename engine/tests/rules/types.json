@@ -20,5 +20,7 @@
  {"name": "CollectionAdd", "message": "m", "xpath": "//MethodCall[pmd-java:matchesSig('java.util.Collection#add(_)')]"},
  {"name": "MaxLong", "message": "m", "xpath": "//MethodCall[pmd-java:matchesSig('java.lang.Math#max(long,long)')]"},
  {"name": "MaxFloat", "message": "m", "xpath": "//MethodCall[pmd-java:matchesSig('java.lang.Math#max(float,float)')]"},
- {"name": "AnySize", "message": "m", "xpath": "//MethodCall[pmd-java:matchesSig('_#size()')]"}
+ {"name": "AnySize", "message": "m", "xpath": "//MethodCall[pmd-java:matchesSig('_#size()')]"},
+ {"name": "LocalIsObject", "message": "m", "xpath": "//*[self::VariableId or self::InfixExpression/* or self::ArrayAllocation or self::ConstructorCall][pmd-java:typeIs('java.lang.Object')]"},
+ {"name": "LocalCall", "message": "m", "xpath": "//MethodCall[pmd-java:matchesSig('java.lang.Object#hashCode()')]"}
 ]

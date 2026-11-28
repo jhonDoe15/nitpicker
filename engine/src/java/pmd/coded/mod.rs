@@ -18,6 +18,7 @@ pub mod suppressions;
 mod text;
 mod unused;
 mod usages;
+mod written;
 
 pub use message::{expanded, formatted};
 
