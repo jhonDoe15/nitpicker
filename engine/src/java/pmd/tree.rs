@@ -147,7 +147,21 @@ fn text(value: &str) -> Value {
 
 impl<'t> PmdTree<'t> {
     pub fn build(file: &SourceFile, tree_root: Node<'t>, resolver: &Resolver) -> PmdTree<'t> {
-        let mut builder = Builder { file, resolver, nodes: Vec::new(), compact: false };
+        let (tree, tentative) = Self::assemble(file, tree_root, resolver, std::collections::HashSet::new());
+        if tentative.is_empty() {
+            return tree;
+        }
+        let denied = super::coded::out_of_scope(&tree, file, resolver, &tentative);
+        if denied.is_empty() {
+            return tree;
+        }
+        Self::assemble(file, tree_root, resolver, denied).0
+    }
+
+    /// The tree, with the names that stand before a dot and only a pattern variable makes a variable: PMD's flow
+    /// scoping of pattern variables decides those, and a second build reads the ones it does not see as ambiguous.
+    fn assemble(file: &SourceFile, tree_root: Node<'t>, resolver: &Resolver, denied: std::collections::HashSet<usize>) -> (PmdTree<'t>, Vec<usize>) {
+        let mut builder = Builder { file, resolver, nodes: Vec::new(), compact: false, denied, tentative: Vec::new() };
         builder.unit(tree_root);
         // PMD's lexer reads `>>` as one token, and a type that ends inside it ends where the token ends.
         let bytes = file.text.as_bytes();
@@ -165,7 +179,7 @@ impl<'t> PmdTree<'t> {
         for (id, node) in nodes.iter().enumerate() {
             named.entry(node.name).or_default().push(id as u32);
         }
-        PmdTree { nodes, last, named, lines }
+        (PmdTree { nodes, last, named, lines }, builder.tentative)
     }
 
     /// Line and column as PMD counts them: both from 1, columns in UTF-16 units.
@@ -231,6 +245,10 @@ struct Builder<'a, 't> {
     resolver: &'a Resolver<'a>,
     nodes: Vec<PNode<'t>>,
     compact: bool,
+    /// Names before a dot that PMD does not see as variables, by where they start.
+    denied: std::collections::HashSet<usize>,
+    /// Names before a dot that only a pattern variable of the type resolver makes a variable, by where they start.
+    tentative: Vec<usize>,
 }
 
 impl<'a, 't> Builder<'a, 't> {
@@ -319,6 +337,7 @@ impl<'a, 't> Builder<'a, 't> {
                 _ if compact => {
                     let body = *implicit.get_or_insert_with(|| self.implicit_class(id, kid.start_byte()));
                     self.member(body, kid, Owner::Class);
+                    self.static_block(body, kid);
                 }
                 _ => {}
             }
@@ -327,6 +346,22 @@ impl<'a, 't> Builder<'a, 't> {
             self.sized(body);
         }
         self.set(id, "Compact", flag(compact));
+    }
+
+    /// A top-level `static { }` of a compact source file, which tree-sitter reads as a stray `static` and a block:
+    /// PMD reads a static initializer that starts at `static`.
+    fn static_block(&mut self, body: u32, block: Node<'t>) {
+        let mut keyword = block.prev_sibling();
+        while let Some(comment) = keyword.filter(|before| before.kind().ends_with("comment")) {
+            keyword = comment.prev_sibling();
+        }
+        let keyword = keyword.filter(|before| before.kind() == "ERROR" && self.text(*before) == "static");
+        let Some(keyword) = keyword.filter(|_| block.kind() == "block") else { return };
+        let Some(&initializer) = self.nodes[body as usize].children.last() else { return };
+        if self.nodes[initializer as usize].name == "Initializer" {
+            self.set(initializer, "Static", flag(true));
+            self.nodes[initializer as usize].start = keyword.start_byte();
+        }
     }
 
     /// The class around the members of a compact source file (JEP 512), which has no name.
@@ -1484,6 +1519,10 @@ impl<'a, 't> Builder<'a, 't> {
                         "pattern" | "type_pattern" | "record_pattern" => {
                             self.pattern(written, constant);
                         }
+                        // `case String a, Integer b`, which javac rejects: the grammar keeps the first pattern in an error.
+                        "ERROR" if !kids(constant).is_empty() && kids(constant).iter().all(|part| part.kind() == "pattern") => {
+                            kids(constant).into_iter().for_each(|part| self.pattern(written, part));
+                        }
                         _ => {
                             self.expr(written, constant);
                         }
@@ -1626,10 +1665,16 @@ impl<'a, 't> Builder<'a, 't> {
             "identifier" | "field_access" | "scoped_identifier" => {
                 let written: String = self.text(node).split_whitespace().collect();
                 let first = written.split('.').next().unwrap_or_default();
-                match self.resolver.receiver(node) {
+                let denied = self.denied.contains(&node.start_byte());
+                let receiver = if denied { None } else { self.resolver.receiver(node) };
+                let variable = !denied && self.resolver.is_variable(node, first);
+                if variable && self.resolver.binding(node, first).is_none() {
+                    self.tentative.push(node.start_byte());
+                }
+                match receiver {
                     Some(Receiver::Static(_)) => self.type_expression(parent, node),
                     Some(Receiver::Value(_)) => self.expr(parent, node),
-                    None if self.resolver.is_variable(node, first) => self.expr(parent, node),
+                    None if variable => self.expr(parent, node),
                     None if node.kind() == "identifier" && !written.starts_with(char::is_uppercase) => {
                         let id = self.at(parent, "AmbiguousName", node);
                         self.set(id, "Name", text(&written));

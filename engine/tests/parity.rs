@@ -300,6 +300,11 @@ fn patterns_type_their_variables_like_pmd() {
     same_as_pmd("patterns", "all");
 }
 
+#[test]
+fn names_before_a_dot_and_compact_initializers_are_read_like_pmd() {
+    same_as_pmd("receivers", "receivers");
+}
+
 fn override_lines(release: &str) -> Vec<u64> {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join("release");
     let out = std::env::temp_dir().join(format!("nitpicker-engine-release-{release}-{}.json", std::process::id()));
