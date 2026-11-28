@@ -182,3 +182,42 @@ describe('the type check preserves the project global type context', () => {
     },
   );
 });
+
+describe('context-only files under a symlinked project root', () => {
+  it('reads the compiler real paths as files of the project', async () => {
+    const { contextOnlyOf } = await import('./context-only-files.mts');
+    const base = realpathSync(mkdtempSync(path.join(tmpdir(), 'context-only-link-')));
+    const real = path.join(base, 'real');
+    mkdirSync(real);
+    const linked = path.join(base, 'linked');
+    symlinkSync(real, linked, 'dir');
+    try {
+      const found = contextOnlyOf(linked, {
+        complete: [path.join(real, 'src/a.ts'), path.join(real, 'web/b.ts')],
+        scoped: [path.join(real, 'src/a.ts')],
+      });
+      expect([...found]).toStrictEqual(['web/b.ts']);
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('context-only files of a config nitpicker cannot read', () => {
+  it.each([
+    ['is not JSON', '{ // a comment\n}'],
+    ['is not an object', '[1]'],
+    ['is null', 'null'],
+  ])('finds none when the config %s', async (_, text) => {
+    const { contextOnlyFiles, contextRoots } = await import('./context-only-files.mts');
+    const { readLayout } = await import('../../typed/head-policy.mts');
+    const ts = (await import('typescript')).default;
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'context-only-config-')));
+    roots.push(root);
+    const configPath = path.join(root, 'tsconfig.json');
+    writeFileSync(configPath, text);
+
+    expect(contextRoots(configPath, root, readLayout())).toBeUndefined();
+    expect(contextOnlyFiles(configPath, root, { layout: readLayout(), ts })).toEqual(new Set());
+  });
+});

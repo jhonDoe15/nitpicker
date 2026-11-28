@@ -1,0 +1,1 @@
+import { md5 } from "hash-wasm"; export const h = (s: string) => md5(s);

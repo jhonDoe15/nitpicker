@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export const f = (db) => db.selectFrom("a").selectAll().where((eb) => eb.exists(db.selectFrom("b").select("id").limit(1))).execute();

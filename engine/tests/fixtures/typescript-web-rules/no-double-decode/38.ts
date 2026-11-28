@@ -1,0 +1,1 @@
+function Page({ searchParams }) { return decodeURIComponent(searchParams.q); }

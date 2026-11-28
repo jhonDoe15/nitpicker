@@ -5,6 +5,7 @@ import { useTempProjects } from '../../../../shared/test-support/temp-projects.m
 import { fieldOf, listOf, parseJson } from '../../../../shared/values/readers.mts';
 import { engineFolders, engineWriting, type Started } from '../test-support/engine-writing.mts';
 import {
+  ON_ENGINE,
   SPOTBUGS_ENGINE_SARIF,
   spotbugsArgumentsFor,
   spotbugsOnEngine,
@@ -52,8 +53,13 @@ describe('spotbugsOnEngine', () => {
       ),
     });
 
-    expect(added).toStrictEqual(['-omitVisitors', 'ConstructorThrow']);
+    expect(added.slice(0, 3)).toStrictEqual([
+      '-omitVisitors',
+      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,FindHiddenMethod,FindNakedNotify,SharedVariableAtomicityDetector,AtomicityProblem,FindUnsyncGet,ReadReturnShouldBeChecked,FindUninitializedGet,RedundantConditions,ConfusionBetweenInheritedAndOuterMethod,IteratorIdioms,DefaultEncodingDetector,FindUselessControlFlow,URLProblems,DumbMethodInvocations,DumbMethods,IDivResultCastToDouble,WaitInLoop,StartInConstructor,MutableEnum,FindFloatEquality,FindNonShortCircuit,StaticCalendarDetector,FindFieldSelfAssignment,ComparatorIdiom,FindComparatorProblems,EqualsOperandShouldHaveClassCompatibleWithThis,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,OptionalReturnNull,FindDeadLocalStores,FindLocalSelfAssignment2,FindBadCast2,FindUnreleasedLock',
+      '-exclude',
+    ]);
     expect(sarifResults(plan).map((result) => fieldOf(result, 'ruleId'))).toStrictEqual([
+      'EI_EXPOSE_REP',
       'CT_CONSTRUCTOR_THROW',
     ]);
     const [start] = started;
@@ -65,7 +71,7 @@ describe('spotbugsOnEngine', () => {
       '--classpath',
       path.join(plan.reportDir, 'spotbugs-engine-classpath.txt'),
     ]);
-    expect(fieldOf(start?.environment, 'NP_SB_ONLY')).toBe('CT_CONSTRUCTOR_THROW');
+    expect(fieldOf(start?.environment, 'NP_SB_ONLY')).toBe(ON_ENGINE.join(','));
     expect(fieldOf(start?.environment, 'NITPICKER_JDK')).toBe(plan.javaHome);
     expect(readFileSync(path.join(plan.reportDir, 'spotbugs-engine-sources.txt'), 'utf8')).toBe(
       `${plan.sources[0] ?? ''}\n`,
@@ -104,7 +110,7 @@ describe('spotbugsOnEngine', () => {
     mkdirSync(path.join(processors, 'META-INF/services'), { recursive: true });
     writeFileSync(
       path.join(processors, 'META-INF/services/javax.annotation.processing.Processor'),
-      '',
+      'org.example.Processor\n',
     );
     writeFileSync(path.join(plan.reportDir, SPOTBUGS_ENGINE_SARIF), '{}');
     const started: Started[] = [];
@@ -120,6 +126,93 @@ describe('spotbugsOnEngine', () => {
     ).toStrictEqual([]);
     expect(spotbugsOnEngine({ ...plan, sources: [] }, environment, { run })).toStrictEqual([]);
     expect(started).toStrictEqual([]);
+  });
+
+  it('tells the engine that Lombok ran, so it knows the members Lombok writes', () => {
+    const plan = planIn();
+    const lombok = path.join(plan.reportDir, 'lombok');
+    mkdirSync(path.join(lombok, 'META-INF/services'), { recursive: true });
+    writeFileSync(
+      path.join(lombok, 'META-INF/services/javax.annotation.processing.Processor'),
+      'lombok.launch.AnnotationProcessorHider$AnnotationProcessor\n',
+    );
+    writeFileSync(path.join(lombok, 'META-INF/MANIFEST.MF'), 'Lombok-Version: 1.18.36\n');
+    const started: Started[] = [];
+    const run = engineWriting({ findings: [finding('CT_CONSTRUCTOR_THROW', THROWN)] }, started);
+
+    const added = spotbugsOnEngine({ ...plan, processorPath: [lombok] }, environment, { run });
+    const plain = spotbugsOnEngine(plan, environment, { run });
+
+    expect(added.slice(0, 2)).toStrictEqual([
+      '-omitVisitors',
+      'CloneIdiom,ConstructorThrow,FindNakedNotify,ReadReturnShouldBeChecked,ConfusionBetweenInheritedAndOuterMethod,IteratorIdioms,DefaultEncodingDetector,FindUselessControlFlow,URLProblems,DumbMethodInvocations,DumbMethods,IDivResultCastToDouble,WaitInLoop,StartInConstructor,FindFloatEquality,FindNonShortCircuit,StaticCalendarDetector,FindFieldSelfAssignment,ComparatorIdiom,FindComparatorProblems,EqualsOperandShouldHaveClassCompatibleWithThis,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,OptionalReturnNull,FindLocalSelfAssignment2,FindBadCast2,FindUnreleasedLock',
+    ]);
+    expect(plain[1]).toBe(
+      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,FindHiddenMethod,FindNakedNotify,SharedVariableAtomicityDetector,AtomicityProblem,FindUnsyncGet,ReadReturnShouldBeChecked,FindUninitializedGet,RedundantConditions,ConfusionBetweenInheritedAndOuterMethod,IteratorIdioms,DefaultEncodingDetector,FindUselessControlFlow,URLProblems,DumbMethodInvocations,DumbMethods,IDivResultCastToDouble,WaitInLoop,StartInConstructor,MutableEnum,FindFloatEquality,FindNonShortCircuit,StaticCalendarDetector,FindFieldSelfAssignment,ComparatorIdiom,FindComparatorProblems,EqualsOperandShouldHaveClassCompatibleWithThis,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull,OptionalReturnNull,FindDeadLocalStores,FindLocalSelfAssignment2,FindBadCast2,FindUnreleasedLock',
+    );
+    expect(started.map(({ argumentList }) => argumentList.includes('--lombok'))).toStrictEqual([
+      true,
+      false,
+    ]);
+    expect(fieldOf(started[0]?.environment, 'NP_SB_ONLY')).toBe(ON_ENGINE.join(','));
+    expect(started[0]?.argumentList.includes('--classes')).toBe(false);
+  });
+
+  it('gives a Lombok module the patterns the class files javac wrote settle', () => {
+    const plan = planIn();
+    const lombok = path.join(plan.reportDir, 'lombok');
+    mkdirSync(path.join(lombok, 'META-INF/services'), { recursive: true });
+    writeFileSync(
+      path.join(lombok, 'META-INF/services/javax.annotation.processing.Processor'),
+      'lombok.launch.AnnotationProcessorHider$AnnotationProcessor\n',
+    );
+    writeFileSync(path.join(lombok, 'META-INF/MANIFEST.MF'), 'Lombok-Version: 1.18.36\n');
+    const started: Started[] = [];
+    const run = engineWriting({ findings: [] }, started);
+    const classes = ['/build/classes/java/main'];
+
+    const added = spotbugsOnEngine({ ...plan, processorPath: [lombok], classes }, environment, {
+      run,
+    });
+    const plain = spotbugsOnEngine({ ...plan, classes }, environment, { run });
+
+    const omitted = (argumentList: readonly string[]): string[] =>
+      (argumentList[argumentList.indexOf('-omitVisitors') + 1] ?? '').split(',');
+    const left = omitted(plain).filter((detector) => !omitted(added).includes(detector));
+    expect(left).toStrictEqual([
+      'SharedVariableAtomicityDetector',
+      'AtomicityProblem',
+      'FindUnsyncGet',
+      'FindUninitializedGet',
+      'RedundantConditions',
+      'MutableEnum',
+    ]);
+    const listed = started[0]?.argumentList ?? [];
+    const file = listed[listed.indexOf('--classes') + 1] ?? '';
+    expect(readFileSync(file, 'utf8')).toBe(classes.join('\n'));
+    expect(started[1]?.argumentList.includes('--classes')).toBe(false);
+  });
+
+  it('leaves SpotBugs a Lombok module whose Lombok does not mark what it writes', () => {
+    const plan = planIn();
+    const lombok = path.join(plan.reportDir, 'lombok');
+    mkdirSync(path.join(lombok, 'META-INF/services'), { recursive: true });
+    writeFileSync(
+      path.join(lombok, 'META-INF/services/javax.annotation.processing.Processor'),
+      'lombok.launch.AnnotationProcessorHider$AnnotationProcessor\n',
+    );
+    const started: Started[] = [];
+    const run = engineWriting({ findings: [] }, started);
+    const classes = ['/build/classes/java/main'];
+    const lombokPlan = { ...plan, processorPath: [lombok], classes };
+
+    expect(spotbugsOnEngine(lombokPlan, environment, { run })).toStrictEqual([]);
+    writeFileSync(path.join(lombok, 'META-INF/MANIFEST.MF'), 'Lombok-Version: 1.18.32\n');
+    expect(spotbugsOnEngine(lombokPlan, environment, { run })).toStrictEqual([]);
+    expect(
+      spotbugsOnEngine({ ...lombokPlan, lombokVersion: '1.18.34' }, environment, { run }),
+    ).not.toStrictEqual([]);
+    expect(started).toHaveLength(1);
   });
 
   it('skips a detector whose patterns all run on the engine and filters out the others', () => {
@@ -150,6 +243,7 @@ describe('spotbugsOnEngine', () => {
         reportDir: '/r',
         sources: ['/s/A.java'],
         classpath: ['/c'],
+        classes: ['/k'],
         processorPath: [],
         javaHome: '/jdk',
       }),
@@ -157,6 +251,7 @@ describe('spotbugsOnEngine', () => {
       reportDir: '/r',
       sources: ['/s/A.java'],
       classpath: ['/c'],
+      classes: ['/k'],
       processorPath: [],
       javaHome: '/jdk',
     });

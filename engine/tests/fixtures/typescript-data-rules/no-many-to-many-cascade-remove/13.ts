@@ -1,0 +1,2 @@
+import { Cascade, Entity, EntitySchema, ManyToMany, ManyToOne, defineEntity } from '@mikro-orm/core';
+class Post { @ManyToMany({ entity: () => Tag, cascade: [Cascade.ALL as Cascade] }) tags = new Collection<Tag>(this); }

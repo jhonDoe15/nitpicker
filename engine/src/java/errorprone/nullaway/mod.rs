@@ -83,7 +83,7 @@ fn join(target: &mut Option<Store>, from: &Store) -> bool {
 
 fn annotated_packages() -> &'static [String] {
     static PACKAGES: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
-    PACKAGES.get_or_init(|| std::env::var("NP_NULLAWAY_PACKAGES").map(|list| list.split(',').map(String::from).collect()).unwrap_or_default())
+    PACKAGES.get_or_init(|| std::env::var("NP_NULLAWAY_PACKAGES").map(|list| list.split(',').map(str::trim).filter(|one| !one.is_empty()).map(String::from).collect()).unwrap_or_default())
 }
 
 /// Whether a debug switch (`NP_DBG` for call resolution, `NP_TRACE` for step values) names the line of a node,
@@ -101,23 +101,10 @@ fn traced(context: &Context, node: Node, switch: &'static str) -> bool {
     }
 }
 
-static UNREAD: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-
-/// Whether a class file that counts as checked carries type annotations: `@Nullable` written on a type is in
-/// them, and it is not read, so the findings of the run may differ from NullAway's.
-pub fn unread_marks() -> bool {
-    UNREAD.load(std::sync::atomic::Ordering::Relaxed)
-}
-
 fn annotated(context: &Context, class: &str) -> bool {
     let packages = annotated_packages();
     let listed = packages.is_empty() || packages.iter().any(|package| class.starts_with(package.as_str()) && class[package.len()..].starts_with('.'));
-    let index = context.resolver.index;
-    let checked = index.null_checked(class, listed);
-    if checked && index.get(class).is_some_and(|info| info.flags & flag::TYPE_MARKS != 0) {
-        UNREAD.store(true, std::sync::atomic::Ordering::Relaxed);
-    }
-    checked
+    context.resolver.index.null_checked(class, listed)
 }
 
 fn strip(mut node: Node) -> Node {
@@ -559,7 +546,9 @@ impl<'a, 't> Flow<'a, 't> {
         if has_model(resolver, models::NONNULL_RETURNS, &call, loose) {
             return NONNULL;
         }
-        if nullable_model(resolver, &call, loose) || !loose && call.method.flags & flag::NULLABLE != 0 {
+        let context = self.context;
+        let promised = promises_value(context, &call, &arguments, |argument| self.value(argument) == NONNULL);
+        if nullable_model(resolver, &call, loose) || !loose && call.method.flags & flag::NULLABLE != 0 && !promised {
             return self.known_or(store, node, NULLABLE);
         }
         NONNULL
@@ -782,8 +771,11 @@ impl<'a, 't> Flow<'a, 't> {
             "method_invocation" => match resolver.resolve_call(expression) {
                 Some(call) => {
                     let loose = !annotated(self.context, &call.declaring);
+                    let arguments = expression.child_by_field_name("arguments").map(crate::engine::source::named_children).unwrap_or_default();
                     if !loose && call.method.flags & flag::NULLABLE != 0 {
-                        !has_model(resolver, models::NONNULL_RETURNS, &call, loose)
+                        let context = self.context;
+                        let promised = promises_value(context, &call, &arguments, |argument| !self.may_be_null(argument));
+                        !has_model(resolver, models::NONNULL_RETURNS, &call, loose) && !promised
                     } else {
                         nullable_model(resolver, &call, loose) || !modelled(resolver, models::NULL_IMPLIES_NULL_PARAMETERS, &call).is_empty()
                     }
@@ -796,6 +788,81 @@ impl<'a, 't> Flow<'a, 't> {
         };
         possible && matches!(self.known(expression), Some(NULL | NULLABLE))
     }
+}
+
+/// Whether a `@Contract` clause promises a result that is not null for this call, as NullAway's contract handler
+/// forces the result to non-null: the clause names one value per parameter, counting the arguments a variable
+/// arity call packs into one array, and every value it names is already known to hold.
+fn promises_value<'t>(context: &Context, call: &Call, arguments: &[Node<'t>], mut known: impl FnMut(Node<'t>) -> bool) -> bool {
+    let formals = call.method.parameters.len();
+    let packed = call.method.varargs && !(arguments.len() == formals && arguments.last().is_some_and(|last| whole_array(context, call, *last)));
+    call.method.contract.split(';').any(|clause| {
+        let Some((given, result)) = clause.split_once("->") else { return false };
+        let given: Vec<&str> = if given.trim().is_empty() { Vec::new() } else { given.split(',').map(str::trim).collect() };
+        result.trim() == "!null"
+            && given.len() == formals
+            && given.iter().enumerate().all(|(at, part)| match *part {
+                "_" => true,
+                "!null" if packed && at + 1 == formals => true,
+                "!null" => arguments.get(at).is_some_and(|argument| known(*argument)),
+                "true" | "false" => arguments.get(at).is_some_and(|argument| holds(context, *argument, *part == "true", &mut known)),
+                _ => false,
+            })
+    })
+}
+
+/// Whether a boolean argument is known to have this value: a compile-time constant, or a check of a value against
+/// null whose answer the known non-null values settle.
+fn holds<'t>(context: &Context, argument: Node<'t>, wanted: bool, known: &mut impl FnMut(Node<'t>) -> bool) -> bool {
+    if let Some(value) = boolean_constant(context, argument) {
+        return value == wanted;
+    }
+    let argument = unwrap(argument);
+    let Some(operator) = argument.child_by_field_name("operator").map(|operator| context.text(operator)).filter(|_| argument.kind() == "binary_expression") else {
+        return false;
+    };
+    let sides = (argument.child_by_field_name("left"), argument.child_by_field_name("right"));
+    let target = match sides {
+        (Some(left), Some(right)) if unwrap(right).kind() == "null_literal" => left,
+        (Some(left), Some(right)) if unwrap(left).kind() == "null_literal" => right,
+        _ => return false,
+    };
+    let not_null = match operator {
+        "!=" => wanted,
+        "==" => !wanted,
+        _ => return false,
+    };
+    not_null && known(target)
+}
+
+fn boolean_constant(context: &Context, expression: Node) -> Option<bool> {
+    let expression = unwrap(expression);
+    match expression.kind() {
+        "true" => Some(true),
+        "false" => Some(false),
+        "unary_expression" if expression.child_by_field_name("operator").is_some_and(|operator| context.text(operator) == "!") => {
+            boolean_constant(context, expression.child_by_field_name("operand")?).map(|value| !value)
+        }
+        "identifier" | "field_access" => context.resolver.constant_string(expression).and_then(|value| value.parse().ok()),
+        _ => None,
+    }
+}
+
+/// Whether the last argument of a variable arity call is passed as the array itself rather than as an element.
+pub(super) fn whole_array(context: &Context, call: &Call, argument: Node) -> bool {
+    let dimensions = |mut kind: &Type| {
+        let mut count = 0;
+        while let Type::Array(element) = kind {
+            count += 1;
+            kind = element;
+        }
+        count
+    };
+    unwrap(argument).kind() == "null_literal"
+        || match (call.method.parameters.last(), context.resolver.type_of(argument)) {
+            (Some(formal), Some(given)) => dimensions(&given) >= dimensions(formal) && dimensions(formal) > 0,
+            _ => false,
+        }
 }
 
 fn arity(written: &str) -> usize {
@@ -895,8 +962,11 @@ fn unmarked(context: &Context, node: Node) -> bool {
         }
         current = parent(at);
     }
-    let package = &context.resolver.scope.package;
-    context.resolver.index.get(&format!("{package}.package-info")).is_some_and(|info| info.flags & flag::NULL_UNMARKED != 0)
+    let package = context.resolver.scope.package.as_str();
+    let packages = annotated_packages();
+    let listed = packages.is_empty() || packages.iter().any(|one| package.strip_prefix(one.as_str()).is_some_and(|rest| rest.is_empty() || rest.starts_with('.')));
+    let on_package = context.resolver.index.get(&format!("{package}.package-info")).map_or(0, |info| info.flags);
+    on_package & flag::NULL_UNMARKED != 0 || !listed && on_package & flag::NULL_MARKED == 0
 }
 
 pub fn null_away(context: &Context, root: Node) {
@@ -984,9 +1054,6 @@ pub fn null_away(context: &Context, root: Node) {
             flow.observe(&inputs, unit_node, wanted, &mut summary);
         }
         for block in 0..flow.cfg.blocks.len() {
-            if inputs[block].is_none() {
-                continue;
-            }
             flow.copy = flow.cfg.blocks[block].copy;
             for position in 0..flow.cfg.blocks[block].steps.len() {
                 let node = flow.cfg.blocks[block].steps[position];
@@ -1010,7 +1077,7 @@ pub fn null_away(context: &Context, root: Node) {
             }
         }
         for block in 0..flow.cfg.blocks.len() {
-            if let (Some(_), Exit::Branch(test, _, _)) = (&inputs[block], &flow.cfg.blocks[block].exit) {
+            if let Exit::Branch(test, _, _) = &flow.cfg.blocks[block].exit {
                 let test = *test;
                 flow.copy = flow.cfg.blocks[block].copy;
                 if flow.unboxed_test(test) {

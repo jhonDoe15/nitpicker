@@ -1,0 +1,1 @@
+function check(o) { for (const p of o.parts) { expect(p).toBe(1); } } function outer(o) { check(o); } it('x', () => { outer(order); });

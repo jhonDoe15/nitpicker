@@ -1,0 +1,1 @@
+export const a = (c: unknown) => `<div>${renderToStaticMarkup(c)}</div>`;

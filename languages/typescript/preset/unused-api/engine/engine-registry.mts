@@ -1,12 +1,11 @@
-import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { runTypedChecks } from '../../../adapters/typed-engine/typed-checks.mts';
 import type { Environment } from '../../../../../shared/processes/environment.mts';
 import { fieldOf, listOf, textsOf } from '../../../../../shared/values/readers.mts';
 import { type ProgramRequest, projectProgramInputs } from '../program.mts';
 import type { ContextLayout, FileInfo, Reference } from '../typed/context-types.mts';
 import { engineFiles, engineProjectConfig } from './project-inputs.mts';
 import type { MemberSite, RegistryData, TargetData } from './registry-data.mts';
+import type { EnginePart } from './typed-plans.mts';
 
 export type EngineRegistry = {
   readonly registry: RegistryData;
@@ -59,31 +58,26 @@ function targetOf(value: unknown, entries: ReadonlyMap<string, FileInfo>): Targe
   };
 }
 
-export function engineRegistry(request: Request): EngineRegistry | undefined {
+export function engineRegistryPart(request: Request): EnginePart<EngineRegistry> | undefined {
   if (path.dirname(path.resolve(request.configPath)) !== path.resolve(request.projectRoot)) {
     return undefined;
   }
   const inputs = projectProgramInputs(request);
   const files = engineFiles({ ...request, rootNames: inputs.rootNames });
-  const outcome = runTypedChecks({
-    project(folder) {
-      const configPath = path.join(folder, 'tsconfig.json');
-      writeFileSync(configPath, JSON.stringify(engineProjectConfig(inputs, request)));
-      return configPath;
-    },
-    checks: [CHECK],
-    inputs: { [CHECK]: { react: request.react, files: files.input } },
-    environment: request.environment,
-  });
-  const result = outcome.checks?.[CHECK];
-  if (result === undefined) {
-    return undefined;
-  }
   return {
-    registry: {
-      targets: listOf(fieldOf(result, 'targets')).map((target) => targetOf(target, files.entries)),
-      cloned: listOf(fieldOf(result, 'cloned')).map(referenceOf),
+    part: {
+      check: CHECK,
+      input: { react: request.react, files: files.input },
+      project: engineProjectConfig(inputs, request),
     },
-    owned: files.entries,
+    read: (result) => ({
+      registry: {
+        targets: listOf(fieldOf(result, 'targets')).map((target) =>
+          targetOf(target, files.entries),
+        ),
+        cloned: listOf(fieldOf(result, 'cloned')).map(referenceOf),
+      },
+      owned: files.entries,
+    }),
   };
 }

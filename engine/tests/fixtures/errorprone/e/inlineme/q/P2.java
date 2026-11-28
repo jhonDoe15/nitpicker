@@ -1,0 +1,65 @@
+package ivq;
+import com.google.errorprone.annotations.InlineMe;
+public class P2 {
+  public Object a(Object o){return o;}
+  @InlineMe(replacement="this.a(\"" + (0.7491696031336331) + "\")") public final Object c1(){ return a("0.7491696031336331"); }
+  @InlineMe(replacement="this.a(\"" + (4.9060497E17f) + "\")") public final Object c2(){ return a("4.9060497E17"); }
+  @InlineMe(replacement="this.a(\"" + (-1.529672129565141E-9) + "\")") public final Object c3(){ return a("-1.529672129565141E-9"); }
+  @InlineMe(replacement="this.a(\"" + (5.6914962E-11f) + "\")") public final Object c4(){ return a("5.6914962E-11"); }
+  @InlineMe(replacement="this.a(\"" + (25.266265645493714) + "\")") public final Object c5(){ return a("25.266265645493714"); }
+  @InlineMe(replacement="this.a(\"" + (8321970.5f) + "\")") public final Object c6(){ return a("8321970.5"); }
+  @InlineMe(replacement="this.a(\"" + (-5.205767877210675E220) + "\")") public final Object c7(){ return a("-5.205767877210675E220"); }
+  @InlineMe(replacement="this.a(\"" + (6416.1504f) + "\")") public final Object c8(){ return a("6416.1504"); }
+  @InlineMe(replacement="this.a(\"" + (5.889677956202352E18) + "\")") public final Object c9(){ return a("5.889677956202352E18"); }
+  @InlineMe(replacement="this.a(\"" + (5.9061556E-5f) + "\")") public final Object c10(){ return a("5.9061556E-5"); }
+  @InlineMe(replacement="this.a(\"" + (-3.406412568098537E-186) + "\")") public final Object c11(){ return a("-3.406412568098537E-186"); }
+  @InlineMe(replacement="this.a(\"" + (6.241621E8f) + "\")") public final Object c12(){ return a("6.241621E8"); }
+  @InlineMe(replacement="this.a(\"" + (713214.5064028159) + "\")") public final Object c13(){ return a("713214.5064028159"); }
+  @InlineMe(replacement="this.a(\"" + (8666.635f) + "\")") public final Object c14(){ return a("8666.635"); }
+  @InlineMe(replacement="this.a(\"" + (3.6624885811820395E-181) + "\")") public final Object c15(){ return a("3.6624885811820395E-181"); }
+  @InlineMe(replacement="this.a(\"" + (4.412176E16f) + "\")") public final Object c16(){ return a("4.412176E16"); }
+  @InlineMe(replacement="this.a(\"" + (1.0310138657965606E15) + "\")") public final Object c17(){ return a("1.0310138657965606E15"); }
+  @InlineMe(replacement="this.a(\"" + (8.941656f) + "\")") public final Object c18(){ return a("8.941656"); }
+  @InlineMe(replacement="this.a(\"" + (7.477549846822387E-308) + "\")") public final Object c19(){ return a("7.477549846822387E-308"); }
+  @InlineMe(replacement="this.a(\"" + (7.746136E-7f) + "\")") public final Object c20(){ return a("7.746136E-7"); }
+  @InlineMe(replacement="this.a(\"" + (7.725374616476275E16) + "\")") public final Object c21(){ return a("7.725374616476275E16"); }
+  @InlineMe(replacement="this.a(\"" + (91294.27f) + "\")") public final Object c22(){ return a("91294.27"); }
+  @InlineMe(replacement="this.a(\"" + (9.148600733174657E-174) + "\")") public final Object c23(){ return a("9.148600733174657E-174"); }
+  @InlineMe(replacement="this.a(\"" + (60199.117f) + "\")") public final Object c24(){ return a("60199.117"); }
+  @InlineMe(replacement="this.a(\"" + (6.08248888165517E-7) + "\")") public final Object c25(){ return a("6.08248888165517E-7"); }
+  @InlineMe(replacement="this.a(\"" + (4.602623E15f) + "\")") public final Object c26(){ return a("4.602623E15"); }
+  @InlineMe(replacement="this.a(\"" + (2.486130718163884E-294) + "\")") public final Object c27(){ return a("2.486130718163884E-294"); }
+  @InlineMe(replacement="this.a(\"" + (9.8695246E-11f) + "\")") public final Object c28(){ return a("9.8695246E-11"); }
+  @InlineMe(replacement="this.a(\"" + (3.548863284725939E-7) + "\")") public final Object c29(){ return a("3.548863284725939E-7"); }
+  @InlineMe(replacement="this.a(\"" + (967975.56f) + "\")") public final Object c30(){ return a("967975.56"); }
+  @InlineMe(replacement="this.a(\"" + (1.612234205325957E240) + "\")") public final Object c31(){ return a("1.612234205325957E240"); }
+  @InlineMe(replacement="this.a(\"" + (7.570047E10f) + "\")") public final Object c32(){ return a("7.570047E10"); }
+  @InlineMe(replacement="this.a(\"" + (2565464.902048292) + "\")") public final Object c33(){ return a("2565464.902048292"); }
+  @InlineMe(replacement="this.a(\"" + (146095.39f) + "\")") public final Object c34(){ return a("146095.39"); }
+  @InlineMe(replacement="this.a(\"" + (6037673.641369872) + "\")") public final Object c35(){ return a("6037673.641369872"); }
+  @InlineMe(replacement="this.a(\"" + (9.90275E14f) + "\")") public final Object c36(){ return a("9.90275E14"); }
+  @InlineMe(replacement="this.a(\"" + (9.923691723326501E-9) + "\")") public final Object c37(){ return a("9.923691723326501E-9"); }
+  @InlineMe(replacement="this.a(\"" + (1.1016417E-4f) + "\")") public final Object c38(){ return a("1.1016417E-4"); }
+  @InlineMe(replacement="this.a(\"" + (2.5842810854506455E63) + "\")") public final Object c39(){ return a("2.5842810854506455E63"); }
+  @InlineMe(replacement="this.a(\"" + (7.2399956E-8f) + "\")") public final Object c40(){ return a("7.2399956E-8"); }
+  @InlineMe(replacement="this.a(\"" + (0.0031912973484294017) + "\")") public final Object c41(){ return a("0.0031912973484294017"); }
+  @InlineMe(replacement="this.a(\"" + (3901463.8f) + "\")") public final Object c42(){ return a("3901463.8"); }
+  @InlineMe(replacement="this.a(\"" + (-9.592082827422229E110) + "\")") public final Object c43(){ return a("-9.592082827422229E110"); }
+  @InlineMe(replacement="this.a(\"" + (6.25208E9f) + "\")") public final Object c44(){ return a("6.25208E9"); }
+  @InlineMe(replacement="this.a(\"" + (8.296287476607988E-20) + "\")") public final Object c45(){ return a("8.296287476607988E-20"); }
+  @InlineMe(replacement="this.a(\"" + (0.027845299f) + "\")") public final Object c46(){ return a("0.027845299"); }
+  @InlineMe(replacement="this.a(\"" + (-8.229154888604484E-6) + "\")") public final Object c47(){ return a("-8.229154888604484E-6"); }
+  @InlineMe(replacement="this.a(\"" + (59377.043f) + "\")") public final Object c48(){ return a("59377.043"); }
+  @InlineMe(replacement="this.a(\"" + (6.62735490555898E9) + "\")") public final Object c49(){ return a("6.62735490555898E9"); }
+  @InlineMe(replacement="this.a(\"" + (4.201527f) + "\")") public final Object c50(){ return a("4.201527"); }
+  @InlineMe(replacement="this.a(\"" + (8.595459811015729E245) + "\")") public final Object c51(){ return a("8.595459811015729E245"); }
+  @InlineMe(replacement="this.a(\"" + (32.92794f) + "\")") public final Object c52(){ return a("32.92794"); }
+  @InlineMe(replacement="this.a(\"" + (925.1708202859854) + "\")") public final Object c53(){ return a("925.1708202859854"); }
+  @InlineMe(replacement="this.a(\"" + (7.077267E-9f) + "\")") public final Object c54(){ return a("7.077267E-9"); }
+  @InlineMe(replacement="this.a(\"" + (5.396368488758901E-302) + "\")") public final Object c55(){ return a("5.396368488758901E-302"); }
+  @InlineMe(replacement="this.a(\"" + (0.04326215f) + "\")") public final Object c56(){ return a("0.04326215"); }
+  @InlineMe(replacement="this.a(\"" + (4.865158652393229E14) + "\")") public final Object c57(){ return a("4.865158652393229E14"); }
+  @InlineMe(replacement="this.a(\"" + (2.8733904E13f) + "\")") public final Object c58(){ return a("2.8733904E13"); }
+  @InlineMe(replacement="this.a(\"" + (5.287860472349495E281) + "\")") public final Object c59(){ return a("5.287860472349495E281"); }
+  @InlineMe(replacement="this.a(\"" + (6.653627E-11f) + "\")") public final Object c60(){ return a("6.653627E-11"); }
+}

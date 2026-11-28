@@ -48,6 +48,7 @@
     "src/main/java/probe/P2Strings.java": "package probe;\n\nimport java.io.ByteArrayOutputStream;\nimport java.io.IOException;\nimport java.io.OutputStreamWriter;\nimport java.io.Writer;\n\npublic class P2Strings {\n  public String all(byte[] b, int[] arr, int x, int y) throws IOException {\n    String u = \"A\";\n    String s = new String(b, \"UTF-8\");\n    Writer w = new OutputStreamWriter(new ByteArrayOutputStream(), \"UTF-8\");\n    w.close();\n    long sum = x + y;\n    float div = x / y;\n    if (x > y);\n    return u + s + arr.toString() + String.format(\"%s %s\", \"x\") + sum + div;\n  }\n\n  public Object make(Class<?> c) throws ReflectiveOperationException {\n    return c.newInstance();\n  }\n\n  public void sleep() {\n    try {\n      Thread.sleep(5);\n    } catch (Exception e) {\n      throw new IllegalStateException(e);\n    }\n  }\n}\n",
     "src/main/java/probe/P3Fields.java": "package probe;\n\npublic class P3Fields {\n  private int unusedPrivate;\n  int unusedPackage;\n  private int writtenOnly;\n  int writtenOnlyPackage;\n\n  public void set(int value) {\n    writtenOnly = value;\n    writtenOnlyPackage = value;\n  }\n}\n",
     "src/main/java/probe/P4Text.java": "package probe;\n\nimport java.util.List;\n\npublic class P4Text {\n  public String copy(String s) {\n    return new String(s);\n  }\n\n  public String empty() {\n    return new String();\n  }\n\n  public String same(String s) {\n    return s.toString();\n  }\n\n  public String joined(List<String> parts) {\n    String out = \"\";\n    for (String part : parts) {\n      out += part;\n    }\n    return out;\n  }\n}\n",
+    "src/main/java/probe/Q1Concurrency.java": "package probe;\n\nimport jakarta.persistence.EntityManager;\nimport java.util.ArrayList;\nimport java.util.List;\nimport java.util.concurrent.ExecutorService;\nimport java.util.concurrent.Executors;\nimport java.util.concurrent.ScheduledExecutorService;\nimport java.util.concurrent.TimeUnit;\n\npublic class Q1Concurrency {\n  private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();\n  private final EntityManager entities;\n\n  public Q1Concurrency(EntityManager entities) {\n    this.entities = entities;\n  }\n\n  public List<Integer> collect(List<Integer> values) {\n    List<Integer> plain = new ArrayList<>();\n    values.parallelStream().forEach(value -> plain.add(value));\n    return plain;\n  }\n\n  public void runAll(List<Runnable> tasks) {\n    ExecutorService pool = Executors.newFixedThreadPool(tasks.size());\n    for (Runnable task : tasks) {\n      pool.execute(task);\n    }\n  }\n\n  public void start() {\n    scheduler.scheduleAtFixedRate(() -> entities.clear(), 0, 1, TimeUnit.MINUTES);\n  }\n}\n",
     "src/main/java/probe/Recur.java": "package probe;\n\npublic class Recur {\n  public int f() {\n    return f();\n  }\n}\n",
     "src/main/java/probe/SelfAssign.java": "package probe;\n\npublic class SelfAssign {\n  private int a;\n\n  public int both(int b) {\n    b = b;\n    this.a = this.a;\n    return a + b;\n  }\n}\n",
     "src/main/java/probe/Shared.java": "package probe;\n\nimport java.text.SimpleDateFormat;\nimport java.util.Calendar;\nimport java.util.Date;\nimport java.util.Locale;\n\npublic class Shared {\n  private static final SimpleDateFormat FORMAT = new SimpleDateFormat(\"yyyy\", Locale.ROOT);\n  public static final SimpleDateFormat DAY = new SimpleDateFormat(\"dd\", Locale.ROOT);\n  private static final Calendar CALENDAR = Calendar.getInstance(Locale.ROOT);\n  private final Object monitor = new Object();\n  private boolean ready;\n\n  public String format(Date date) {\n    return FORMAT.format(date);\n  }\n\n  public int year() {\n    return CALENDAR.get(Calendar.YEAR);\n  }\n\n  public Date now() {\n    return new Date();\n  }\n\n  public Date today() {\n    return Calendar.getInstance().getTime();\n  }\n\n  public long millis() {\n    return Calendar.getInstance().getTimeInMillis();\n  }\n\n  public void signal() {\n    synchronized (monitor) {\n      ready = true;\n      monitor.notify();\n    }\n  }\n\n  public boolean ready() {\n    return ready;\n  }\n}\n",
@@ -1146,6 +1147,12 @@
       "rule": "InterruptedExceptionSwallowed",
       "path": "src/main/java/probe/P2Strings.java",
       "line": 27
+    },
+    {
+      "tool": "errorprone",
+      "rule": "FutureReturnValueIgnored",
+      "path": "src/main/java/probe/Q1Concurrency.java",
+      "line": 33
     },
     {
       "tool": "errorprone",
@@ -2304,6 +2311,30 @@
       "rule": "StringInstantiation",
       "path": "src/main/java/probe/P4Text.java",
       "line": 7
+    },
+    {
+      "tool": "pmd",
+      "rule": "ForEachSideEffect",
+      "path": "src/main/java/probe/Q1Concurrency.java",
+      "line": 21
+    },
+    {
+      "tool": "pmd",
+      "rule": "ParallelStreamSharedMutation",
+      "path": "src/main/java/probe/Q1Concurrency.java",
+      "line": 21
+    },
+    {
+      "tool": "pmd",
+      "rule": "LocalExecutorNeverShutDown",
+      "path": "src/main/java/probe/Q1Concurrency.java",
+      "line": 26
+    },
+    {
+      "tool": "pmd",
+      "rule": "ScheduledTaskStopsOnFailure",
+      "path": "src/main/java/probe/Q1Concurrency.java",
+      "line": 33
     },
     {
       "tool": "pmd",

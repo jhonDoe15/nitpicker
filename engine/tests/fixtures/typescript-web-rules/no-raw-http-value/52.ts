@@ -1,0 +1,1 @@
+const cookies = req.headers.cookie.split(/;\s*/);

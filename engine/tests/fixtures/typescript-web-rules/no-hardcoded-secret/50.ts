@@ -1,0 +1,1 @@
+call("-----BEGIN PRIVATE KEY-----");

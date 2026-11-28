@@ -116,6 +116,27 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A concurrent map is not checked and then used again for the same key (`containsKey` then `put` or `get`,
   `get(k) == null` then `put`): use `computeIfAbsent`, `putIfAbsent`, `getOrDefault`, or read once into a local
   (`pmd/ConcurrentMapCheckThenAct`).
+- An atomic field is updated with one atomic call (`incrementAndGet`, `updateAndGet`, `accumulateAndGet`), and a
+  check then act on an atomic flag is `if (flag.compareAndSet(false, true))`, never `x.set(f(x.get()))` or
+  `if (!flag.get()) { flag.set(true); ... }` (`pmd/AtomicGetThenSet`).
+- Parallel streams: a `parallelStream()` lambda never adds to or puts into a plain `ArrayList`, `HashMap`,
+  `HashSet` or `StringBuilder` created outside it: it races and loses elements. Build the result with
+  `collect(Collectors.toList())`, `toList()` or `Collectors.toMap`, or use a concurrent collection
+  (`pmd/ParallelStreamSharedMutation`).
+- Thread pools: never create a fixed pool (`Executors.newFixedThreadPool`) in a local variable and drop it: its
+  threads outlive the method and leak on every call. Share one pool (a field or an injected bean), or shut the local one down with
+  try-with-resources or `shutdown()` in `finally` (`pmd/LocalExecutorNeverShutDown`).
+- Futures: never start and wait in the same step: `map(id -> supplyAsync(...)).map(CompletableFuture::join)`
+  and `supplyAsync(...).join()` run one task at a time. Collect the futures with `toList()` first, then join
+  them in a second pipeline (`pmd/FutureJoinedWhereStarted`).
+- Clear every `ThreadLocal` value and `MDC` key a servlet filter sets: call `remove()` or `MDC.remove(key)` in a
+  `finally` around `chain.doFilter`, or use `MDC.putCloseable`, because pooled server threads carry the value into
+  the next request (`pmd/RequestThreadLocalNotCleared`).
+- Wrap the body of a task given to `scheduleAtFixedRate` or `scheduleWithFixedDelay` in a try that catches and logs
+  `RuntimeException`, because one failed database or remote call otherwise cancels every later run without a log
+  line (`pmd/ScheduledTaskStopsOnFailure`).
+- A constant regex used in a loop or a stream lambda is compiled once, in a `private static final Pattern`, not
+  by `matches`, `replaceAll` or `replaceFirst` on each element (`pmd/RegexCompiledInLoop`).
 - A `static` field or a singleton bean's field does not hold a `SimpleDateFormat`, `DecimalFormat`, `Calendar`,
   `Matcher`, `Cipher`, `Mac`, `BeanWrapper` or retry back-off: use `DateTimeFormatter`, a `Pattern` constant with
   `pattern.matcher(text)` per call, a per-call instance or a `ThreadLocal` (`pmd/SharedStatefulHelperField`).
@@ -156,12 +177,17 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - When an exception message has to shorten a tool's output or a stack trace, keep the end
   (`output.substring(Math.max(0, output.length() - 4000))`), not the start: the cause is printed last
   (`pmd/HeadCutErrorOutput`).
+- Do not match a language keyword (`\\bcase\\b`) with a regex over raw source text: comments and strings match too.
+  Use a parser or a tokenizer, or blank out comments and strings first (`pmd/KeywordRegexOverSource`).
 - Decide whether a child process failed by its exit value, not by text on its standard error, which also carries
   warnings and notices such as the JVM's `Picked up JAVA_TOOL_OPTIONS` (`pmd/StderrAsFailure`).
 - Waits for other work have a deadline: `future.get(30, TimeUnit.SECONDS)`, `latch.await(30, TimeUnit.SECONDS)`,
   `thread.join(30_000)`, `future.orTimeout(30, TimeUnit.SECONDS).join()`, and `mono.block(Duration.ofSeconds(30))`
   (also `blockOptional`, `blockFirst`, `blockLast`); never the no-argument form
   (`pmd/UnboundedWait`, `pmd/ReactorBlockWithoutTimeout`; a command's `main` that waits for its work takes an exception).
+- Wait for a future started earlier where its result is first used, not before independent work: start the task,
+  do the other work, then `future.get(30, TimeUnit.SECONDS)`; the same for `thread.join()`
+  (`pmd/EarlyWaitOnStartedWork`).
 - HTTP calls: every request has a deadline. `HttpRequest.newBuilder(uri).timeout(...)`,
   `setReadTimeout` on an `HttpURLConnection`, `setDefaultRequestConfig(...)` on an Apache client
   builder, `readTimeout` on a JAX-RS `ClientBuilder`; not `URL.openStream()` or
@@ -197,3 +223,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   or create it on first use in a lazy holder
   (`private static final class Holder { static final Db INSTANCE = new Db(); }`). Constants,
   loggers, `Pattern.compile` and collections stay static.
+- Memory that grows with the input: keep a value worked out for one element of a loop in a local of
+  the loop body, not in a map field that is never emptied (`pmd/PerItemCacheGrowth`); give a `java`
+  command started per element or task a heap goal (`-XX:GCTimeRatio=4`) next to its `-Xmx`
+  (`pmd/JvmHeapWithoutGoal`); and write or read a list that grows with the input one element at a
+  time with `JsonGenerator`, `SequenceWriter` or `MappingIterator`, not as one string
+  (`pmd/WholeListJsonText`).

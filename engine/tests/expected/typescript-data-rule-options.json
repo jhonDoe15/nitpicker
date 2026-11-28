@@ -1,0 +1,155 @@
+[
+ [
+  "no-unfiltered-soft-delete-read/v1/13.ts",
+  "nitpicker/no-unfiltered-soft-delete-read",
+  1,
+  27,
+  "This reads `asset` without the soft-delete or visibility filter that most reads of that table apply (`deletedAt`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
+  1,
+  87
+ ],
+ [
+  "no-unfiltered-soft-delete-read/v1/14.ts",
+  "nitpicker/no-unfiltered-soft-delete-read",
+  1,
+  55,
+  "This reads `asset` without the soft-delete or visibility filter that most reads of that table apply (`deletedAt`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
+  1,
+  105
+ ],
+ [
+  "no-unfiltered-soft-delete-read/v1/15.ts",
+  "nitpicker/no-unfiltered-soft-delete-read",
+  1,
+  31,
+  "This reads `asset` without the soft-delete or visibility filter that most reads of that table apply (`deletedAt`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
+  1,
+  75
+ ],
+ [
+  "no-unfiltered-soft-delete-read/v1/16.ts",
+  "nitpicker/no-unfiltered-soft-delete-read",
+  1,
+  31,
+  "This reads `asset` without the soft-delete or visibility filter that most reads of that table apply (`deletedAt`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
+  1,
+  110
+ ],
+ [
+  "no-unfiltered-soft-delete-read/v1/17.ts",
+  "nitpicker/no-unfiltered-soft-delete-read",
+  1,
+  31,
+  "This reads `asset` without the soft-delete or visibility filter that most reads of that table apply (`deletedAt`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
+  1,
+  123
+ ],
+ [
+  "no-unfiltered-soft-delete-read/v1/18.ts",
+  "nitpicker/no-unfiltered-soft-delete-read",
+  1,
+  33,
+  "This reads `asset` without the soft-delete or visibility filter that most reads of that table apply (`deletedAt`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
+  1,
+  72
+ ],
+ [
+  "no-unfiltered-soft-delete-read/v1/19.ts",
+  "nitpicker/no-unfiltered-soft-delete-read",
+  1,
+  27,
+  "This reads `asset` without the soft-delete or visibility filter that most reads of that table apply (`deletedAt`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
+  1,
+  79
+ ],
+ [
+  "no-unfiltered-soft-delete-read/v1/20.ts",
+  "nitpicker/no-unfiltered-soft-delete-read",
+  1,
+  27,
+  "This reads `asset` without the soft-delete or visibility filter that most reads of that table apply (`deletedAt`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
+  1,
+  68
+ ],
+ [
+  "no-unfiltered-soft-delete-read/v1/21.ts",
+  "nitpicker/no-unfiltered-soft-delete-read",
+  1,
+  27,
+  "This reads `asset` without the soft-delete or visibility filter that most reads of that table apply (`deletedAt`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
+  1,
+  106
+ ],
+ [
+  "no-unfiltered-soft-delete-read/v1/22.ts",
+  "nitpicker/no-unfiltered-soft-delete-read",
+  1,
+  27,
+  "This reads `asset` without the soft-delete or visibility filter that most reads of that table apply (`deletedAt`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
+  1,
+  80
+ ],
+ [
+  "no-unfiltered-soft-delete-read/v1/23.ts",
+  "nitpicker/no-unfiltered-soft-delete-read",
+  1,
+  31,
+  "This reads `asset` without the soft-delete or visibility filter that most reads of that table apply (`deletedAt`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
+  1,
+  84
+ ],
+ [
+  "no-unfiltered-soft-delete-read/v1/24.ts",
+  "nitpicker/no-unfiltered-soft-delete-read",
+  1,
+  29,
+  "This reads `asset` without the soft-delete or visibility filter that most reads of that table apply (`deletedAt`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
+  1,
+  69
+ ],
+ [
+  "no-unfiltered-soft-delete-read/v1/25.ts",
+  "nitpicker/no-unfiltered-soft-delete-read",
+  1,
+  27,
+  "This reads `asset` without the soft-delete or visibility filter that most reads of that table apply (`deletedAt`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
+  1,
+  60
+ ],
+ [
+  "no-unfiltered-soft-delete-read/v1/r-lone-surrogate.ts",
+  "nitpicker/no-unfiltered-soft-delete-read",
+  5,
+  10,
+  "This reads `asset` without the soft-delete or visibility filter that most reads of that table apply (`deletedAt`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
+  5,
+  60
+ ],
+ [
+  "no-unfiltered-soft-delete-read/v1/r-lone-surrogate.ts",
+  "nitpicker/no-unfiltered-soft-delete-read",
+  8,
+  10,
+  "This reads `asset` without the soft-delete or visibility filter that most reads of that table apply (`deletedAt`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
+  8,
+  38
+ ],
+ [
+  "no-unfiltered-soft-delete-read/v2/02.ts",
+  "nitpicker/no-unfiltered-soft-delete-read",
+  1,
+  31,
+  "This reads `asset` without the soft-delete or visibility filter that most reads of that table apply (the helper `withDefaultVisibility`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
+  1,
+  88
+ ],
+ [
+  "no-unfiltered-soft-delete-read/v3/02.ts",
+  "nitpicker/no-unfiltered-soft-delete-read",
+  1,
+  27,
+  "This reads `album` without the soft-delete or visibility filter that most reads of that table apply (`deletedAt`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
+  1,
+  93
+ ]
+]

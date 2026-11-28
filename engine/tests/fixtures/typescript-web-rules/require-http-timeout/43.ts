@@ -1,0 +1,1 @@
+import { request } from "node:http"; export const send = () => request({ host: "x", method: "POST" }, (res) => res.resume());

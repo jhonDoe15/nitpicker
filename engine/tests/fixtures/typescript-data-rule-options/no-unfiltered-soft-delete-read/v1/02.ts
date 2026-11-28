@@ -1,0 +1,1 @@
+async function f(db) { return db.selectFrom('asset').innerJoin('album', 'album.id', 'asset.albumId').where('deletedAt', 'is', null).execute(); }

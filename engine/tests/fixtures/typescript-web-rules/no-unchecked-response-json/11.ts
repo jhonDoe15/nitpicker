@@ -1,0 +1,1 @@
+async function f(url) { const res = await client.fetch(url); return res.json(); }

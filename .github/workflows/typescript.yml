@@ -112,9 +112,19 @@ jobs:
           java-version: 21
       # One worker per vCPU: Vitest defaults to one fewer, and most tests wait on child processes.
       # With every vCPU busy a test or hook that runs the CLI can pass 30 seconds, so both get 90 here.
+      # The shard records its results and coverage in a blob report, which the self-gate-tests job
+      # merges and hands to the coverage and CRAP analyzers, so the suite runs only once per run.
       - run: >-
           npm test -- --maxWorkers=100% --testTimeout=90000 --hookTimeout=90000
           --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+          --coverage --coverage.reporter=json --coverage.reportsDirectory=reports/shard-coverage
+          --reporter=default --reporter=blob
+          --outputFile.blob=reports/test-blobs/blob-${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: test-blob-${{ matrix.shard }}
+          path: reports/test-blobs
+          overwrite: true
 
   test:
     if: always()
@@ -165,12 +175,13 @@ jobs:
       - run: npm ci
       # ESLint over this repository takes about seven minutes on a CI runner and the structure
       # analyzer, which shares its shard, about five: at or over the five-minute default. The longer
-      # budgets are set for CI only, in the checkout, and both snapshots run with them. The budget is
-      # committed on top of the checkout with the dates of the checkout, so every job of a run makes
-      # the same commit and the shards agree on the head.
+      # budgets are set for CI only, in the checkout, and both snapshots run with them. Coverage and
+      # CRAP are turned off here: the self-gate-tests job runs them on the results of the test shards.
+      # The change is committed on top of the checkout with the dates of the checkout, so every job
+      # of a run makes the same commit and the shards agree on the head.
       - name: Give the slow analyzers a CI time budget
         run: |
-          node -e "const fs = require('node:fs'); const file = 'nitpicker.config.json'; const config = JSON.parse(fs.readFileSync(file, 'utf8')); config.analyzerTimeoutMinutes = { ...config.analyzerTimeoutMinutes, 'eslint-lint': 15, structure: 10 }; fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\\n');"
+          node -e "const fs = require('node:fs'); const file = 'nitpicker.config.json'; const config = JSON.parse(fs.readFileSync(file, 'utf8')); config.analyzerTimeoutMinutes = { ...config.analyzerTimeoutMinutes, 'eslint-lint': 15, structure: 10 }; config.disable = [...new Set([...(config.disable ?? []), 'coverage', 'crap'])]; fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\\n');"
           npx prettier --write nitpicker.config.json
           checkout_date="$(git show --no-patch --format=%cI HEAD)"
           GIT_AUTHOR_DATE="$checkout_date" GIT_COMMITTER_DATE="$checkout_date" git -c user.name=nitpicker -c user.email=nitpicker@users.noreply.github.com commit --quiet --no-verify -m 'CI time budgets' -- nitpicker.config.json
@@ -193,12 +204,57 @@ jobs:
           # A re-run of the job replaces the report of its earlier attempt.
           overwrite: true
 
+  # Coverage and CRAP of the gate, on the test results the test shards recorded instead of a second
+  # run of the suite. The base tests are not run, so on them the base counts as unknown and only added
+  # files and edited lines are judged (docs/usage.md, "Test results recorded by your test jobs").
+  # Skipped when a test shard failed: the required `test` check reports that.
+  self-gate-tests:
+    if: github.ref != 'refs/heads/main'
+    needs: test-shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          # The merge base with the target branch must be reachable.
+          fetch-depth: 0
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          pattern: test-blob-*
+          path: reports/test-blobs
+          merge-multiple: true
+      # The blobs hold coverage the test shards already converted, so the built-in V8 provider
+      # merges them; Vitest cannot load the custom provider of vitest.config.mts in a merge.
+      - name: Merge the results and coverage of the test shards
+        run: >-
+          npx vitest --merge-reports=reports/test-blobs
+          --coverage --coverage.provider=v8 --coverage.reporter=json --coverage.reportsDirectory=reports/test-results
+          --reporter=json --outputFile=reports/test-results/test-report.json
+      - name: nitpicker coverage and CRAP on the recorded test results
+        env:
+          NITPICKER_TEST_RESULTS: reports/test-results
+        run: node core/cli.mts --analyzer coverage --analyzer crap --output reports/self-gate-tests
+      - uses: actions/upload-artifact@v7.0.2
+        if: failure()
+        with:
+          name: self-gate-tests-report
+          path: reports/self-gate-tests
+          if-no-files-found: ignore
+
   # The required check. It runs when a shard failed or was cancelled too (`always()`), since GitHub
   # counts a skipped required check as passed: it reports the findings of every shard together, and
-  # a shard without a report fails the aggregation.
+  # a shard without a report fails the aggregation. It also fails when the self-gate-tests job failed.
   self-gate:
     if: always() && github.ref != 'refs/heads/main'
-    needs: self-gate-shard
+    needs: [self-gate-shard, self-gate-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -218,7 +274,7 @@ jobs:
       # the shards recorded.
       - name: Give the slow analyzers a CI time budget
         run: |
-          node -e "const fs = require('node:fs'); const file = 'nitpicker.config.json'; const config = JSON.parse(fs.readFileSync(file, 'utf8')); config.analyzerTimeoutMinutes = { ...config.analyzerTimeoutMinutes, 'eslint-lint': 15, structure: 10 }; fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\\n');"
+          node -e "const fs = require('node:fs'); const file = 'nitpicker.config.json'; const config = JSON.parse(fs.readFileSync(file, 'utf8')); config.analyzerTimeoutMinutes = { ...config.analyzerTimeoutMinutes, 'eslint-lint': 15, structure: 10 }; config.disable = [...new Set([...(config.disable ?? []), 'coverage', 'crap'])]; fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\\n');"
           npx prettier --write nitpicker.config.json
           checkout_date="$(git show --no-patch --format=%cI HEAD)"
           GIT_AUTHOR_DATE="$checkout_date" GIT_COMMITTER_DATE="$checkout_date" git -c user.name=nitpicker -c user.email=nitpicker@users.noreply.github.com commit --quiet --no-verify -m 'CI time budgets' -- nitpicker.config.json
@@ -229,6 +285,14 @@ jobs:
           merge-multiple: true
       - name: Combine the shard reports
         run: node core/cli.mts aggregate --input-root reports/shards --shard-count 3 --output reports/nitpicker
+      - name: Coverage and CRAP passed or did not run
+        env:
+          RESULT: ${{ needs.self-gate-tests.result }}
+        run: |
+          if [ "$RESULT" != success ] && [ "$RESULT" != skipped ]; then
+            echo "::error::The self-gate-tests job (coverage and CRAP) ended with: $RESULT"
+            exit 1
+          fi
       - uses: actions/upload-artifact@v7.0.2
         if: failure()
         with:

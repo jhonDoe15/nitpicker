@@ -1,0 +1,1 @@
+const user = "admin"; export const a = btoa(`${user}:secret`);

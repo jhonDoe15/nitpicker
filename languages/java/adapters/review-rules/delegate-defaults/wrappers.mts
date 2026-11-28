@@ -1,10 +1,8 @@
 import { appendAll } from '../../../../../shared/lists/lists.mts';
-import { methodKey, sameSignature } from './types.mts';
-import type { FieldDecl, MethodDecl, TypeDecl } from './types.mts';
-
-export type TypeIndex = {
-  readonly resolve: (name: string | undefined, from: TypeDecl) => TypeDecl | undefined;
-};
+import { classChain } from '../type-declarations/type-index.mts';
+import { methodKey, sameSignature } from '../type-declarations/types.mts';
+import type { TypeIndex } from '../type-declarations/type-index.mts';
+import type { FieldDecl, MethodDecl, TypeDecl } from '../type-declarations/types.mts';
 
 export type Wrapper = {
   readonly type: TypeDecl;
@@ -12,46 +10,6 @@ export type Wrapper = {
   readonly contract: TypeDecl;
   readonly missing: readonly string[];
 };
-
-function importPath(type: TypeDecl): string {
-  return `${type.scope}.${type.name}`;
-}
-
-function pick(candidates: readonly TypeDecl[], from: TypeDecl): TypeDecl | undefined {
-  const imported = candidates.filter(
-    (type) => from.imports.includes(importPath(type)) || from.imports.includes(`${type.scope}.*`),
-  );
-  const nested = candidates.filter(
-    (type) => from.scope === type.scope || from.scope.startsWith(`${type.scope}.`),
-  );
-  const samePackage = candidates.filter((type) => type.pkg === from.pkg);
-  for (const group of [imported, nested, samePackage]) {
-    if (group.length === 1) {
-      return group[0];
-    }
-    if (group.length > 1) {
-      return undefined;
-    }
-  }
-  return undefined;
-}
-
-export function indexOf(types: readonly TypeDecl[]): TypeIndex {
-  const byName = new Map<string, TypeDecl[]>();
-  for (const type of types) {
-    byName.set(type.name, [...(byName.get(type.name) ?? []), type]);
-  }
-  return {
-    resolve(name, from) {
-      const candidates = name === undefined ? [] : (byName.get(name) ?? []);
-      const foreign = from.imports.some(
-        (path) =>
-          path.endsWith(`.${name ?? ''}`) && !candidates.some((c) => importPath(c) === path),
-      );
-      return foreign ? undefined : pick(candidates, from);
-    },
-  };
-}
 
 const MAX_SKIPPED = 3;
 const MIN_FORWARDS = 2;
@@ -71,19 +29,6 @@ function superInterfaces(start: TypeDecl, index: TypeIndex): TypeDecl[] {
     );
   }
   return [...seen].filter((type) => type.kind === 'interface');
-}
-
-function classChain(type: TypeDecl, index: TypeIndex): TypeDecl[] {
-  const chain = [type];
-  const linked = new Set(chain);
-  for (const link of chain) {
-    const parent = index.resolve(link.superclass, link);
-    if (parent !== undefined && parent.kind === 'class' && !linked.has(parent)) {
-      linked.add(parent);
-      chain.push(parent);
-    }
-  }
-  return chain;
 }
 
 function hasExternalSuperclass(chain: readonly TypeDecl[], index: TypeIndex): boolean {
@@ -136,28 +81,54 @@ function missingDefaults(
   return [...new Set(names)];
 }
 
-function wrapperOf(
+function delegateContract(
+  link: TypeDecl,
+  delegate: FieldDecl,
+  { implemented, index }: Pick<Context, 'implemented' | 'index'>,
+): TypeDecl | undefined {
+  if (delegate.generated || delegate.array || delegate.modifiers.has('static')) {
+    return undefined;
+  }
+  const contract = index.resolve(delegate.type, link);
+  return contract?.kind === 'interface' && implemented.has(contract) ? contract : undefined;
+}
+
+function forwardsEnough(type: TypeDecl, family: readonly MethodDecl[], delegate: string): boolean {
+  const own = type.methods.filter((method) => family.some((each) => sameSignature(each, method)));
+  const forwards = own.filter(({ forwardsTo }) => forwardsTo === delegate);
+  return forwards.length >= MIN_FORWARDS && forwards.length / own.length >= MIN_FORWARD_SHARE;
+}
+
+type Candidate = { readonly link: TypeDecl; readonly field: FieldDecl };
+
+function wrapperFor(
   type: TypeDecl,
-  { chain, subclasses, implemented, index }: Context,
+  { link, field: delegate }: Candidate,
+  context: Context,
 ): Wrapper | undefined {
-  const fields = chain.flatMap((link) => link.fields.map((field) => ({ link, field })));
-  for (const { link, field: delegate } of fields) {
-    const contract = index.resolve(delegate.type, link);
-    if (delegate.generated || contract?.kind !== 'interface' || !implemented.has(contract)) {
-      continue;
-    }
-    const family = superInterfaces(contract, index).flatMap(instanceMethods);
-    const own = type.methods.filter((method) => family.some((each) => sameSignature(each, method)));
-    const forwards = own.filter(({ forwardsTo }) => forwardsTo === delegate.name);
-    if (forwards.length < MIN_FORWARDS || forwards.length / own.length < MIN_FORWARD_SHARE) {
-      continue;
-    }
-    const missing = missingDefaults(family, {
-      declaring: [...chain, ...subclasses],
-      implemented,
-    });
-    if (missing.length > 0 && missing.length <= MAX_SKIPPED) {
-      return { type, delegate, contract, missing };
+  const contract = delegateContract(link, delegate, context);
+  if (contract === undefined) {
+    return undefined;
+  }
+  const family = superInterfaces(contract, context.index).flatMap(instanceMethods);
+  if (!forwardsEnough(type, family, delegate.name)) {
+    return undefined;
+  }
+  const missing = missingDefaults(family, {
+    declaring: [...context.chain, ...context.subclasses],
+    implemented: context.implemented,
+  });
+  return missing.length > 0 && missing.length <= MAX_SKIPPED
+    ? { type, delegate, contract, missing }
+    : undefined;
+}
+
+function wrapperOf(type: TypeDecl, context: Context): Wrapper | undefined {
+  const candidates = context.chain.flatMap((link) => link.fields.map((field) => ({ link, field })));
+  for (const candidate of candidates) {
+    const wrapper = wrapperFor(type, candidate, context);
+    if (wrapper !== undefined) {
+      return wrapper;
     }
   }
   return undefined;

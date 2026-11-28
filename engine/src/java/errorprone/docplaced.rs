@@ -1,6 +1,7 @@
 //! Checks about where doc comments stand: NotJavadoc, AlmostJavadoc. Like Error Prone they read the comments
 //! before each token of the file, and a declaration owns the comments before its first token.
 use super::Context;
+use super::fixes::Fix;
 use crate::engine::source::{children, parent, walk};
 use regex::Regex;
 use std::collections::HashMap;
@@ -182,9 +183,19 @@ pub fn not_javadoc(context: &Context, node: Node) {
                 }
                 None => "Avoid using `/**` for comments which aren't actually Javadoc.",
             };
-            context.report_always(CHECK, comment.start_byte(), message);
+            let fixes = [not_javadoc_fix(context.text(comment), comment.start_byte())];
+            context.report_fixed(CHECK, comment, comment.start_byte(), message, &fixes);
         }
     }
+}
+
+/// Error Prone's fix for a block comment starting with `/**`: one asterisk fewer, all the extra ones when there are more.
+fn not_javadoc_fix(text: &str, start: usize) -> Fix {
+    if !text.starts_with("/**") {
+        return Fix::new();
+    }
+    let stars = text[2..].bytes().take_while(|byte| *byte == b'*').count();
+    Fix::replace(start + 1, start + 1 + stars, "")
 }
 
 static HAS_TAG: LazyLock<Regex> = LazyLock::new(|| {
@@ -195,25 +206,26 @@ static HAS_TAG: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(&format!("</(em|b|a|strong|i|pre|code)>|@({})", tags.join("|"))).expect("a pattern")
 });
 
-/// Whether Error Prone would offer to turn the comment into a doc comment.
-fn almost(text: &str) -> bool {
+/// What Error Prone's fix for the comment is when it offers to turn it into a doc comment.
+fn almost(text: &str, start: usize) -> Option<Fix> {
     if text.starts_with("/*") && !text.starts_with("/**") {
-        return HAS_TAG.is_match(text);
+        return HAS_TAG.is_match(text).then(|| Fix::new().insert(start + 1, "*"));
     }
     if !(text.starts_with("//") && text.ends_with("*/") && HAS_TAG.is_match(text)) {
-        return false;
+        return None;
     }
     if text.starts_with("// /**") {
-        return true;
+        return Some(Fix::replace(start, start + 2, ""));
     }
+    let mut end = 2;
     for character in text.chars().skip(2) {
         match character {
-            '/' => return false,
-            '*' | ' ' => {}
-            _ => return true,
+            '/' => return None,
+            '*' | ' ' => end += 1,
+            _ => break,
         }
     }
-    true
+    Some(Fix::replace(start + 1, start + end, "**"))
 }
 
 pub fn almost_javadoc(context: &Context, node: Node) {
@@ -228,9 +240,9 @@ pub fn almost_javadoc(context: &Context, node: Node) {
             continue;
         }
         for comment in comments {
-            if almost(context.text(comment)) {
+            if let Some(fix) = almost(context.text(comment), comment.start_byte()) {
                 let message = "This comment contains Javadoc or HTML tags, but isn't started with a double asterisk (/**); is it meant to be Javadoc?";
-                context.report_always(CHECK, comment.start_byte(), message);
+                context.report_fixed(CHECK, *declaration, comment.start_byte(), message, &[fix]);
             }
         }
     }

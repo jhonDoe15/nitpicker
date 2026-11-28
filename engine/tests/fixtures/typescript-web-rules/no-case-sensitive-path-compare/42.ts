@@ -1,0 +1,1 @@
+if (filePath.startsWith(config.rootDir)) {}

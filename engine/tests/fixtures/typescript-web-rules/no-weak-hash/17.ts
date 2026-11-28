@@ -1,0 +1,1 @@
+const rows = { algorithm: "sha256" }; export const config = rows;

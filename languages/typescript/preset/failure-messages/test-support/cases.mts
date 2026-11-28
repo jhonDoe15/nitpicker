@@ -1,5 +1,6 @@
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mts';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import loggingConfig from '../../eslint-config/policies/logging.config.mts';
 import { strictConfig, strictSyntaxConfig } from '../../eslint-config/strict.mts';
@@ -38,9 +39,13 @@ function strictCase([
   return { name, config: strictSyntaxConfig, filename, banned, allowed };
 }
 
+export const TYPED_CASE_ROOT = path.join(tmpdir(), 'nitpicker-typed-cases');
+
+const typedFixture = path.join(TYPED_CASE_ROOT, 'src/fixture.ts');
+
 const typedStrictConfig = strictConfig({
   projectService: { allowDefaultProject: ['src/*.ts'] },
-  tsconfigRootDir: process.cwd(),
+  tsconfigRootDir: TYPED_CASE_ROOT,
 });
 
 const failureMessageCases: FailureMessageCase[] = [
@@ -158,14 +163,14 @@ const failureMessageCases: FailureMessageCase[] = [
   {
     name: 'floating promise in shared code names awaiting it',
     config: typedStrictConfig,
-    filename: path.resolve('src/fixture.ts'),
+    filename: typedFixture,
     banned: 'export async function load() { return 1; }\nexport function run() { load(); }',
     allowed: 'awaited',
   },
   {
     name: 'non-exhaustive switch names exhaustive handling',
     config: typedStrictConfig,
-    filename: path.resolve('src/fixture.ts'),
+    filename: typedFixture,
     banned:
       "type Shape = { kind: 'a' } | { kind: 'b' };\nexport function read(shape: Shape) { switch (shape.kind) { case 'a': return 1; } return 0; }",
     allowed: 'exhaustive',
@@ -176,7 +181,7 @@ const failureMessageCases: FailureMessageCase[] = [
   ].map(([name = '', allowed = '']) => ({
     name,
     config: typedStrictConfig,
-    filename: path.resolve('src/fixture.ts'),
+    filename: typedFixture,
     banned:
       "type Kind = 'a' | 'b' | 'c';\nexport const isEarly = (kind: Kind) => kind === 'a' || kind === 'b';",
     allowed,
@@ -187,7 +192,7 @@ const failureMessageCases: FailureMessageCase[] = [
   ].map(([name = '', allowed = '']) => ({
     name,
     config: typedStrictConfig,
-    filename: path.resolve('src/fixture.ts'),
+    filename: typedFixture,
     banned:
       'export function fetchOne(id: string): string { return id; }\nexport function readOne(id: string): string { return fetchOne(id); }',
     allowed,
@@ -195,7 +200,7 @@ const failureMessageCases: FailureMessageCase[] = [
   {
     name: 'forwarding method alias names the direct call',
     config: typedStrictConfig,
-    filename: path.resolve('src/fixture.ts'),
+    filename: typedFixture,
     banned:
       'export class Cart {\n  sum(items: string[]): number { return items.length; }\n  total(items: string[]): number { return this.sum(items); }\n}',
     allowed: 'call `sum` directly and delete `total`',
@@ -203,14 +208,14 @@ const failureMessageCases: FailureMessageCase[] = [
   {
     name: 'forwarding method alias of a less visible method names the rename',
     config: typedStrictConfig,
-    filename: path.resolve('src/fixture.ts'),
+    filename: typedFixture,
     banned:
       'export class Cart {\n  private sum(items: string[]): number { return items.length; }\n  total(items: string[]): number { return this.sum(items); }\n}',
     allowed: 'rename `sum` to `total` and delete the alias',
   },
   ...signatureFailureMessageCases({
     typedConfig: typedStrictConfig,
-    typedFile: path.resolve('src/fixture.ts'),
+    typedFile: typedFixture,
   }),
   ...domainFailureMessageCases,
   {

@@ -1,15 +1,24 @@
 import path from 'node:path';
 import type { Linter } from 'eslint';
 import type { CaseOutcome, FailureMessageCase, Fixture } from './typed/case-types.mts';
-import { appendSentence, linter } from './typed/harness-views.mts';
+import { appendSentence, linter, linterIn } from './typed/harness-views.mts';
 import { eslintRoute } from '../../../adapters/hints/eslint-routes.mts';
+import { TYPED_CASE_ROOT } from './cases.mts';
 
 export function projectRelative(filename: string): string {
-  return path.isAbsolute(filename) ? path.relative(process.cwd(), filename) : filename;
+  if (!path.isAbsolute(filename)) {
+    return filename;
+  }
+  const typed = path.relative(TYPED_CASE_ROOT, filename);
+  return typed.startsWith('..') ? path.relative(process.cwd(), filename) : typed;
 }
 
+const typedLinter = linterIn(TYPED_CASE_ROOT);
+
 export function lintFixture({ config, filename, code }: Fixture): Linter.LintMessage[] {
-  return linter.verify(code, config, { filename });
+  const typed =
+    path.isAbsolute(filename) && !path.relative(TYPED_CASE_ROOT, filename).startsWith('..');
+  return (typed ? typedLinter : linter).verify(code, config, { filename });
 }
 
 export function failureMessagesFor({ config, filename, code }: Fixture): string[] {

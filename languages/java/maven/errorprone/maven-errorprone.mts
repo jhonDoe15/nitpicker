@@ -3,23 +3,36 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mts';
 import { isJavaModule } from '../../builds/lint/lint-arguments.mts';
-import { javaFiles } from '../maven-lint.mts';
 import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
+import { javaFiles } from '../maven-lint.mts';
 import { runJava } from '../programs/java-command.mts';
 import { compiledProgram } from '../programs/helper-programs.mts';
 import { fieldOf, numberOr, textsOf } from '../../../../shared/values/readers.mts';
 import type { Classpaths } from '../typed/maven-values.mts';
 import { type ToolClasspaths, resolvedTool } from '../typed/kotlin-types.mts';
-import { type CompilerSettings, type SourceModule, compilerOf } from './compiler-types.mts';
+import {
+  type CompilerSettings,
+  type SourceModule,
+  compilerOf,
+} from '../compile-sets/compiler-types.mts';
+import {
+  type CompileSet,
+  type Modular,
+  compileSets,
+  isModular,
+} from '../compile-sets/compile-sets.mts';
 import { ERROR_PRONE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mts';
 import { errorProneJava, isNoFittingJdk, skipWithoutJdk } from './maven-jdk.mts';
 import { toolHeapFlags, toolSlots } from '../parallel/slots/tool-slots.mts';
 import { analyzesGenerated, generatedRoots } from '../generated/generated-roots.mts';
 import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mts';
-import { errorProneOnEngine, javaHomeOf } from '../../builds/errorprone/errorprone-engine.mts';
+import {
+  argumentFilesToCompile,
+  errorProneOnEngine,
+  javaHomeOf,
+} from '../../builds/errorprone/errorprone-engine.mts';
 import { ENGINE_REPORT } from '../../builds/errorprone/engine-diagnostics.mts';
 
-type Modular = boolean | 'all';
 type ErrorProneContext = {
   readonly module: SourceModule;
   readonly reportDir: string;
@@ -30,20 +43,11 @@ type ErrorProneContext = {
   readonly timeoutMs?: number | undefined;
   readonly environment: JavaEnvironment;
 };
-type CompileSet = {
-  readonly name: string;
-  readonly roots: readonly string[];
-  readonly classpath: readonly string[];
-  readonly compiled?: readonly string[];
-  readonly own: readonly string[];
-  readonly test: boolean;
-  readonly modular: Modular;
-};
 type ArgumentSet = CompileSet & {
   readonly processors: readonly string[];
-  readonly compiler: CompilerSettings;
   readonly flags: readonly string[];
   readonly skipRoots: readonly string[] | undefined;
+  readonly processorOutput: string;
 };
 
 const ERROR_PRONE = 'errorprone';
@@ -64,19 +68,28 @@ const JVM_FLAGS = [
 const ERROR_PRONE_SHARES = 2;
 const DEADLINE_MARGIN_MS = 30_000;
 const OWN_JARS = /^(?:error_prone_|nullaway-)/u;
-const MODULE_INFO = 'module-info.java';
 
-export function processorTool(compiler: Pick<CompilerSettings, 'processorPaths'>):
+export function processorTool(
+  compiler: Pick<CompilerSettings, 'processorPaths' | 'processorRepositories'>,
+):
   | {
       readonly name: string;
       readonly coordinates: string[];
+      readonly repositories?: string[];
     }
   | undefined {
   if (compiler.processorPaths === undefined || compiler.processorPaths.length === 0) {
     return undefined;
   }
-  const key = createHash('sha256').update(compiler.processorPaths.join('\n')).digest('hex');
-  return { name: `processors-${key.slice(0, 16)}`, coordinates: compiler.processorPaths };
+  const repositories = compiler.processorRepositories ?? [];
+  const key = createHash('sha256')
+    .update([...compiler.processorPaths, ...repositories].join('\n'))
+    .digest('hex');
+  return {
+    name: `processors-${key.slice(0, 16)}`,
+    coordinates: compiler.processorPaths,
+    ...(repositories.length === 0 ? {} : { repositories }),
+  };
 }
 
 function declaredProcessors(
@@ -88,7 +101,7 @@ function declaredProcessors(
 
 export function processorPath(
   classpath: readonly string[],
-  compiler: Pick<CompilerSettings, 'processorPaths' | 'proc'>,
+  compiler: Pick<CompilerSettings, 'processorPaths' | 'processorRepositories' | 'proc'>,
   tools: ToolClasspaths,
 ): readonly string[] {
   if (compiler.proc === 'none') {
@@ -123,10 +136,7 @@ function lookupLines({ classpath: sourcePath, compiled = [], own, modular }: Com
 }
 
 function writeArguments(work: string, set: ArgumentSet): string[] {
-  const { name, roots, own, processors, compiler, test, modular, flags, skipRoots } = set;
-  const sources = javaFiles(roots).filter(
-    (file) => modular !== false || path.basename(file) !== MODULE_INFO,
-  );
+  const { name, sources, own, processors, compiler, test, flags, skipRoots, processorOutput } = set;
   if (sources.length === 0) {
     return [];
   }
@@ -147,6 +157,7 @@ function writeArguments(work: string, set: ArgumentSet): string[] {
     ...(skipRoots === undefined
       ? []
       : ['--skip-generated', ...skipRoots.map((root) => `--generated-root=${root}`)]),
+    `--processor-output=${processorOutput}`,
     ...(test ? ['--test-only'] : []),
     '--sources',
     ...sources,
@@ -154,35 +165,6 @@ function writeArguments(work: string, set: ArgumentSet): string[] {
   const file = path.join(work, `${name}.args`);
   writeFileSync(file, lines.map((line) => `${line}\n`).join(''), 'utf8');
   return [file];
-}
-
-function isModular(module: SourceModule): boolean {
-  return javaFiles(module.sourceRoots).some((file) => path.basename(file) === MODULE_INFO);
-}
-
-function compileSets(
-  { module, classpaths }: Pick<ErrorProneContext, 'module' | 'classpaths'>,
-  modular: Modular,
-): CompileSet[] {
-  return [
-    {
-      name: 'main',
-      roots: module.sourceRoots,
-      classpath: [...classpaths.mainCompile, module.outputDirectory],
-      own: [module.outputDirectory],
-      test: false,
-      modular,
-    },
-    {
-      name: 'test',
-      roots: module.testSourceRoots,
-      classpath: [module.outputDirectory, ...classpaths.testCompile],
-      compiled: [module.testOutputDirectory],
-      own: [module.outputDirectory, module.testOutputDirectory],
-      test: true,
-      modular: false,
-    },
-  ];
 }
 
 function usesPreview(compiler: CompilerSettings): boolean {
@@ -204,44 +186,61 @@ export function runnerFlags(
     : pool;
 }
 
-function analyze(
-  {
-    module,
-    reportDir,
-    tools,
-    classpaths,
-    configs,
-    spawn,
-    timeoutMs,
-    environment,
-  }: ErrorProneContext,
+export function processorOutput(
+  module: Pick<SourceModule, 'basedir' | 'outputDirectory'>,
+  compiler: Pick<CompilerSettings, 'generatedSources' | 'test'>,
+  test: boolean,
+): string {
+  const configured = test ? compiler.test?.generatedSources : compiler.generatedSources;
+  return configured === undefined
+    ? path.join(
+        path.dirname(module.outputDirectory),
+        test ? 'generated-test-sources/test-annotations' : 'generated-sources/annotations',
+      )
+    : path.resolve(module.basedir, configured);
+}
+
+function argumentFilesOf(
+  { module, reportDir, tools, classpaths, configs }: ErrorProneContext,
+  compiler: CompilerSettings,
   modular: Modular,
-): void {
-  const report = path.join(reportDir, 'errorprone.json');
+): string[] {
   const work = path.join(reportDir, ERROR_PRONE);
   rmSync(work, { recursive: true, force: true });
-  rmSync(path.join(reportDir, ENGINE_REPORT), { force: true });
-  const compiler = compilerOf(module.compiler);
   const declaredFlags = textsOf(fieldOf(fieldOf(configs, ERROR_PRONE), 'arguments'));
-  const argumentFiles = compileSets({ module, classpaths }, modular).flatMap((set) =>
+  const files = { main: javaFiles(module.sourceRoots), test: javaFiles(module.testSourceRoots) };
+  return compileSets({ module, classpaths, files }, compiler, modular).flatMap((set) =>
     writeArguments(work, {
       ...set,
-      compiler: set.test ? { ...compiler, ...compiler.test } : compiler,
       processors: [
         ...resolvedTool(tools, ERROR_PRONE),
         ...processorPath(set.classpath, compiler, tools),
       ],
       flags: declaredFlags,
       skipRoots: analyzesGenerated(configs) ? undefined : generatedRoots(module, set.roots),
+      processorOutput: processorOutput(module, compiler, set.test),
     }),
   );
+}
+
+function analyze(context: ErrorProneContext, modular: Modular): void {
+  const { module, reportDir, spawn, timeoutMs, environment } = context;
+  const report = path.join(reportDir, 'errorprone.json');
+  const compiler = compilerOf(module.compiler);
+  const argumentFiles = argumentFilesOf(context, compiler, modular);
+  rmSync(path.join(reportDir, ENGINE_REPORT), { force: true });
   if (argumentFiles.length === 0) {
     writeFileSync(report, '[]\n');
     return;
   }
   const java = errorProneJava({ preview: usesPreview(compiler), spawn, environment });
   errorProneOnEngine({ reportDir, argumentFiles, javaHome: javaHomeOf(java) }, environment);
-  runReport({ module, spawn, timeoutMs }, java, { report, argumentFiles });
+  const compiled = argumentFilesToCompile(argumentFiles);
+  if (compiled.length === 0) {
+    writeFileSync(report, '[]\n');
+    return;
+  }
+  runReport({ module, spawn, timeoutMs }, java, { report, argumentFiles: compiled });
 }
 
 function runReport(
@@ -275,7 +274,7 @@ function runReport(
 }
 
 function analyzeWithFallback(context: ErrorProneContext): void {
-  const modular = isModular(context.module);
+  const modular = isModular(javaFiles(context.module.sourceRoots));
   try {
     analyze(context, modular);
   } catch (error) {

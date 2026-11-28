@@ -1,8 +1,9 @@
-import { writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { runTypedChecks } from '../../../adapters/typed-engine/typed-checks.mts';
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import type { Environment } from '../../../../../shared/processes/environment.mts';
+import { valueOr } from '../../../../../shared/values/attempt/attempt.mts';
+import type { EnginePart } from '../../unused-api/engine/typed-plans.mts';
 import { fieldOf, fieldsOf, listOf, textsOf } from '../../../../../shared/values/readers.mts';
 import { fileEntry } from '../../unused-api/context.mts';
 import { engineProjectConfig } from '../../unused-api/engine/project-inputs.mts';
@@ -38,6 +39,17 @@ const DECLARATION_FILE = /\.d\.(?:[cm]?ts|[^./]+\.ts)$/u;
 const GENERATED_MARKER =
   /@generated|auto-?generated|generated (?:by|from|file)|do not (?:edit|modify)/iu;
 const HEADER_LENGTH = 1000;
+const SCRIPT_FILE = /\.[cm]?jsx?$/u;
+const TYPED_TAGS = ['param', 'arg', 'argument', 'returns?', 'this', 'satisfies', 'implements'].join(
+  '|',
+);
+const DECLARING_TAGS = ['type', 'typedef', 'callback', 'template', 'overload', 'import'].join('|');
+const DOCUMENTATION_TYPE = new RegExp(
+  `@(?:(?:${TYPED_TAGS})\\s*\\{|(?:${DECLARING_TAGS})\\b)`,
+  'u',
+);
+const COMMENT_START = '/**';
+const COMMENT_END = '*/';
 
 function isGeneratedFile(fileName: string): boolean {
   return GENERATED_MARKER.test((ts.sys.readFile(fileName) ?? '').slice(0, HEADER_LENGTH));
@@ -58,6 +70,29 @@ function ownedFiles(rootNames: readonly string[], request: Request): Owned[] {
         !isGeneratedFile(fileName);
       return owned ? [{ fileName, path: info.path }] : [];
     });
+}
+
+function hasTypedComment(text: string): boolean {
+  const starts = [text.indexOf(COMMENT_START)];
+  for (const start of starts) {
+    if (start === -1) {
+      return false;
+    }
+    const end = text.indexOf(COMMENT_END, start + COMMENT_START.length - 1);
+    if (DOCUMENTATION_TYPE.test(text.slice(start, end === -1 ? text.length : end))) {
+      return true;
+    }
+    if (end !== -1) {
+      starts.push(text.indexOf(COMMENT_START, end + COMMENT_END.length));
+    }
+  }
+  return false;
+}
+
+function declaresDocumentationTypes({ fileName }: Owned): boolean {
+  return (
+    SCRIPT_FILE.test(fileName) && hasTypedComment(valueOr(() => readFileSync(fileName, 'utf8'), ''))
+  );
 }
 
 function isPublished(value: unknown, published: PublishedNames | undefined): boolean {
@@ -104,24 +139,22 @@ function factsOf<Kind extends string>(
   }));
 }
 
-export function engineDesignFacts(request: Request): DesignFacts | undefined {
+export function engineDesignPart(request: Request): EnginePart<DesignFacts> | undefined {
   const { projectRoot, configPath, layout, frameworks } = request;
   if (path.dirname(path.resolve(configPath)) !== path.resolve(projectRoot)) {
     return undefined;
   }
   const inputs = projectProgramInputs(request);
   const files = ownedFiles(inputs.rootNames, request);
+  if (files.some(declaresDocumentationTypes)) {
+    return undefined;
+  }
   const defaults = (frameworks?.defaultExports ?? []).map((glob) => globMatcher(glob));
   const published = publishedNames(request);
-  const outcome = runTypedChecks({
-    project(folder) {
-      const generated = path.join(folder, 'tsconfig.json');
-      writeFileSync(generated, JSON.stringify(engineProjectConfig(inputs, request)));
-      return generated;
-    },
-    checks: [CHECK],
-    inputs: {
-      [CHECK]: {
+  return {
+    part: {
+      check: CHECK,
+      input: {
         files: files.map((file) => [
           file.fileName,
           {
@@ -135,16 +168,12 @@ export function engineDesignFacts(request: Request): DesignFacts | undefined {
         ),
         published: published !== undefined,
       },
+      project: engineProjectConfig(inputs, request),
     },
-    environment: request.environment,
-  });
-  const result = outcome.checks?.[CHECK];
-  if (result === undefined) {
-    return undefined;
-  }
-  return {
-    modules: moduleFacts(files, layout),
-    types: factsOf(fieldOf(result, 'types'), published, TYPE_KINDS),
-    callables: factsOf(fieldOf(result, 'callables'), published, CALLABLE_KINDS),
+    read: (result) => ({
+      modules: moduleFacts(files, layout),
+      types: factsOf(fieldOf(result, 'types'), published, TYPE_KINDS),
+      callables: factsOf(fieldOf(result, 'callables'), published, CALLABLE_KINDS),
+    }),
   };
 }

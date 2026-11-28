@@ -20,6 +20,7 @@ pub type StoredMap<'a> = HashMap<(String, String), Vec<Stored<'a>>>;
 pub fn field_key(context: &Context, usage: Node) -> Option<(String, String)> {
     let index = context.resolver.index;
     match usage.kind() {
+        "identifier" if context.resolver.pattern_variable(usage, context.text(usage)).is_some() => None,
         "identifier" => match context.resolver.binding(usage, context.text(usage)) {
             Some(Binding::Field(_, declaring, field)) => Some((declaring.name.clone(), field.name.clone())),
             _ => None,

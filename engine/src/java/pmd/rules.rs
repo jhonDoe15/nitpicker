@@ -15,7 +15,11 @@ use std::sync::Mutex;
 #[derive(serde::Deserialize, Clone)]
 pub struct Written {
     pub name: String,
+    #[serde(default)]
     pub xpath: String,
+    /// The PMD class of a rule written in Java, run by its port in `super::coded` in place of a query.
+    #[serde(default)]
+    pub port: String,
     #[serde(default)]
     pub message: String,
     /// PMD's `violationSuppressXPath`: a finding is dropped when this query, run on its node, selects a node.
@@ -58,6 +62,10 @@ pub struct Property {
 struct Compiled {
     name: String,
     message: String,
+    port: Option<super::coded::Port>,
+    /// UnnecessaryWarningSuppression: runs after every other rule of a file.
+    last: bool,
+    values: BTreeMap<String, String>,
     query: Result<Expr, String>,
     suppress: Option<Result<Expr, String>>,
     properties: Env,
@@ -87,7 +95,12 @@ impl XPathRules {
             }
             written.retain(|rule| only.contains(&rule.name.as_str()));
         }
-        for rule in &written {
+        for rule in written.iter().filter(|rule| !rule.port.is_empty()) {
+            if super::coded::port(&rule.port).is_none() {
+                refuse(&format!("rule {} names {}, which has no port", rule.name, rule.port));
+            }
+        }
+        for rule in written.iter().filter(|rule| rule.port.is_empty()) {
             if let Err(problem) = Parser::parse(&rule.xpath, rule.properties.keys().cloned().collect()) {
                 refuse(&format!("rule {} has a query that cannot be read: {problem}", rule.name));
             }
@@ -109,6 +122,9 @@ impl XPathRules {
                             .map(|rule| Compiled {
                                 name: rule.name.clone(),
                                 message: rule.message.clone(),
+                                port: super::coded::port(&rule.port),
+                                last: rule.port == super::coded::suppressions::CLASS,
+                                values: rule.properties.iter().map(|(name, property)| (name.clone(), property.value.clone())).collect(),
                                 query: Parser::parse(&rule.xpath, rule.properties.keys().cloned().collect()).map(|(query, _)| query),
                                 suppress: (!rule.suppress.trim().is_empty())
                                     .then(|| Parser::parse(&rule.suppress, Vec::new()).map(|(query, _)| query)),
@@ -176,13 +192,42 @@ impl FileRule for XPathRules {
         let root = Item::Node(0);
         let mut local: Vec<(usize, u128, usize, Option<String>)> = Vec::new();
         let rules = self.compiled();
-        for (rule, scope) in rules.iter().zip(&self.scopes) {
-            if !scope.covers(&file.path) {
+        let usages = std::cell::OnceCell::new();
+        let flow = std::cell::OnceCell::new();
+        let mut last = None;
+        for (at, (rule, scope)) in rules.iter().zip(&self.scopes).enumerate() {
+            if !scope.covers(&file.path) || rule.last {
+                last = last.or(rule.last.then_some(at).filter(|_| scope.covers(&file.path)));
                 local.push((0, 0, 0, None));
                 continue;
             }
             let started = std::time::Instant::now();
             let mut found = 0;
+            if let Some(port) = rule.port {
+                let ctx = super::coded::ctx::Ctx { tree: &tree, file, machine: &machine, properties: &rule.values, usages: &usages, flow: &flow };
+                let mut hits = Vec::new();
+                port(&ctx, &mut hits);
+                for hit in hits {
+                    let place = |key: &str| ctx.whole(hit.node, key).unwrap_or(0) as usize;
+                    if !quiet.idle() && quiet.hides(&tree, file, &resolver, hit.node, place("BeginLine"), &rule.name) {
+                        continue;
+                    }
+                    if let Some(Ok(suppress)) = &rule.suppress {
+                        let item = Item::Node(hit.node);
+                        let selected = machine.eval(suppress, &Focus { item: Some(&item), position: 1, size: 1 }, &mut Env::default());
+                        let failed = machine.trouble.borrow_mut().take().is_some();
+                        if !failed && selected.items().iter().any(|selected| matches!(selected, Item::Node(_))) {
+                            continue;
+                        }
+                    }
+                    let pattern = hit.message.as_deref().unwrap_or(&rule.message);
+                    let message = super::coded::expanded(&ctx, super::coded::formatted(pattern, &hit.args), hit.node);
+                    out.push(Finding { file: file.path.clone(), line: place("BeginLine"), column: place("BeginColumn"), rule: rule.name.clone(), message, symbol: None, priority: None, arguments: None });
+                    found += 1;
+                }
+                local.push((1, started.elapsed().as_nanos(), found, None));
+                continue;
+            }
             let mut trouble = None;
             match &rule.query {
                 Err(problem) => trouble = Some(format!("not parsed: {problem}")),
@@ -192,7 +237,7 @@ impl FileRule for XPathRules {
                     trouble = machine.trouble.borrow_mut().take();
                     if let Some(trouble) = &trouble {
                         // PMD reports no findings of a rule for a file on which the query fails.
-                        out.push(Finding { file: file.path.clone(), line: 0, column: 0, rule: format!("!{}", rule.name), message: trouble.clone(), symbol: None });
+                        out.push(Finding { file: file.path.clone(), line: 0, column: 0, rule: format!("!{}", rule.name), message: trouble.clone(), symbol: None, priority: None, arguments: None });
                     }
                     for item in result.items().iter().filter(|_| trouble.is_none()) {
                         let Item::Node(id) = item else { continue };
@@ -217,12 +262,20 @@ impl FileRule for XPathRules {
                             rule: rule.name.clone(),
                             message: formatted(&rule.message, tree.image(*id).as_deref()),
                             symbol: None,
+                            priority: None, arguments: None,
                         });
                         found += 1;
                     }
                 }
             }
             local.push((1, started.elapsed().as_nanos(), found, trouble));
+        }
+        if let Some(at) = last {
+            let started = std::time::Instant::now();
+            let rule = &rules[at];
+            let ctx = super::coded::ctx::Ctx { tree: &tree, file, machine: &machine, properties: &rule.values, usages: &usages, flow: &flow };
+            let found = super::coded::suppressions::report(&ctx, &quiet, &rule.name, out);
+            local[at] = (1, started.elapsed().as_nanos(), found, None);
         }
         if let Some(limit) = std::env::var("NP_SLOW").ok().and_then(|limit| limit.parse::<u128>().ok()) {
             let spent: u128 = local.iter().map(|(_, nanos, _, _)| nanos / 1_000_000).sum();

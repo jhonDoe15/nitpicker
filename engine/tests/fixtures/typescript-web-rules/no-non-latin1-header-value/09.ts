@@ -1,0 +1,1 @@
+const config = { headers: { "x-path": file.relative } };

@@ -156,6 +156,12 @@ describe('the language and frameworks of a project', () => {
     ]);
   });
 
+  it('finds nothing to report in a small well-formed JavaScript project', () => {
+    const root = project({ files: { 'src/index.js': 'export const answer = 42;\n' } });
+
+    expect(findingsOf(root, { preset: 'javascript' })).toEqual([]);
+  });
+
   it('finds nothing to report in a small well-formed project', () => {
     const root = project({ files: { 'src/index.ts': 'export const answer = 42;\n' } });
 

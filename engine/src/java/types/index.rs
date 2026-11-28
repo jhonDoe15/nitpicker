@@ -29,6 +29,18 @@ pub struct TypeIndex {
     lineages: std::sync::RwLock<HashMap<String, std::sync::Arc<Vec<String>>>>,
     /// Per class, whether NullAway takes its code as checked.
     checked: std::sync::RwLock<HashMap<String, bool>>,
+    /// Per method name and number of parameters: the source classes that declare such an instance method.
+    declaring: OnceLock<HashMap<(String, usize), Vec<String>>>,
+    /// The names of the fields and methods that carry `@GuardedBy`.
+    guarded: OnceLock<HashSet<String>>,
+    /// The names that calls to methods with annotations some checks look for spell.
+    marked: OnceLock<Marked>,
+    /// The archives of the JDK's own classes.
+    jdk_archives: HashSet<usize>,
+    /// The class files under `META-INF/versions` of the class path's multi-release jars.
+    versioned: Vec<Origin>,
+    /// A class path jar's manifest names more entries with `Class-Path`, which javac reads and the index does not.
+    pub manifest_paths: bool,
     settled: bool,
     /// The classes of the source files that the class path holds too.
     compiled: HashSet<String>,
@@ -36,24 +48,56 @@ pub struct TypeIndex {
     pub source_classes: usize,
     /// Packages whose methods must have their result used, each with its subpackages: the outermost source packages.
     pub checked_packages: Vec<String>,
+    /// The sources were compiled with Lombok: see `Options::lombok`.
+    pub lombok: bool,
+    /// The javac option `-XDandroidCompatible=true` is set.
+    pub android_compatible: bool,
+    /// The sources are test code only: see `Options::test_only`.
+    pub test_only: bool,
+    /// The packages of the modules on the module path whose `module-info` carries an annotation named `NullMarked`.
+    null_marked_packages: HashSet<String>,
+    /// The Java source level of the compile: `--release`, else the JDK's own.
+    pub source_level: u32,
 }
 
 /// The class names of an archive, with where each one is.
-fn archive_classes(path: &Path) -> Vec<(String, Origin)> {
-    let Ok(file) = std::fs::File::open(path) else { return Vec::new() };
-    let Ok(archive) = zip::ZipArchive::new(std::io::BufReader::new(file)) else { return Vec::new() };
+fn archive_classes(path: &Path) -> Archived {
+    let Ok(file) = std::fs::File::open(path) else { return Archived::default() };
+    let Ok(mut archive) = zip::ZipArchive::new(std::io::BufReader::new(file)) else { return Archived::default() };
+    let mut versioned = Vec::new();
     let named: Vec<(String, usize)> = (0..archive.len())
         .filter_map(|position| {
             let name = archive.name_for_index(position)?.ok()?;
             let inner = name.strip_suffix(".class")?;
-            if inner.ends_with("module-info") || name.contains("META-INF/versions") {
+            if inner.ends_with("module-info") {
+                return None;
+            }
+            if name.contains("META-INF/versions") {
+                versioned.push(position);
                 return None;
             }
             Some((classfile::dotted(inner.strip_prefix("classes/").unwrap_or(inner)), position))
         })
         .collect();
+    let manifest_path = archive.by_name("META-INF/MANIFEST.MF").ok().is_some_and(|mut entry| {
+        let mut text = Vec::new();
+        entry.read_to_end(&mut text).is_ok() && text.windows(11).any(|part| part.eq_ignore_ascii_case(b"Class-Path:"))
+    });
     let shared = Arc::new(Mutex::new(archive));
-    named.into_iter().map(|(name, position)| (name, Origin::Archive(shared.clone(), position))).collect()
+    Archived {
+        versioned: versioned.into_iter().map(|position| Origin::Archive(shared.clone(), position)).collect(),
+        classes: named.into_iter().map(|(name, position)| (name, Origin::Archive(shared.clone(), position))).collect(),
+        manifest_path,
+    }
+}
+
+/// What a class path entry holds: its classes, the class files under `META-INF/versions` of a multi-release jar,
+/// and whether its manifest names more entries with `Class-Path`. The index reads neither of the last two.
+#[derive(Default)]
+struct Archived {
+    classes: Vec<(String, Origin)>,
+    versioned: Vec<Origin>,
+    manifest_path: bool,
 }
 
 /// The classes `ct.sym` keeps for one release: `<releases>/<module>/<package path>/<Class>.sig`, where the
@@ -75,6 +119,42 @@ fn release_classes(path: &Path, release: u32) -> Vec<(String, Origin)> {
     named.into_iter().map(|(name, position)| (name, Origin::Archive(shared.clone(), position))).collect()
 }
 
+/// The packages that hold the class files of a folder or an archive, versioned entries left out.
+fn entry_packages(path: &Path) -> HashSet<String> {
+    let names: Vec<String> = if path.is_dir() {
+        walkdir::WalkDir::new(path).into_iter().filter_map(Result::ok).filter_map(|entry| entry.path().strip_prefix(path).ok().map(|inner| inner.to_string_lossy().replace(std::path::MAIN_SEPARATOR, "/"))).collect()
+    } else {
+        let Some(archive) = std::fs::File::open(path).ok().and_then(|file| zip::ZipArchive::new(std::io::BufReader::new(file)).ok()) else { return HashSet::new() };
+        (0..archive.len()).filter_map(|position| archive.name_for_index(position)?.ok().map(|name| name.to_string())).collect()
+    };
+    names
+        .iter()
+        .filter_map(|name| {
+            let inner = name.strip_prefix("classes/").unwrap_or(name);
+            let inner = inner.strip_prefix("META-INF/versions/").and_then(|rest| rest.split_once('/')).map_or(inner, |(_, rest)| rest);
+            (inner.ends_with(".class") && !inner.starts_with("META-INF/")).then_some(inner)
+        })
+        .filter_map(|name| name.rsplit_once('/').map(|(package, _)| package.replace('/', ".")))
+        .collect()
+}
+
+/// The module declaration of a jar or a jmod as javac reads it for a release: in a multi-release jar the newest
+/// version not above the release, else the one at the root.
+fn module_declaration(path: &Path, release: u32) -> Option<Vec<u8>> {
+    let file = std::fs::File::open(path).ok()?;
+    let mut archive = zip::ZipArchive::new(std::io::BufReader::new(file)).ok()?;
+    let versioned = (0..archive.len())
+        .filter_map(|position| archive.name_for_index(position)?.ok()?.strip_prefix("META-INF/versions/")?.strip_suffix("/module-info.class")?.parse::<u32>().ok())
+        .filter(|version| *version <= release)
+        .max()
+        .map(|version| format!("META-INF/versions/{version}/module-info.class"));
+    let name = versioned.into_iter().chain(["module-info.class".to_string(), "classes/module-info.class".to_string()]).find(|name| archive.index_for_name(name).is_some())?;
+    let mut entry = archive.by_name(&name).ok()?;
+    let mut bytes = Vec::new();
+    entry.read_to_end(&mut bytes).ok()?;
+    Some(bytes)
+}
+
 fn folder_classes(path: &Path) -> Vec<(String, Origin)> {
     walkdir::WalkDir::new(path)
         .into_iter()
@@ -90,6 +170,10 @@ fn folder_classes(path: &Path) -> Vec<(String, Origin)> {
 }
 
 fn read(origin: &Origin) -> Option<ClassInfo> {
+    classfile::parse(&read_bytes(origin)?)
+}
+
+fn read_bytes(origin: &Origin) -> Option<Vec<u8>> {
     let bytes = match origin {
         Origin::File(path) => std::fs::read(path).ok()?,
         Origin::Archive(archive, position) => {
@@ -100,7 +184,69 @@ fn read(origin: &Origin) -> Option<ClassInfo> {
             bytes
         }
     };
-    classfile::parse(&bytes)
+    Some(bytes)
+}
+
+/// Whether a class file may hold a `@GuardedBy` annotation of one of the kinds Error Prone reads.
+/// The archive an origin is in, as a key.
+fn archive_key(origin: &Origin) -> Option<usize> {
+    match origin {
+        Origin::Archive(archive, _) => Some(Arc::as_ptr(archive) as usize),
+        Origin::File(_) => None,
+    }
+}
+
+/// Whether the bytes hold `InlineMe;` or `RestrictedApi;`, the end of a descriptor of such an annotation.
+fn mentions_marks(bytes: &[u8]) -> bool {
+    bytes.iter().enumerate().any(|(at, byte)| *byte == b';' && (bytes[..at].ends_with(b"InlineMe") || bytes[..at].ends_with(b"RestrictedApi")))
+}
+
+const RESTRICTED_API: &str = "com.google.errorprone.annotations.RestrictedApi";
+
+/// The simple name of a class as the index names it, without an outer class or a binary name's `$` part.
+pub fn simple_name(class: &str) -> &str {
+    let last = class.rsplit('.').next().unwrap_or(class);
+    last.rsplit('$').next().unwrap_or(last)
+}
+
+/// The names of the methods and constructors in the sources or on the class path that carry an annotation some
+/// check looks for, as the calls to them spell them.
+#[derive(Default)]
+pub struct Marked {
+    /// For an annotation named `InlineMe`: the method's name, or the simple name of the constructor's class, which an
+    /// implicit or explicit `super(...)` call's class names in its `extends` clause.
+    pub inline_me: HashSet<String>,
+    /// For `@RestrictedApi`: the method's name, or `new ` and the simple name of a constructor's class.
+    pub restricted: HashSet<String>,
+}
+
+impl Marked {
+    fn add(&mut self, class: &ClassInfo) {
+        let last = class.name.rsplit('.').next().unwrap_or_default();
+        for method in &class.methods {
+            if method.detail.kept.iter().any(|kept| kept.name == RESTRICTED_API) {
+                self.restricted.insert(if method.name == "<init>" { format!("new {}", simple_name(&class.name)) } else { method.name.clone() });
+            }
+            if !method.detail.annotations.iter().any(|name| name == "InlineMe" || name.ends_with(".InlineMe")) {
+                continue;
+            }
+            if method.name != "<init>" {
+                self.inline_me.insert(method.name.clone());
+                continue;
+            }
+            self.inline_me.insert(last.to_string());
+            self.inline_me.extend(last.split('$').map(|part| part.trim_start_matches(|c: char| c.is_ascii_digit()).to_string()));
+        }
+    }
+}
+
+fn mentions_guard(bytes: &[u8]) -> bool {
+    bytes.windows(10).any(|window| window == b"GuardedBy;")
+}
+
+/// Packages of the JDK itself, which holds no such annotation: not worth reading.
+fn jdk_class(name: &str) -> bool {
+    ["java.", "jdk.", "sun.", "com.sun.", "javax.swing.", "javax.xml.", "org.w3c.", "org.xml."].iter().any(|prefix| name.starts_with(prefix))
 }
 
 fn anonymous(name: &str) -> bool {
@@ -110,11 +256,30 @@ fn anonymous(name: &str) -> bool {
 impl TypeIndex {
     /// Entries are jars, jmods or class folders. Earlier entries win, like a class path.
     pub fn load_binaries(&mut self, entries: &[PathBuf]) {
-        let loaded: Vec<Vec<(String, Origin)>> = entries
+        self.load_entries(entries, false);
+    }
+
+    /// The JDK's own modules: like `load_binaries`, with their classes known as the JDK's.
+    pub fn load_jdk(&mut self, entries: &[PathBuf]) {
+        self.load_entries(entries, true);
+    }
+
+    fn load_entries(&mut self, entries: &[PathBuf], jdk: bool) {
+        let loaded: Vec<Archived> = entries
             .par_iter()
-            .map(|entry| if entry.is_dir() { folder_classes(entry) } else { archive_classes(entry) })
+            .map(|entry| if entry.is_dir() { Archived { classes: folder_classes(entry), ..Archived::default() } } else { archive_classes(entry) })
             .collect();
-        for (name, origin) in loaded.into_iter().flatten() {
+        let mut classes = Vec::new();
+        for archived in loaded {
+            if jdk {
+                self.jdk_archives.extend(archived.classes.first().and_then(|(_, origin)| archive_key(origin)));
+            } else {
+                self.versioned.extend(archived.versioned);
+                self.manifest_paths |= archived.manifest_path;
+            }
+            classes.extend(archived.classes);
+        }
+        for (name, origin) in classes {
             if anonymous(&name) {
                 continue;
             }
@@ -127,10 +292,23 @@ impl TypeIndex {
         }
     }
 
+    /// Notes the packages of each module on the module path whose declaration carries an annotation named
+    /// `NullMarked`: NullAway takes the code of such a module as checked, unless its package is `@NullUnmarked`.
+    pub fn load_modules(&mut self, entries: &[PathBuf]) {
+        use super::model::flag;
+        for entry in entries {
+            let declaration = if entry.is_dir() { std::fs::read(entry.join("module-info.class")).ok() } else { module_declaration(entry, self.source_level) };
+            if declaration.and_then(|bytes| classfile::parse(&bytes)).is_some_and(|module| module.flags & flag::NULL_MARKED != 0) {
+                self.null_marked_packages.extend(entry_packages(entry));
+            }
+        }
+    }
+
     /// Loads the JDK library as one older release had it. False when the file does not hold that release.
     pub fn load_release(&mut self, signatures: &Path, release: u32) -> bool {
         let loaded = release_classes(signatures, release);
         let found = !loaded.is_empty();
+        self.jdk_archives.extend(loaded.first().and_then(|(_, origin)| archive_key(origin)));
         for (name, origin) in loaded {
             if !anonymous(&name) && !self.classes.contains_key(&name) {
                 self.classes.insert(name, Slot::Later(origin, OnceLock::new()));
@@ -150,6 +328,12 @@ impl TypeIndex {
     /// Whether the class comes from a source file of this run, not from the class path.
     pub fn from_source(&self, name: &str) -> bool {
         matches!(self.classes.get(name), Some(Slot::Ready(_)))
+    }
+
+    /// The names of the member classes declared directly in a class, in no particular order.
+    pub fn nested(&self, outer: &str) -> Vec<String> {
+        let prefix = format!("{outer}.");
+        self.classes.keys().filter(|name| name.strip_prefix(prefix.as_str()).is_some_and(|rest| !rest.contains('.'))).cloned().collect()
     }
 
     pub fn get(&self, name: &str) -> Option<&ClassInfo> {
@@ -182,7 +366,8 @@ impl TypeIndex {
         let mut end = name[start..].find('.').map_or(name.len(), |dot| start + dot);
         let on_package = flags_of(&format!("{package}.package-info"));
         let on_top = flags_of(&name[..end]);
-        let by_package = (listed || on_package & flag::NULL_MARKED != 0) && on_package & flag::NULL_UNMARKED == 0;
+        let marked = on_package & flag::NULL_MARKED != 0 || self.null_marked_packages.contains(package);
+        let by_package = (listed || marked) && on_package & flag::NULL_UNMARKED == 0;
         let mut checked = on_top & flag::NULL_UNMARKED == 0 && (by_package || on_top & flag::NULL_MARKED != 0);
         while end < name.len() {
             end = name[end + 1..].find('.').map_or(name.len(), |dot| end + 1 + dot);
@@ -194,6 +379,15 @@ impl TypeIndex {
             }
         }
         checked
+    }
+
+    /// The member classes, at any depth, of the listed classes.
+    pub fn nested_in(&self, outers: &HashSet<String>) -> Vec<String> {
+        self.classes.keys().filter(|name| name.rsplit_once('.').is_some_and(|(outer, _)| outers.contains(outer) || self.nested_of(outer, outers))).cloned().collect()
+    }
+
+    fn nested_of(&self, name: &str, outers: &HashSet<String>) -> bool {
+        name.rsplit_once('.').is_some_and(|(outer, _)| outers.contains(outer) || (self.classes.contains_key(outer) && self.nested_of(outer, outers)))
     }
 
     pub fn has(&self, name: &str) -> bool {
@@ -494,13 +688,103 @@ impl TypeIndex {
     /// Whether a known class below `class`, from the run's sources or already read from the class path, declares
     /// an instance method of that name and parameter count.
     pub fn overridden_in_sources(&self, class: &str, name: &str, parameters: usize) -> bool {
-        self.classes.values().any(|slot| match slot {
-            Slot::Ready(other) => {
-                other.name != class
-                    && other.methods.iter().any(|method| method.name == name && method.parameters.len() == parameters && !method.is_static)
-                    && self.is_subtype(&other.name, class)
+        if !self.settled {
+            let found = self.declaring_in_sources();
+            return found.get(&(name.to_string(), parameters)).is_some_and(|found| self.overrides(found, class));
+        }
+        let declaring = self.declaring.get_or_init(|| self.declaring_in_sources());
+        declaring.get(&(name.to_string(), parameters)).is_some_and(|found| self.overrides(found, class))
+    }
+
+    fn overrides(&self, declaring: &[String], class: &str) -> bool {
+        declaring.iter().any(|other| other != class && self.is_subtype(other, class))
+    }
+
+    fn declaring_in_sources(&self) -> HashMap<(String, usize), Vec<String>> {
+        let mut found: HashMap<(String, usize), Vec<String>> = HashMap::new();
+        for slot in self.classes.values() {
+            let Slot::Ready(class) = slot else { continue };
+            let mut seen = HashSet::new();
+            for method in class.methods.iter().filter(|method| !method.is_static) {
+                if seen.insert((method.name.as_str(), method.parameters.len())) {
+                    found.entry((method.name.clone(), method.parameters.len())).or_default().push(class.name.clone());
+                }
             }
-            Slot::Later(..) => false,
+        }
+        found
+    }
+
+    /// The names of the fields and methods, in the sources and on the class path, that carry `@GuardedBy`. Read once:
+    /// the class files that mention the annotation are the only ones parsed.
+    pub fn guarded_names(&self) -> &HashSet<String> {
+        self.guarded.get_or_init(|| {
+            let mut found = HashSet::new();
+            if !super::guards::GUARDED_BY.iter().any(|name| self.has(name)) {
+                return found;
+            }
+            let add = |class: &ClassInfo, found: &mut HashSet<String>| {
+                found.extend(class.fields.iter().filter(|field| !field.guards.is_empty()).map(|field| field.name.clone()));
+                found.extend(class.methods.iter().filter(|method| !method.detail.guards.is_empty()).map(|method| method.name.clone()));
+            };
+            let later: Vec<(&String, &Origin)> = self
+                .classes
+                .iter()
+                .filter_map(|(name, slot)| match slot {
+                    Slot::Ready(class) => {
+                        add(class, &mut found);
+                        None
+                    }
+                    Slot::Later(origin, _) => (!jdk_class(name)).then_some((name, origin)),
+                })
+                .collect();
+            let names: Vec<&String> = later.iter().filter(|(_, origin)| read_bytes(origin).is_some_and(|bytes| mentions_guard(&bytes))).map(|(name, _)| *name).collect();
+            for name in names {
+                if let Some(class) = self.get(name) {
+                    add(class, &mut found);
+                }
+            }
+            found
+        })
+    }
+
+    /// The names that a call, `new`, or method reference to a method or constructor carrying an annotation named
+    /// `InlineMe` holds; see `Marked`.
+    pub fn inline_me_names(&self) -> &HashSet<String> {
+        &self.marked().inline_me
+    }
+
+    /// The names of the methods carrying `@RestrictedApi`; see `Marked`.
+    pub fn restricted_names(&self) -> &HashSet<String> {
+        &self.marked().restricted
+    }
+
+    /// Every class of the sources and every class file outside the JDK whose bytes mention a marking annotation.
+    fn marked(&self) -> &Marked {
+        self.marked.get_or_init(|| {
+            let mut found = Marked::default();
+            let from_jdk = |origin: &Origin| archive_key(origin).is_some_and(|key| self.jdk_archives.contains(&key));
+            let later: Vec<&String> = self
+                .classes
+                .iter()
+                .filter_map(|(name, slot)| match slot {
+                    Slot::Ready(class) => {
+                        found.add(class);
+                        None
+                    }
+                    Slot::Later(origin, _) => (!from_jdk(origin) && read_bytes(origin).is_some_and(|bytes| mentions_marks(&bytes))).then_some(name),
+                })
+                .collect();
+            for name in later {
+                if let Some(class) = self.get(name) {
+                    found.add(class);
+                }
+            }
+            for bytes in self.versioned.iter().filter_map(read_bytes).filter(|bytes| mentions_marks(bytes)) {
+                if let Some(class) = classfile::parse(&bytes) {
+                    found.add(&class);
+                }
+            }
+            found
         })
     }
 

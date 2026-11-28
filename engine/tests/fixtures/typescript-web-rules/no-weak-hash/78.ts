@@ -1,0 +1,1 @@
+import { authenticator } from "otplib"; authenticator.options = { algorithm: "md5", digits: 6 };

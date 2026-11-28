@@ -1,0 +1,2 @@
+import { Cascade, Entity, EntitySchema, ManyToMany, ManyToOne, defineEntity } from '@mikro-orm/core';
+const Post = defineEntity({ name: 'Post', properties: (p) => ({ tags: p.manyToMany(() => Tag).cascade(Cascade.PERSIST) }) });

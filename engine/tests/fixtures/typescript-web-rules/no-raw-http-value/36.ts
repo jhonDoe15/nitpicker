@@ -1,0 +1,1 @@
+const type = req.headers['content-type']; if (type.startsWith('multipart/')) { run(); }

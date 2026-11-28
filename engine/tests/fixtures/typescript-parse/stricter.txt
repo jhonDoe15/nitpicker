@@ -1,0 +1,149 @@
+=== block.ts
+export function run(a: string) { { var a: unknown; function a() {} } return a; }
+=== 055.ts
+function o() { const enum x { A }
+{ var x = 1; }
+x; }
+=== 063.ts
+const o = (x) => { { function x() {} }
+namespace x { }
+x; };
+=== 066.ts
+"use strict";
+function o() { { var x = 1;
+let x = 1;
+x; } }
+=== 068.ts
+try {} catch (x) { let x = 1;
+{ function x() {} }
+x; }
+=== 070.ts
+function o(x) { interface x {}
+declare class x {}
+x; }
+=== 071.cjs
+function o() { { function x() {} }
+try {} catch { var x; }
+x; }
+=== 072.ts
+function o() { type x = 1;
+namespace x { }
+x; }
+=== 073.ts
+function o(x) { { var x; }
+declare function x(): void;
+x; }
+=== 075.ts
+switch (k) { case 1: enum x { A }
+case 2: declare class x {}
+x; }
+=== 081.ts
+enum x { A }
+for (var x of y) {}
+x;
+export {};
+=== 082.js
+const o = (x) => { function x() {}
+for (var x of y) {}
+x; };
+=== 084.ts
+function o(x) { const enum x { A }
+{ var x; }
+x; }
+=== 090.ts
+function o(x) { enum x { A }
+type x = 1;
+x; }
+=== 091.ts
+"use strict";
+function o() { { const x = 1;
+for (var x of y) {}
+x; } }
+=== 095.ts
+const enum x { A }
+function x(): void;
+x;
+export {};
+=== 097.ts
+function o() { interface x {}
+declare namespace x { }
+x; }
+=== 099.js
+switch (k) { case 1: let x = 1;
+case 2: function x() {}
+x; }
+=== 101.js
+function o() { { async function x() {}
+try {} catch { var x; }
+x; } }
+=== 103.ts
+async function x() {}
+const enum x { A }
+x;
+export {};
+=== 108.ts
+function o() { type x = 1;
+type x = 1;
+x; }
+=== 110.cjs
+switch (k) { case 1: async function x() {}
+case 2: function x() {}
+x; }
+=== 111.ts
+try {} catch (x) { try {} catch { var x; }
+enum x { A }
+x; }
+=== 119.ts
+let x = 1;
+enum x { A }
+x;
+=== 122.ts
+function o() { { var x; }
+namespace x { }
+x; }
+=== 123.ts
+function o(x) { class x {}
+const enum x { A }
+x; }
+=== 133.ts
+const f = (a, ...a) => { enum a {} a; };
+=== 161.ts
+export default class { @d abstract p: number; }
+=== 162.ts
+declare class C { @d [k]() {} }
+=== 192.ts
+declare class C { m(@d x) {} }
+=== 211.ts
+class C { set a(...v) {} }
+=== 213.ts
+function f(...a?) {}
+=== 215.js
+x
+=>1
+=== 220.js
+class C { [a]?() {} }
+=== 241.js
+class C { m?() {} }
+=== 243.ts
+let x: asserts x;
+=== 245.js
+class C { get constructor() {} }
+=== 286.ts
+const x = 1;
+export { await };
+=== class-over-var.ts
+var a;
+class a { m(){ return a } }
+=== class-twice.ts
+class a {}
+class a {}
+=== class.ts
+export function run(a: string) { class a {} return a; }
+=== 089.ts
+function o(x) { class x {}
+try {} catch { var x; }
+x; }
+=== 121.ts
+const o = (x) => { class x {}
+async function x() {}
+x; };

@@ -1,0 +1,1 @@
+declare function gc(): void; it('x', () => { setTimeout(() => expect(1).toBe(1)); gc(); });

@@ -4,6 +4,22 @@ pub struct SourceFile {
     pub path: String,
     pub text: String,
     pub tree: Tree,
+    pub names: Names,
+}
+
+/// Names that a language reads other than as written, by byte range: a Java identifier with Unicode escapes.
+#[derive(Default)]
+pub struct Names(Vec<(usize, usize, String)>);
+
+impl Names {
+    pub fn new(mut names: Vec<(usize, usize, String)>) -> Names {
+        names.sort_by_key(|(start, end, _)| (*start, *end));
+        Names(names)
+    }
+    fn get(&self, start: usize, end: usize) -> Option<&str> {
+        let at = self.0.binary_search_by_key(&(start, end), |(from, to, _)| (*from, *to)).ok()?;
+        Some(&self.0[at].2)
+    }
 }
 
 #[derive(Clone)]
@@ -20,12 +36,23 @@ pub fn read_text(path: &std::path::Path) -> Option<String> {
     Some(normalized(&String::from_utf8_lossy(bytes)))
 }
 
+/// A source file's text in a character set other than UTF-8, as javac reads it: a byte order mark stays.
+pub fn read_text_in(path: &std::path::Path, set: Option<super::encoding::Charset>) -> Option<String> {
+    let Some(set) = set else { return read_text(path) };
+    Some(normalized(&super::encoding::decode(&std::fs::read(path).ok()?, set)))
+}
+
 pub fn normalized(text: &str) -> String {
     if text.contains('\r') { text.replace("\r\n", "\n").replace('\r', "\n") } else { text.to_string() }
 }
 
 impl SourceFile {
     pub fn text_of(&self, node: Node) -> &str {
+        if !self.names.0.is_empty() {
+            if let Some(name) = self.names.get(node.start_byte(), node.end_byte()) {
+                return name;
+            }
+        }
         &self.text[node.byte_range()]
     }
     pub fn line(&self, node: Node) -> usize {

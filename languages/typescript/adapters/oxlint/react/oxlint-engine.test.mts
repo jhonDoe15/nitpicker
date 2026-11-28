@@ -1,10 +1,7 @@
-import { chmodSync, rmSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { findEngine } from '../../../../../shared/engine/engine-binary.mts';
-import { lintWithOxlint } from '../oxlint-runner.mts';
 import { createProject, presetModule } from '../test-support/oxlint-project.mts';
-import { oxlintOptions } from '../test-support/oxlint-runs.mts';
+import { removedAfterAll, reportedLines, writeStubEngine } from '../test-support/engine-stub.mts';
 
 const STUB_MESSAGE = 'reported by the stub engine';
 
@@ -38,45 +35,21 @@ const root = createProject('nitpicker-oxlint-engine-', {
   'test/ui/second.test.tsx': queries,
 });
 
-const stub = path.join(root, 'stub-engine.sh');
-writeFileSync(
-  stub,
-  [
-    '#!/bin/sh',
-    'while [ $# -gt 0 ]; do if [ "$1" = "--out" ]; then out="$2"; fi; shift; done',
-    'cat > "$out" <<\'ROWS\'',
-    JSON.stringify([
-      ['test/ui/queries.test.tsx', 'testing-library/no-test-id-queries', 4, 3, STUB_MESSAGE, 4, 29],
-      ['test/ui/queries.test.tsx', 'testing-library/no-test-id-queries', 6, 3, STUB_MESSAGE, 6, 29],
-      ['test/ui/second.test.tsx', '!parse', 1, 1, ''],
-    ]),
-    'ROWS',
-  ].join('\n'),
-);
-chmodSync(stub, 0o755);
+const stub = writeStubEngine(root, [
+  ['test/ui/queries.test.tsx', 'testing-library/no-test-id-queries', 4, 3, STUB_MESSAGE, 4, 29],
+  ['test/ui/queries.test.tsx', 'testing-library/no-test-id-queries', 6, 3, STUB_MESSAGE, 6, 29],
+  ['test/ui/second.test.tsx', '!parse', 1, 1, ''],
+]);
 
-afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
-});
+removedAfterAll(root);
 
-async function reported(engine: string): Promise<string[]> {
-  const results = await lintWithOxlint({
-    options: oxlintOptions(root, ['test/**/*.tsx']),
-    projectConfigPath: undefined,
-    environment: {
-      ...process.env,
-      NITPICKER_ENGINE: engine,
-      NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(root, 'policy.mjs'),
-      NITPICKER_DIFF_ESLINT_PROJECT_ROOT: root,
-    },
-    runEslintCli: () => Promise.resolve([]),
-  });
-  return results.flatMap(({ filePath, messages }) =>
-    messages
-      .filter(({ ruleId }) => ruleId === undefined || ruleId.startsWith('testing-library/'))
-      .map(({ ruleId, line, column, endColumn, message }) =>
-        [path.basename(filePath), line, column, endColumn, ruleId, message].join(' | '),
-      ),
+function reported(engine: string): Promise<string[]> {
+  return reportedLines(
+    { root, patterns: ['test/**/*.tsx'], engine, environment: process.env },
+    (file, { ruleId, line, column, endColumn, message }) =>
+      ruleId === undefined || ruleId.startsWith('testing-library/')
+        ? [file, line, column, endColumn, ruleId, message].join(' | ')
+        : undefined,
   );
 }
 

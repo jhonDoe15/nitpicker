@@ -1,0 +1,670 @@
+=== function.ts
+export function run(a: string) { function a() {} return a; }
+=== rest.ts
+export function run(...a: string[]) { function a() {} return a; }
+=== pattern.ts
+export function run({ a }: { a: string }) { async function a() {} return a; }
+=== arrow.ts
+export const run = (a: string) => { function* a() {} return a; };
+=== lexical.ts
+export function run(a: string) { let a = 1; return a; }
+=== parameters.ts
+export function run(a: string, a: string) { return a; }
+=== decorated.ts
+import { Pool } from 'pg';
+const pool = new Pool();
+declare const ids: string[];
+export const C = class { m(@p x: number) {} };
+export async function run() { for (const id of ids) { await pool.query('x', [id]); } }
+=== test-await.ts
+it('a', () => { await x(); });
+=== test-hoisted.ts
+it('a', () => { var h; function h(){} h(); });
+=== generator.ts
+function g(a){ yield spawn('git', a); }
+=== top-hoisted.ts
+var q; function q(){}
+=== block-var.js
+function o(){ function h(){} { var h; } }
+=== block-var.cjs
+function o(){ function h(){} { var h; } }
+=== block-const.ts
+{ const r = 1; const r = 2; }
+=== 000.ts
+it('a', () => { await x(); });
+=== 001.cjs
+function o(){ function h(){} { var h; } }
+=== 002.ts
+function o(){ function h(){} var h = 1 }
+=== 003.ts
+var q; function q(){}
+=== 004.ts
+export const C = class { m(@p x: number) {} };
+=== 005.ts
+{ const r = 1; const r = 2; }
+=== 006.ts
+function g(a){ yield spawn('git', a); }
+=== 007.ts
+it('a', () => { var h; function h(){} h(); });
+=== 008.js
+function o(){ function h(){} { var h; } }
+=== 009.js
+function* g(a = (yield -1)) {}
+=== 010.js
+async function f() { function g() { await
+x } }
+=== 011.cjs
+const f = () => { let await = 1 }
+=== 012.ts
+async function f(a = (await (x))) {}
+=== 013.ts
+const o = { get a() { x => await x } }
+=== 014.ts
+function* g() { const h = () => { await
+x } }
+=== 015.js
+async function* f() { yield -1 }
+=== 016.ts
+await x.y
+=== 017.js
+function f() { "use strict"; yield.x }
+=== 018.ts
+it("a", function () { class await {} })
+=== 019.ts
+function* g(a = (x => yield x)) {}
+=== 020.js
+const o = { get a() { await } }
+=== 021.cjs
+async function f() { function g() { await x } }
+=== 022.cjs
+function f() { await /re/g }
+=== 023.ts
+yield* x
+=== 024.cjs
+class C { p = (yield) }
+=== 025.cjs
+async function f() { const g = () => { yield x } }
+=== 026.cjs
+async function f() { x => yield x }
+=== 027.ts
+async function f() { const g = () => { yield -1 } }
+=== 028.cjs
+const f = () => (await.x)
+=== 029.cjs
+it("a", function () { await /re/g })
+=== 030.ts
+async function* f() { function yield() {} }
+=== 031.cjs
+const f = () => (await /re/g)
+=== 032.js
+async function* f() { await x.y }
+=== 033.cjs
+class C { p = (await) }
+=== 034.ts
+function* g() { const h = () => { await + 1 } }
+=== 035.ts
+class C { m() { x => await x } }
+=== 037.js
+function f() { yield.x }
+=== 038.cjs
+async function* f() { class await {} }
+=== 039.js
+async function f() { await new X() }
+=== 040.js
+function* g() { let await = 1 }
+=== 041.cjs
+function* g(a = (await
+x)) {}
+=== 042.cjs
+const f = () => (await `t`)
+=== 043.ts
+async function f() { yield /re/ }
+=== 044.ts
+const f = () => { await -x }
+=== 045.cjs
+class C { p = (yield.x) }
+=== 046.cjs
+async function f() { function g() { await + 1 } }
+=== 047.cjs
+const o = { get a() { await x() } }
+=== 048.ts
+function await() {}
+=== 049.ts
+class C { m() { await: for(;;) break await } }
+=== 050.cjs
+async function* f() { yield.x }
+=== 051.js
+class C { m() { let yield = 1 } }
+=== 052.ts
+const f = () => (a ? await b : c)
+=== 053.cjs
+function f() { "use strict"; yield }
+=== 054.ts
+function x() {}
+import type x from 'm';
+x;
+export {};
+=== 056.ts
+function o() { for (var x of y) {}
+const x = 1;
+x; }
+=== 057.ts
+switch (k) { case 1: { var x; }
+case 2: try {} catch { var x; }
+x; }
+=== 058.ts
+function o() { x: ;
+declare var x: number;
+x; }
+=== 059.cjs
+try {} catch (x) { x: ;
+var x = 1;
+x; }
+=== 060.ts
+"use strict";
+function o() { { interface x {}
+interface x {}
+x; } }
+=== 061.js
+function o() { { var x = 1;
+{ function x() {} }
+x; } }
+=== 062.ts
+function o() { { for (var x of y) {} }
+for (var x of y) {}
+x; }
+=== 064.ts
+function o() { { interface x {} }
+{ var x; }
+x; }
+=== 065.cjs
+function o(x) { { var x; }
+async function x() {}
+x; }
+=== 067.ts
+function o() { { x: ;
+let x = 1;
+x; } }
+=== 069.ts
+function o() { { let x = 1; }
+function x(): void;
+x; }
+=== 074.cjs
+function o() { { for (var x of y) {} }
+{ var x; }
+x; }
+=== 076.ts
+{ var x; }
+declare namespace x { }
+x;
+export {};
+=== 077.ts
+function o() { interface x {}
+function x() {}
+x; }
+=== 078.js
+function o() { { class x {}
+{ function x() {} }
+x; } }
+=== 079.ts
+switch (k) { case 1: declare var x: number;
+case 2: { function x() {} }
+x; }
+=== 080.cjs
+function o() { { x: ; }
+try {} catch { var x; }
+x; }
+=== 083.ts
+namespace N { interface x {}
+try {} catch { var x; }
+x; }
+=== 085.ts
+function o() { function x() {}
+{ type x = 1; }
+x; }
+=== 086.cjs
+function o(x) { for (var x of y) {}
+{ function x() {} }
+x; }
+=== 087.ts
+function o() { { let x = 1;
+x: ;
+x; } }
+=== 088.js
+function o() { { var x = 1;
+for (var x of y) {}
+x; } }
+=== 092.ts
+function o() { { declare function x(): void; }
+try {} catch { var x; }
+x; }
+=== 093.js
+function o() { { function* x() {} }
+let x = 1;
+x; }
+=== 094.ts
+x: ;
+interface x {}
+x;
+=== 096.ts
+function o() { declare var x: number;
+{ abstract class x {} }
+x; }
+=== 098.ts
+"use strict";
+function o() { { for (var x of y) {}
+{ function x() {} }
+x; } }
+=== 100.ts
+declare function x(): void;
+declare function x(): void;
+x;
+export {};
+=== 102.js
+function o() { x: ;
+function x() {}
+x; }
+=== 104.ts
+function o() { async function x() {}
+{ for (var x of y) {} }
+x; }
+=== 105.ts
+function o() { { var x = 1;
+for (var x of y) {}
+x; } }
+=== 106.js
+const o = (x) => { { function x() {} }
+function* x() {}
+x; };
+=== 107.ts
+namespace N { { function x() {} }
+async function x() {}
+x; }
+=== 109.cjs
+function o() { x: ;
+{ function x() {} }
+x; }
+=== 112.ts
+namespace N { declare function x(): void;
+async function x() {}
+x; }
+=== 113.ts
+function o() { { try {} catch { var x; } }
+declare var x: number;
+x; }
+=== 114.js
+const o = (x) => { var x = 1;
+function x() {}
+x; };
+=== 115.cjs
+const o = (x) => { x: ;
+var x = 1;
+x; };
+=== 116.ts
+switch (k) { case 1: type x = 1;
+case 2: { function x() {} }
+x; }
+=== 117.ts
+namespace N { try {} catch { var x; }
+var x = 1;
+x; }
+=== 118.ts
+abstract class x {}
+import type x from 'm';
+x;
+=== 120.cjs
+function o() { { function x() {} }
+function x() {}
+x; }
+=== 124.ts
+function f(a, ...a) { const a = 1; a; }
+=== 125.ts
+function f(a) { { function a() {} } a; }
+=== 126.js
+class C { m({a}, a) { for (let a of x) {} a; } }
+=== 127.ts
+const f = ({a: a}, a) => { let a = 1; a; };
+=== 128.cjs
+const f = (a, ...a) => {  a; };
+=== 129.js
+const f = (a, a) => { var a; a; };
+=== 130.cjs
+function f({a}, a) { return function g() { { function a() {} } a; }; }
+=== 131.ts
+const f = ({a: a}, a) => {  a; };
+=== 132.cjs
+const o = { m(a, b, a) { let a = 1; a; } };
+=== 134.js
+function f({a}, a) { return function g() { try {} catch (a) {} a; }; }
+=== 135.js
+"use strict"; function f(a, ...a) { { var a; } a; }
+=== 136.js
+"use strict"; function f(a, a) { try {} catch { var a; } a; }
+=== 137.cjs
+"use strict"; function f(a, a) { var a; a; }
+=== 138.js
+class C { m(a) { try {} catch (a) {} a; } }
+=== 139.ts
+const o = { m(a = 1, a) { let a = 1; a; } };
+=== 140.cjs
+const f = (a, {b: a}) => { let a = 1; a; };
+=== 141.js
+const f = (a, a) => {  a; };
+=== 142.js
+"use strict"; function f({a: a}, a) {  a; }
+=== 143.js
+const f = ([a], {a}) => { { var a; } a; };
+=== 144.js
+"use strict"; function f(a, b, a) { { function a() {} } a; }
+=== 145.cjs
+class C { m(a, a) { let a = 1; a; } }
+=== 146.ts
+function f(a) { for (var a of x) {} a; }
+=== 147.cjs
+"use strict"; function f({a}, a) { function a() {} a; }
+=== 148.cjs
+function f(a, a) { return function g() { let a = 1; a; }; }
+=== 149.ts
+@d interface I {}
+=== 150.ts
+function f() { return class { @d #p = 1; }; }
+=== 151.ts
+const o = { static { } };
+=== 152.ts
+abstract class C { constructor(@d x) {} }
+=== 153.ts
+function f() { return class { @d p = 1; }; }
+=== 154.ts
+abstract class C { @d @e m() {} }
+=== 155.ts
+export default class { @d #m() {} }
+=== 156.ts
+class C { @d.e() m() {} }
+=== 157.ts
+type T = { m(@d {a}) {} };
+=== 158.ts
+interface I { get a(@d v) { return 1; } }
+=== 159.ts
+const C = class D { @d #m() {} };
+=== 160.ts
+const C = class { @d declare p: number; };
+=== 163.ts
+class O { m() { return class { @d m() {} }; } }
+=== 164.ts
+class O { m() { return class { m(this: any, @d x) {} }; } }
+=== 165.ts
+const C = class D { m(@d x) {} };
+=== 166.ts
+declare class C { get a(@d v) { return 1; } }
+=== 167.ts
+const C = class { @d abstract p: number; };
+=== 168.ts
+const C = class { m(this: any, @d x) {} };
+=== 169.ts
+const o = { @d p = 1; };
+=== 170.ts
+declare class C { @d accessor a = 1; }
+=== 171.ts
+abstract class C { @d *g() {} }
+=== 172.ts
+const C = class { @d.e() m() {} };
+=== 173.ts
+const C = class D { @d set a(v) {} };
+=== 174.ts
+export default class { m(this: any, @d x) {} }
+=== 175.ts
+const C = class D { @d.e() m() {} };
+=== 176.ts
+abstract class C { m(@d {a}) {} }
+=== 177.ts
+declare class C { @d declare p: number; }
+=== 178.ts
+type T = { @d accessor a = 1; };
+=== 179.ts
+export default class { @d accessor a = 1; }
+=== 180.ts
+const C = class { @d async m() {} };
+=== 181.ts
+function f() { return class { set a(@d v) {} }; }
+=== 182.ts
+const o = { @d.e() m() {} };
+=== 183.ts
+class O { m() { return class { @d static m() {} }; } }
+=== 184.ts
+class O { m() { return class { @d static p; }; } }
+=== 185.ts
+interface I { @d static p; }
+=== 186.ts
+const C = class { constructor(@d x) {} };
+=== 187.ts
+abstract class C { m(@d ...r) {} }
+=== 188.ts
+abstract @d class C {}
+=== 189.ts
+class O { m() { return class { m(@d ...r) {} }; } }
+=== 190.ts
+export default class { @(d) m() {} }
+=== 191.ts
+class C { m(declare x) {} }
+=== 193.ts
+abstract class C { @d accessor a = 1; }
+=== 194.ts
+class C { constructor(out ...x) {} }
+=== 195.ts
+in enum E {}
+=== 196.ts
+class C { default get a() { return 1; } }
+=== 197.ts
+class C { readonly m() {} }
+=== 198.ts
+default function f() {}
+=== 199.ts
+class C { in m() {} }
+=== 200.ts
+class C { in #p = 1; }
+=== 201.ts
+const o = { readonly m() {} };
+=== 202.ts
+class C { readonly get a() { return 1; } }
+=== 203.ts
+class C<default T> {}
+=== 204.ts
+function f<out T>() {}
+=== 205.ts
+interface I { default m(): void; }
+=== 206.ts
+namespace N { out const x = 1; }
+=== 207.ts
+function f(out x) {}
+=== 208.ts
+interface I { default p: 1; }
+=== 209.ts
+let x = <T,>(y) => y;
+=== 210.ts
+declare var x = 1;
+=== 212.ts
+typeof a ** 2;
+=== 214.ts
+const o = { get a?() {} };
+=== 216.ts
+export default class {}
+=== 217.js
+function f(this = 1) {}
+=== 218.js
+class C extends A, B {}
+=== 219.ts
+for (let x in y) {}
+=== 221.js
+for (let x in y) {}
+=== 222.js
+return;
+=== 223.ts
+var;
+=== 224.ts
+type T = [...a?];
+=== 225.ts
+type M = { [K in T]: 1; a: 1 };
+=== 226.ts
+declare function* f();
+=== 227.ts
+class C extends {}
+=== 228.ts
+export class {}
+=== 229.ts
+function f() { await; }
+=== 230.js
+a?.b.c`t`;
+=== 231.js
+delete a;
+=== 232.ts
+let x: typeof a.b<T>;
+=== 233.js
+try {} catch (e = 1) {}
+=== 234.js
+a?.b++;
+=== 235.js
+import.meta;
+=== 236.ts
+({ a! });
+=== 237.ts
+for (const x in y!) {}
+=== 238.ts
+declare function f() {}
+=== 239.js
+var;
+=== 240.ts
+a?.b`t`;
+=== 242.ts
+enum E { ['a'] = 1 }
+=== 244.ts
+class C { static constructor = 1; }
+=== 246.ts
+function f(a, a) {}
+=== 247.ts
+abstract function f() {}
+=== 248.ts
+import.meta;
+=== 249.ts
+"use strict"; x = 0x10;
+=== 250.ts
+const o = { 0b1: 1 };
+=== 251.cts
+x = "\7";
+=== 252.tsx
+x = 09;
+=== 253.mts
+const x = 1;
+(await) => 1
+=== 254.tsx
+const x = 1;
+let await;
+=== 255.cjs
+function f() { x = "\u0000"; }
+=== 256.ts
+enum E { A = "\\0" }
+=== 257.ts
+const x = 1;
+for (await of x) {}
+=== 258.ts
+const x = 1;
+class await {}
+=== 259.cts
+for (const await of x) {}
+=== 260.mts
+await as any
+export {};
+=== 261.cjs
+const o = { "\0" + "\1": 1 };
+=== 262.ts
+x = 0888;
+=== 263.cts
+class await {}
+export {};
+=== 264.cjs
+function f() { x = "\\\08"; }
+=== 265.tsx
+declare const await: 1;
+export {};
+=== 266.ts
+enum E { A = "\9" }
+=== 267.mts
+const x = 1;
+let await;
+=== 268.cjs
+const x = 1;
+function f(await) {}
+=== 269.mts
+let await;
+=== 270.ts
+await!
+=== 271.cjs
+const o = { 0e1: 1 };
+=== 272.mts
+{ await; }
+export {};
+=== 273.tsx
+const x = 1;
+function f(){ await; }
+=== 274.tsx
+const x = 1;
+typeof await
+=== 275.ts
+const o = { `\01`: 1 };
+=== 276.cjs
+class C { [0x10] = 1 }
+=== 277.js
+"use strict"; x = "\00";
+=== 278.mts
+x = "\08";
+=== 279.mjs
+await?.x
+=== 280.cts
+const x = 1;
+type await = 1;
+=== 281.cts
+const x = 1;
+x = { [await]: 1 }
+=== 282.cts
+declare const await: 1;
+=== 283.tsx
+x = "\08";
+=== 284.tsx
+await++
+=== 285.cjs
+"use strict"; x = "\\0";
+=== 287.mjs
+label: await;
+=== 288.ts
+x = 0x10;
+=== 289.ts
+x = "\u0000";
+=== 290.cjs
+const o = { 0b1: 1 };
+=== 291.cjs
+function f(){ await; }
+=== 292.cjs
+"use strict"; x = f`\01`;
+=== 293.js
+class C { ["\01"] = 1 }
+=== tla-1.ts
+await (async () => { console.log(1) })();
+=== tla-2.ts
+const r = await (fetch(u));
+=== tla-3.js
+await [1].map(f);
+=== tla-4.mjs
+const v = await -x;
+=== tla-5.mts
+const d = await (p as Promise<number>);
+=== tla-6.tsx
+if (c) { await (d()); }
+=== tla-7.cts
+await (x);
+=== await-in.js
+function f(){ await in x; }
+=== yield-instanceof.ts
+yield instanceof x;
+=== await-power.ts
+function f(){ await ** 2; }
+=== 036.js
+await `t`

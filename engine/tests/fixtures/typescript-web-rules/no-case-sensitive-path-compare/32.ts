@@ -1,0 +1,1 @@
+if (paths.targetRoot !== paths.targetDir) {}

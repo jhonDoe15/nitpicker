@@ -1,0 +1,1 @@
+class S { find() { return this.assetRepository.findOneBy({ id: 1 }); } }

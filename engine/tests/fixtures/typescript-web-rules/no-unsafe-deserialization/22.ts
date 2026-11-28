@@ -1,0 +1,1 @@
+import vm from "node:vm"; export const fn = (body) => vm.compileFunction(body, ["x"]);

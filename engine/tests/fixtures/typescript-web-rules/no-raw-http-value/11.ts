@@ -1,0 +1,1 @@
+const type = headers.get('content-type'); if (type === null) { run(); }

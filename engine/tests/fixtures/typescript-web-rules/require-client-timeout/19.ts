@@ -1,0 +1,1 @@
+import postgres from "postgres"; export const sql = (options) => postgres(process.env.URL, options);

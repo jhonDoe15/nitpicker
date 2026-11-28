@@ -1,0 +1,1 @@
+function build(o) { const parts = []; for (const p of o.parts) { parts.push(p); } return parts; } it('x', () => { expect(build(order)).toEqual([1]); });

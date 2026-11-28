@@ -1,0 +1,1 @@
+export const a = (p: string) => `did you mean to visit <a href="${escapeHtml(p)}">${escapeHtml(p)}</a>?`;

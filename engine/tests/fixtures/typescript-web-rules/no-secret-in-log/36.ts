@@ -1,0 +1,1 @@
+logger.error(JSON.stringify(credentials));

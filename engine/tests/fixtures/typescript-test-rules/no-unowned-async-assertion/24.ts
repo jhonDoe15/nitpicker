@@ -1,0 +1,1 @@
+it('x', () => { const setup = () => emitter.on('a', (v) => expect(v).toBe(1)); setup(); });

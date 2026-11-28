@@ -1,0 +1,1 @@
+if (filePath.startsWith(options.workspaceRoot + path.sep)) {}

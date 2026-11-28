@@ -1,0 +1,1 @@
+async function f(knex) { return knex('assets').where({ deleted_at: null }).first(); }

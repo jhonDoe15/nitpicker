@@ -118,6 +118,18 @@ export function effectsTool(pinned: unknown): ToolEntry[] {
   ];
 }
 
+function extraToolEntry(tool: unknown): [string, ToolDependencies[string]] {
+  return [
+    textOf(fieldOf(tool, 'name')),
+    [
+      ...textsOf(fieldOf(tool, 'repositories')),
+      ...textsOf(fieldOf(tool, 'coordinates')).map((entry) =>
+        dependency(entry, optionalTexts(fieldOf(tool, 'exclusions'))),
+      ),
+    ],
+  ];
+}
+
 export function toolDependencies(
   pinned: unknown,
   launcherVersions: readonly unknown[] = [],
@@ -156,14 +168,7 @@ export function toolDependencies(
         [dependency(`org.junit.platform:junit-platform-launcher:${textOf(version)}`)],
       ]),
     ),
-    ...Object.fromEntries(
-      extraTools.map((tool) => [
-        textOf(fieldOf(tool, 'name')),
-        textsOf(fieldOf(tool, 'coordinates')).map((entry) =>
-          dependency(entry, optionalTexts(fieldOf(tool, 'exclusions'))),
-        ),
-      ]),
-    ),
+    ...Object.fromEntries(extraTools.map(extraToolEntry)),
   };
 }
 

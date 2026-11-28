@@ -1,0 +1,1 @@
+export function like(glob: string) { return glob.replaceAll('*', '%').replaceAll('?', '_').replaceAll('%%', '%'); }

@@ -142,6 +142,29 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   left alone. `react-x/purity` reports the other work started in render:
   `setTimeout`, `setInterval`, `requestAnimationFrame`, `fetch`, `window.addEventListener`,
   `new WebSocket(...)`, observers and storage.
+- **Server and client render the same markup** (`nitpicker/react-no-hydration-mismatch`,
+  report-only, only in a package that depends on `next`, `@remix-run/react`, `gatsby`, `vike`,
+  `vike-react`, `@astrojs/react`, `waku` or `@tanstack/react-start`, or that depends on `react-dom` and
+  imports `hydrateRoot` from `react-dom/client` in a source that is not a test or story). A ternary or `&&` that a
+  component renders (a JSX child or the value it returns) whose test checks `typeof window`,
+  `document`, `navigator`, `localStorage`, `sessionStorage` or `matchMedia` (also `typeof
+globalThis.window` and `'window' in globalThis`, a module-level
+  `const isBrowser = typeof window !== 'undefined'` made only of such tests joined by `&&`, `||` or `!`,
+  and a project hook such as `useIsClient()` whose every `return` is such a test) renders one thing on
+  the server and another in the first client render: React reports a hydration mismatch and renders
+  that part again. The same holds for the initial value of `useState` (a value or a lazy initializer)
+  and the factory of `useMemo` when such a test decides the value (a returned value, or the test of an `if`
+  that returns) and the value is rendered (a JSX child, or an attribute of an HTML element other than an
+  event handler, `key` or `ref`). A file named directly in `dynamic(() => import('./file'), { ssr: false })`
+  (with `ssr: false` written in the call) never renders on the server and is not checked.
+  Render the same output on both and switch after mounting: `useSyncExternalStore(subscribe,
+getSnapshot, () => serverValue)` or state set in an effect. Not reported: a branch that renders a
+  portal (`createPortal`), a value in an attribute (`menuPortalTarget={...}`), an element with
+  `suppressHydrationWarning`, a local variable named like a browser global, branches that all render
+  nothing (`null`, `false`, `undefined`), tests in effects, handlers and nested functions, and a branch inside
+  another conditional branch (the outer condition may already be client-only, such as data fetched
+  after mount). Files that a file loaded with `ssr: false` imports are not followed; mark such a finding as an
+  exception.
 - **No double-escaped i18next values** (`nitpicker/react-i18next-escape-value`, needs
   `react-i18next` in `package.json`). A `t(...)` call (from `useTranslation()`, `i18next` or
   `i18n.t`) or a `<Trans values={{ ... }}>` that passes interpolation values and whose text React
@@ -239,6 +262,18 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   closed anywhere in the effect, a resource opened in a nested function, a loop that stops on a
   condition, and an effect with `[]` in a file that mounts the app (it calls `createRoot`,
   `hydrateRoot`, `ReactDOM.render` or `registerComponent`) are not reported.
+- **Effects release the subscriptions they start** (`nitpicker/react-no-dropped-effect-handle`,
+  needs type information). In a `useEffect` or `useLayoutEffect` callback that returns no cleanup,
+  a call named `subscribe*`, `listen*`, `watch*`, `observe*`, `autorun*`, `addListener*`,
+  `addEventListener` or `on` followed by a capital letter or `_` (`onChange`, not `once`), whose result is
+  a `() => void` function or has `unsubscribe()` or `dispose()`, and whose result is dropped or kept
+  in a local the effect never reads, is reported: the listener stays registered after the component
+  unmounts, and every run of the effect (twice on mount under `StrictMode`) adds another. Return the
+  handle as the cleanup (`useEffect(() => store.subscribe(onChange), [store, onChange])`) or call it
+  in the cleanup. Not reported: an effect that returns any cleanup (it may release the listener
+  another way, such as `unsubscribe(handler)`), a handle stored in a ref or passed to a function,
+  `once*` and `register*` calls, a receiver created in the same effect, and RxJS `subscribe` after
+  `take`, `first` or `takeUntil`. The class form is `nitpicker/no-dropped-subscription-handle`.
 - **No array index as `key`** (`react-x/no-array-index-key`): use a stable id from the item. Every
   element rendered from a list has a `key` (`react-x/no-missing-key`) and siblings do not repeat
   one (`react-x/no-duplicate-key`). A `key` built from `Math.random()`, `Date.now()`,

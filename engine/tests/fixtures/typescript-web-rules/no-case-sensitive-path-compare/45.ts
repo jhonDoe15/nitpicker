@@ -1,0 +1,1 @@
+if (`${a.workspaceRoot}/x` === b.projectRoot) {}

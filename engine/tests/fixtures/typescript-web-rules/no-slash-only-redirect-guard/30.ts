@@ -1,0 +1,1 @@
+function go(next) { if (next.startsWith("/")) { window.location.assign(next); } }

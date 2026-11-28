@@ -1,0 +1,1 @@
+export const c = <T>(v: T) => structuredClone(v);

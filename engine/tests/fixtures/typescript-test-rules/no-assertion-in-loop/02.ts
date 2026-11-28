@@ -1,0 +1,1 @@
+it('x', () => { function check(o) { expect(o.paid).toBe(true); } orders.forEach((o) => { check(o); }); });

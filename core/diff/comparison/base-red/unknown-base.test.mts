@@ -172,6 +172,16 @@ describe('redBaseAnalyzers', () => {
     );
   });
 
+  it('treats base tests that were not run like failing ones', () => {
+    const notRun = { ...testsFailed, rule: 'tests-not-run-on-base', path: '.' };
+    const baseRun = run({ reports: { coverage: [notRun], ruff: [lint] } });
+    const headRun = run({ reports: { coverage: [], ruff: [] } });
+
+    expect(redBaseAnalyzers({ names, baseRun, headRun })).toEqual(
+      new Map([['coverage', [notRun]]]),
+    );
+  });
+
   it.each<[string, RunSpec]>([
     ['the head tests fail too', { reports: { coverage: [testsFailed] } }],
     [
@@ -299,6 +309,33 @@ describe('unknownOnBaseFor', () => {
 
   it('knows nothing about the base when the change removes tests', () => {
     expect(unknownOnBaseFor([testsFailed], { testsRemoved: true })).toBeUndefined();
+  });
+
+  const notRun = { ...testsFailed, rule: 'tests-not-run-on-base', path: '.' };
+  const targets = new Set(['src/target.ts']);
+
+  it('knows the base except for the removed test targets when base tests were not run', () => {
+    const unknown = coverageOf([notRun], { testsRemoved: true, removedTestTargets: targets });
+
+    expect([unknown(inModule('src/target.ts')), unknown(inModule('src/other.ts'))]).toEqual([
+      false,
+      true,
+    ]);
+  });
+
+  it.each<[string, readonly Finding[], ReadonlySet<string> | undefined]>([
+    ['the base tests ran and failed', [testsFailed], targets],
+    ['the removed test targets are unknown', [notRun], undefined],
+  ])('knows nothing about the base when tests are removed and %s', (_name, failures, removed) => {
+    expect(
+      unknownOnBaseFor(failures, { testsRemoved: true, removedTestTargets: removed }),
+    ).toBeUndefined();
+  });
+
+  it('ignores the removed test targets when no test was removed', () => {
+    const unknown = coverageOf([notRun], { testsRemoved: false, removedTestTargets: targets });
+
+    expect(unknown(inModule('src/target.ts'))).toBe(true);
   });
 });
 

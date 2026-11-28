@@ -1,0 +1,1 @@
+const p = join(root, 'nx.json'); const text = existsSync(p) ? readFileSync(p, 'utf8') : '';

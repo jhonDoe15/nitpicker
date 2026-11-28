@@ -1,0 +1,1 @@
+export { CORE_SCHEMA } from "js-yaml";

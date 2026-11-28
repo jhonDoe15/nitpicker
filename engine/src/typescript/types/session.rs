@@ -9,6 +9,8 @@ use std::path::Path;
 use std::rc::Rc;
 use std::time::Instant;
 
+const KEPT_METHODS: [&str; 5] = ["getNonNullableType", "typeToString", "getTypeFromTypeNode", "getAliasSymbolOfType", "getApparentType"];
+
 #[derive(Serialize, Default, Clone)]
 pub struct SessionCounts {
     pub program_files: usize,
@@ -38,6 +40,7 @@ pub struct Session {
     located: HashMap<String, Option<Rc<Symbol>>>,
     aliased: HashMap<u64, Option<Rc<Symbol>>>,
     exports: HashMap<u64, Rc<Vec<Rc<Symbol>>>>,
+    answers: HashMap<(String, String), serde_json::Value>,
     pub counts: SessionCounts,
 }
 
@@ -69,7 +72,7 @@ impl Session {
         let files = server.source_file_names(&project)?;
         let root = project.root_dir.clone().unwrap_or_else(|| directory.clone()).trim_end_matches('/').to_string();
         let counts = SessionCounts { program_files: files.len(), open_ms: started.elapsed().as_millis(), ..SessionCounts::default() };
-        Ok(Session { server, project, version, directory, root, files, tables: HashMap::new(), type_symbols: HashMap::new(), properties: HashMap::new(), located: HashMap::new(), aliased: HashMap::new(), exports: HashMap::new(), counts })
+        Ok(Session { server, project, version, directory, root, files, tables: HashMap::new(), type_symbols: HashMap::new(), properties: HashMap::new(), located: HashMap::new(), aliased: HashMap::new(), exports: HashMap::new(), answers: HashMap::new(), counts })
     }
 
     /// A path of the program relative to the source root, when it is inside it.
@@ -86,6 +89,11 @@ impl Session {
         self.tables.insert(path.to_string(), Rc::clone(&table));
         self.counts.node_tables += 1;
         Ok(table)
+    }
+
+    /// Whether the node table of a file is kept.
+    pub fn has_table(&self, path: &str) -> bool {
+        self.tables.contains_key(path)
     }
 
     /// Forgets the node table of a file, for checks that visit each file once.
@@ -137,9 +145,22 @@ impl Session {
         Ok(property)
     }
 
-    /// Any question of the server, decoded.
+    /// Any question of the server, decoded. Questions whose answer depends only on the snapshot are asked
+    /// once per run.
     pub fn ask<T: for<'de> serde::Deserialize<'de>>(&mut self, method: &str, parameters: serde_json::Value) -> Result<T, String> {
-        self.server.answer(&self.project, method, parameters)
+        if !KEPT_METHODS.contains(&method) {
+            return self.server.answer(&self.project, method, parameters);
+        }
+        let key = (method.to_string(), parameters.to_string());
+        let answer = match self.answers.get(&key) {
+            Some(known) => known.clone(),
+            None => {
+                let answer: serde_json::Value = self.server.answer(&self.project, method, parameters)?;
+                self.answers.insert(key, answer.clone());
+                answer
+            }
+        };
+        serde_json::from_value(answer).map_err(|error| format!("{method}: {error}"))
     }
 
     /// `getSymbolAtLocation` of one node, kept for the run.
@@ -161,6 +182,36 @@ impl Session {
             self.located.insert(handle, symbol.map(Rc::new));
         }
         Ok(())
+    }
+
+    /// Many questions of one method, asked without waiting for each answer.
+    pub fn ask_many<T: for<'de> serde::Deserialize<'de>>(&mut self, method: &str, parameters: Vec<serde_json::Value>) -> Result<Vec<T>, String> {
+        if parameters.is_empty() {
+            return Ok(Vec::new());
+        }
+        self.server.answer_many(&self.project, method, parameters)
+    }
+
+    /// Fills the kept answers of `aliased` for the aliases among these symbols.
+    pub fn aliased_ahead<'s>(&mut self, symbols: impl IntoIterator<Item = &'s Symbol>) -> Result<(), String> {
+        let mut missing: Vec<u64> = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        for symbol in symbols {
+            if symbol.flags & super::tables::symbol_flags::ALIAS != 0 && !self.aliased.contains_key(&symbol.id) && seen.insert(symbol.id) {
+                missing.push(symbol.id);
+            }
+        }
+        let questions = missing.iter().map(|id| serde_json::json!({ "symbol": id })).collect();
+        let found: Vec<Option<Symbol>> = self.ask_many("getAliasedSymbol", questions)?;
+        for (id, target) in missing.into_iter().zip(found) {
+            self.aliased.insert(id, target.map(Rc::new));
+        }
+        Ok(())
+    }
+
+    /// The kept answer of `symbol_at`, when it was asked.
+    pub fn known_symbol_at(&self, handle: &str) -> Option<Option<Rc<Symbol>>> {
+        self.located.get(handle).cloned()
     }
 
     /// What an alias stands for; `None` when it resolves to nothing.

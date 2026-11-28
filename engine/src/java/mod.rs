@@ -1,8 +1,10 @@
 pub mod errorprone;
+pub mod checkstyle;
 pub mod cpd;
 mod spotbugs;
 mod facts;
-mod grammar;
+mod annotations_run;
+pub(crate) mod grammar;
 pub(crate) mod fields;
 mod flow;
 mod helpers;
@@ -27,11 +29,16 @@ impl Language for Java {
     fn grammar(&self) -> tree_sitter::Language { tree_sitter_java::LANGUAGE.into() }
     /// Text the grammar parses in place of the file, same length: see `grammar::masked`.
     fn grammar_text(&self, text: &str) -> Option<String> { grammar::masked(text) }
+    fn names(&self, text: &str, tree: &tree_sitter::Tree) -> crate::engine::source::Names { grammar::names::escaped(text, tree) }
+    fn broken(&self, file: &SourceFile) -> bool {
+        file.tree.root_node().has_error() || grammar::literals::has_invalid_literal(file)
+    }
     fn rules(&self) -> Vec<Box<dyn FileRule>> {
         let mut rules: Vec<Box<dyn FileRule>> = vec![
             Box::new(magic_number::MagicNumber),
             Box::new(visibility::VisibilityModifier),
         ];
+        rules.push(Box::new(checkstyle::Checkstyle));
         rules.extend(naming::rules());
         rules.extend(statements::rules());
         rules.extend(pmd_sample::rules());
@@ -48,6 +55,6 @@ impl Language for Java {
     fn facts(&self, file: &SourceFile) -> FileFacts { facts::facts(file) }
     fn outline(&self, file: &SourceFile) -> Option<String> { Some(types::project::outline(file)) }
     fn project(&self, files: &[SourceFile], options: &Options, needed: bool) -> Box<Project> {
-        if needed { Box::new(types::project::build(files, &options.classpath, options.release)) } else { Box::new(()) }
+        if needed { Box::new(types::project::build(files, options)) } else { Box::new(()) }
     }
 }

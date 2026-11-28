@@ -1,0 +1,1 @@
+export const insecure = process.env.NODE_TLS_REJECT_UNAUTHORIZED === "0";

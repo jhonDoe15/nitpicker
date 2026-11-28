@@ -1,4 +1,5 @@
 import { leavesRun } from '../canonical/effects.mts';
+import { cellAt, suffixTable, type Table } from '../align/lists.mts';
 import { alignLists, alignPair } from '../align/align.mts';
 import type { Alignment } from '../align/align.mts';
 import { createState } from '../align/state.mts';
@@ -20,7 +21,11 @@ type Placed = {
 };
 type Stretch = { readonly i: number; readonly j: number; readonly length: number };
 type Window = { readonly offset: number; readonly length: number };
-type KeyedBlock = { readonly block: TreeNode; readonly keys: string[] };
+type KeyedBlock = {
+  readonly block: TreeNode;
+  readonly keys: readonly number[];
+  readonly present: ReadonlySet<number>;
+};
 type RunMatch = Alignment & { readonly statements: readonly [TreeNode[], TreeNode[]] };
 
 function* cells<Row, Column>(
@@ -34,26 +39,25 @@ function* cells<Row, Column>(
   }
 }
 
-function runLengths(
-  left: readonly string[],
-  right: readonly string[],
-): { readonly table: Int32Array; readonly width: number } {
-  const width = right.length + 1;
-  const table = new Int32Array((left.length + 1) * width);
-  for (const [i, j] of cells([...left.keys()].toReversed(), [...right.keys()].toReversed())) {
-    table[i * width + j] = left[i] === right[j] ? (table[(i + 1) * width + j + 1] ?? 0) + 1 : 0;
-  }
-  return { table, width };
+function runLengths(left: readonly number[], right: readonly number[]): Table {
+  return suffixTable(left, right, ({ table, width }, i, j) =>
+    left[i] === right[j] ? cellAt(table, (i + 1) * width + j + 1) + 1 : 0,
+  );
 }
 
-function commonStretches(left: readonly string[], right: readonly string[]): Stretch[] {
-  if (left.length * right.length > THRESHOLDS.maxListCells) {
+function commonStretches(leftBlock: KeyedBlock, rightBlock: KeyedBlock): Stretch[] {
+  const [left, right] = [leftBlock.keys, rightBlock.keys];
+  if (
+    left.length * right.length > THRESHOLDS.maxListCells ||
+    !left.some((key) => rightBlock.present.has(key))
+  ) {
     return [];
   }
   const { table, width } = runLengths(left, right);
   const stretches: Stretch[] = [];
-  for (const [i, j] of cells([...left.keys()], [...right.keys()])) {
-    const length = table[i * width + j] ?? 0;
+  const columns = [...right.keys()];
+  for (const [i, j] of cells(left.keys(), columns)) {
+    const length = cellAt(table, i * width + j);
     const maximal = i === 0 || j === 0 || left[i - 1] !== right[j - 1];
     if (maximal && length >= THRESHOLDS.minRunStatements) {
       stretches.push({ i, j, length: Math.min(length, THRESHOLDS.maxRunWindow) });
@@ -146,15 +150,21 @@ function bestWindow(sides: Sides, stretch: Stretch): RunMatch | undefined {
   return undefined;
 }
 
-function blockKeys(tree: TreeNode, cachedKey: KeyCache): KeyedBlock[] {
-  return blocksOf(tree).map((block) => ({
-    block,
-    keys: block.children.map((statement) => cachedKey(statement, KEY_MODES.abstract)),
-  }));
+function blockKeys(tree: TreeNode, cachedKey: KeyCache, ids: Map<string, number>): KeyedBlock[] {
+  return blocksOf(tree).map((block) => {
+    const keys = block.children.map((statement) => {
+      const key = cachedKey(statement, KEY_MODES.abstract);
+      const id = ids.get(key) ?? ids.size;
+      ids.set(key, id);
+      return id;
+    });
+    return { block, keys, present: new Set(keys) };
+  });
 }
 
 function blockPairs(trees: Pair, cachedKey: KeyCache): Generator<[KeyedBlock, KeyedBlock]> {
-  return cells(blockKeys(trees[0], cachedKey), blockKeys(trees[1], cachedKey));
+  const ids = new Map<string, number>();
+  return cells(blockKeys(trees[0], cachedKey, ids), blockKeys(trees[1], cachedKey, ids));
 }
 
 function runsBetween(
@@ -167,7 +177,7 @@ function runsBetween(
     right: { tree: trees[1], block: right.block },
     cachedKey,
   };
-  return commonStretches(left.keys, right.keys)
+  return commonStretches(left, right)
     .map((stretch) => bestWindow(sides, stretch))
     .filter((found) => found !== undefined);
 }

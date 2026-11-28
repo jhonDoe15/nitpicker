@@ -1,0 +1,53 @@
+  <rule name="UnguardedCyclicRecursion" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This method calls itself with a value reached from its parameter through a reference that can lead back (dependencies, references, a cause chain, interfaces), and nothing remembers what it has visited. A cycle ends in a StackOverflowError, and a node shared by two paths (a diamond of interfaces, a shared dependency) is walked once per path, so the cost grows exponentially with depth. Pass a Set of visited values and return when the value is already in it (if (!visited.add(task)) return), or stop at a depth limit.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $guardName := 'depth|level|seen|visited|visiting|stack|memo|cache|limit|remaining|budget|ttl',
+    $getters := ('getCause', 'getCauses', 'getParents', 'getReferences', 'getDependencies', 'getDependents',
+                 'getDeps', 'getImporters', 'getImports', 'getEdges', 'getLinks', 'getNeighbors', 'getNeighbours',
+                 'getSupertypes', 'getSuperTypes', 'getInterfaces', 'getBases', 'getBaseTypes', 'getSuppressed'),
+    $fields := ('cause', 'causes', 'parents', 'references', 'dependencies', 'dependents', 'deps', 'importers',
+                'imports', 'edges', 'links', 'neighbors', 'supertypes', 'bases', 'baseTypes'),
+    $step := function($e, $p) {
+      exists($e/descendant-or-self::MethodCall[@MethodName = $getters][*[1][self::VariableAccess[@Name = $p]]]
+             | $e/descendant-or-self::FieldAccess[@Name = $fields][*[1][self::VariableAccess[@Name = $p]]])
+    },
+    $reached := function($arg, $p, $m) {
+      let $inner := ($arg/self::CastExpression/*[last()], $arg)[1]
+      return exists($inner/self::MethodCall[@MethodName = 'getCause'][*[1][self::VariableAccess[@Name = $p]]]
+                    | $inner/self::FieldAccess[@Name = 'cause'][*[1][self::VariableAccess[@Name = $p]]])
+        or (some $v in $inner/self::VariableAccess/@Name satisfies
+              exists($m//ForeachStatement[LocalVariableDeclaration/VariableDeclarator/VariableId/@Name = $v]
+                                         [$step(*[2], $p)]
+                     | $m//LambdaExpression[LambdaParameterList/LambdaParameter/VariableId/@Name = $v]
+                         [$step(ancestor::MethodCall[1], $p)]
+                     | $m//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $v][$step(*[2], $p)]))
+    },
+    $treeTypes := ('com.github.javaparser.ast.Node', 'org.w3c.dom.Node', 'com.fasterxml.jackson.databind.JsonNode',
+                   'com.google.gson.JsonElement', 'java.io.File', 'java.nio.file.Path', 'com.sun.source.tree.Tree',
+                   'javax.lang.model.element.Element', 'org.eclipse.jdt.core.dom.ASTNode')
+return
+//MethodDeclaration[Block]
+  [not(.//VariableId[matches(@Name, $guardName, 'i')])]
+  [let $locals := .//LocalVariableDeclaration/VariableDeclarator/VariableId/@Name
+   return not(.//(VariableAccess | FieldAccess)
+                [matches(@Name, $guardName, 'i')
+                 or ((pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map'))
+                     and not(@Name = $locals))])]
+  /(let $m := ., $name := @Name, $arity := count(FormalParameters/FormalParameter)
+    return (for $param in FormalParameters/FormalParameter
+                [not(some $t in $treeTypes satisfies VariableId[pmd-java:typeIs($t)])]
+            return
+              let $p := $param/VariableId/@Name,
+                  $index := count($param/preceding-sibling::FormalParameter) + 1
+              return ($m/Block//MethodCall[@MethodName = $name][ArgumentList/@Size = $arity]
+                        [*[1][self::ArgumentList or self::ThisExpression]]
+                        [$reached(ArgumentList/*[$index], $p, $m)]
+                        [not(ArgumentList/*[$index][pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Map')])
+                         or $param/VariableId[pmd-java:typeIs('java.lang.Iterable')]])[1])[1])
+]]></value>
+      </property>
+    </properties>
+  </rule>

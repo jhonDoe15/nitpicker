@@ -1,0 +1,121 @@
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { referencesOf, type SourceContext } from '../analysis/constant-resolution.mts';
+import type { ModuleBindings } from '../analysis/subprocess-calls.mts';
+import { trackedBindings } from '../processes/process-callees.mts';
+import { ancestorsOf, contains } from '../typed/node-views.mts';
+import { childStarter, stepCall, type ChildStarter } from './child-steps.mts';
+
+type Step = {
+  readonly statement: TSESTree.Statement;
+  readonly id: TSESTree.Identifier;
+  readonly child: boolean;
+  readonly plain: boolean;
+};
+
+type Scan = {
+  readonly context: SourceContext;
+  readonly bindings: ModuleBindings;
+  readonly startsChild: ChildStarter;
+};
+
+function stepOf(
+  { context, bindings, startsChild }: Scan,
+  statement: TSESTree.Statement,
+): Step | undefined {
+  if (
+    statement.type !== AST_NODE_TYPES.VariableDeclaration ||
+    statement.declarations.length !== 1
+  ) {
+    return undefined;
+  }
+  const [declarator] = statement.declarations;
+  const call = stepCall(declarator.init ?? undefined);
+  if (declarator.id.type !== AST_NODE_TYPES.Identifier || call === undefined) {
+    return undefined;
+  }
+  return {
+    statement,
+    id: declarator.id,
+    child: startsChild(context, call, bindings),
+    plain: call.callee.type === AST_NODE_TYPES.Identifier,
+  };
+}
+
+function references(
+  context: SourceContext,
+  id: TSESTree.Identifier,
+): readonly TSESTree.Identifier[] {
+  return referencesOf(context, id, id.name)
+    .map((reference) => reference.identifier)
+    .filter(
+      (identifier): identifier is TSESTree.Identifier =>
+        identifier.type === AST_NODE_TYPES.Identifier && identifier !== id,
+    );
+}
+
+function readIn(context: SourceContext, step: Step, statement: TSESTree.Statement): boolean {
+  return references(context, step.id).some((identifier) => contains(statement, identifier));
+}
+
+function combined(context: SourceContext, local: Step, child: Step): boolean {
+  const childReads = references(context, child.id);
+  return references(context, local.id).some((identifier) =>
+    ancestorsOf(identifier).some(
+      (ancestor) =>
+        ancestor.type === AST_NODE_TYPES.ArrayExpression &&
+        !contains(child.statement, ancestor) &&
+        childReads.some((read) => contains(ancestor, read)),
+    ),
+  );
+}
+
+function check(scan: Scan, body: TSESTree.BlockStatement): Step[] {
+  const { context } = scan;
+  const steps = body.body.flatMap((statement) => stepOf(scan, statement) ?? []);
+  return steps.filter(
+    (step, index) =>
+      step.child &&
+      steps
+        .slice(0, index)
+        .some(
+          (local) =>
+            !local.child &&
+            local.plain &&
+            !readIn(context, local, step.statement) &&
+            combined(context, local, step),
+        ),
+  );
+}
+
+export const rule: TSESLint.RuleModule<'childAfterLocalWork'> = {
+  meta: {
+    type: 'suggestion',
+    docs: {
+      description:
+        'Disallow waiting on a child process after in-process work it does not depend on',
+    },
+    schema: [],
+    messages: {
+      childAfterLocalWork:
+        'This waits for a child process after in-process work that the child does not read, and the two results are only combined later. The parent keeps the memory that work grew (V8 does not give the pages back) while the child runs, so the machine holds both peaks at once. Run the child step first and the in-process step after it; the result keeps its order.',
+    },
+  },
+  create(context) {
+    const startsChild = childStarter();
+    return trackedBindings('plain', (current) => {
+      function visit(node: TSESTree.FunctionLike): void {
+        if (node.body?.type !== AST_NODE_TYPES.BlockStatement) {
+          return;
+        }
+        for (const step of check({ context, bindings: current(), startsChild }, node.body)) {
+          context.report({ node: step.statement, messageId: 'childAfterLocalWork' });
+        }
+      }
+      return {
+        FunctionDeclaration: visit,
+        FunctionExpression: visit,
+        ArrowFunctionExpression: visit,
+      };
+    });
+  },
+};

@@ -18,6 +18,8 @@ import {
   spotbugsOnEngine,
   spotbugsPlanOf,
 } from '../spotbugs/spotbugs-engine.mts';
+import { checkstyleEnginePlanOf, checkstyleOnEngine } from '../checkstyle/checkstyle-engine.mts';
+import { mergeReports } from '../checkstyle/checkstyle-xml.mts';
 
 export const PMD_RULESETS_LIST = 'pmd-rulesets.txt';
 export const PMD_RUN_RULESETS_LIST = 'pmd-run-rulesets.txt';
@@ -77,6 +79,18 @@ const WRITERS = new Map<string, (plan: RulesPlan) => void>([
   ['spotbugs-engine', writeSpotbugsEngine],
   ['checkstyle-config', writeCheckstyleConfig],
   ['checkstyle-guards', writeCheckstyleGuards],
+  [
+    'checkstyle-engine',
+    (plan) => {
+      checkstyleOnEngine(checkstyleEnginePlanOf(plan), process.env, { log: process.stderr });
+    },
+  ],
+  [
+    'checkstyle-merge',
+    (plan) => {
+      mergeReports(planText(plan, 'report'), planText(plan, 'engineReport'));
+    },
+  ],
 ]);
 
 export function writeRules(kind: string | undefined, plan: RulesPlan): void {

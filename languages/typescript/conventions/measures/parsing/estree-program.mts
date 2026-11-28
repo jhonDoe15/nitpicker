@@ -1,5 +1,6 @@
 import { createRequire } from 'node:module';
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { cachedValue } from '../../../../../shared/values/caching/cached-value.mts';
 import { fieldOf, isPlainObject } from '../../../../../shared/values/readers.mts';
 import { childrenOf } from '../../../preset/eslint-plugin/rules/loops/loop-shapes.mts';
 import { isNode, type VisitorKeys } from '../../../preset/eslint-plugin/rules/typed/node-views.mts';
@@ -13,13 +14,30 @@ type UnparsableProgram = {
 export type ProgramResult = ParsedProgram | UnparsableProgram;
 
 type Parser = {
-  readonly parseForESLint: (text: string, options: object) => unknown;
+  readonly parse: (text: string, options: object) => unknown;
 };
+type Estree = { readonly parser: Parser; readonly visitorKeys: unknown };
 
 const load = createRequire(import.meta.url);
+const loaded = new Map<string, Estree>();
 
 function isParser(value: unknown): value is Parser {
-  return typeof fieldOf(value, 'parseForESLint') === 'function';
+  return typeof fieldOf(value, 'parse') === 'function';
+}
+
+function loadedEstree(): Estree {
+  const parserPath = createRequire(load.resolve('typescript-eslint')).resolve(
+    '@typescript-eslint/parser',
+  );
+  const fromParser = createRequire(parserPath);
+  const parser: unknown = fromParser('@typescript-eslint/typescript-estree');
+  if (!isParser(parser)) {
+    throw new TypeError('@typescript-eslint/typescript-estree does not export a parser');
+  }
+  return {
+    parser,
+    visitorKeys: fieldOf(fromParser('@typescript-eslint/visitor-keys'), 'visitorKeys'),
+  };
 }
 
 function isVisitorKeys(value: unknown): value is VisitorKeys {
@@ -32,19 +50,15 @@ function isProgram(value: unknown): value is TSESTree.Program {
 
 export function parseProgram(text: string, file: string): ProgramResult {
   try {
-    const parser: unknown = createRequire(load.resolve('typescript-eslint'))(
-      '@typescript-eslint/parser',
-    );
-    if (!isParser(parser)) {
-      throw new TypeError('@typescript-eslint/parser does not export a parser');
-    }
-    const parsed = parser.parseForESLint(text, {
+    const estree = cachedValue(loaded, 'estree', loadedEstree);
+    const ast = estree.parser.parse(text, {
+      jsx: false,
       sourceType: 'module',
       range: true,
+      loc: true,
       filePath: file,
     });
-    const ast = fieldOf(parsed, 'ast');
-    const visitorKeys = fieldOf(parsed, 'visitorKeys');
+    const { visitorKeys } = estree;
     if (!(isProgram(ast) && isVisitorKeys(visitorKeys))) {
       throw new TypeError('the parser returned no program');
     }

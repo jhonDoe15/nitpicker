@@ -61,7 +61,8 @@ impl<'t> Flow<'_, 't> {
                 eprintln!("   arg {} may {} known {:?}", self.context.text(actual).lines().next().unwrap_or(""), self.may_be_null(actual), self.known(strip(actual)));
             }
         }
-        let Some((call, _)) = resolved else { return };
+        let Some((call, formals)) = resolved else { return };
+        let call = anonymous_override(self.context, node, call, &formals);
         let formals = call.method.parameters.len();
         if formals == 0 {
             return;
@@ -74,11 +75,8 @@ impl<'t> Flow<'_, 't> {
         for (at, actual) in actuals.iter().enumerate() {
             let slot = at.min(formals - 1);
             let spread = call.method.varargs && at >= formals - 1;
-            let whole = spread && actuals.len() == formals && {
-                let kind = resolver.type_of(*actual);
-                strip(*actual).kind() == "null_literal" || matches!(kind, Some(Type::Array(_)))
-            };
-            let needed = if whole { annotated(self.context, &call.declaring) } else { required[slot] };
+            let whole = spread && actuals.len() == formals && super::whole_array(self.context, &call, *actual);
+            let needed = if whole { annotated(self.context, &call.declaring) && call.method.flags & flag::NULLABLE_VARARGS == 0 } else { required[slot] };
             if !needed || !self.may_be_null(*actual) || !reported.insert((actual.id(), PASSED)) {
                 continue;
             }
@@ -94,8 +92,9 @@ impl<'t> Flow<'_, 't> {
         match unit.kind() {
             "method_declaration" => {
                 let Some(kind) = unit.child_by_field_name("type") else { return false };
-                let primitive = matches!(kind.kind(), "integral_type" | "floating_point_type" | "boolean_type" | "void_type");
-                !primitive && self.context.text(kind) != "Void" && !crate::java::helpers::marked_nullable(self.context.file, unit)
+                let array = unit.child_by_field_name("dimensions").is_some();
+                let primitive = !array && matches!(kind.kind(), "integral_type" | "floating_point_type" | "boolean_type" | "void_type");
+                !primitive && (array || self.context.text(kind) != "Void") && !crate::java::helpers::marked_nullable(self.context.file, unit)
             }
             "lambda_expression" => {
                 let resolver = self.context.resolver;
@@ -150,7 +149,7 @@ impl<'t> Flow<'_, 't> {
     }
 
     fn maybe(&self, node: Node) -> bool {
-        matches!(self.known(strip(node)), Some(NULL | NULLABLE))
+        strip(node).kind() == "null_literal" || matches!(self.known(strip(node)), Some(NULL | NULLABLE))
     }
 
     pub(super) fn boxed(&self, node: Node) -> bool {
@@ -186,12 +185,16 @@ impl<'t> Flow<'_, 't> {
             "unary_expression" | "update_expression" => true,
             "assignment_expression" if operator == Some("=") => field("right") == Some(node) && field("left").is_some_and(|left| self.primitive(left)),
             "assignment_expression" => field("left").and_then(|left| self.context.resolver.type_of(left)).is_none_or(|kind| kind.name() != "java.lang.String"),
-            "variable_declarator" => field("value") == Some(node) && primitive_name(parent(above).and_then(|declaration| declaration.child_by_field_name("type"))),
+            "variable_declarator" => {
+                let declared = parent(above).and_then(|declaration| declaration.child_by_field_name("type"));
+                field("value") == Some(node) && field("dimensions").is_none() && primitive_name(declared)
+            }
             "cast_expression" => field("value") == Some(node) && primitive_name(field("type")),
             "array_access" => field("index") == Some(node),
             "return_statement" => {
                 let method = crate::engine::source::ancestor(above, &["lambda_expression", "method_declaration", "class_body"]);
-                primitive_name(method.filter(|method| method.kind() == "method_declaration").and_then(|method| method.child_by_field_name("type")))
+                let method = method.filter(|method| method.kind() == "method_declaration" && method.child_by_field_name("dimensions").is_none());
+                primitive_name(method.and_then(|method| method.child_by_field_name("type")))
             }
             "argument_list" => {
                 let Some(call) = parent(above) else { return false };
@@ -262,7 +265,7 @@ impl<'t> Flow<'_, 't> {
     /// A field's own initializer.
     pub(super) fn initialized(&mut self, declarator: Node<'t>) {
         let (Some(name), Some(value), Some(declaration)) = (declarator.child_by_field_name("name"), declarator.child_by_field_name("value"), parent(declarator)) else { return };
-        if crate::java::helpers::marked_nullable(self.context.file, declaration) {
+        if crate::java::helpers::marked_nullable(self.context.file, declaration) || super::fields::excluded(self.context, declaration) {
             return;
         }
         if self.may_be_null(value) {
@@ -287,7 +290,8 @@ pub(super) fn overriding(context: &Context, method: Node) {
         return;
     }
     let generic = if above.type_parameters.is_empty() { String::new() } else { format!("<{}>", above.type_parameters.join(",")) };
-    let shown = format!("{}.{generic}{}({})", declaring.name, above.name, above.shown);
+    let parameters = if above.detail.marked.is_empty() { &above.shown } else { &above.detail.marked };
+    let shown = format!("{}.{generic}{}({parameters})", declaring.name, above.name);
     let void = matches!(&above.returns, Type::Primitive(name) if *name == "void");
     let models = super::models::NONNULL_RETURNS;
     let nullable_above = (above.flags & flag::NULLABLE != 0 || !rows(super::models::ALWAYS_NULLABLE_RETURNS, &declaring.name, above).is_empty()) && rows(models, &declaring.name, above).is_empty();
@@ -312,6 +316,26 @@ pub(super) fn overriding(context: &Context, method: Node) {
     }
 }
 
+/// A call on `new X() { ... }` calls the method the anonymous class declares when it overrides the one found in `X`,
+/// as javac binds it.
+pub(super) fn anonymous_override(context: &Context, call_node: Node, mut call: crate::java::types::expr::Call, formals: &[Type]) -> crate::java::types::expr::Call {
+    let Some(object) = call_node.child_by_field_name("object").map(unwrap) else { return call };
+    if object.kind() != "object_creation_expression" || !children(object).iter().any(|part| part.kind() == "class_body") {
+        return call;
+    }
+    let Some(name) = context.resolver.scope.names.get(&object.id()) else { return call };
+    let Some(info) = context.resolver.index.get(name) else { return call };
+    let own = info.methods.iter().find(|method| method.name == call.method.name && !method.is_static && {
+        let fitted = formals.len() == method.parameters.len() && formals.iter().zip(&method.parameters).all(|(formal, own)| formal.erased() == *own);
+        method.parameters == call.method.parameters || fitted
+    });
+    if let Some(own) = own {
+        call.declaring = info.name.clone();
+        call.method = own.clone();
+    }
+    call
+}
+
 /// The parameter positions a library model table gives for exactly this method of this class.
 pub(super) fn rows(table: &'static [super::models::Model], class: &str, method: &crate::java::types::model::Method) -> Vec<usize> {
     let erased = erase(&method.shown);
@@ -319,8 +343,12 @@ pub(super) fn rows(table: &'static [super::models::Model], class: &str, method: 
 }
 
 /// The parameters of a method that accept null: its own marks where its class is checked, then the library models.
+/// A variable arity parameter accepts null when its array may be null.
 pub(super) fn accepted(context: &Context, class: &str, method: &crate::java::types::model::Method) -> u64 {
     let mut accepted = if annotated(context, class) { method.nullable_parameters } else { 0 };
+    if let Some(last) = method.parameters.len().checked_sub(1).filter(|last| method.varargs && *last < 64) {
+        accepted = accepted & !(1 << last) | u64::from(method.flags & flag::NULLABLE_VARARGS != 0 && annotated(context, class)) << last;
+    }
     for at in rows(super::models::EXPLICITLY_NULLABLE_PARAMETERS, class, method) {
         accepted |= 1 << at.min(63);
     }

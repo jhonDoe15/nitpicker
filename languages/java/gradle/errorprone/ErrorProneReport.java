@@ -16,16 +16,21 @@ import javax.tools.*;
  * crashed, as a JSON array. Usage: {@code ErrorProneReport <report.json> <checks.json> <arguments file>...}; the
  * report, the arguments files and the crash handling are described in docs/java-preset/error-prone-and-nullaway.md.
  * A failed compilation exits with status 1 and javac's errors on stderr. With {@code -Dnitpicker.errorprone.workers=N}
- * it splits each source set into up to N slices, compiled at once against the project's own classes.
+ * it splits each source set into up to N slices, compiled at once against the project's own classes. An arguments file
+ * with {@code --narrowed} lists only part of its source set, which is compiled against the project's own classes too;
+ * the engine step that wrote it has turned off, with project flags, the checks that do not need to run, Immutable among
+ * them when the runner would not run it on the whole source set.
  */
 public final class ErrorProneReport {
   private static final String SOURCES = "--sources";
   private static final String TEST_ONLY = "--test-only";
+  private static final String NARROWED = "--narrowed";
   private static final String OWN_CLASSES = "--own-classes=";
   private static final String PROJECT_ARG = "--project-arg=";
   private static final String PROJECT_FLAG = "--errorprone-flag=";
   private static final String SKIP_GENERATED = "--skip-generated";
   private static final String GENERATED_ROOT = "--generated-root=";
+  private static final String PROCESSOR_OUTPUT = "--processor-output=";
   private static final String EXCLUDED_PATHS = PROJECT_FLAG + "-XepExcludedPaths:";
   private static final String PATCH_LOCATION = PROJECT_FLAG + "-XepPatchLocation:";
   private static final String FIX_CHECKS = PROJECT_FLAG + "-XepNitpickerFixChecks:";
@@ -49,6 +54,8 @@ public final class ErrorProneReport {
   private static final long STARTED = System.currentTimeMillis();
   private static final String SKIPPED = "errorprone-skipped.txt";
 
+  private static final java.lang.reflect.Method START = treeMethod("getStartPosition");
+  private static final java.lang.reflect.Method PREFERRED = treeMethod("getPreferredPosition");
   private static final Map<String, Path> FIX_CHECK_CLASSES = new HashMap<>();
   private static final Map<String, int[]> LINE_STARTS = new ConcurrentHashMap<>();
 
@@ -153,13 +160,15 @@ public final class ErrorProneReport {
   }
 
   /**
-   * With {@code --skip-generated}, adds an {@code -XepExcludedPaths} pattern for each
-   * {@code --generated-root=<dir>} line, joined with a pattern the project declared. Error Prone
+   * Adds an {@code -XepExcludedPaths} pattern for the {@code -s} folder, where annotation processors write sources
+   * during this compile, and with {@code --skip-generated} for each {@code --generated-root=<dir>} line, joined with a
+   * pattern the project declared. Findings in the {@code -s} folder could never be placed in the project. Error Prone
    * matches the pattern against the file's decoded path, and the plugin option is split at whitespace, so a
    * directory's own whitespace is written as a hexadecimal escape.
    */
   static List<String> withoutGenerated(List<String> head, List<String> lines) {
-    if (!head.contains(SKIP_GENERATED)) {
+    int output = head.indexOf("-s") + 1;
+    if (!head.contains(SKIP_GENERATED) && output == 0) {
       return lines;
     }
     List<String> kept = new ArrayList<>();
@@ -171,8 +180,12 @@ public final class ErrorProneReport {
         kept.add(line);
       }
     }
-    List<String> roots = head.stream().filter(line -> line.startsWith(GENERATED_ROOT))
-        .map(line -> pathPattern(line.substring(GENERATED_ROOT.length()))).toList();
+    List<String> roots = new ArrayList<>(head.stream()
+        .filter(line -> head.contains(SKIP_GENERATED) && line.startsWith(GENERATED_ROOT))
+        .map(line -> pathPattern(line.substring(GENERATED_ROOT.length()))).toList());
+    if (output > 0) {
+      roots.add(pathPattern(head.get(output)));
+    }
     if (!roots.isEmpty()) {
       patterns.add(".*(?:" + String.join("|", roots) + ")/.*");
     }
@@ -262,7 +275,8 @@ public final class ErrorProneReport {
         projectArgs.add(line.substring(PROJECT_ARG.length()));
       } else if (form.matches()) {
         level.put(form.group(1), form.group(2));
-      } else if (!line.equals(TEST_ONLY) && !line.equals(SKIP_GENERATED) && !line.startsWith(GENERATED_ROOT)
+      } else if (!line.equals(TEST_ONLY) && !line.equals(NARROWED) && !line.equals(SKIP_GENERATED)
+          && !line.startsWith(GENERATED_ROOT) && !line.startsWith(PROCESSOR_OUTPUT)
           && !line.startsWith(OWN_CLASSES) && !line.startsWith(PROJECT_FLAG)) {
         options.add(line);
       }
@@ -342,21 +356,27 @@ public final class ErrorProneReport {
     Path fixChecks = fixChecks(compiler, head, FIX_CHECK_CLASSES);
     List<String> unsuppressed = lombokUnsuppressed(sources);
     List<String> others = sources.stream().filter(source -> !unsuppressed.contains(source)).toList();
-    boolean immutable = immutableInReach(javacOptions(head, sources), sources);
+    boolean narrowed = head.contains(NARROWED);
+    boolean immutable = narrowed || immutableInReach(javacOptions(head, sources), sources);
     List<Job> jobs = new ArrayList<>();
-    for (List<String> group : Stream.of(others, unsuppressed).filter(list -> !list.isEmpty()).toList()) {
+    List<List<String>> groups = Stream.of(others, unsuppressed).filter(list -> !list.isEmpty()).toList();
+    for (List<String> group : groups) {
       List<List<String>> slices = slices(group);
       for (int slice = 0; slice < slices.size(); slice++) {
         List<String> files = slices.get(slice);
         List<String> options = javacOptions(head, sources);
+        if (groups.size() > 1 || slices.size() > 1) {
+          ownOutput(options, (group == unsuppressed ? "lombok-" : "slice-") + slice);
+        }
         if (fixChecks != null) {
           int processors = options.indexOf(PROCESSOR_PATH) + 1;
           options.set(processors, options.get(processors) + java.io.File.pathSeparator + fixChecks);
         }
         int classpath = options.indexOf("-classpath") + 1;
-        if (files.size() < sources.size() && classpath == 0) {
+        boolean part = narrowed || files.size() < sources.size();
+        if (part && classpath == 0) {
           options.addAll(List.of("-classpath", ownClasses));
-        } else if (files.size() < sources.size()) {
+        } else if (part) {
           options.set(classpath, options.get(classpath) + java.io.File.pathSeparator + ownClasses);
         }
         String patchDirectory = Integer.toHexString(argumentsFile.toAbsolutePath().normalize().toString().hashCode())
@@ -367,6 +387,21 @@ public final class ErrorProneReport {
       }
     }
     return jobs;
+  }
+
+  /**
+   * Moves a job's {@code -d} and {@code -s} folders into a subfolder of their own. Jobs run at once, and annotation
+   * processors that merge an index file in the class output would otherwise read each other's half-written files.
+   */
+  static void ownOutput(List<String> options, String job) throws IOException {
+    for (String flag : List.of("-d", "-s")) {
+      int at = options.indexOf(flag) + 1;
+      if (at > 0) {
+        Path folder = Path.of(options.get(at)).resolve(job);
+        Files.createDirectories(folder);
+        options.set(at, folder.toString());
+      }
+    }
   }
 
   /**
@@ -497,21 +532,24 @@ public final class ErrorProneReport {
     List<String> run = new ArrayList<>(options);
     run.set(run.size() - 1, run.getLast() + crashes.keySet().stream().map(check -> " -Xep:" + check + ":OFF")
         .collect(Collectors.joining()));
-    DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+    DiagnosticCollector<JavaFileObject> collected = new DiagnosticCollector<>();
+    List<Diagnostic<? extends JavaFileObject>> diagnostics;
     boolean compiled;
     Map<String, List<ClassSpan>> classes = new HashMap<>();
     Map<String, Map<Long, Long>> ends = run.getLast().contains("-XepPatchChecks:") ? new HashMap<>() : null;
-    try (StandardJavaFileManager files =
-        compiler.getStandardFileManager(diagnostics, Locale.ROOT, StandardCharsets.UTF_8)) {
+    try (StandardJavaFileManager files = compiler.getStandardFileManager(collected, Locale.ROOT,
+        run.contains("-encoding") ? null : StandardCharsets.UTF_8)) {
       JavacTask task = (JavacTask) compiler.getTask(
-          null, files, diagnostics, run, null, files.getJavaFileObjectsFromStrings(sources));
+          null, files, collected, run, null, files.getJavaFileObjectsFromStrings(sources));
       recordClasses(task, classes, ends);
+      Map<String, Map<Long, Boolean>> generated = lombokOnPath(run) ? recordGenerated(task, parseOptions(run)) : Map.of();
       compiled = task.call();
+      diagnostics = outsideGenerated(collected.getDiagnostics(), generated);
     }
     int foundBefore = entries.size();
     int errorsBefore = errors.size();
     int crashesBefore = crashes.size();
-    for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
+    for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics) {
       String code = diagnostic.getCode() == null ? "" : diagnostic.getCode();
       Matcher crash = CRASH.matcher(diagnostic.getMessage(Locale.ROOT));
       if (code.endsWith(".error.prone") && diagnostic.getSource() != null && isFile(diagnostic.getSource())) {
@@ -529,6 +567,134 @@ public final class ErrorProneReport {
       return failedSilently(compiler, options, sources, entries, errors, crashes);
     }
     return !compiled && errors.size() == errorsBefore;
+  }
+
+  /** Whether Lombok is on the processor path: a jar there whose manifest names a Lombok version. */
+  static boolean lombokOnPath(List<String> options) {
+    int at = options.indexOf(PROCESSOR_PATH) + 1;
+    if (at == 0 || at >= options.size()) {
+      return false;
+    }
+    for (String entry : options.get(at).split(java.io.File.pathSeparator)) {
+      if (entry.endsWith(".jar") && Files.isRegularFile(Path.of(entry))) {
+        try (java.util.jar.JarFile jar = new java.util.jar.JarFile(entry)) {
+          java.util.jar.Manifest manifest = jar.getManifest();
+          if (manifest != null && manifest.getMainAttributes().getValue("Lombok-Version") != null) {
+            return true;
+          }
+        } catch (IOException unreadable) {
+          continue;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Per source file, the positions of trees a processor added to it: trees whose kind, start and preferred position a
+   * plain parse of the file does not give. A position maps to false where only added trees sit, to true where a
+   * written tree has its preferred position there too.
+   */
+  static Map<String, Map<Long, Boolean>> recordGenerated(JavacTask task, List<String> options) {
+    Map<String, Map<Long, Boolean>> generated = new HashMap<>();
+    task.addTaskListener(
+        new TaskListener() {
+          @Override
+          public void started(TaskEvent event) {
+            CompilationUnitTree unit = event.getCompilationUnit();
+            if (event.getKind() == TaskEvent.Kind.ANALYZE && unit != null && isFile(unit.getSourceFile())) {
+              generated.computeIfAbsent(sourcePath(unit.getSourceFile()), file -> addedPositions(unit, options));
+            }
+          }
+        });
+    return generated;
+  }
+
+  /** The options of a compile that decide how a file parses: language level, preview and encoding. */
+  static List<String> parseOptions(List<String> options) {
+    List<String> kept = new ArrayList<>(List.of("-proc:none"));
+    for (int index = 0; index < options.size(); index++) {
+      String option = options.get(index);
+      if (List.of("--release", "-source", "--source", "-encoding").contains(option) && index + 1 < options.size()) {
+        kept.addAll(List.of(option, options.get(++index)));
+      } else if (option.startsWith("--release=") || option.startsWith("--source=") || option.equals("--enable-preview")) {
+        kept.add(option);
+      }
+    }
+    return kept;
+  }
+
+  private static Map<Long, Boolean> addedPositions(CompilationUnitTree unit, List<String> options) {
+    Set<String> written = new HashSet<>();
+    JavacTask plain = (JavacTask) ToolProvider.getSystemJavaCompiler()
+        .getTask(null, null, diagnostic -> { }, options, null, List.of(unit.getSourceFile()));
+    try {
+      for (CompilationUnitTree parsed : plain.parse()) {
+        new TreeScanner<Void, Void>() {
+          @Override
+          public Void scan(Tree tree, Void unused) {
+            if (tree != null) {
+              written.add(treeKey(tree));
+            }
+            return super.scan(tree, unused);
+          }
+        }.scan(parsed, null);
+      }
+    } catch (IOException unreadable) {
+      return Map.of();
+    }
+    Set<Long> added = new HashSet<>();
+    Set<Long> hand = new HashSet<>();
+    new TreeScanner<Void, Void>() {
+      @Override
+      public Void scan(Tree tree, Void unused) {
+        if (tree == null) {
+          return null;
+        }
+        if (!written.contains(treeKey(tree))) {
+          LongStream.of(position(tree, START), position(tree, PREFERRED)).filter(at -> at >= 0).forEach(added::add);
+        } else if (tree.getKind() != Tree.Kind.MODIFIERS && tree.getKind() != Tree.Kind.ANNOTATION) {
+          hand.add(position(tree, PREFERRED));
+        }
+        return super.scan(tree, unused);
+      }
+    }.scan(unit, null);
+    Map<Long, Boolean> places = new HashMap<>();
+    added.forEach(at -> places.put(at, hand.contains(at)));
+    return places;
+  }
+
+  private static String treeKey(Tree tree) {
+    return tree.getKind() + ":" + position(tree, START) + ":" + position(tree, PREFERRED);
+  }
+
+  private static long position(Tree tree, java.lang.reflect.Method position) {
+    try {
+      return ((Number) position.invoke(tree)).longValue();
+    } catch (ReflectiveOperationException unreachable) {
+      throw new IllegalStateException(unreachable);
+    }
+  }
+
+  private static java.lang.reflect.Method treeMethod(String name) {
+    try {
+      return Class.forName("com.sun.tools.javac.tree.JCTree").getMethod(name);
+    } catch (ReflectiveOperationException missing) {
+      throw new IllegalStateException(missing);
+    }
+  }
+
+  /**
+   * The diagnostics without Error Prone's findings at a position only processor-added trees hold. NullAway's stay: a
+   * field a generated constructor leaves uninitialized is fixed in the written code.
+   */
+  static List<Diagnostic<? extends JavaFileObject>> outsideGenerated(
+      List<Diagnostic<? extends JavaFileObject>> diagnostics, Map<String, Map<Long, Boolean>> generated) {
+    return diagnostics.stream().filter(diagnostic -> diagnostic.getCode() == null
+        || !diagnostic.getCode().endsWith(".error.prone") || diagnostic.getSource() == null
+        || !isFile(diagnostic.getSource()) || diagnostic.getMessage(Locale.ROOT).startsWith("[NullAway]")
+        || generated.getOrDefault(sourcePath(diagnostic.getSource()), Map.of()).get(diagnostic.getPosition())
+            != Boolean.FALSE).toList();
   }
 
   static void recordClasses(JavacTask task, Map<String, List<ClassSpan>> classes) {

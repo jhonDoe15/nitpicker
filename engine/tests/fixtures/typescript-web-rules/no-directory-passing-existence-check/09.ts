@@ -1,0 +1,1 @@
+function load(name) { if (fs.existsSync(name)) { return fs.readFileSync(name, "utf8"); } }

@@ -1,0 +1,1 @@
+const q = req.query.q; const v = decodeURIComponent(String(q));

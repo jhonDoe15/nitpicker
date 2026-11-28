@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export const f = (db) => sql`select * from asset ${sql.raw("order by id")} limit 20`.execute(db);

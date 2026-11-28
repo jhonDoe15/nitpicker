@@ -1,0 +1,1 @@
+import { createHash, createHmac } from "node:crypto"; export const id = (s) => createHash(process.env.HASH ?? "md5").update(s).digest();

@@ -4,6 +4,7 @@ use super::{At, Cx, Found};
 use crate::typescript::types::nodes::ROOT;
 use crate::typescript::types::server::Symbol;
 use crate::typescript::types::tables::kind as K;
+use crate::typescript::types::tables::node_flags;
 use serde_json::json;
 use std::collections::HashSet;
 use std::rc::Rc;
@@ -75,6 +76,7 @@ fn imported_names(cx: &mut Cx, file: u32) -> Found<Rc<HashSet<String>>> {
     let table = cx.table(file);
     let t = &*table;
     let mut names = HashSet::new();
+    let mut bindings = Vec::new();
     for statement in t.listed(ROOT, "statements") {
         if t.kind(statement) != K::IMPORT_DECLARATION {
             continue;
@@ -86,22 +88,58 @@ fn imported_names(cx: &mut Cx, file: u32) -> Found<Rc<HashSet<String>>> {
         let Some(clause) = t.child(statement, "importClause") else { continue };
         let named = t.child(clause, "namedBindings").filter(|named| t.kind(*named) == K::NAMED_IMPORTS);
         let elements = named.map(|named| t.listed(named, "elements")).unwrap_or_default();
-        let bindings = name_of(t, clause).into_iter().chain(elements.into_iter().filter_map(|element| name_of(t, element)));
-        for binding in bindings {
-            let symbol = cx.symbol(At { file, node: binding })?;
-            let target = cx.follow(symbol)?;
-            let mut resolves = false;
-            for declaration in cx.declarations(target.as_deref())? {
-                resolves = resolves || cx.registry.site_by_node.contains_key(&declared_function(cx, declaration)) || cx.registry.constructor_by_class.contains_key(&declaration);
-            }
-            if resolves {
-                names.insert(own_text(t, binding));
-            }
+        bindings.extend(name_of(t, clause).into_iter().chain(elements.into_iter().filter_map(|element| name_of(t, element))));
+    }
+    ask_ahead(cx, file, &bindings)?;
+    for binding in bindings {
+        let symbol = cx.symbol(At { file, node: binding })?;
+        let target = cx.follow(symbol)?;
+        let mut resolves = false;
+        for declaration in cx.declarations(target.as_deref())? {
+            resolves = resolves || cx.registry.site_by_node.contains_key(&declared_function(cx, declaration)) || cx.registry.constructor_by_class.contains_key(&declaration);
+        }
+        if resolves {
+            names.insert(own_text(t, binding));
         }
     }
     let names = Rc::new(names);
     cx.registry.imports_by_file.insert(file, Rc::clone(&names));
     Ok(names)
+}
+
+fn ask_ahead(cx: &mut Cx, file: u32, nodes: &[u32]) -> Found<()> {
+    let handles: Vec<String> = nodes.iter().map(|node| cx.handle(At { file, node: *node })).collect();
+    if cx.session.symbols_ahead(&handles).is_err() {
+        return Ok(());
+    }
+    let found: Vec<Rc<Symbol>> = handles.iter().filter_map(|handle| cx.session.known_symbol_at(handle).flatten()).collect();
+    let _ = cx.session.aliased_ahead(found.iter().map(|symbol| &**symbol));
+    Ok(())
+}
+
+/// Asks in one go for the symbols of the names in a file that may stand for a callable of the project.
+pub fn symbols_ahead(cx: &mut Cx, file: u32) -> Found<()> {
+    if !cx.asked_ahead.insert(file) {
+        return Ok(());
+    }
+    let imported = imported_names(cx, file)?;
+    let table = cx.table(file);
+    let t = &*table;
+    let mut names = Vec::new();
+    let mut pending = vec![ROOT];
+    while let Some(node) = pending.pop() {
+        pending.extend(t.children(node).filter(|child| t.flags(*child) & node_flags::REPARSED == 0));
+        if !matches!(t.kind(node), K::IDENTIFIER | K::PRIVATE_IDENTIFIER) {
+            continue;
+        }
+        let shorthand = t.parent(node).is_some_and(|parent| t.kind(parent) == K::SHORTHAND_PROPERTY_ASSIGNMENT && name_of(t, parent) == Some(node));
+        let text = own_text(t, node);
+        let registry = &cx.registry;
+        if !shorthand && (registry.site_names.contains(&text) || registry.class_names.contains(&text) || imported.contains(&text)) {
+            names.push(node);
+        }
+    }
+    ask_ahead(cx, file, &names)
 }
 
 fn may_be_project(cx: &mut Cx, file: u32, name: &str) -> Found<bool> {

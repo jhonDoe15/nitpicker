@@ -1,0 +1,1 @@
+export const find = (id) => connection.execute("DELETE FROM users WHERE id = " + id);

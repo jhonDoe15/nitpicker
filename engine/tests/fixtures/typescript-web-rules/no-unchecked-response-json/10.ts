@@ -1,0 +1,1 @@
+async function f(url) { const res = await axios.get(url); return res.json(); }

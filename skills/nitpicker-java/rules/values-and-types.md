@@ -164,6 +164,29 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `filter(...).findFirst().isPresent()` or `filter(...).count() > 0`, and `size()` or `isEmpty()` on
   the source instead of on a `toList()` or `new ArrayList<>(source)` copy
   (`pmd/RedundantStreamStep`).
+- Pair two lists by index before you filter either of them, or filter both the same way: after the first
+  dropped entry the positions no longer line up (`pmd/FilteredPositionalPairing`).
+- Merge maps of collections value by value (`computeIfAbsent(key, k -> new HashSet<>()).addAll(values)`),
+  not with `putAll` or `put` in a loop, which keeps only the last source's values of a key
+  (`pmd/ReplacingCollectionMerge`).
+- Answer a question about the collection of a key once per key, not once per element that shares the
+  key (`pmd/RepeatedKeyedScan`).
+- Share one read-only copy of a large collection across the elements of a loop instead of storing a
+  new copy per element (`pmd/LoopInvariantCopy`).
+- Ask a sorted set or map for a range (`subSet`, `tailSet`, `ceiling`, `subMap`) instead of walking it
+  from the start to the first element between two bounds (`pmd/SortedRangeScan`).
+- Do repeated work once: look a reflective member up by its constant name before the loop, not in it
+  (`pmd/ConstantLookupInLoop`); test the kind of a level before you search its subtree while you climb
+  a parent chain (`pmd/SubtreeSearchPerAncestor`); keep the result of `resolve(key)` in a local
+  instead of calling it again after `isPresent()` or a null test, and call a recursive method once per
+  sub-result (`pmd/RepeatedCall`); declare a local after the early exit that does not read it
+  (`pmd/WorkBeforeEarlyExit`); and read and handle one file at a time instead of reading every file
+  into a list that is walked once (`pmd/ReadAllBeforePass`). Walk a directory with `Files.find` or
+  `Files.walkFileTree` when you need the kind or size of each entry (`pmd/StatPerListedEntry`).
+- Index an unchanging field collection once (a `Map` by the compared value, filled where the field is
+  filled) instead of scanning it in a method called from a loop or many places
+  (`pmd/ScanPerCallOverFixedCollection`), and create a cache once for the unit its answers hold for,
+  not on every pass of an inner loop (`pmd/CachePerInnerUnit`).
 - A `Collectors.toMap`, `toUnmodifiableMap`, `toConcurrentMap` value function and a `groupingBy`
   classifier never return `null` (they throw on it): filter the nulls first, map them
   (`Objects.toString`), or collect into a `HashMap` with `collect(HashMap::new, ..., Map::putAll)`
@@ -171,6 +194,14 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - An absent `Optional` is turned into a value with `orElse(default)`, `orElseThrow(() -> new NotFoundException(id))`
   or `orElse(null)` plus a null check where it is used; `orElseGet(null)` passes a null `Supplier` and throws
   when the value is absent (`pmd/OptionalOrElseGetNull`).
+- `BigDecimal.divide(divisor)` with one argument throws `ArithmeticException` when the quotient does not
+  terminate (`1 / 3`): pass a scale and a rounding mode, `divide(divisor, 2, RoundingMode.HALF_EVEN)`, or a
+  `MathContext`, unless the divisor is always a power of ten (`pmd/BigDecimalExactDivide`).
+- Never put a side effect in `peek` or in a block-bodied `map` of a stream that ends in `count()` over a sized
+  source: since Java 9 `count()` skips the pipeline, so use `forEach` and then `size()` (`pmd/PeekSkippedByCount`).
+- The argument of `orElse`, `getOrDefault` or `requireNonNullElse` is evaluated even when the value is present, so a
+  repository, JDBC, HTTP or messaging call, or a method that throws, goes into `orElseGet`, `orElseThrow` or
+  `computeIfAbsent`, never into the fallback argument (`pmd/EagerFallbackDoesIo`).
 - A `Collectors.toMap` over parsed text or request data (a split string, file lines, cookies, headers) has a merge
   function that says what a repeated key means, `toMap(Cookie::getName, Cookie::getValue, (first, second) -> first)`,
   or uses `groupingBy` (`pmd/ToMapDuplicateKey`).
@@ -258,6 +289,19 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   result. Add `if (v == null) return ...;`, annotate the method `@Nullable` and handle it,
   or, when the caller knows the value is set, document it with `Objects.requireNonNull(v, "why")`.
 - A function does not call itself, directly or through another function of the file (`pmd/SelfRecursion`): a retry or poll is a loop over attempt numbers, a tree walk is a loop over a worklist (a `Deque` that each step adds the node's children to), flat data uses `map` or `flatMap`. An exception fits only when the recursion is bounded and deliberate.
+- A recursive walk over references that can lead back (`getDependencies()`, `getReferences()`, `getCause()`,
+  `getInterfaces()`) passes a visited `Set` or a depth limit down (`pmd/UnguardedCyclicRecursion`).
+- A walk over both operands of an expression (`getLeft()` and `getRight()`) loops over the left-leaning chain and
+  recurses only into the right operand, or takes a depth limit (`pmd/OperandDepthRecursion`).
+- Every entry point into a guarded recursion checks the same in-progress `Set` or `Map` as its sibling, or calls the
+  guarded sibling (`pmd/UnguardedRecursionEntry`).
+- A cache never stores an answer that a recursion guard may have cut short in a deeper turn: skip the `put` or mark
+  the value as partial (`pmd/CacheAfterGuardFallback`).
+- A worklist that can add several items per turn keeps a `Set` of the items already expanded
+  (`if (!expanded.add(item)) continue;`): a depth limit alone does not bound the number of paths
+  (`pmd/DepthOnlyWorklist`).
+- A worklist pass whose transfer can remove facts keeps the last output per edge and recomputes each input from them,
+  instead of `input.get(next).addAll(out)` (`pmd/ShrinkingWorklistJoin`).
 - A public method or constructor does not wait a constant it cannot override
   (`pmd/UninjectableDelay`): `Thread.sleep(RETRY_DELAY_MS)` or `TimeUnit.SECONDS.sleep(...)` on a
   `private static final` makes a test wait it out. Take the delay as a parameter, or a field the constructor

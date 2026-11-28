@@ -1,0 +1,1 @@
+import { app } from "electron"; app.commandLine.appendSwitch("ignore-certificate-errors");

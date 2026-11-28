@@ -1,0 +1,1 @@
+it('x', async () => { const rows = await Promise.all(items.map(async (x) => load(x))); expect(rows).toEqual([1, 2]); });

@@ -1,6 +1,5 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { findEngine } from '../../../../../shared/engine/engine-binary.mts';
 import {
   runEngineSync,
@@ -24,8 +23,22 @@ import {
   textsOf,
 } from '../../../../../shared/values/readers.mts';
 import { resolvedRulesets, rulesetReader, type ResolvedRule } from './pmd-catalog.mts';
-import { onlyFiles, renderedRuleset, type RulesetScope } from './pmd-render.mts';
-import { engineRule, portablePattern, ruleLevel, runsOnEngine } from './pmd-rule-parts.mts';
+import {
+  covers,
+  crashLog,
+  isCrashed,
+  onlyFiles,
+  renderedRuleset,
+  sarifOf,
+  type RulesetScope,
+} from './pmd-render.mts';
+import {
+  engineRule,
+  needsWholeRun,
+  ruleLevel,
+  runsOnEngine,
+  runsOnPmd,
+} from './pmd-rule-parts.mts';
 
 export type PmdEnginePlan = {
   readonly reportDir: string;
@@ -47,7 +60,6 @@ export const ENGINE_SARIF = 'pmd-engine.sarif';
 export const ENGINE_LOG = 'pmd-engine-log.txt';
 const ENGINE_RULES = 'pmd-engine-rules.json';
 const ENGINE_REPORT = 'pmd-engine-report.json';
-const CRASHED_RULE = '!';
 const XPATH_RULE_KIND = '_XPath';
 
 export function enginePlanOf(
@@ -82,52 +94,11 @@ function splitOf(file: string, resolve: Resolve): Split | Unresolved {
       include,
       exclude,
       onEngine: rules.filter(runsOnEngine),
-      onPmd: rules.filter((rule) => !runsOnEngine(rule)),
+      onPmd: rules.filter(runsOnPmd),
     };
   } catch (error) {
     return { unresolved: error };
   }
-}
-
-function matchesWhole(pattern: string, file: string): boolean {
-  const portable = new RegExp(portablePattern(pattern));
-  return new RegExp(`^(?:${portable.source})$`).test(file);
-}
-
-function covers({ include, exclude }: RulesetScope, file: string): boolean {
-  return (
-    !exclude.some((pattern) => matchesWhole(pattern, file)) ||
-    include.some((pattern) => matchesWhole(pattern, file))
-  );
-}
-
-function sarifOf(rows: readonly Row[], levels: ReadonlyMap<string, string>): string {
-  const results = rows.map(({ file, rule, line, column, message }) => ({
-    ruleId: rule,
-    message: { text: message },
-    level: levels.get(rule) ?? 'warning',
-    locations: [
-      {
-        physicalLocation: {
-          artifactLocation: { uri: pathToFileURL(file).href },
-          region: { startLine: line, startColumn: column },
-        },
-      },
-    ],
-  }));
-  return JSON.stringify({
-    version: '2.1.0',
-    runs: [{ tool: { driver: { name: 'PMD', rules: [] } }, results }],
-  });
-}
-
-function crashLog(rows: readonly Row[]): string {
-  return rows
-    .map(
-      ({ rule, file }) =>
-        `Exception applying rule ${rule.slice(CRASHED_RULE.length)} on file ${file}, continuing with next rule\n`,
-    )
-    .join('');
 }
 
 function pmdRulesets(
@@ -212,10 +183,6 @@ function engineSplits(plan: PmdEnginePlan): Map<string, Split> {
   );
 }
 
-function isCrashed(row: Row): boolean {
-  return row.rule.startsWith(CRASHED_RULE);
-}
-
 function writeEngineReports(
   reportDir: string,
   rows: readonly Row[],
@@ -242,6 +209,32 @@ export function withoutEngineReports(reportDir: string): void {
   }
 }
 
+function rulesOf(file: string, resolve: Resolve): readonly ResolvedRule[] | Unresolved {
+  try {
+    return resolve(file).rules;
+  } catch (error) {
+    return { unresolved: error };
+  }
+}
+
+function mayNeedWholeRun(file: string, resolve: Resolve): boolean {
+  const rules = rulesOf(file, resolve);
+  return 'unresolved' in rules || rules.some(needsWholeRun);
+}
+
+function wholeRunOnEngine(plan: PmdEnginePlan, splits: ReadonlyMap<string, Split>): boolean {
+  const all = [...splits.values()];
+  const partial =
+    plan.rulesets.some((file) => !splits.has(file)) || all.some(({ onPmd }) => onPmd.length > 0);
+  if (partial && all.some(({ onEngine }) => onEngine.some(needsWholeRun))) {
+    return false;
+  }
+  const resolve = resolvedRulesets(rulesetReader(plan.pmdJar));
+  return !plan.untouched.some(
+    (file) => plan.rulesets.includes(file) && mayNeedWholeRun(file, resolve),
+  );
+}
+
 function rulesetsAfterEngine(
   plan: PmdEnginePlan,
   environment: Environment,
@@ -252,6 +245,9 @@ function rulesetsAfterEngine(
     return [...plan.rulesets];
   }
   const splits = engineSplits(plan);
+  if (!wholeRunOnEngine(plan, splits)) {
+    return [...plan.rulesets];
+  }
   const report = engineRun(plan, [...splits.values()], {
     start: () => engineStart(plan, { binary, environment, run }),
     log,
@@ -261,9 +257,6 @@ function rulesetsAfterEngine(
   }
   const unparsed = textsOf(fieldOf(report, 'syntaxErrorFiles'));
   const forPmd = pmdRulesets(plan, splits, unparsed);
-  if (forPmd.length === 0) {
-    return [...plan.rulesets];
-  }
   const rows = listOf(fieldOf(report, 'findings'))
     .map(engineFindingOf)
     .filter(({ file }) => !unparsed.includes(file));

@@ -134,11 +134,32 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   need the value (`nitpicker/no-work-before-early-exit`).
 - Read and handle files one at a time (or through a bounded pool), not all into one array that a later
   loop walks once (`nitpicker/no-read-all-before-pass`).
+- Answer a question about the collection of a key once per key, not once per element that has the
+  key (`nitpicker/no-repeated-keyed-scan`).
+- Merge maps whose values are collections by adding to the collection of each key, never by
+  replacing it with `set` or `Object.assign` (`nitpicker/no-replacing-collection-merge`).
+- Pair two lists by position before filtering either of them, never after
+  (`nitpicker/no-filtered-positional-pairing`).
+- List a directory with `{ withFileTypes: true }` and ask each entry its kind, instead of a `stat`
+  call per entry (`nitpicker/no-stat-per-listed-entry`).
+- Parse a field that many items share (a message, a rule, a path) once per distinct value, not once
+  per item (`nitpicker/no-repeated-parse-per-item`).
+- Share one read-only value across the items of a loop instead of storing a full copy of it with
+  every item (`nitpicker/no-loop-invariant-copy`).
+- Index an unchanging collection once instead of scanning it in a function called from a loop or many
+  places (`nitpicker/no-scan-per-call-over-fixed-collection`), and create a cache once for the unit its
+  answers hold for, not on every pass of an inner loop (`nitpicker/no-cache-per-inner-unit`).
+- Grow a group of a `Map` by pushing onto it, not by spreading it into a new array on every item
+  (`nitpicker/no-accumulating-group-spread`).
 - Never run a query or a request once per item of a loop: fetch or write the items in one query
   (`findByIds`, `createMany`, `WHERE id IN (...)`), also when a helper of yours does the I/O and inside
   `Promise.all(items.map(...))`. For a remote API without a batch endpoint use a limiter or fixed-size
   chunks. Paging loops, retries, a call that takes a whole chunk and broker publishes pass
   (`nitpicker/no-io-in-loop`).
+- Start reads that do not use each other's results together: `const [user, orders] = await
+  Promise.all([getUser(id), listOrders(id)])`, not two awaits in a row (`nitpicker/no-sequential-independent-reads`).
+- Await a promise started earlier where its result is first used, after the independent work, so the two
+  overlap (`nitpicker/no-early-wait-on-started-work`).
 - Don't copy an accumulator array with `concat` on every step of `reduce` or a loop: push into an array
   created before the loop, or build the result with `flatMap` (`nitpicker/no-accumulator-concat`).
 - Load a lazy TypeORM relation with the query that reads the items (`relations: { customer: true }` or
@@ -310,6 +331,18 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   connections (`nitpicker/no-listen-on-all-interfaces`).
 - A recursive walk over a graph that can contain cycles (an error `cause` chain, `parent` links, a recursive type)
   passes a visited `Set` or a depth limit down (`nitpicker/no-unguarded-cyclic-recursion`).
+- A walk over operands stays shallow on generated input: a function does not recurse into both `left` and
+  `right` of its parameter without a depth limit; loop over the left-leaning chain and recurse only into the right
+  operand, or use an explicit stack (`nitpicker/no-operand-depth-recursion`).
+- Every entry point into a guarded recursion checks the same guard: when one function refuses a turn through an
+  in-progress `Set` or `Map`, a sibling that reaches the same recursion checks it too, or calls the guarded one
+  (`nitpicker/no-unguarded-recursion-entry`).
+- A cache never stores an answer a recursion guard may have cut short: skip the `set` when a deeper turn was refused,
+  or mark the value as partial (`nitpicker/no-cache-after-guard-fallback`).
+- A worklist pass whose transfer can remove facts keeps the last output per edge and recomputes each input from them,
+  instead of joining into one stored input (`nitpicker/no-shrinking-worklist-join`).
+- A worklist that can add several items per turn keeps a `Set` of the items already expanded; a depth limit alone
+  does not bound how many paths reach an item (`nitpicker/no-depth-only-worklist`).
 - A stream is decoded and searched as a whole, not chunk by chunk: collect the chunks and decode once, pass
   `{ stream: true }` to a `TextDecoder`, or search an accumulated buffer (`nitpicker/no-chunkwise-stream-text`).
 - A pino, bunyan or winston call keeps every value it is given: the values go in the fields object first
@@ -342,6 +375,34 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Keep the end of a tool's output when an error message has to shorten it
   (`stderr.slice(-4000)`, or the start and the end with a marker between them): the cause is printed last
   (`nitpicker/no-head-cut-error-output`).
+- Pass the real file name to the TypeScript compiler API (`ts.transpileModule(source, { fileName, compilerOptions })`,
+  `ts.createSourceFile(fileName, ...)`) when you have it: the default name makes every input the same file and
+  relative imports resolve against it (`nitpicker/require-compiler-file-name`).
+- A `package.json` field npm accepts in several shapes (`bundleDependencies: true`, `workspaces: { packages }`,
+  `man` as a string) is checked with `Array.isArray` or `typeof` before a list member is read from it
+  (`nitpicker/no-single-shape-manifest-field`).
+- A project linked or copied into a temporary folder and used there (a tsconfig written, a resolving tool started with it as
+  `cwd`) is given the `node_modules` of its parent folders at the matching level, because module resolution walks up
+  from the temporary folder, or the tool runs in the project (`nitpicker/require-staged-parent-node-modules`).
+- A tsconfig that `extends` another and is written to a temporary folder sets `compilerOptions.typeRoots` to the type
+  roots of the original config: TypeScript derives the default from the folder of the config it opens
+  (`nitpicker/require-moved-tsconfig-type-roots`).
+- Look for a tool's config file (`tsconfig.json`, `.eslintrc*`, `.prettierrc*`, `pyproject.toml`) in the parent
+  folders, up to the repository root, before falling back to a default: the tool searches upward too, so a package
+  covered by a workspace config gets the default otherwise (`nitpicker/no-single-folder-config-lookup`).
+- Handle each input of a `Promise.all(files.map(...))` batch on its own (a `try` or `.catch` in the callback, or
+  `Promise.allSettled`): one unreadable or unparsable file must not discard the results of the others
+  (`nitpicker/no-all-or-nothing-batch`; only `Promise.all(files.map(...))` with `readFile`, `JSON.parse` or an imported
+  YAML/TOML/JSON5/JS parser is checked: `for...of`, `forEach` and Java are not covered yet).
+- Do not match a language keyword (`/\bcase\b/`) with a regex over raw source text: comments and strings match too.
+  Use a parser or a tokenizer, or strip comments and strings first (`nitpicker/no-keyword-regex-over-source`).
+- Use only field names that the grammar defines in `childForFieldName` and `childrenForFieldName`: an unknown name
+  is not an error, it returns nothing (`nitpicker/no-unknown-tree-sitter-field`).
+- A function that walks a tree-sitter tree decides what happens with error nodes: they stand in for any child, so
+  check `hasError`, `isError`, `isMissing` or the type `ERROR`, or skip the unit
+  (`nitpicker/require-tree-sitter-error-check`).
+- In plain JavaScript, test an element taken by position from an array of a parameter (`({ children: [first] }) =>`)
+  before passing it on or reading it: the array can be shorter (`nitpicker/no-unchecked-positional-element`).
 - Decide whether a child process failed by its exit status (`status !== 0`, `exitCode`, the callback's `error`), not
   by text on its standard error, which also carries warnings and notices (`nitpicker/no-stderr-as-failure`).
 - Read `error` and `signal` of a `spawnSync` result before its `status`: a child that could not start, timed out or
@@ -350,6 +411,31 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Output that grows with the project (`git ls-files`, `git diff`, `find`, a tool's JSON report) is read as a stream
   (`spawn` and its `stdout` line by line) or from a file the tool writes, not through `execFileSync`/`spawnSync`
   and a `maxBuffer`, which fails with `ENOBUFS` on a large project (`nitpicker/no-buffered-growing-output`).
+- Write a list that grows with the input (findings, results, rows) one element per line or in batches, and read it
+  back line by line: one `JSON.stringify` or `join` of the whole list throws `Invalid string length` past about 512
+  million characters, exactly when the output is largest (`nitpicker/no-whole-list-json-text`).
+- Map a long list while it is consumed (a generator that yields each mapped item, or the mapping inside the loop)
+  instead of `findings.map(...)` handed to a writer that walks it once (`nitpicker/no-mapped-copy-for-single-pass`).
+- Start a Go-built server or checker (`tsgo`, the TypeScript 7 API server, `tsgolint`, `gopls`) with `GOGC` (for
+  example 50) or `GOMEMLIMIT` in its `env`, unless the user set one: the default lets its heap grow to twice the live
+  size (`nitpicker/require-go-collector-setting`).
+- When JVMs are started in a loop or pool with `-Xmx` or `-XX:MaxRAMPercentage`, add a heap goal next to the ceiling
+  (`-XX:GCTimeRatio=4`, or `-XX:SoftMaxHeapSize` with ZGC): each JVM otherwise grows to its ceiling and keeps it
+  (`nitpicker/require-jvm-heap-goal`).
+- Run a type-aware linter or compiler (`tsc`, `tsgo`, `tsgolint`, `--type-aware`) once per bounded batch of files (for
+  example 500, each with the files that change the global scope), not once over every file of the project, whose
+  program grows with the project (`nitpicker/no-unbatched-heavy-run`).
+- When a function combines in-process work with the result of a memory-heavy child process that does not depend on it,
+  start the child step first: the parent otherwise keeps the memory of its own work while the child runs
+  (`nitpicker/no-child-wait-after-local-work`).
+- Read everything you need from one TypeScript program before building the next one in the same function, or build
+  each in its own function that returns plain data: two live programs need room for both
+  (`nitpicker/no-overlapping-typescript-programs`).
+- Keep a value used only while one loop item is processed in a local of the loop body, not in a module-level or field
+  map that never drops it: the map grows with the number of items (`nitpicker/no-per-item-cache-growth`).
+- Load `@typescript-eslint/parser` or `@typescript-eslint/eslint-plugin` when only the parser or only the plugin is
+  used, not the whole `typescript-eslint` package with every rule definition
+  (`nitpicker/no-aggregate-package-for-one-member`).
 - Time values carry their unit in the name (`timeoutMs`, `ttlSeconds`) and meet only the same unit: convert
   once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
   `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time

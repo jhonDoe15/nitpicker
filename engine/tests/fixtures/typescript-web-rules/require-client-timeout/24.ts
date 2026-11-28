@@ -1,0 +1,1 @@
+import { DataSource } from "typeorm"; const BASE = { type: "postgres", entities: [] }; export const db = new DataSource({ ...BASE, extra: { statement_timeout: 30_000 } });

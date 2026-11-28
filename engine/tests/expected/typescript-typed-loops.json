@@ -1,0 +1,2981 @@
+[
+ [
+  "l01/src/case-0026.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  14,
+  105,
+  "`toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  14,
+  117
+ ],
+ [
+  "l01/src/case-0027.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  14,
+  88,
+  "`toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  14,
+  104
+ ],
+ [
+  "l01/src/case-0028.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  14,
+  70,
+  "`mapper.toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  14,
+  93
+ ],
+ [
+  "l01/src/case-0029.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  14,
+  84,
+  "`mapper.toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  14,
+  103
+ ],
+ [
+  "l01/src/case-0030.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  99,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  119
+ ],
+ [
+  "l01/src/case-0031.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  122,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  142
+ ],
+ [
+  "l01/src/case-0032.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  99,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  133
+ ],
+ [
+  "l01/src/case-0033.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  127,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  141
+ ],
+ [
+  "l01/src/case-0034.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  123,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  143
+ ],
+ [
+  "l01/src/case-0035.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  134,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  145
+ ],
+ [
+  "l01/src/case-0036.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  113,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.findBy()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  133
+ ],
+ [
+  "l01/src/case-0037.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  147,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.createQueryBuilder().where().getMany()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  167
+ ],
+ [
+  "l01/src/case-0038.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  78,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  98
+ ],
+ [
+  "l01/src/case-0039.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  115,
+  "`Order.lines` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { lines: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  132
+ ],
+ [
+  "l01/src/case-0040.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  105,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `manager.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  125
+ ],
+ [
+  "l01/src/case-0041.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  82,
+  "`Invoice.payer` is a lazy relation: awaiting it for each item loaded by `invoices.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { payer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  101
+ ],
+ [
+  "l01/src/case-0042.js",
+  "nitpicker/no-lazy-relation-in-loop",
+  2,
+  80,
+  "`Shipment.carrier` is a lazy relation: awaiting it for each item loaded by `shipments.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { carrier: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  2,
+  102
+ ],
+ [
+  "l03/src/case-0001.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  99,
+  "`Order.quoted` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { quoted: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  117
+ ],
+ [
+  "l03/src/case-0003.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  99,
+  "`Order.tags` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { tags: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  115
+ ],
+ [
+  "l03/src/case-0008.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  99,
+  "`Order.plainPromise` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { plainPromise: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  123
+ ],
+ [
+  "l03/src/case-0009.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  99,
+  "`Order.stacked` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { stacked: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  118
+ ],
+ [
+  "l03/src/case-0009.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  125,
+  "`Order.second` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { second: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  143
+ ],
+ [
+  "l03/src/case-0012.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  109,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.findAndCount()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  129
+ ],
+ [
+  "l03/src/case-0015.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  127,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  147
+ ],
+ [
+  "l03/src/case-0020.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  134,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  154
+ ],
+ [
+  "l03/src/case-0022.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  121,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  141
+ ],
+ [
+  "l03/src/case-0026.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  127,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  147
+ ],
+ [
+  "l03/src/case-0027.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  126,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.createQueryBuilder().getMany()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  146
+ ],
+ [
+  "l03/src/case-0028.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  160,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.createQueryBuilder().leftJoinAndSelect().getMany()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  180
+ ],
+ [
+  "l03/src/case-0030.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  155,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.createQueryBuilder().innerJoin().getMany()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  175
+ ],
+ [
+  "l03/src/case-0033.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  151,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.createQueryBuilder().where().andWhere().getMany()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  171
+ ],
+ [
+  "l03/src/case-0034.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  109,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `manager.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  129
+ ],
+ [
+  "l03/src/case-0036.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  111,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `manager.findBy()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  131
+ ],
+ [
+  "l03/src/case-0037.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  121,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `manager.getRepository().find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  141
+ ],
+ [
+  "l03/src/case-0040.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  99,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  119
+ ],
+ [
+  "l03/src/case-0041.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  97,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  117
+ ],
+ [
+  "l03/src/case-0045.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  99,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  123
+ ],
+ [
+  "l03/src/case-0045.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  130,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  155
+ ],
+ [
+  "l03/src/case-0045.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  162,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  189
+ ],
+ [
+  "l03/src/case-0049.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  99,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  121
+ ],
+ [
+  "l03/src/case-0051.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  103,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  123
+ ],
+ [
+  "l03/src/case-0052.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  109,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  129
+ ],
+ [
+  "l03/src/case-0054.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  118,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  138
+ ],
+ [
+  "l03/src/case-0057.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  98,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  118
+ ],
+ [
+  "l03/src/case-0058.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  78,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  98
+ ],
+ [
+  "l03/src/case-0061.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  105,
+  "`toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  117
+ ],
+ [
+  "l03/src/case-0061.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  130,
+  "`second` receives each item loaded by `orders.find()` and awaits `order.lines`, the lazy relation `Order.lines`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { lines: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  146
+ ],
+ [
+  "l03/src/case-0061.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  159,
+  "`arrow` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  171
+ ],
+ [
+  "l03/src/case-0061.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  184,
+  "`exprBody` receives each item loaded by `orders.find()` and awaits `order.quoted`, the lazy relation `Order.quoted`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { quoted: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  199
+ ],
+ [
+  "l03/src/case-0062.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  105,
+  "`nested` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  118
+ ],
+ [
+  "l03/src/case-0062.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  163,
+  "`other` receives each item loaded by `orders.find()` and awaits `more.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  186
+ ],
+ [
+  "l03/src/case-0064.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  105,
+  "`obj.toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  121
+ ],
+ [
+  "l03/src/case-0064.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  161,
+  "`Svc.smap` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  176
+ ],
+ [
+  "l03/src/case-0064.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  189,
+  "`renamedDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  206
+ ],
+ [
+  "l03/src/case-0065.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  105,
+  "`dflt` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  116
+ ],
+ [
+  "l03/src/case-0065.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  129,
+  "`H.toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  143
+ ],
+ [
+  "l03/src/case-0065.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  156,
+  "`H.default` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  172
+ ],
+ [
+  "l03/src/case-0066.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  70,
+  "`toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  86
+ ],
+ [
+  "l03/src/case-0066.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  93,
+  "`H.toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  111
+ ],
+ [
+  "l03/src/case-0066.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  118,
+  "`obj.toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  138
+ ],
+ [
+  "l03/src/case-0066.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  145,
+  "`svc.map` receives each item loaded by `orders.find()` and awaits `order.lines`, the lazy relation `Order.lines`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { lines: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  163
+ ],
+ [
+  "l03/src/case-0067.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  70,
+  "`dflt` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  85
+ ],
+ [
+  "l03/src/case-0067.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  92,
+  "`arrow` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  112
+ ],
+ [
+  "l03/src/case-0067.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  119,
+  "`exprBody` receives each item loaded by `orders.find()` and awaits `order.quoted`, the lazy relation `Order.quoted`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { quoted: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  141
+ ],
+ [
+  "l03/src/case-0068.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  121,
+  "`toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  129
+ ],
+ [
+  "l03/src/case-0070.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  153,
+  "`f` receives each item loaded by `orders.find()` and awaits `o.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  161
+ ],
+ [
+  "l03/src/case-0072.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  105,
+  "`toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  119
+ ],
+ [
+  "l03/src/case-0073.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  105,
+  "`toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  119
+ ],
+ [
+  "l03/src/case-0076.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  103,
+  "`Invoice.payer` is a lazy relation: awaiting it for each item loaded by `invoices.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { payer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  122
+ ],
+ [
+  "l03/src/case-0077.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  97,
+  "`Bill.payer` is a lazy relation: awaiting it for each item loaded by `bills.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { payer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  113
+ ],
+ [
+  "l03/src/case-0078.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  98,
+  "`Shipment.carrier` is a lazy relation: awaiting it for each item loaded by `shipments.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { carrier: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  113
+ ],
+ [
+  "l03/src/case-0078.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  120,
+  "`Shipment.first` is a lazy relation: awaiting it for each item loaded by `shipments.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { first: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  133
+ ],
+ [
+  "l03/src/case-0078.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  140,
+  "`Invoice.payer` is a lazy relation: awaiting it for each item loaded by `shipments.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { payer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  153
+ ],
+ [
+  "l03/src/case-0079.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  93,
+  "`Shipment.carrier` is a lazy relation: awaiting it for each item loaded by `anys.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { carrier: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  108
+ ],
+ [
+  "l03/src/case-0079.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  115,
+  "`Deep.deep` is a lazy relation: awaiting it for each item loaded by `anys.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { deep: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  127
+ ],
+ [
+  "l03/src/case-0079.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  134,
+  "`Invoice.payer` is a lazy relation: awaiting it for each item loaded by `anys.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { payer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  147
+ ],
+ [
+  "l03/src/case-0083.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  98,
+  "`Customer.parent` is a lazy relation: awaiting it for each item loaded by `customers.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { parent: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  112
+ ],
+ [
+  "l03/src/case-0083.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  141,
+  "`Customer.parent` is a lazy relation: awaiting it for each item loaded by `customers.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { parent: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  153
+ ],
+ [
+  "l03/src/case-0084.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  138,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  145
+ ],
+ [
+  "l03/src/case-0084.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  152,
+  "`Order.quoted` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { quoted: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  164
+ ],
+ [
+  "l03/src/case-0086.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  125,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  139
+ ],
+ [
+  "l03/src/case-0094.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  105,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  141
+ ],
+ [
+  "l03/src/case-0095.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  99,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  119
+ ],
+ [
+  "l03/src/case-0095.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  126,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  146
+ ],
+ [
+  "l03/src/case-0096.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  97,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  117
+ ],
+ [
+  "l03/src/case-0097.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  105,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  125
+ ],
+ [
+  "l03/src/case-0100.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  6,
+  34,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  6,
+  54
+ ],
+ [
+  "l03/src/case-0100.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  7,
+  32,
+  "`Order.lines` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { lines: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  7,
+  49
+ ],
+ [
+  "l03/src/case-0101.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  5,
+  98,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  5,
+  118
+ ],
+ [
+  "l03/src/case-0101.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  6,
+  102,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  6,
+  122
+ ],
+ [
+  "l03/src/case-0102.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  5,
+  73,
+  "`Named.rel` is a lazy relation: awaiting it for each item loaded by `exprs.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { rel: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  5,
+  84
+ ],
+ [
+  "l03/src/case-0103.js",
+  "nitpicker/no-lazy-relation-in-loop",
+  2,
+  66,
+  "`Shipment.carrier` is a lazy relation: awaiting it for each item loaded by `shipments.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { carrier: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  2,
+  81
+ ],
+ [
+  "l03/src/case-0103.js",
+  "nitpicker/no-lazy-relation-in-loop",
+  2,
+  83,
+  "`Shipment.first` is a lazy relation: awaiting it for each item loaded by `shipments.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { first: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  2,
+  104
+ ],
+ [
+  "l03/src/case-0104.js",
+  "nitpicker/no-lazy-relation-in-loop",
+  2,
+  117,
+  "`Shipment.carrier` is a lazy relation: awaiting it for each item loaded by `shipments.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { carrier: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  2,
+  130
+ ],
+ [
+  "l03/src/case-0105.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  8,
+  9,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  8,
+  29
+ ],
+ [
+  "l03/src/case-0105.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  11,
+  97,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  11,
+  114
+ ],
+ [
+  "l03/src/case-0106.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  126,
+  "`Order.__under` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { __under: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  139
+ ],
+ [
+  "l03/src/case-0106.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  176,
+  "`Order.__under` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { __under: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  183
+ ],
+ [
+  "l03/src/case-0106.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  190,
+  "`Order.__under` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { __under: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  209
+ ],
+ [
+  "l04/src/case-0015.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  57,
+  "This runs `Pool()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  65
+ ],
+ [
+  "l04/src/case-0058.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  56,
+  "This calls `axios.isAxiosError()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  78
+ ],
+ [
+  "l04/src/case-0059.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  67,
+  "This calls `axios.create()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  96
+ ],
+ [
+  "l04/src/case-0062.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `repository.findById()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  54
+ ],
+ [
+  "l04/src/case-0063.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  44,
+  "This runs `this.userRepo.findOne()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  73
+ ],
+ [
+  "l04/src/case-0064.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `db.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  57
+ ],
+ [
+  "l04/src/case-0065.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `prisma.user.findMany()` once per item of a loop, one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  70
+ ],
+ [
+  "l04/src/case-0066.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  17,
+  "This runs `repository.findById()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  40
+ ],
+ [
+  "l04/src/case-0067.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  17,
+  "This runs `db.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  29
+ ],
+ [
+  "l04/src/case-0068.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  35,
+  "This runs `userRepository.save()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  58
+ ],
+ [
+  "l04/src/case-0069.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  21,
+  "This runs `userDao.listByOwner()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  44
+ ],
+ [
+  "l04/src/case-0070.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  37,
+  "This runs `repository.save()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  56
+ ],
+ [
+  "l04/src/case-0071.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  44,
+  "This runs `repository.findById()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  67
+ ],
+ [
+  "l04/src/case-0072.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `repository.getById()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  53
+ ],
+ [
+  "l04/src/case-0073.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `client.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  47
+ ],
+ [
+  "l04/src/case-0074.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  41,
+  "This runs `repository.save()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  65
+ ],
+ [
+  "l04/src/case-0075.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  51,
+  "This runs `repository.findById()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  82
+ ],
+ [
+  "l04/src/case-0076.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  51,
+  "This runs `repository.findById()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  82
+ ],
+ [
+  "l04/src/case-0077.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  23,
+  "This runs `repository.save()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  46
+ ],
+ [
+  "l04/src/case-0078.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  33,
+  "This runs `repository.findById()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  56
+ ],
+ [
+  "l04/src/case-0079.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `repository.findById()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  54
+ ],
+ [
+  "l04/src/case-0080.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  64,
+  "This runs `repository.findById()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  87
+ ],
+ [
+  "l04/src/case-0081.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  58,
+  "This runs `repository.findById()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  81
+ ],
+ [
+  "l04/src/case-0082.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  58,
+  "This runs `Pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  72
+ ],
+ [
+  "l04/src/case-0083.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  59
+ ],
+ [
+  "l04/src/case-0084.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  56,
+  "This runs `knex().where()` once per item of a loop, one query per item. Fetch or write them in one query: `whereIn(column, ids)`, or `insert(rows)` with an array of rows, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  83
+ ],
+ [
+  "l04/src/case-0085.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  72,
+  "This runs `repository.save()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  92
+ ],
+ [
+  "l04/src/case-0086.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  38,
+  "This runs `repository.findById()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  65
+ ],
+ [
+  "l04/src/case-0087.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  64,
+  "This runs `repository.findById()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  91
+ ],
+ [
+  "l04/src/case-0088.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  25,
+  "This runs `repository.findById()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  48
+ ],
+ [
+  "l04/src/case-0089.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  44,
+  "This runs `repository.save()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  63
+ ],
+ [
+  "l04/src/case-0090.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  37,
+  "This runs `repository.findById()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  60
+ ],
+ [
+  "l04/src/case-0091.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  25,
+  "This runs `repository.save()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  47
+ ],
+ [
+  "l04/src/case-0092.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  18,
+  "This runs `repository.findById()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  41
+ ],
+ [
+  "l04/src/case-0093.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  33,
+  "This runs `repository.update()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  74
+ ],
+ [
+  "l04/src/case-0094.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `redisClient.get()` once per item of a loop, one round trip per item. Fetch or write them in one round trip: `mget`/`mset`/`hmget`, or queue the commands on `pipeline()` (or `multi()`) and `exec()` it once after the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a command with no multi-key form).",
+  1,
+  50
+ ],
+ [
+  "l04/src/case-0095.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  17,
+  "This runs `redis.get()` once per item of a loop, one round trip per item. Fetch or write them in one round trip: `mget`/`mset`/`hmget`, or queue the commands on `pipeline()` (or `multi()`) and `exec()` it once after the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a command with no multi-key form).",
+  1,
+  30
+ ],
+ [
+  "l04/src/case-0096.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  56,
+  "This runs `repository.findById()` once per item inside a concurrent `Promise.all`: running them concurrently still sends one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  79
+ ],
+ [
+  "l04/src/case-0097.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  33,
+  "This runs `repository.findById()` once per item inside a concurrent `Promise.all`: running them concurrently still sends one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  56
+ ],
+ [
+  "l04/src/case-0098.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  58,
+  "This runs `repository.findById()` once per item inside a concurrent `Promise.all`: running them concurrently still sends one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  81
+ ],
+ [
+  "l04/src/case-0099.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This calls `fetch()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  45
+ ],
+ [
+  "l04/src/case-0100.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This calls `axiosClient.get()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  50
+ ],
+ [
+  "l04/src/case-0101.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  44,
+  "This calls `orders.client.post()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  66
+ ],
+ [
+  "l04/src/case-0102.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  53,
+  "This calls `https.get()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  66
+ ],
+ [
+  "l04/src/case-0103.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  40,
+  "This calls `got()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  47
+ ],
+ [
+  "l04/src/case-0104.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  70,
+  "This calls `request()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  81
+ ],
+ [
+  "l04/src/case-0105.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  18,
+  "This calls `client.send()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  32
+ ],
+ [
+  "l04/src/case-0106.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This calls `api.fetchPage()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  47
+ ],
+ [
+  "l04/src/case-0107.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  6,
+  "This calls `gateway.write()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  22
+ ],
+ [
+  "l04/src/case-0108.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This calls `httpClient.get()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  49
+ ],
+ [
+  "l04/src/case-0109.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  37,
+  "This calls `api.list()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  47
+ ],
+ [
+  "l04/src/case-0110.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  46,
+  "This calls `api.send()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  62
+ ],
+ [
+  "l04/src/case-0111.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  46,
+  "This calls `api.send()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  58
+ ],
+ [
+  "l04/src/case-0112.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  49,
+  "This calls `api.send()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  68
+ ],
+ [
+  "l04/src/case-0113.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `userRepository.findById()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  58
+ ],
+ [
+  "l04/src/case-0114.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `db.select()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  42
+ ],
+ [
+  "l05/src/case-0021.ts",
+  "nitpicker/no-io-in-loop",
+  4,
+  61,
+  "This runs `loadOrder()`, which calls `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  4,
+  74
+ ],
+ [
+  "l05/src/case-0022.ts",
+  "nitpicker/no-io-in-loop",
+  4,
+  61,
+  "This runs `viaHelper()`, which calls `loadOrder()`, which calls `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  4,
+  74
+ ],
+ [
+  "l05/src/case-0023.ts",
+  "nitpicker/no-io-in-loop",
+  4,
+  61,
+  "This calls `loadPrice()`, which calls `axios.get()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  4,
+  74
+ ],
+ [
+  "l05/src/case-0024.ts",
+  "nitpicker/no-io-in-loop",
+  4,
+  61,
+  "This runs `find()`, which calls `this.db.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  4,
+  92
+ ],
+ [
+  "l05/src/case-0025.ts",
+  "nitpicker/no-io-in-loop",
+  4,
+  99,
+  "This runs `store.find()`, which calls `db.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  4,
+  113
+ ],
+ [
+  "l05/src/case-0026.ts",
+  "nitpicker/no-io-in-loop",
+  4,
+  61,
+  "This runs `getAccount()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  4,
+  88
+ ],
+ [
+  "l05/src/case-0027.ts",
+  "nitpicker/no-io-in-loop",
+  4,
+  61,
+  "This runs `save()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  4,
+  82
+ ],
+ [
+  "l05/src/case-0028.ts",
+  "nitpicker/no-io-in-loop",
+  6,
+  61,
+  "This runs `repo.findOneBy()` once per item of a loop, one query per item. Fetch or write them in one query: a set condition such as `findBy({ id: In(ids) })`, or `insert(rows)` for several rows, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  6,
+  83
+ ],
+ [
+  "l05/src/case-0029.ts",
+  "nitpicker/no-io-in-loop",
+  6,
+  61,
+  "This runs `repo.save()` once per item of a loop, one query per item. Fetch or write them in one query: a set condition such as `findBy({ id: In(ids) })`, or `insert(rows)` for several rows, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  6,
+  91
+ ],
+ [
+  "l05/src/case-0030.ts",
+  "nitpicker/no-io-in-loop",
+  6,
+  61,
+  "This runs `repo.createQueryBuilder().where().getMany()` once per item of a loop, one query per item. Fetch or write them in one query: a set condition such as `findBy({ id: In(ids) })`, or `insert(rows)` for several rows, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  6,
+  127
+ ],
+ [
+  "l05/src/case-0031.ts",
+  "nitpicker/no-io-in-loop",
+  6,
+  61,
+  "This runs `prisma.user.findUnique()` once per item of a loop, one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  6,
+  102
+ ],
+ [
+  "l05/src/case-0032.ts",
+  "nitpicker/no-io-in-loop",
+  5,
+  65,
+  "This runs `prisma.user.findUnique()` once per item inside a concurrent `Promise.all`: running them concurrently still sends one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. An exception fits only when a call per item is intended (a store with no batch form).",
+  5,
+  106
+ ],
+ [
+  "l05/src/case-0033.ts",
+  "nitpicker/no-io-in-loop",
+  5,
+  61,
+  "This runs `send()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  5,
+  119
+ ],
+ [
+  "l05/src/case-0034.ts",
+  "nitpicker/no-io-in-loop",
+  5,
+  61,
+  "This calls `send()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  5,
+  126
+ ],
+ [
+  "l05/src/case-0035.ts",
+  "nitpicker/no-io-in-loop",
+  6,
+  61,
+  "This runs `db().where()` once per item of a loop, one query per item. Fetch or write them in one query: `whereIn(column, ids)`, or `insert(rows)` with an array of rows, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  6,
+  86
+ ],
+ [
+  "l05/src/case-0036.ts",
+  "nitpicker/no-io-in-loop",
+  4,
+  61,
+  "This calls `fetch()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  4,
+  70
+ ],
+ [
+  "l05/src/case-0037.ts",
+  "nitpicker/no-io-in-loop",
+  6,
+  69,
+  "This runs `repo.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  6,
+  88
+ ],
+ [
+  "l05/src/case-0038.ts",
+  "nitpicker/no-io-in-loop",
+  5,
+  55,
+  "This runs `loadOrder()`, which calls `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  5,
+  68
+ ],
+ [
+  "l05/src/case-0039.ts",
+  "nitpicker/no-io-in-loop",
+  5,
+  57,
+  "This runs `loadOrder()`, which calls `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  5,
+  69
+ ],
+ [
+  "l05/src/case-0040.ts",
+  "nitpicker/no-io-in-loop",
+  5,
+  67,
+  "This runs `loadOrder()`, which calls `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  5,
+  80
+ ],
+ [
+  "l05/src/case-0041.ts",
+  "nitpicker/no-io-in-loop",
+  5,
+  92,
+  "This runs `loadOrder()`, which calls `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  5,
+  108
+ ],
+ [
+  "l05/src/case-0042.ts",
+  "nitpicker/no-io-in-loop",
+  5,
+  61,
+  "This runs `saveBatch()`, which calls `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  5,
+  76
+ ],
+ [
+  "l05/src/case-0043.js",
+  "nitpicker/no-io-in-loop",
+  2,
+  64,
+  "This runs `loadOrder()`, which calls `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  2,
+  77
+ ],
+ [
+  "l06/src/case-0008.ts",
+  "nitpicker/no-io-in-loop",
+  15,
+  61,
+  "This runs `port.find()`, which calls `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  15,
+  74
+ ],
+ [
+  "l06/src/case-0009.ts",
+  "nitpicker/no-io-in-loop",
+  15,
+  61,
+  "This runs `loadRow()`, which calls `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  15,
+  72
+ ],
+ [
+  "l06/src/case-0010.ts",
+  "nitpicker/no-io-in-loop",
+  15,
+  61,
+  "This runs `users.plain()`, which calls `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  15,
+  76
+ ],
+ [
+  "l06/src/case-0011.ts",
+  "nitpicker/no-io-in-loop",
+  15,
+  61,
+  "This runs `store.byId()`, which calls `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  15,
+  75
+ ],
+ [
+  "l06/src/case-0012.ts",
+  "nitpicker/no-io-in-loop",
+  15,
+  61,
+  "This runs `walk()`, which calls `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  15,
+  72
+ ],
+ [
+  "l06/src/case-0013.ts",
+  "nitpicker/no-io-in-loop",
+  15,
+  61,
+  "This calls `a()`, which calls `b()`, which calls `axios.get()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  15,
+  66
+ ],
+ [
+  "l06/src/case-0014.ts",
+  "nitpicker/no-io-in-loop",
+  15,
+  61,
+  "This calls `apiClient.post()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  15,
+  79
+ ],
+ [
+  "l06/src/case-0015.ts",
+  "nitpicker/no-io-in-loop",
+  15,
+  61,
+  "This runs `model().find().where().equals()` once per item of a loop, one query per item. Fetch or write them in one query: `find({ _id: { $in: ids } })`, or `insertMany(docs)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  15,
+  120
+ ],
+ [
+  "l06/src/case-0016.ts",
+  "nitpicker/no-io-in-loop",
+  15,
+  61,
+  "This runs `redis.get()` once per item of a loop, one round trip per item. Fetch or write them in one round trip: `mget`/`mset`/`hmget`, or queue the commands on `pipeline()` (or `multi()`) and `exec()` it once after the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a command with no multi-key form).",
+  15,
+  74
+ ],
+ [
+  "l07/src/case-0001.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `userRepository.findById()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  58
+ ],
+ [
+  "l07/src/case-0002.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `prisma.user.findUnique()` once per item of a loop, one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  72
+ ],
+ [
+  "l07/src/case-0003.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  56,
+  "This runs `knex().where()` once per item of a loop, one query per item. Fetch or write them in one query: `whereIn(column, ids)`, or `insert(rows)` with an array of rows, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  83
+ ],
+ [
+  "l07/src/case-0004.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  35,
+  "This runs `repo.findOne()` once per item of a loop, and its key is a foreign key of a row the loop already holds. Load the related rows with the query that loaded those rows (`relations`, `include` or a join), or fetch all the keys at once before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  81
+ ],
+ [
+  "l07/src/case-0005.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  41,
+  "This runs `prisma.user.findUnique()` once per item of a loop, and its key is a foreign key of a row the loop already holds. Load the related rows with the query that loaded those rows (`relations`, `include` or a join), or fetch all the keys at once before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  99
+ ],
+ [
+  "l07/src/case-0006.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  47,
+  "This runs `this.ownerRepository.findOneBy()` once per item of a loop, and its key is a foreign key of a row the loop already holds. Load the related rows with the query that loaded those rows (`relations`, `include` or a join), or fetch all the keys at once before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  98
+ ],
+ [
+  "l07/src/case-0007.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  35,
+  "This runs `db.select()` once per item of a loop, and its key is a foreign key of a row the loop already holds. Load the related rows with the query that loaded those rows (`relations`, `include` or a join), or fetch all the keys at once before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  46
+ ],
+ [
+  "l07/src/case-0008.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  39,
+  "This runs `repository.findOne()` once per item of a loop, and its key is a foreign key of a row the loop already holds. Load the related rows with the query that loaded those rows (`relations`, `include` or a join), or fetch all the keys at once before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  91
+ ],
+ [
+  "l07/src/case-0009.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  35,
+  "This runs `repo.findOne()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  75
+ ],
+ [
+  "l07/src/case-0010.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  35,
+  "This runs `repo.update()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  77
+ ],
+ [
+  "l07/src/case-0011.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  35,
+  "This runs `repo.findOne()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  79
+ ],
+ [
+  "l07/src/case-0012.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  35,
+  "This runs `repo.findOne()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  83
+ ],
+ [
+  "l07/src/case-0013.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  78,
+  "This runs `repo.findById()` once per item of a loop, and its key comes from the previous iteration: the calls depend on each other and cannot be batched, so a call per item is expected. If the chain is long, look for one recursive query or endpoint that returns it whole.",
+  1,
+  108
+ ],
+ [
+  "l07/src/case-0014.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  60,
+  "This runs `repo.findOne()` once per item of a loop, and its key comes from the previous iteration: the calls depend on each other and cannot be batched, so a call per item is expected. If the chain is long, look for one recursive query or endpoint that returns it whole.",
+  1,
+  110
+ ],
+ [
+  "l07/src/case-0015.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  62,
+  "This runs `client.get()` once per item of a loop, and its key comes from the previous iteration: the calls depend on each other and cannot be batched, so a call per item is expected. If the chain is long, look for one recursive query or endpoint that returns it whole.",
+  1,
+  83
+ ],
+ [
+  "l07/src/case-0016.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  63,
+  "This runs `repo.findOne()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  113
+ ],
+ [
+  "l08/src/case-0008.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  56,
+  "This calls `api.get()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  67
+ ],
+ [
+  "l08/src/case-0009.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  46,
+  "This calls `api.get()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  61
+ ],
+ [
+  "l08/src/case-0010.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This calls `api.get()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  42
+ ],
+ [
+  "l08/src/case-0011.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  44,
+  "This calls `api.get()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  73
+ ],
+ [
+  "l08/src/case-0012.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  44,
+  "This calls `api.get()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  60
+ ],
+ [
+  "l08/src/case-0013.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  44,
+  "This calls `api.get()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  60
+ ],
+ [
+  "l08/src/case-0014.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  24,
+  "This calls `api.list()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  34
+ ],
+ [
+  "l08/src/case-0015.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  67,
+  "This calls `api.get()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  78
+ ],
+ [
+  "l08/src/case-0016.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  35,
+  "This calls `api.get()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  46
+ ],
+ [
+  "l08/src/case-0017.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  50,
+  "This runs `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  73
+ ],
+ [
+  "l08/src/case-0018.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  30,
+  "This runs `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  60
+ ],
+ [
+  "l08/src/case-0019.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  37,
+  "This runs `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  62
+ ],
+ [
+  "l08/src/case-0020.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  47,
+  "This runs `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  68
+ ],
+ [
+  "l08/src/case-0021.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  46,
+  "This runs `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  72
+ ],
+ [
+  "l08/src/case-0022.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  50,
+  "This runs `pool.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  73
+ ],
+ [
+  "l08/src/case-0023.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  39,
+  "This runs `repo.insert()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  55
+ ],
+ [
+  "l08/src/case-0024.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  39,
+  "This runs `this.tagRepository.save()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  67
+ ],
+ [
+  "l08/src/case-0025.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  41,
+  "This runs `prisma.user.create()` once per item of a loop, one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  75
+ ],
+ [
+  "l08/src/case-0026.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  39,
+  "This runs `repo.insert()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  55
+ ],
+ [
+  "l08/src/case-0026.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  73,
+  "This runs `otherRepo.findOne()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  121
+ ],
+ [
+  "l08/src/case-0027.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  64,
+  "This runs `repo.findOne()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  107
+ ],
+ [
+  "l08/src/case-0027.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  117,
+  "This runs `repo.save()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  131
+ ],
+ [
+  "l09/src/case-0012.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  59,
+  "This runs `repo.find()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  104
+ ],
+ [
+  "l09/src/case-0013.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  73,
+  "This runs `repo.find()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  126
+ ],
+ [
+  "l09/src/case-0014.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  59,
+  "This runs `db.select()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  70
+ ],
+ [
+  "l09/src/case-0015.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `repo.find()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  44
+ ],
+ [
+  "l09/src/case-0016.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `repo.find()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  54
+ ],
+ [
+  "l09/src/case-0017.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  44,
+  "This runs `repo.find()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  67
+ ],
+ [
+  "l09/src/case-0018.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  119,
+  "This runs `repo.remove()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  135
+ ],
+ [
+  "l09/src/case-0019.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `repo.find()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  55
+ ],
+ [
+  "l10/src/case-0005.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  45,
+  "This runs `repo.find()` once per item of a loop, and the call already takes a set of keys, so the cost is the number of iterations of the outer loop. Keep that loop small and bounded (a few workspaces or pages), or collect the keys of all its items and run one such call after it. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items.",
+  1,
+  96
+ ],
+ [
+  "l10/src/case-0006.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  58,
+  "This runs `this.messageRepository.find()` once per item of a loop, and the call already takes a set of keys, so the cost is the number of iterations of the outer loop. Keep that loop small and bounded (a few workspaces or pages), or collect the keys of all its items and run one such call after it. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items.",
+  1,
+  119
+ ],
+ [
+  "l10/src/case-0007.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  45,
+  "This runs `this.repository.findBy()` once per item of a loop, and the call already takes a set of keys, so the cost is the number of iterations of the outer loop. Keep that loop small and bounded (a few workspaces or pages), or collect the keys of all its items and run one such call after it. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items.",
+  1,
+  105
+ ],
+ [
+  "l10/src/case-0008.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  45,
+  "This runs `prisma.user.findMany()` once per item of a loop, and the call already takes a set of keys, so the cost is the number of iterations of the outer loop. Keep that loop small and bounded (a few workspaces or pages), or collect the keys of all its items and run one such call after it. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items.",
+  1,
+  100
+ ],
+ [
+  "l10/src/case-0009.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  45,
+  "This runs `repository.find()` once per item of a loop, and the call already takes a set of keys, so the cost is the number of iterations of the outer loop. Keep that loop small and bounded (a few workspaces or pages), or collect the keys of all its items and run one such call after it. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items.",
+  1,
+  97
+ ],
+ [
+  "l10/src/case-0010.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  37,
+  "This runs `repo.find()` once per item of a loop, and the call already takes a set of keys, so the cost is the number of iterations of the outer loop. Keep that loop small and bounded (a few workspaces or pages), or collect the keys of all its items and run one such call after it. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items.",
+  1,
+  76
+ ],
+ [
+  "l10/src/case-0011.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  45,
+  "This runs `db.select()` once per item of a loop, and the call already takes a set of keys, so the cost is the number of iterations of the outer loop. Keep that loop small and bounded (a few workspaces or pages), or collect the keys of all its items and run one such call after it. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items.",
+  1,
+  56
+ ],
+ [
+  "l10/src/case-0012.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  45,
+  "This runs `repository.find()` once per item of a loop, and the call already takes a set of keys, so the cost is the number of iterations of the outer loop. Keep that loop small and bounded (a few workspaces or pages), or collect the keys of all its items and run one such call after it. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items.",
+  1,
+  109
+ ],
+ [
+  "l10/src/case-0013.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  45,
+  "This runs `prisma.post.deleteMany()` once per item of a loop, and the call already takes a set of keys, so the cost is the number of iterations of the outer loop. Keep that loop small and bounded (a few workspaces or pages), or collect the keys of all its items and run one such call after it. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items.",
+  1,
+  121
+ ],
+ [
+  "l10/src/case-0014.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  70,
+  "This runs `knex().whereIn()` once per item of a loop, and the call already takes a set of keys, so the cost is the number of iterations of the outer loop. Keep that loop small and bounded (a few workspaces or pages), or collect the keys of all its items and run one such call after it. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items.",
+  1,
+  105
+ ],
+ [
+  "l10/src/case-0015.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  45,
+  "This runs `repository.delete()` once per item of a loop, and the call already takes a set of keys, so the cost is the number of iterations of the outer loop. Keep that loop small and bounded (a few workspaces or pages), or collect the keys of all its items and run one such call after it. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items.",
+  1,
+  84
+ ],
+ [
+  "l10/src/case-0016.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  49,
+  "This runs `repository.find()` once per item of a loop, and the call already takes a set of keys, so the cost is the number of iterations of the outer loop. Keep that loop small and bounded (a few workspaces or pages), or collect the keys of all its items and run one such call after it. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items.",
+  1,
+  95
+ ],
+ [
+  "l10/src/case-0017.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  49,
+  "This runs `repository.find()` once per item of a loop, and the call already takes a set of keys, so the cost is the number of iterations of the outer loop. Keep that loop small and bounded (a few workspaces or pages), or collect the keys of all its items and run one such call after it. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items.",
+  1,
+  95
+ ],
+ [
+  "l10/src/case-0018.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `repo.find()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  69
+ ],
+ [
+  "l10/src/case-0019.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `prisma.user.findMany()` once per item of a loop, one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  84
+ ],
+ [
+  "l10/src/case-0020.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  33,
+  "This runs `repo.find()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  75
+ ],
+ [
+  "l10/src/case-0021.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `repository.find()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  80
+ ],
+ [
+  "l10/src/case-0022.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `repo.findOne()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  62
+ ],
+ [
+  "l10/src/case-0023.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `prisma.user.findMany()` once per item of a loop, one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  98
+ ],
+ [
+  "l10/src/case-0024.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `repo.find()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  85
+ ],
+ [
+  "l10/src/case-0025.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `prisma.user.findMany()` once per item of a loop, one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  91
+ ],
+ [
+  "l10/src/case-0026.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  45,
+  "This runs `repo.find()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  94
+ ],
+ [
+  "l11/src/case-0001.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  44,
+  "This runs `this.sharedCredentialsRepository.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  110
+ ],
+ [
+  "l11/src/case-0002.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  60,
+  "This runs `repo.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  79
+ ],
+ [
+  "l11/src/case-0003.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  60,
+  "This runs `this.projectRepository.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  97
+ ],
+ [
+  "l11/src/case-0004.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  61,
+  "This runs `repository.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  86
+ ],
+ [
+  "l11/src/case-0005.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  40,
+  "This runs `repo.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  59
+ ],
+ [
+  "l11/src/case-0006.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  40,
+  "This runs `repo.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  59
+ ],
+ [
+  "l11/src/case-0007.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  59,
+  "This runs `roleRepo.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  88
+ ],
+ [
+  "l11/src/case-0008.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  39,
+  "This runs `userRepository.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  68
+ ],
+ [
+  "l11/src/case-0009.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  52,
+  "This runs `this.repo.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  76
+ ],
+ [
+  "l11/src/case-0010.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  30,
+  "This runs `repo.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  49
+ ],
+ [
+  "l11/src/case-0011.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `repository.save()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  73
+ ],
+ [
+  "l11/src/case-0011.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  47,
+  "This runs `repository.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  72
+ ],
+ [
+  "l11/src/case-0012.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  40,
+  "This runs `repo.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  59
+ ],
+ [
+  "l11/src/case-0012.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  67,
+  "This runs `repo.save()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  84
+ ],
+ [
+  "l11/src/case-0013.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `this.albumUserRepository.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  78
+ ],
+ [
+  "l11/src/case-0014.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  47,
+  "This runs `this.userRepository.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  81
+ ],
+ [
+  "l11/src/case-0015.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  25,
+  "This runs `this.userRepository.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  59
+ ],
+ [
+  "l11/src/case-0016.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  44,
+  "This runs `this.memoryRepository.create()` once per item inside a concurrent `Promise.all`: running them concurrently still sends one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  80
+ ],
+ [
+  "l11/src/case-0017.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  41,
+  "This runs `repo.create()` once per item inside a concurrent `Promise.all`: running them concurrently still sends one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  60
+ ],
+ [
+  "l11/src/case-0018.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  23,
+  "This runs `this.userRepository.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  57
+ ],
+ [
+  "l11/src/case-0019.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `prisma.user.create()` once per item of a loop, one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  67
+ ],
+ [
+  "l11/src/case-0020.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  44,
+  "This runs `this.dao.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  67
+ ],
+ [
+  "l11/src/case-0021.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  50,
+  "This runs `prisma.repository.create()` once per item inside a concurrent `Promise.all`: running them concurrently still sends one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  92
+ ],
+ [
+  "l11/src/case-0022.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  50,
+  "This runs `prisma.repo.create()` once per item of a loop, one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  86
+ ],
+ [
+  "l11/src/case-0023.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  39,
+  "This runs `repo.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  58
+ ],
+ [
+  "l11/src/case-0024.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  29,
+  "This runs `repo.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  48
+ ],
+ [
+  "l11/src/case-0025.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  40,
+  "This runs `repo.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  59
+ ],
+ [
+  "l11/src/case-0026.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  40,
+  "This runs `repo.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  59
+ ],
+ [
+  "l11/src/case-0027.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  40,
+  "This runs `prisma.repository.create()` once per item of a loop, one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  74
+ ],
+ [
+  "l11/src/case-0028.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  40,
+  "This runs `repo.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  59
+ ],
+ [
+  "l11/src/case-0029.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  40,
+  "This runs `repo.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  59
+ ],
+ [
+  "l11/src/case-0030.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  40,
+  "This runs `repo.create()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  59
+ ],
+ [
+  "l11/src/case-0031.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  43,
+  "This runs `prisma.repository.create()` once per item of a loop, one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  85
+ ],
+ [
+  "l11/src/case-0032.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  46,
+  "This runs `prisma.repository.create()` once per item inside a concurrent `Promise.all`: running them concurrently still sends one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  88
+ ],
+ [
+  "l12/src/case-0018.ts",
+  "nitpicker/no-io-in-loop",
+  2,
+  31,
+  "This runs `db.select()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  2,
+  42
+ ],
+ [
+  "l12/src/case-0019.ts",
+  "nitpicker/no-io-in-loop",
+  2,
+  31,
+  "This runs `db.execute()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  2,
+  73
+ ],
+ [
+  "l12/src/case-0020.ts",
+  "nitpicker/no-io-in-loop",
+  2,
+  31,
+  "This runs `db.execute()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  2,
+  66
+ ],
+ [
+  "l12/src/case-0021.ts",
+  "nitpicker/no-io-in-loop",
+  2,
+  31,
+  "This runs `db.delete()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  2,
+  47
+ ],
+ [
+  "l12/src/case-0022.ts",
+  "nitpicker/no-io-in-loop",
+  2,
+  31,
+  "This runs `prisma.$queryRaw()` once per item of a loop, one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  2,
+  86
+ ],
+ [
+  "l12/src/case-0023.ts",
+  "nitpicker/no-io-in-loop",
+  2,
+  31,
+  "This runs `prisma.$executeRaw()` once per item of a loop, one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  2,
+  93
+ ],
+ [
+  "l12/src/case-0024.ts",
+  "nitpicker/no-io-in-loop",
+  2,
+  31,
+  "This runs `prisma.user.findUnique()` once per item of a loop, one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  2,
+  72
+ ],
+ [
+  "l12/src/case-0025.ts",
+  "nitpicker/no-io-in-loop",
+  2,
+  31,
+  "This runs `prisma.$queryRawUnsafe()` once per item of a loop, one query per item. Fetch or write them in one query: `findMany({ where: { id: { in: ids } } })`, or `createMany` and `updateMany` for writes, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  2,
+  69
+ ],
+ [
+  "l13/src/case-0017.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `repository.replace()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  63
+ ],
+ [
+  "l13/src/case-0018.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `userRepository.replace()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  63
+ ],
+ [
+  "l13/src/case-0019.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `db.users.replace()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  56
+ ],
+ [
+  "l13/src/case-0020.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  35,
+  "This runs `baseSql.replaceAll()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  65
+ ],
+ [
+  "l13/src/case-0021.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  35,
+  "This runs `baseSql.replace()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  90
+ ],
+ [
+  "l13/src/case-0022.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `userRepository.findOne().slice().exec()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  89
+ ],
+ [
+  "l13/src/case-0023.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `db.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  51
+ ],
+ [
+  "l13/src/case-0024.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `connection.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  59
+ ],
+ [
+  "l13/src/case-0025.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `connection.execute()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  67
+ ],
+ [
+  "l13/src/case-0026.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `sql.raw()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  42
+ ],
+ [
+  "l13/src/case-0027.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `pg.query()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  43
+ ],
+ [
+  "l13/src/case-0028.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This calls `client.send()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  51
+ ],
+ [
+  "l13/src/case-0029.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This calls `this.api.send()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  48
+ ],
+ [
+  "l13/src/case-0030.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This calls `httpClient.send()` once per item of a loop, one request after another. Use the API's batch endpoint when it has one; otherwise run the requests with bounded concurrency: `p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (an API with no batch form and a rate limit).",
+  1,
+  50
+ ],
+ [
+  "l14/src/case-0018.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `knex.raw()` once per item of a loop, one query per item. Fetch or write them in one query: `whereIn(column, ids)`, or `insert(rows)` with an array of rows, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  70
+ ],
+ [
+  "l14/src/case-0019.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  52,
+  "This runs `knex.raw()` once per item of a loop, one query per item. Fetch or write them in one query: `whereIn(column, ids)`, or `insert(rows)` with an array of rows, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  101
+ ],
+ [
+  "l14/src/case-0020.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `this.knex.raw()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  56
+ ],
+ [
+  "l14/src/case-0021.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  55,
+  "This runs `knex.raw()` once per item of a loop, one query per item. Fetch or write them in one query: `whereIn(column, ids)`, or `insert(rows)` with an array of rows, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  81
+ ],
+ [
+  "l14/src/case-0022.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `repo.createQueryBuilder().where().getMany()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  97
+ ],
+ [
+  "l14/src/case-0023.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `repo.createQueryBuilder().delete().from().where().execute()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  109
+ ],
+ [
+  "l14/src/case-0024.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  44,
+  "This runs `this.repo.createQueryBuilder().where().getOne()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  100
+ ],
+ [
+  "l14/src/case-0025.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  36,
+  "This runs `repo.createQueryBuilder()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  64
+ ],
+ [
+  "l14/src/case-0026.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  36,
+  "This runs `repo.createQueryBuilder()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  64
+ ],
+ [
+  "l14/src/case-0027.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  44,
+  "This runs `db.select()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  55
+ ],
+ [
+  "l14/src/case-0028.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  39,
+  "This runs `db.select()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  50
+ ],
+ [
+  "l14/src/case-0029.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  39,
+  "This runs `db.select()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  50
+ ],
+ [
+  "l14/src/case-0030.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  35,
+  "This runs `repo.createQueryBuilder()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  63
+ ],
+ [
+  "l14/src/case-0031.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  40,
+  "This runs `repo.createQueryBuilder()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  68
+ ],
+ [
+  "l14/src/case-0032.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  36,
+  "This runs `repo.createQueryBuilder()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  64
+ ],
+ [
+  "l14/src/case-0033.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  31,
+  "This runs `knex().where().update()` once per item of a loop, one query per item. Fetch or write them in one query: `whereIn(column, ids)`, or `insert(rows)` with an array of rows, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  81
+ ],
+ [
+  "l14/src/case-0034.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  25,
+  "This runs `db.select()` once per item of a loop, one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  36
+ ],
+ [
+  "l14/src/case-0035.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  35,
+  "This runs `knex.raw()` once per item inside a concurrent `Promise.all`: running them concurrently still sends one query per item. Fetch or write them in one query: `whereIn(column, ids)`, or `insert(rows)` with an array of rows, run before the loop. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  61
+ ],
+ [
+  "l14/src/case-0036.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  23,
+  "This runs `knex.raw()` once per item of a loop, one query per item. Fetch or write them in one query: `whereIn(column, ids)`, or `insert(rows)` with an array of rows, run before the loop. Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  49
+ ],
+ [
+  "l14/src/case-0037.ts",
+  "nitpicker/no-io-in-loop",
+  1,
+  35,
+  "This runs `db.select()` once per item inside a concurrent `Promise.all`: running them concurrently still sends one query per item. Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`, `insertMany`) or `WHERE id IN (...)`, run before the loop. An exception fits only when a call per item is intended (a store with no batch form).",
+  1,
+  46
+ ]
+]

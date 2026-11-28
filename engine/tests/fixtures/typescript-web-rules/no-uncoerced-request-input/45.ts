@@ -1,0 +1,1 @@
+export const route = { schema: { querystring: { type: 'object', properties: { limit: { type: 'integer' } } } } };

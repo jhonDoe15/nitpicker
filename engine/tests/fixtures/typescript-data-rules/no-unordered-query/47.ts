@@ -1,0 +1,1 @@
+import { eq } from "drizzle-orm"; export const f = (db, users) => db.select().from(users).where(eq(users.active, true)).limit(10);

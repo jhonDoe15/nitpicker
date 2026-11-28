@@ -20,6 +20,14 @@
 ["n/Differences.java", 191, 16, "[NullAway] passing @Nullable parameter 'null' where @NonNull is required"],
 ["n/Differences.java", 198, 7, "[NullAway] returning @Nullable expression from method with @NonNull return type"],
 ["n/Differences.java", 205, 22, "[NullAway] passing @Nullable parameter 'node.label = text' where @NonNull is required"],
+["n/Dimensions.java", 7, 9, "[NullAway] returning @Nullable expression from method with @NonNull return type"],
+["n/Dimensions.java", 11, 9, "[NullAway] returning @Nullable expression from method with @NonNull return type"],
+["n/Dimensions.java", 15, 9, "[NullAway] returning @Nullable expression from method with @NonNull return type"],
+["n/Dimensions.java", 19, 26, "[NullAway] unboxing of a @Nullable expression 'counts.get(\"a\")'"],
+["n/Dimensions.java", 28, 31, "[NullAway] unboxing of a @Nullable expression 'counts.get(\"b\")'"],
+["n/Dimensions.java", 29, 47, "[NullAway] unboxing of a @Nullable expression 'counts.get(\"c\")'"],
+["n/Dimensions.java", 30, 22, "[NullAway] dereferenced expression 'values' is @Nullable"],
+["n/Dimensions.java", 30, 44, "[NullAway] dereferenced expression 'both' is @Nullable"],
 ["n/FieldEdges.java", 9, 7, "[NullAway] read of @NonNull field 'a' before initialization"],
 ["n/FieldEdges.java", 20, 5, "[NullAway] initializer method does not guarantee @NonNull field 'b' (line 17) is initialized along all control-flow paths (remember to check for exceptions or early returns)."],
 ["n/FieldEdges.java", 63, 10, "[NullAway] initializer method does not guarantee @NonNull field 'late' (line 55) is initialized along all control-flow paths (remember to check for exceptions or early returns)."],
@@ -101,6 +109,9 @@
 ["n/Functional.java", 133, 20, "[NullAway] parameter key of referenced method is @NonNull, but parameter in functional interface method n.Functional.Taker.take(K) is @Nullable"],
 ["n/Functional.java", 134, 26, "[NullAway] parameter values of referenced method is @NonNull, but parameter in functional interface method n.Functional.Taker.take(List<K>) is @Nullable"],
 ["n/Functional.java", 135, 28, "[NullAway] parameter second of referenced method is @NonNull, but parameter in functional interface method n.Functional.Pair.pair(K,List<K>) is @Nullable"],
+["n/Functional.java", 136, 38, "[NullAway] parameter second of referenced method is @NonNull, but parameter in functional interface method n.Functional.Pair.pair(K,List<? extends K>) is @Nullable"],
+["n/Functional.java", 137, 36, "[NullAway] parameter second of referenced method is @NonNull, but parameter in functional interface method n.Functional.Pair.pair(K,List<? super K>) is @Nullable"],
+["n/Functional.java", 138, 69, "[NullAway] parameter second of referenced method is @NonNull, but parameter in functional interface method n.Functional.Pair.pair(List<? extends Number>,Map<? super K, ?>) is @Nullable"],
 ["n/Marked.java", 6, 33, "[NullAway] parameter value is @NonNull, but parameter in superclass method marked.Library.take(java.lang.Object) is @Nullable"],
 ["n/Marked.java", 15, 20, "[NullAway] passing @Nullable parameter 'null' where @NonNull is required"],
 ["n/Marked.java", 16, 21, "[NullAway] dereferenced expression 'given.find()' is @Nullable"],
@@ -117,5 +128,7 @@
 ["n/Marked.java", 135, 20, "[NullAway] passing @Nullable parameter 'null' where @NonNull is required"],
 ["n/Marked.java", 136, 21, "[NullAway] dereferenced expression 'given.find()' is @Nullable"],
 ["n/off/Off.java", 25, 25, "[NullAway] dereferenced expression 'value' is @Nullable"],
-["n/off/On.java", 16, 21, "[NullAway] dereferenced expression 'value' is @Nullable"]
+["n/off/On.java", 16, 21, "[NullAway] dereferenced expression 'value' is @Nullable"],
+["plain/Unchecked.java", 48, 16, "[NullAway] initializer method does not guarantee @NonNull field 'value' (line 46) is initialized along all control-flow paths (remember to check for exceptions or early returns)."],
+["plain/Unchecked.java", 51, 13, "[NullAway] returning @Nullable expression from method with @NonNull return type"]
 ]

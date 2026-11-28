@@ -1,0 +1,1 @@
+export function title(value: string) { return value.replace(/-/g, ' ').replace(/_/g, ' '); }

@@ -1,0 +1,1 @@
+const link = `${repositoryUrl}/blob/${branch}/${filePath}`;

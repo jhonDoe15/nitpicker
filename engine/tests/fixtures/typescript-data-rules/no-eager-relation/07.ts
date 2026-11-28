@@ -1,0 +1,2 @@
+import { Cascade, Entity, EntitySchema, ManyToMany, ManyToOne, defineEntity } from '@mikro-orm/core';
+const Order = defineEntity({ name: 'Order', properties: (p) => ({ customer: p.manyToOne(() => Customer).eager(false) }) });

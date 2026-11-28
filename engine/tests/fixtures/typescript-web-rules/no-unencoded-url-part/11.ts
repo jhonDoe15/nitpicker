@@ -1,0 +1,1 @@
+const link = `${apiUrl}/auth?client_id=${env.CLIENT_ID}&token=${inviteToken}`;

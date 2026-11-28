@@ -19,8 +19,7 @@
               $v/@CompileTimeConstant = true()
               or exists($v/ancestor::Block//LocalVariableDeclaration[pmd-java:modifiers() = 'final']
                           /VariableDeclarator[VariableId/@Name = $v/@Name][NumericLiteral])))]
-  [let $parent := ancestor::*[not(self::ParenthesizedExpression
-                                  or self::InfixExpression[@Operator = ('+', '-', '*')][pmd-java:typeIsExactly('int')])][1]
+  [let $parent := ancestor::*[not(self::InfixExpression[@Operator = ('+', '-', '*')][pmd-java:typeIsExactly('int')])][1]
    return exists($parent/self::InfixExpression[@Operator = ('+', '-', '*')][pmd-java:typeIsExactly('long')])
           and empty(ancestor::InfixExpression[@Operator = '*'][pmd-java:typeIsExactly('int')][. >> $parent])]
 ]]></value>

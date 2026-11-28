@@ -1,0 +1,1 @@
+export const u = text.replace(/\\"/g, '"').replace(/\\\\/g, "\\");

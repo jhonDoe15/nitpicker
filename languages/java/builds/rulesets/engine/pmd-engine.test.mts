@@ -18,7 +18,7 @@ const HEAD = '<ruleset name="demo" xmlns="http://pmd.sourceforge.net/ruleset/2.0
 const projectWith = useTempProjects('nitpicker-pmd-engine-');
 
 function xpathRule(name: string) {
-  return { name, xpath: '//A', message: name, suppress: '', properties: {}, include: [] };
+  return { name, xpath: '//A', port: '', message: name, suppress: '', properties: {}, include: [] };
 }
 
 function renderedXml(name: string, lines: readonly string[]): string {
@@ -215,6 +215,95 @@ describe('pmdRulesetsWithEngine', () => {
 
     expect(pmdRulesetsWithEngine(plan, environment, { run: silent })).toEqual(plan.rulesets);
     expect(pmdRulesetsWithEngine(plan, environment, { run: garbled })).toEqual(plan.rulesets);
+    expect(existsSync(path.join(plan.reportDir, ENGINE_SARIF))).toBe(false);
+  });
+});
+
+const UNUSED_SUPPRESSION = 'net.sourceforge.pmd.lang.rule.impl.UnnecessaryPmdSuppressionRule';
+const UNUSED_SUPPRESSION_RULE =
+  `<rule name="UnnecessaryWarningSuppression" language="java" class="${UNUSED_SUPPRESSION}"` +
+  ' message="Unused suppression {0}."/>';
+
+function wholeEngineSetup(extra: string): Setup {
+  const { plan, environment } = setup();
+  const root = path.dirname(plan.reportDir);
+  const main = path.join(root, 'all.xml');
+  writeFileSync(
+    main,
+    `${HEAD}<rule name="Fast" language="java" class="${XPATH}" message="Fast">` +
+      `<properties><property name="xpath"><value>//A</value></property></properties></rule>` +
+      `${extra}</ruleset>`,
+  );
+  return { plan: { ...plan, rulesets: [main], untouched: [] }, environment };
+}
+
+describe('pmdRulesetsWithEngine when no rule is left on PMD', () => {
+  it('runs no PMD and keeps the engine findings', () => {
+    const { plan, environment } = wholeEngineSetup(UNUSED_SUPPRESSION_RULE);
+    const file = path.join(path.dirname(plan.reportDir), 'src/main/A.java');
+    const started: Started[] = [];
+
+    const rulesets = pmdRulesetsWithEngine(plan, environment, {
+      run: engineWriting(
+        {
+          findings: [{ file, rule: 'Fast', line: 2, column: 1, message: 'Fast' }],
+          syntaxErrorFiles: [],
+        },
+        started,
+      ),
+    });
+
+    expect(rulesets).toEqual([]);
+    expect(started).toHaveLength(1);
+    expect(parseJson(readFileSync(path.join(plan.reportDir, ENGINE_SARIF), 'utf8'))).toEqual({
+      version: '2.1.0',
+      runs: [
+        {
+          tool: { driver: { name: 'PMD', rules: [] } },
+          results: [
+            {
+              ruleId: 'Fast',
+              message: { text: 'Fast' },
+              level: 'note',
+              locations: [
+                {
+                  physicalLocation: {
+                    artifactLocation: { uri: `file://${file}` },
+                    region: { startLine: 2, startColumn: 1 },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('leaves every rule to PMD when unused suppressions need rules that PMD runs', () => {
+    const { plan, environment } = wholeEngineSetup(
+      `${UNUSED_SUPPRESSION_RULE}<rule name="Coded" language="java" class="demo.Coded" message="coded"/>`,
+    );
+    const unexpected = () => {
+      throw new Error('the engine must not start');
+    };
+
+    expect(pmdRulesetsWithEngine(plan, environment, { run: unexpected })).toEqual(plan.rulesets);
+    expect(existsSync(path.join(plan.reportDir, ENGINE_SARIF))).toBe(false);
+  });
+
+  it.each([
+    ['contains unused suppressions', UNUSED_SUPPRESSION_RULE],
+    ['cannot be read', '<rule ref="custom/rules.xml"/>'],
+  ])('leaves every rule to PMD when the project ruleset %s', (_case, rule) => {
+    const { plan, environment } = setup();
+    const [project = ''] = plan.untouched;
+    writeFileSync(project, `${HEAD}${rule}</ruleset>`);
+    const started: Started[] = [];
+    const run = engineWriting({ findings: [], syntaxErrorFiles: [] }, started);
+
+    expect(pmdRulesetsWithEngine(plan, environment, { run })).toEqual(plan.rulesets);
+    expect(started).toHaveLength(0);
     expect(existsSync(path.join(plan.reportDir, ENGINE_SARIF))).toBe(false);
   });
 });

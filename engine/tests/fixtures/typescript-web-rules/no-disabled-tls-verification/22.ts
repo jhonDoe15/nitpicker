@@ -1,0 +1,1 @@
+export const HELP = "Use sslmode=verify-full; never sslmode=no-verify in production.";

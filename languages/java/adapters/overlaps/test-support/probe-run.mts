@@ -43,6 +43,9 @@ const EXTRA_MAVEN_DEPENDENCIES = [
     '<version>1.0.0</version></dependency>',
   '    <dependency><groupId>junit</groupId><artifactId>junit</artifactId>' +
     '<version>4.13.2</version><scope>test</scope></dependency>',
+  '    <dependency><groupId>jakarta.persistence</groupId>' +
+    '<artifactId>jakarta.persistence-api</artifactId><version>3.1.0</version>' +
+    '<scope>provided</scope></dependency>',
 ];
 const KEPT_TOOLS = new Set(['pmd', 'spotbugs', 'checkstyle', 'errorprone', 'forbiddenapis']);
 const MESSAGE_RULES = new Set(

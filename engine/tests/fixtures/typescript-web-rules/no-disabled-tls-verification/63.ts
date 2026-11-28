@@ -1,0 +1,1 @@
+export const uri = "mongodb://h:27017/db?tls=true&tlsAllowInvalidCertificates=true";

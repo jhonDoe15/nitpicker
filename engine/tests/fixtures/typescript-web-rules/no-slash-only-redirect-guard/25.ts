@@ -1,0 +1,1 @@
+if (callbackUrl.startsWith("/")) { redirect(callbackUrl); }

@@ -1,0 +1,1 @@
+export function checkEnv(env, logger) { if (env.NODE_TLS_REJECT_UNAUTHORIZED === "0") { logger.warn("NODE_TLS_REJECT_UNAUTHORIZED=0 is set: certificate checks are off, unset it"); } }

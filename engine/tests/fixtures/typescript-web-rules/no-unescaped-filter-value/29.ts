@@ -1,0 +1,1 @@
+export const h = (i: string) => { const where = { email: { contains: i } }; return where; };

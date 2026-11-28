@@ -1,5 +1,6 @@
 //! IdentifierName: classes in UpperCamelCase, methods and variables in lowerCamelCase, acronyms as words.
-use super::Context;
+use super::{Context, renames};
+use super::fixes::Fix;
 use super::hierarchy::{annotation_names, declared_method, super_method};
 use crate::engine::source::{children, parent};
 use crate::java::helpers::has_modifier;
@@ -83,7 +84,7 @@ fn has_initialism(name: &str) -> bool {
     (0..letters.len()).any(|at| initialism(&letters, at).is_some())
 }
 
-fn fix_initialisms(name: &str) -> String {
+pub(super) fn fix_initialisms(name: &str) -> String {
     let letters: Vec<char> = name.chars().collect();
     let mut out = String::new();
     let mut at = 0;
@@ -171,12 +172,13 @@ fn class_name(context: &Context, node: Node) {
     let suggested = fix_initialisms(&plain);
     let fixable = suggested != name && effectively_private(node);
     let mut text = format!("Classes should be named in UpperCamelCase{}", if suggested == plain { "" } else { INITIALISM });
+    let fixes: Vec<Fix> = if fixable { vec![renames::rename_class(context, context.file.tree.root_node(), node, name_node, &suggested)] } else { Vec::new() };
     if !fixable {
         text.push_str(&format!("; did you mean '{suggested}'?"));
     }
     let keyword = children(node).into_iter().find(|part| matches!(part.kind(), "class" | "interface" | "enum" | "record" | "@interface"));
     let at = keyword.map_or(node.start_byte(), |keyword| keyword.start_byte() + usize::from(keyword.kind() == "@interface"));
-    context.report(NAME, node, at, &text);
+    context.report_fixed(NAME, node, at, &text, &fixes);
 }
 
 fn method_name(context: &Context, node: Node) {
@@ -209,10 +211,11 @@ fn method_name(context: &Context, node: Node) {
     let suggested = fix_initialisms(&plain);
     let fixable = suggested != name && effectively_private(node);
     let mut text = format!("{LOWER_CAMEL}{}, but {name} is not", if suggested == plain { "" } else { INITIALISM });
+    let fixes: Vec<Fix> = if fixable { vec![renames::rename_method(context, context.file.tree.root_node(), node, name_node, &suggested)] } else { Vec::new() };
     if !fixable {
         text.push_str(&format!("; did you mean '{suggested}'?"));
     }
-    context.report(NAME, node, name_node.start_byte(), &text);
+    context.report_fixed(NAME, node, name_node.start_byte(), &text, &fixes);
 }
 
 #[derive(PartialEq)]
@@ -253,12 +256,13 @@ fn variable_name(context: &Context, matched: Node, name_node: Node, kind: Variab
     let suggested = fix_initialisms(&plain);
     let fixable = suggested != name && (private || kind == Variable::Local);
     let mut text = format!("{}{}, but {name} is not", if is_static { STATIC_VARIABLE } else { LOWER_CAMEL }, if suggested == plain { "" } else { INITIALISM });
+    let fixes: Vec<Fix> = if fixable { vec![renames::rename_variable(context, context.file.tree.root_node(), matched, name_node, &suggested)] } else { Vec::new() };
     if !fixable {
         text.push_str(&format!("; did you mean '{suggested}'?"));
     }
     // javac places an enum constant where its annotations start.
     let at = if matched.kind() == "enum_constant" { matched.start_byte() } else { name_node.start_byte() };
-    context.report(NAME, matched, at, &text);
+    context.report_fixed(NAME, matched, at, &text, &fixes);
 }
 
 pub fn identifier_name(context: &Context, node: Node) {

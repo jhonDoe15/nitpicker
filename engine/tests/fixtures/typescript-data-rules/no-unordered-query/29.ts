@@ -1,0 +1,1 @@
+export const f = (store) => store.find({ limit: 10 });

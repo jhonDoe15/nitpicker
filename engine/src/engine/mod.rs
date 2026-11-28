@@ -1,4 +1,5 @@
 //! Language-neutral core: a language plugs in a grammar, file rules and project passes.
+pub mod encoding;
 pub mod finding;
 pub mod runner;
 pub mod source;
@@ -27,8 +28,22 @@ pub type Project = dyn std::any::Any + Send + Sync;
 #[derive(Default)]
 pub struct Options {
     pub classpath: Vec<std::path::PathBuf>,
+    /// The module path of the compile (`--module-path`): looked up before the class path, and each module's declaration is read.
+    pub module_path: Vec<std::path::PathBuf>,
     /// The Java release the sources are compiled for (`--release`), when it is older than the JDK: the library of that release is used.
     pub release: Option<u32>,
+    /// The Java language level of the sources (`-source`), when no `--release` gives it.
+    pub source: Option<u32>,
+    /// javac ran Lombok over the sources: source classes have the members Lombok writes, and `val` infers a local's type.
+    pub lombok: bool,
+    /// The build's class directories for the sources: with `lombok`, the members Lombok wrote are read from them.
+    pub classes: Vec<std::path::PathBuf>,
+    /// The compile runs with `-XDandroidCompatible=true`.
+    pub android_compatible: bool,
+    /// The sources are test code only: Error Prone's `-XepCompilingTestOnlyCode`.
+    pub test_only: bool,
+    /// The character set of the sources (`--encoding`, javac's `-encoding`), when it is not UTF-8.
+    pub encoding: Option<encoding::Charset>,
 }
 
 /// Facts a language extracts from one file for whole-project passes (duplicates, metrics).
@@ -59,6 +74,14 @@ pub trait Language: Sync + Send {
     /// The text to hand to the grammar when it cannot take the file as written. Byte offsets must stay the same.
     fn grammar_text(&self, _text: &str) -> Option<String> {
         None
+    }
+    /// The names the language reads other than as written, such as identifiers with escapes.
+    fn names(&self, _text: &str, _tree: &tree_sitter::Tree) -> super::engine::source::Names {
+        super::engine::source::Names::default()
+    }
+    /// Whether the file does not parse: the grammar's errors, and what the language rejects that the grammar accepts.
+    fn broken(&self, file: &SourceFile) -> bool {
+        file.tree.root_node().has_error()
     }
     /// The file with everything blanked that the project pass does not read (method bodies, for instance),
     /// byte for byte as long as the file. `None` keeps the file as it is.

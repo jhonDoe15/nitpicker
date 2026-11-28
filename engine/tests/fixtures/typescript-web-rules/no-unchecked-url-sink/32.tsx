@@ -1,0 +1,1 @@
+function F({ record }) { return <a href={record.url}>x</a>; }

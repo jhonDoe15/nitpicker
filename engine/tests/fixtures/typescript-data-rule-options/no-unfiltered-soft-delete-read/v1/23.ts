@@ -1,0 +1,1 @@
+async function f(db) { return db.select().from(assets).where(eq(assets.ownerId, 1)); }

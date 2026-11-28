@@ -1,0 +1,10 @@
+[
+["sources/demo/app/api/Accounts.java", 14, 12, "[NullAway] initializer method does not guarantee @NonNull field 'name' (line 11) is initialized along all control-flow paths (remember to check for exceptions or early returns)."],
+["sources/demo/app/api/Accounts.java", 17, 9, "[NullAway] returning @Nullable expression from method with @NonNull return type"],
+["sources/demo/app/api/Accounts.java", 21, 34, "[NullAway] dereferenced expression 'Store.find(\"size\")' is @Nullable"],
+["sources/demo/app/api/Accounts.java", 25, 19, "[NullAway] dereferenced expression 'connection' is @Nullable"],
+["sources/demo/app/api/Accounts.java", 29, 29, "[NullAway] passing @Nullable parameter 'null' where @NonNull is required"],
+["sources/demo/app/api/Accounts.java", 33, 40, "[NullAway] passing @Nullable parameter 'Store.find(\"x\")' where @NonNull is required"],
+["sources/demo/app/internal/Cache.java", 20, 22, "[NullAway] dereferenced expression 'rows()' is @Nullable"],
+["sources/demo/app/internal/Cache.java", 24, 20, "[NullAway] dereferenced expression 'text' is @Nullable"]
+]

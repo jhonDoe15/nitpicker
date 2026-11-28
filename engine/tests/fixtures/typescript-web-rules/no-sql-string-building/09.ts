@@ -1,0 +1,1 @@
+const BASE = "SELECT * FROM users"; export const all = () => pool.query(BASE + " ORDER BY name");

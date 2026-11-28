@@ -1,0 +1,1 @@
+const link = `${callbackURL}?error=${message}`;

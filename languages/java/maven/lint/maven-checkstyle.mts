@@ -1,5 +1,13 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -7,7 +15,7 @@ import {
   reportingCheckstyleConfig,
   suppressionsFile,
   withGuardChecks,
-} from '../../builds/rulesets/checkstyle-config.mts';
+} from '../../builds/checkstyle/checkstyle-config.mts';
 import { removeQuietly } from '../../builds/cleanup/remove-quietly.mts';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mts';
 import { layerCheckstyle } from '../../adapters/tool-config/checkstyle/checkstyle-layers.mts';
@@ -16,14 +24,20 @@ import { CHECKSTYLE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools
 import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
 import { fieldOf, fieldsOf, optionalText, textOf } from '../../../../shared/values/readers.mts';
 import { skipWithoutJdk, toolJava } from '../errorprone/maven-jdk.mts';
-import type { SourceModule } from '../errorprone/compiler-types.mts';
+import type { SourceModule } from '../compile-sets/compiler-types.mts';
 import { javaCommand, runJava } from '../programs/java-command.mts';
 import type { ToolClasspaths } from '../typed/kotlin-types.mts';
 import { javaFiles } from './java-files.mts';
 import { handWrittenRoots } from '../generated/generated-roots.mts';
+import { checkstyleOnEngine } from '../../builds/checkstyle/checkstyle-engine.mts';
+import { mergeReports } from '../../builds/checkstyle/checkstyle-xml.mts';
 
 type CheckstylePinned = { readonly checkstyle: string };
 type CheckstyleSetup = { readonly config: string; readonly properties: string };
+type EngineSetup = CheckstyleSetup & {
+  readonly bundled: string;
+  readonly guards: readonly string[];
+};
 type CheckstyleOptions = {
   readonly module: SourceModule;
   readonly reportDir: string;
@@ -46,7 +60,7 @@ type ReportRequest = Pick<
   CheckstyleOptions,
   'module' | 'tools' | 'spawn' | 'timeoutMs' | 'environment'
 > & {
-  readonly setup: CheckstyleSetup;
+  readonly setup: EngineSetup;
   readonly pinned: CheckstylePinned;
   readonly roots: readonly string[];
   readonly report: string;
@@ -85,29 +99,35 @@ function propertiesLine(name: string, value: string): string {
 function checkstyleSetup(
   { reportDir, tools, configs, pinned, style, spawn }: CheckstyleOptions,
   test: boolean,
-): CheckstyleSetup {
+): EngineSetup {
   const jar = (tools[CHECKSTYLE] ?? []).find(
     (entry) => path.basename(entry) === `checkstyle-${pinned.checkstyle}.jar`,
   );
-  const bundled = textOf(nitpickerCheckstyleConfig(bundledGoogleChecks(jar, spawn ?? spawnSync)));
+  const google = bundledGoogleChecks(jar, spawn ?? spawnSync);
+  const bundled = textOf(nitpickerCheckstyleConfig(google));
   const unformatted = fieldOf(style, 'javaStyle') === 'none';
   const formatting = unformatted ? 'unformatted' : 'formatted';
   const declared = fieldsOf(fieldOf(configs, CHECKSTYLE));
-  return writeCheckstyleSetup({
-    directory: path.join(reportDir, test ? 'checkstyle-test-config' : 'checkstyle-config'),
+  const directory = path.join(reportDir, test ? 'checkstyle-test-config' : 'checkstyle-config');
+  const guards = ['checkstyle-all.xml', ...(test ? [] : ['checkstyle-main.xml'])];
+  const setup = writeCheckstyleSetup({
+    directory,
     nitpickerConfig: textOf(
       withGuardChecks(
         reportingCheckstyleConfig(
           unformatted ? unformattedCheckstyle(bundled, fieldOf(style, 'indentation')) : bundled,
           formatting,
         ),
-        ['checkstyle-all.xml', ...(test ? [] : ['checkstyle-main.xml'])],
+        guards,
       ),
     ),
     suppressions: suppressionsFile(formatting),
     project: optionalText(declared['project']),
     projectWins: declared['projectWins'] !== false,
   });
+  const bundledFile = path.join(directory, GOOGLE_CHECKS);
+  writeFileSync(bundledFile, google);
+  return { ...setup, bundled: bundledFile, guards };
 }
 
 export function writeCheckstyleSetup({
@@ -157,17 +177,67 @@ function checkstyleReport(options: ReportRequest): void {
     }
     return;
   }
+  const left = leftByEngine(options, files);
+  if (left?.length === 0) {
+    copyFileSync(engineReportOf(setup), report);
+    return;
+  }
+  rmSync(report, { force: true });
   runJava({
-    java: toolJava({ tool: TOOL, environment }),
+    java: toolJava({ tool: TOOL, spawn, environment }),
     tool: TOOL,
     classpath: tools[CHECKSTYLE],
     mainClass: 'com.puppycrawl.tools.checkstyle.Main',
-    args: ['-c', setup.config, '-p', setup.properties, '-f', 'xml', '-o', report, ...files],
+    args: [
+      '-c',
+      setup.config,
+      '-p',
+      setup.properties,
+      '-f',
+      'xml',
+      '-o',
+      report,
+      ...(left ?? files),
+    ],
     cwd: module.basedir,
     accept: () => existsSync(report),
     spawn,
     timeoutMs,
   });
+  if (left !== undefined) {
+    mergeReports(report, engineReportOf(setup));
+  }
+}
+
+function engineReportOf(setup: EngineSetup): string {
+  return path.join(path.dirname(setup.config), 'checkstyle-engine.xml');
+}
+
+function leftByEngine(
+  { module, setup, pinned, environment }: ReportRequest,
+  files: readonly string[],
+): string[] | undefined {
+  const directory = path.dirname(setup.config);
+  const list = path.join(directory, 'files.txt');
+  const absolute = files.map((file) => path.resolve(module.basedir, file));
+  writeFileSync(list, absolute.join('\n'));
+  const left = checkstyleOnEngine(
+    {
+      config: setup.config,
+      bundled: setup.bundled,
+      guards: setup.guards,
+      files: list,
+      engineReport: engineReportOf(setup),
+      left: path.join(directory, 'left.txt'),
+      version: pinned.checkstyle,
+    },
+    environment,
+  );
+  if (left === undefined) {
+    return undefined;
+  }
+  const kept = new Set(left);
+  return files.filter((file) => kept.has(path.resolve(module.basedir, file)));
 }
 
 function runCheckstyleReports(options: CheckstyleOptions): void {

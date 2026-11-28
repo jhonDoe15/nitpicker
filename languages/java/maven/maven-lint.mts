@@ -3,7 +3,7 @@ import { guardCompiler } from './errorprone/maven-compiler.mts';
 import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runJava } from './programs/java-command.mts';
-import { type SourceModule, compilerOf } from './errorprone/compiler-types.mts';
+import { type SourceModule, compilerOf } from './compile-sets/compiler-types.mts';
 import { writeRulesets } from '../adapters/tool-config/pmd-wrappers.mts';
 import { NITPICKER_RULESET } from '../adapters/tool-config/layer-files.mts';
 import {
@@ -11,7 +11,7 @@ import {
   spotbugsArguments,
 } from '../adapters/tool-config/declared/spotbugs-declared.mts';
 import { type JavaSpawn, callUntyped } from '../adapters/typed/java-values.mts';
-import { fieldOf, textsOf } from '../../../shared/values/readers.mts';
+import { fieldOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import type { Classpaths } from './typed/maven-values.mts';
 import type { ToolClasspaths } from './typed/kotlin-types.mts';
 import { javaFiles } from './lint/java-files.mts';
@@ -165,6 +165,11 @@ export function runPmd(options: PmdOptions): void {
   }
   const aux = writeAuxClasspath({ module, reportDir, classpaths });
   const rulesets = rulesetsToRun(options, { aux, dirs: linted });
+  if (rulesets.length === 0) {
+    writeFileSync(report, EMPTY_SARIF);
+    writeFileSync(path.join(reportDir, PMD_LOG), '');
+    return;
+  }
   const result = runJava({
     tool: 'PMD',
     classpath: tools['pmd'],
@@ -175,8 +180,7 @@ export function runPmd(options: PmdOptions): void {
     spawn,
     timeoutMs,
   });
-  const stderr = fieldOf(result, 'stderr');
-  writeFileSync(path.join(reportDir, PMD_LOG), typeof stderr === 'string' ? stderr : '');
+  writeFileSync(path.join(reportDir, PMD_LOG), textOf(fieldOf(result, 'stderr')));
 }
 
 function auxiliaryEntries(outputDirectory: string, auxClasspath: readonly string[]): string[] {

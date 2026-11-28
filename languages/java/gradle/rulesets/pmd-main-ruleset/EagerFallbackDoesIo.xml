@@ -1,0 +1,47 @@
+  <rule name="EagerFallbackDoesIo" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="The fallback argument of orElse, getOrDefault, requireNonNullElse, firstNonNull or Optional.or is evaluated before the call, whether or not it is needed. Here it calls (not a plain getter) a repository, EntityManager, MyBatis-Plus mapper, JdbcTemplate, RestTemplate, RestClient, HttpClient or messaging template, or a method that only throws, so the query, the save or the exception happens on every call, even when the value was present. Pass a supplier instead: optional.orElseGet(() -&gt; repository.save(entity)), optional.orElseThrow(() -&gt; new NotFoundException(id)), or map.computeIfAbsent(key, k -&gt; client.fetch(k)). An exception fits a fallback that must run every time, which then belongs on its own line.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $io := ('org.springframework.data.repository.Repository', 'jakarta.persistence.EntityManager',
+            'javax.persistence.EntityManager', 'org.springframework.jdbc.core.JdbcOperations',
+            'org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations',
+            'org.springframework.web.client.RestOperations', 'org.springframework.web.client.RestClient',
+            'java.net.http.HttpClient', 'org.springframework.kafka.core.KafkaOperations',
+            'org.springframework.jms.core.JmsOperations', 'org.springframework.amqp.core.AmqpTemplate',
+            'org.springframework.messaging.core.MessageSendingOperations',
+            'com.baomidou.mybatisplus.core.mapper.BaseMapper'),
+    $throws := function($c) {
+      $c/self::MethodCall[*[1][self::ArgumentList]]
+        [some $m in ancestor::ClassBody[1]/MethodDeclaration[@Name = $c/@MethodName]
+                    [count(FormalParameters/FormalParameter) = $c/ArgumentList/@Size]
+                    [Block[count(*) = 1][ThrowStatement]]
+         satisfies not($m/VoidType)]
+    }
+return
+//MethodCall[
+     pmd-java:matchesSig('java.util.Optional#orElse(_)')
+  or pmd-java:matchesSig('java.util.OptionalInt#orElse(_)')
+  or pmd-java:matchesSig('java.util.OptionalLong#orElse(_)')
+  or pmd-java:matchesSig('java.util.OptionalDouble#orElse(_)')
+  or pmd-java:matchesSig('java.util.Map#getOrDefault(_,_)')
+  or pmd-java:matchesSig('java.util.Objects#requireNonNullElse(_,_)')
+  or pmd-java:matchesSig('com.google.common.base.MoreObjects#firstNonNull(_,_)')
+  or pmd-java:matchesSig('com.google.common.base.Optional#or(_)')]
+  /ArgumentList/*[last()]
+  [let $arg := .
+   return exists(descendant-or-self::MethodCall
+            [count(ancestor::LambdaExpression) = count($arg/ancestor::LambdaExpression)]
+            [count(ancestor::ClassBody) = count($arg/ancestor::ClassBody)]
+            [(not(ArgumentList/@Size = 0
+                  and (matches(@MethodName, '^(get|is|has)([A-Z]|$)')
+                       or @MethodName = ('connectTimeout', 'executor', 'followRedirects', 'proxy', 'version',
+                                         'sslContext', 'sslParameters', 'authenticator', 'cookieHandler')))
+              and exists(*[1][not(self::TypeExpression or self::AmbiguousName)]
+                            [some $t in $io satisfies pmd-java:typeIs($t)]))
+             or exists($throws(.))])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

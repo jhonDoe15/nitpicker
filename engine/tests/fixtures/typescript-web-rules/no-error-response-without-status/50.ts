@@ -1,0 +1,1 @@
+import { NextResponse } from 'next/server'; export async function POST(req: Request) { try { await run(); return NextResponse.json({ sent: true }); } catch (error) { if (error instanceof Missing) { return NextResponse.json({ error: "none" }, { status: 404 }); } return NextResponse.json({ error: "failed" }); } }

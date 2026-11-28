@@ -1,0 +1,1 @@
+export function find(req, repo) { let q = req.query.q; q = q.trim(); return repo.findByName(q); }

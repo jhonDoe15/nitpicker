@@ -1,0 +1,1 @@
+const mediaType = req.headers['content-type'].split(';')[0].trim().toLowerCase();

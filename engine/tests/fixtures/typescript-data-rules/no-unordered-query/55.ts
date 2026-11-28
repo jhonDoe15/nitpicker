@@ -1,0 +1,1 @@
+export const f = (pool) => pool.query("select id from users limit $1", [10]);

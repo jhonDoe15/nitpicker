@@ -1,0 +1,1 @@
+function F({ item }) { return <NextLink href={item.website}>x</NextLink>; }

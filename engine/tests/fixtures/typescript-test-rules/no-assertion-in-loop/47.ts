@@ -1,0 +1,1 @@
+it('x', () => { const check = (o) => run(o); for (const o of orders) { check(o); } expect(done()).toBe(true); });

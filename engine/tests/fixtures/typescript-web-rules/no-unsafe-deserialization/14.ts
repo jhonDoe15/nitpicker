@@ -1,0 +1,1 @@
+const serialize = require("node-serialize"); exports.data = serialize.unserialize(text);

@@ -22,6 +22,12 @@ const layoutFeatures: { readonly feature: string } = untypedLayoutFeatures;
 
 const FEATURE_INDEX = new RegExp(`${layoutFeatures.feature}/index\\.[cm]?[jt]sx?$`, 'u');
 
+export function featureOf(filename: string): string {
+  return FEATURE_INDEX.test(filename.replaceAll('\\', '/'))
+    ? path.basename(path.dirname(filename))
+    : '';
+}
+
 function isDeclarationNode(node: TSESTree.Node): node is DeclarationNode {
   return (
     node.type === AST_NODE_TYPES.FunctionDeclaration ||

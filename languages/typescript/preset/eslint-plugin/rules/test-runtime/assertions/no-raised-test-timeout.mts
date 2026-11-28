@@ -30,7 +30,14 @@ export { TEST_TIMEOUT_CEILING_MS } from '../../../../../../../shared/test-timeou
 
 const HOOK_TIMEOUT = 'hookTimeout';
 const TEARDOWN_TIMEOUT = 'teardownTimeout';
-const HOOKS = new Set(['beforeAll', 'beforeEach', 'afterAll', 'afterEach', 'before', 'after']);
+export const TEST_HOOKS: ReadonlySet<string> = new Set([
+  'beforeAll',
+  'beforeEach',
+  'afterAll',
+  'afterEach',
+  'before',
+  'after',
+]);
 const HOOK_TIMEOUT_KEYS = [HOOK_TIMEOUT, TEARDOWN_TIMEOUT];
 const TIMEOUT_KEYS = new Set(['timeout', 'testTimeout', HOOK_TIMEOUT, TEARDOWN_TIMEOUT]);
 
@@ -102,6 +109,18 @@ function argumentTimeouts(
     : [{ node: argument, hook }];
 }
 
+function isFactoryCall(callee: TSESTree.Node): boolean {
+  return (
+    callee.type === AST_NODE_TYPES.MemberExpression &&
+    !callee.computed &&
+    isTestFactoryMember(callee.property.name)
+  );
+}
+
+function isHookCall(root: string | undefined, callee: TSESTree.Node): boolean {
+  return root !== undefined && TEST_HOOKS.has(root) && callee.type === AST_NODE_TYPES.Identifier;
+}
+
 function timeoutNodes(context: SourceContext, node: TSESTree.CallExpression): TimeoutNode[] {
   const global = globalTimeouts(context, node);
   if (global !== undefined) {
@@ -111,14 +130,10 @@ function timeoutNodes(context: SourceContext, node: TSESTree.CallExpression): Ti
     return firstArgumentTimeouts(node);
   }
   const root = registrationRoot(node.callee);
-  if (
-    node.callee.type === AST_NODE_TYPES.MemberExpression &&
-    !node.callee.computed &&
-    isTestFactoryMember(node.callee.property.name)
-  ) {
+  if (isFactoryCall(node.callee)) {
     return [];
   }
-  if (root !== undefined && HOOKS.has(root) && node.callee.type === AST_NODE_TYPES.Identifier) {
+  if (isHookCall(root, node.callee)) {
     return node.arguments
       .slice(1, 2)
       .flatMap((argument) => argumentTimeouts(context, argument, true));

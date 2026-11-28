@@ -28,7 +28,7 @@
   <rule ref="category/java/errorprone.xml/CloseResource">
     <properties>
       <property name="allowedResourceTypes"
-                value="java.io.ByteArrayOutputStream,java.io.ByteArrayInputStream,java.io.StringWriter,java.io.CharArrayWriter,java.io.StringReader,java.io.CharArrayReader,java.util.stream.Stream,java.util.stream.IntStream,java.util.stream.LongStream,java.util.stream.DoubleStream"/>
+                value="java.io.ByteArrayOutputStream,java.io.ByteArrayInputStream,java.io.StringWriter,java.io.CharArrayWriter,java.io.StringReader,java.io.CharArrayReader,java.util.stream.Stream,java.util.stream.IntStream,java.util.stream.LongStream,java.util.stream.DoubleStream,java.util.concurrent.ExecutorService,java.util.concurrent.ScheduledExecutorService,java.util.concurrent.ThreadPoolExecutor,java.util.concurrent.ScheduledThreadPoolExecutor,java.util.concurrent.ForkJoinPool"/>
       <property name="violationSuppressXPath">
         <value><![CDATA[
 let $name := string(@Name),
@@ -879,10 +879,14 @@ return $call[exists($format[pmd-java:typeIs('java.lang.String')])][
            else
              let $then := $self($self, $s/*[2], $loop),
                  $else := if ($s/*[3]) then $self($self, $s/*[3], $loop) else (true(), false()),
-                 $guard := exists($s/*[1][self::InstanceOfExpression or self::UnaryExpression[@Operator = '!']]
-                             /descendant-or-self::InstanceOfExpression[1]/*[1][self::VariableAccess][@Name = $caught]),
-                 $stopped := not($then[1] or $then[2]) or not($else[1] or $else[2])
-             return if ($guard and $stopped) then (false(), false())
+                 $guard := exists($s/*[1][self::InfixExpression[@Operator = 'instanceof'] or self::UnaryExpression[@Operator = '!']]
+                             /descendant-or-self::InfixExpression[@Operator = 'instanceof'][1]/*[1][self::VariableAccess][@Name = $caught]),
+                 $stopped := not($then[1] or $then[2]) or not($else[1] or $else[2]),
+                 $other := exists($s/*[1][self::UnaryExpression[@Operator = '!']]
+                             /*[1][self::InfixExpression[@Operator = 'instanceof']][*[1][self::VariableAccess][@Name = $caught]]
+                             /*[2]/descendant-or-self::ClassType[1][pmd-java:typeIsExactly('java.lang.InterruptedException')])
+             return if ($other) then $else
+                    else if ($guard and $stopped) then (false(), false())
                     else ($then[1] or $else[1], $then[2] or $else[2])
          else if ($s/self::DoStatement) then
            let $f := $self($self, $s/*[1], true())

@@ -1,0 +1,1 @@
+const INSECURE = false; export const options = { rejectUnauthorized: INSECURE };

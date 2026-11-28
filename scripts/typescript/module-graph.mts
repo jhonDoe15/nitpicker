@@ -12,6 +12,7 @@ export type ModuleImport = {
 };
 
 const GIT_TIMEOUT_MS = 60_000;
+const GIT_LISTING_BYTES = 256 * 1024 * 1024;
 const MODULE = /\.(?:mjs|mts|cjs)$/u;
 const FIXTURE = /(?:^|\/)fixtures\//u;
 const MODULE_URL = /new URL\(\s*(['"])(?<specifier>[^'"]+)\1,\s*import\.meta\.url/gu;
@@ -29,6 +30,7 @@ export function trackedModules(root: string): string[] {
   return execFileSync('git', ['ls-files', '-z'], {
     cwd: root,
     encoding: 'utf8',
+    maxBuffer: GIT_LISTING_BYTES,
     timeout: GIT_TIMEOUT_MS,
   })
     .split('\0')

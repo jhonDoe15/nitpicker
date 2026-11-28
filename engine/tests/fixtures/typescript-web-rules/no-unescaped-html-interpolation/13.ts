@@ -1,0 +1,1 @@
+export const a = (a: boolean) => `<td>${a ? "yes" : "no"}</td>`;

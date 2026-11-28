@@ -1,0 +1,1 @@
+import { md5 } from "other"; export const id = (s) => md5(s); export const sums = (s) => hashWith("md5", s);

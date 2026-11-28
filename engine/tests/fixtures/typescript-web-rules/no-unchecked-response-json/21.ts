@@ -1,0 +1,1 @@
+async function f(url) { return (await fetch(url)).json(); }

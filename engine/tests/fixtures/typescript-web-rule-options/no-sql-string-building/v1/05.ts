@@ -1,0 +1,1 @@
+export const find = (id) => sql`SELECT * FROM users WHERE id = ${id}`;

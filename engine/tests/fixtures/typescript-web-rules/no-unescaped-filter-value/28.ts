@@ -1,0 +1,1 @@
+export const g = (s: string) => ({ startsWith: s, endsWith: s });

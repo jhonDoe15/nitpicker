@@ -1,0 +1,1 @@
+Response.redirect(new URL(`${pages.error}?error=Configuration`, request.url));

@@ -17,6 +17,7 @@ import {
 export type Ranged = { readonly range: readonly [number, number] };
 
 export type SourceCode = Readonly<TSESLint.SourceCode>;
+export type FileContext = { readonly sourceCode: SourceCode; readonly filename: string };
 export type LibraryBinding = { readonly source: string; readonly name: string | undefined };
 
 export function stringSourceBinding(
@@ -104,7 +105,7 @@ export function nameOf(node: unknown): string | undefined {
 }
 
 export function requiredLiteral(
-  init: TSESTree.Node | undefined,
+  init: TSESTree.Node | null | undefined,
 ): TSESTree.Literal['value'] | undefined {
   if (
     init?.type !== AST_NODE_TYPES.CallExpression ||
@@ -157,4 +158,66 @@ export function isPlainString(node: TSESTree.Node): boolean {
     (node.type === AST_NODE_TYPES.Literal && typeof node.value === 'string') ||
     (node.type === AST_NODE_TYPES.TemplateLiteral && node.expressions.length === 0)
   );
+}
+
+type SoleStatement = 'ReturnStatement' | 'ExpressionStatement';
+
+function statementValue(
+  only: TSESTree.Statement | undefined,
+  statement: SoleStatement,
+): TSESTree.Node | undefined {
+  if (only?.type === AST_NODE_TYPES.ReturnStatement && statement === 'ReturnStatement') {
+    return only.argument ?? undefined;
+  }
+  if (only?.type === AST_NODE_TYPES.ExpressionStatement && statement === 'ExpressionStatement') {
+    return only.expression;
+  }
+  return undefined;
+}
+
+export function soleBodyValue(
+  fn: TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression,
+  statement: SoleStatement,
+): TSESTree.Node | undefined {
+  const { body } = fn;
+  if (body.type !== AST_NODE_TYPES.BlockStatement) {
+    return body;
+  }
+  return body.body.length === 1 ? statementValue(body.body[0], statement) : undefined;
+}
+
+export function compositeOperands(value: TSESTree.Node): TSESTree.Node[] | undefined {
+  if (value.type === AST_NODE_TYPES.TemplateLiteral) {
+    return value.expressions;
+  }
+  return value.type === AST_NODE_TYPES.BinaryExpression ? [value.left, value.right] : undefined;
+}
+
+export function nameText(node: TSESTree.Identifier | TSESTree.StringLiteral): string {
+  return node.type === AST_NODE_TYPES.Identifier ? node.name : node.value;
+}
+
+export function unwrapAwait(node: TSESTree.Node | undefined): TSESTree.Node | undefined {
+  return node?.type === AST_NODE_TYPES.AwaitExpression ? node.argument : node;
+}
+
+export function valueIdentifiersIn(
+  root: TSESTree.Node,
+  children: (node: TSESTree.Node) => readonly TSESTree.Node[],
+): TSESTree.Identifier[] {
+  return [...depthFirst<TSESTree.Node>(root, children)].filter(
+    (node): node is TSESTree.Identifier =>
+      node.type === AST_NODE_TYPES.Identifier &&
+      !(
+        node.parent.type === AST_NODE_TYPES.MemberExpression &&
+        node.parent.property === node &&
+        !node.parent.computed
+      ),
+  );
+}
+
+export function blockTail(statement: TSESTree.Node): TSESTree.Node | undefined {
+  return chainOf<TSESTree.Node>(statement, (link) =>
+    link.type === AST_NODE_TYPES.BlockStatement ? link.body.at(-1) : undefined,
+  ).at(-1);
 }

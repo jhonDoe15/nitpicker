@@ -1,0 +1,191 @@
+[
+ [
+  "p01/src/case-0006.ts",
+  "nitpicker/no-remote-call-under-lock",
+  1,
+  46,
+  "This calls `fetch()` while `mutex.runExclusive()` holds a lock, so every waiter queues behind the remote call's latency (lock exhaustion under load). Make the remote call before taking the lock or after releasing it, and keep only the shared-state change under the lock; when the remote side effect must match it, record it in an outbox row and send it from a worker. A fill-once block stays allowed: the call under an `if` that tests the state the block then sets (a token refresh, a cached download), so callers wait for one request instead of each sending their own. An exception fits only when the lock exists to serialize that remote call.",
+  1,
+  56
+ ],
+ [
+  "p01/src/case-0023.ts",
+  "nitpicker/no-remote-call-in-transaction",
+  1,
+  79,
+  "This calls `fetch()` inside the transaction of `sequelize.transaction()`, so a database connection stays held for the remote call's latency and the pool runs dry under load. Make the remote call before the transaction starts or after it commits; when its side effect must match the transaction's outcome, write an outbox row inside the transaction and send it from a worker. An exception fits only when the remote call must see uncommitted state and has a short timeout.",
+  1,
+  89
+ ],
+ [
+  "p01/src/case-0034.ts",
+  "nitpicker/no-remote-call-under-lock",
+  1,
+  46,
+  "This calls `fetch()` while `mutex.runExclusive()` holds a lock, so every waiter queues behind the remote call's latency (lock exhaustion under load). Make the remote call before taking the lock or after releasing it, and keep only the shared-state change under the lock; when the remote side effect must match it, record it in an outbox row and send it from a worker. A fill-once block stays allowed: the call under an `if` that tests the state the block then sets (a token refresh, a cached download), so callers wait for one request instead of each sending their own. An exception fits only when the lock exists to serialize that remote call.",
+  1,
+  56
+ ],
+ [
+  "p01/src/case-0035.ts",
+  "nitpicker/no-remote-call-under-lock",
+  1,
+  86,
+  "This calls `fetch()` while `semaphore.runExclusive()` holds a lock, so every waiter queues behind the remote call's latency (lock exhaustion under load). Make the remote call before taking the lock or after releasing it, and keep only the shared-state change under the lock; when the remote side effect must match it, record it in an outbox row and send it from a worker. A fill-once block stays allowed: the call under an `if` that tests the state the block then sets (a token refresh, a cached download), so callers wait for one request instead of each sending their own. An exception fits only when the lock exists to serialize that remote call.",
+  1,
+  96
+ ],
+ [
+  "p01/src/case-0036.ts",
+  "nitpicker/no-remote-call-under-lock",
+  1,
+  47,
+  "This calls `httpClient.get()` while `lock.acquire()` holds a lock, so every waiter queues behind the remote call's latency (lock exhaustion under load). Make the remote call before taking the lock or after releasing it, and keep only the shared-state change under the lock; when the remote side effect must match it, record it in an outbox row and send it from a worker. A fill-once block stays allowed: the call under an `if` that tests the state the block then sets (a token refresh, a cached download), so callers wait for one request instead of each sending their own. An exception fits only when the lock exists to serialize that remote call.",
+  1,
+  66
+ ],
+ [
+  "p01/src/case-0037.ts",
+  "nitpicker/no-remote-call-under-lock",
+  1,
+  56,
+  "This calls `fetch()` while `navigator.locks.request()` holds a lock, so every waiter queues behind the remote call's latency (lock exhaustion under load). Make the remote call before taking the lock or after releasing it, and keep only the shared-state change under the lock; when the remote side effect must match it, record it in an outbox row and send it from a worker. A fill-once block stays allowed: the call under an `if` that tests the state the block then sets (a token refresh, a cached download), so callers wait for one request instead of each sending their own. An exception fits only when the lock exists to serialize that remote call.",
+  1,
+  66
+ ],
+ [
+  "p01/src/case-0038.ts",
+  "nitpicker/no-remote-call-under-lock",
+  1,
+  54,
+  "This calls `apiClient.post()` while `redlock.using()` holds a lock, so every waiter queues behind the remote call's latency (lock exhaustion under load). Make the remote call before taking the lock or after releasing it, and keep only the shared-state change under the lock; when the remote side effect must match it, record it in an outbox row and send it from a worker. A fill-once block stays allowed: the call under an `if` that tests the state the block then sets (a token refresh, a cached download), so callers wait for one request instead of each sending their own. An exception fits only when the lock exists to serialize that remote call.",
+  1,
+  73
+ ],
+ [
+  "p01/src/case-0039.ts",
+  "nitpicker/no-remote-call-under-lock",
+  1,
+  52,
+  "This calls `fetch()` while `mutex.acquire()` holds a lock, so every waiter queues behind the remote call's latency (lock exhaustion under load). Make the remote call before taking the lock or after releasing it, and keep only the shared-state change under the lock; when the remote side effect must match it, record it in an outbox row and send it from a worker. A fill-once block stays allowed: the call under an `if` that tests the state the block then sets (a token refresh, a cached download), so callers wait for one request instead of each sending their own. An exception fits only when the lock exists to serialize that remote call.",
+  1,
+  62
+ ],
+ [
+  "p01/src/case-0040.ts",
+  "nitpicker/no-remote-call-under-lock",
+  1,
+  70,
+  "This calls `fetch()` while `mutex.runExclusive()` holds a lock, so every waiter queues behind the remote call's latency (lock exhaustion under load). Make the remote call before taking the lock or after releasing it, and keep only the shared-state change under the lock; when the remote side effect must match it, record it in an outbox row and send it from a worker. A fill-once block stays allowed: the call under an `if` that tests the state the block then sets (a token refresh, a cached download), so callers wait for one request instead of each sending their own. An exception fits only when the lock exists to serialize that remote call.",
+  1,
+  80
+ ],
+ [
+  "p01/src/case-0041.ts",
+  "nitpicker/no-remote-call-under-lock",
+  1,
+  79,
+  "This calls `fetch()` while `mutex.acquire()` holds a lock, so every waiter queues behind the remote call's latency (lock exhaustion under load). Make the remote call before taking the lock or after releasing it, and keep only the shared-state change under the lock; when the remote side effect must match it, record it in an outbox row and send it from a worker. A fill-once block stays allowed: the call under an `if` that tests the state the block then sets (a token refresh, a cached download), so callers wait for one request instead of each sending their own. An exception fits only when the lock exists to serialize that remote call.",
+  1,
+  89
+ ],
+ [
+  "p02/src/case-0049.ts",
+  "nitpicker/no-remote-call-in-transaction",
+  16,
+  129,
+  "This calls `notify()`, which calls `axios.post()` inside the transaction of `prisma.$transaction()`, so a database connection stays held for the remote call's latency and the pool runs dry under load. Make the remote call before the transaction starts or after it commits; when its side effect must match the transaction's outcome, write an outbox row inside the transaction and send it from a worker. An exception fits only when the remote call must see uncommitted state and has a short timeout.",
+  16,
+  139
+ ],
+ [
+  "p02/src/case-0050.ts",
+  "nitpicker/no-remote-call-in-transaction",
+  16,
+  125,
+  "This calls `notify()`, which calls `axios.post()` inside the transaction of `dataSource.transaction()`, so a database connection stays held for the remote call's latency and the pool runs dry under load. Make the remote call before the transaction starts or after it commits; when its side effect must match the transaction's outcome, write an outbox row inside the transaction and send it from a worker. An exception fits only when the remote call must see uncommitted state and has a short timeout.",
+  16,
+  135
+ ],
+ [
+  "p02/src/case-0051.ts",
+  "nitpicker/no-remote-call-in-transaction",
+  16,
+  191,
+  "This calls `axios.post()` inside the transaction of `runner.startTransaction()`, so a database connection stays held for the remote call's latency and the pool runs dry under load. Make the remote call before the transaction starts or after it commits; when its side effect must match the transaction's outcome, write an outbox row inside the transaction and send it from a worker. An exception fits only when the remote call must see uncommitted state and has a short timeout.",
+  16,
+  205
+ ],
+ [
+  "p02/src/case-0052.ts",
+  "nitpicker/no-remote-call-in-transaction",
+  16,
+  125,
+  "This calls `notify()`, which calls `axios.post()` inside the transaction of `pool.query()`, so a database connection stays held for the remote call's latency and the pool runs dry under load. Make the remote call before the transaction starts or after it commits; when its side effect must match the transaction's outcome, write an outbox row inside the transaction and send it from a worker. An exception fits only when the remote call must see uncommitted state and has a short timeout.",
+  16,
+  135
+ ],
+ [
+  "p02/src/case-0053.ts",
+  "nitpicker/no-remote-call-in-transaction",
+  16,
+  116,
+  "This calls `notify()`, which calls `axios.post()` inside the transaction of `uow.transaction()`, so a database connection stays held for the remote call's latency and the pool runs dry under load. Make the remote call before the transaction starts or after it commits; when its side effect must match the transaction's outcome, write an outbox row inside the transaction and send it from a worker. An exception fits only when the remote call must see uncommitted state and has a short timeout.",
+  16,
+  126
+ ],
+ [
+  "p02/src/case-0056.ts",
+  "nitpicker/no-remote-call-under-lock",
+  16,
+  86,
+  "This calls `notify()`, which calls `axios.post()` while `mutex.runExclusive()` holds a lock, so every waiter queues behind the remote call's latency (lock exhaustion under load). Make the remote call before taking the lock or after releasing it, and keep only the shared-state change under the lock; when the remote side effect must match it, record it in an outbox row and send it from a worker. A fill-once block stays allowed: the call under an `if` that tests the state the block then sets (a token refresh, a cached download), so callers wait for one request instead of each sending their own. An exception fits only when the lock exists to serialize that remote call.",
+  16,
+  96
+ ],
+ [
+  "p02/src/case-0057.ts",
+  "nitpicker/no-remote-call-under-lock",
+  16,
+  92,
+  "This calls `axios.get()` while `guard.acquire()` holds a lock, so every waiter queues behind the remote call's latency (lock exhaustion under load). Make the remote call before taking the lock or after releasing it, and keep only the shared-state change under the lock; when the remote side effect must match it, record it in an outbox row and send it from a worker. A fill-once block stays allowed: the call under an `if` that tests the state the block then sets (a token refresh, a cached download), so callers wait for one request instead of each sending their own. An exception fits only when the lock exists to serialize that remote call.",
+  16,
+  105
+ ],
+ [
+  "p02/src/case-0058.ts",
+  "nitpicker/no-remote-call-under-lock",
+  16,
+  73,
+  "This calls `axios.get()` while `single.runExclusive()` holds a lock, so every waiter queues behind the remote call's latency (lock exhaustion under load). Make the remote call before taking the lock or after releasing it, and keep only the shared-state change under the lock; when the remote side effect must match it, record it in an outbox row and send it from a worker. A fill-once block stays allowed: the call under an `if` that tests the state the block then sets (a token refresh, a cached download), so callers wait for one request instead of each sending their own. An exception fits only when the lock exists to serialize that remote call.",
+  16,
+  86
+ ],
+ [
+  "p02/src/case-0059.ts",
+  "nitpicker/no-remote-call-under-lock",
+  16,
+  96,
+  "This calls `axios.get()` while `navigator.locks.request()` holds a lock, so every waiter queues behind the remote call's latency (lock exhaustion under load). Make the remote call before taking the lock or after releasing it, and keep only the shared-state change under the lock; when the remote side effect must match it, record it in an outbox row and send it from a worker. A fill-once block stays allowed: the call under an `if` that tests the state the block then sets (a token refresh, a cached download), so callers wait for one request instead of each sending their own. An exception fits only when the lock exists to serialize that remote call.",
+  16,
+  109
+ ],
+ [
+  "p02/src/case-0060.ts",
+  "nitpicker/no-remote-call-in-transaction",
+  21,
+  125,
+  "This calls `gateway.__send()`, which calls `axios.post()` inside the transaction of `dataSource.transaction()`, so a database connection stays held for the remote call's latency and the pool runs dry under load. Make the remote call before the transaction starts or after it commits; when its side effect must match the transaction's outcome, write an outbox row inside the transaction and send it from a worker. An exception fits only when the remote call must see uncommitted state and has a short timeout.",
+  21,
+  143
+ ],
+ [
+  "p02/src/case-0061.ts",
+  "nitpicker/no-remote-call-in-transaction",
+  21,
+  125,
+  "This calls `gateway.send()`, which calls `axios.post()` inside the transaction of `dataSource.transaction()`, so a database connection stays held for the remote call's latency and the pool runs dry under load. Make the remote call before the transaction starts or after it commits; when its side effect must match the transaction's outcome, write an outbox row inside the transaction and send it from a worker. An exception fits only when the remote call must see uncommitted state and has a short timeout.",
+  21,
+  141
+ ]
+]

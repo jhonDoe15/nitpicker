@@ -1,0 +1,1 @@
+import { inArray } from "drizzle-orm"; export const f = (db, users, rows: NewUser[]) => db.insert(users).values(rows);

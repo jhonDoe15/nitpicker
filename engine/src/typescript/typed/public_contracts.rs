@@ -55,25 +55,36 @@ fn handle(session: &mut Session, path: &str, plan: &FilePlan, place: Place) -> R
     session.handle(path, place.kind, plan.units(place.start), plan.units(place.end))
 }
 
-/// The exported interface declaration in a production file among the declarations of a symbol.
-fn contract_declaration(session: &mut Session, sources: &Sources, symbol: &Symbol) -> Result<Option<String>, String> {
+/// What the caller knows: the folder whose classes and interfaces count, when narrower than the source root
+/// (a workspace package whose program holds the whole workspace).
+#[derive(serde::Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Input {
+    pub own_root: Option<String>,
+}
+
+/// The exported interface declaration in a production file of the own root among the declarations of a symbol.
+fn contract_declaration(session: &mut Session, sources: &Sources, own_root: &str, symbol: &Symbol) -> Result<Option<String>, String> {
     let interface = |handle: &&String| parse_handle(handle).is_some_and(|(_, kind, _)| kind == INTERFACE_DECLARATION);
     let Some(declaration) = symbol.declarations.iter().find(interface) else {
         return Ok(None);
     };
     let (index, _, path) = parse_handle(declaration).expect("handle");
-    if !sources.is_production(session, path) {
+    if !sources.is_production_under(own_root, path) {
         return Ok(None);
     }
     let table = session.table(path)?;
     Ok(table.children(index).any(|child| table.kind(child) == EXPORT_KEYWORD).then(|| declaration.clone()))
 }
 
-fn collect(session: &mut Session, sources: &Sources, plans: &[FilePlan]) -> Result<Found, String> {
+fn collect(session: &mut Session, sources: &Sources, own_root: &str, plans: &[FilePlan]) -> Result<Found, String> {
     let mut found = Found::default();
     let mut contract_of: HashMap<String, usize> = HashMap::new();
     for (file, plan) in plans.iter().enumerate() {
         let path = &sources.files[file];
+        if !sources.is_production_under(own_root, path) {
+            continue;
+        }
         for class in plan.classes.iter().filter(|class| !class.implements.is_empty()) {
             let mut heritage = Vec::new();
             for place in &class.implements {
@@ -82,7 +93,7 @@ fn collect(session: &mut Session, sources: &Sources, plans: &[FilePlan]) -> Resu
             let mut entries = Vec::new();
             for kind in session.types_at(&heritage)?.into_iter().flatten() {
                 let Some(symbol) = session.symbol_of_type(&kind)? else { continue };
-                if let Some(declaration) = contract_declaration(session, sources, &symbol)? {
+                if let Some(declaration) = contract_declaration(session, sources, own_root, &symbol)? {
                     entries.push((kind, symbol, declaration));
                 }
             }
@@ -149,14 +160,16 @@ impl Uses<'_> {
 
 /// `all_reads` asks the compiler about every member read. Without it only reads whose written name is the
 /// name of a contract method are asked, which finds the same uses: a read reaches a method only by its name.
-pub fn check(session: &mut Session, sources: &Sources, all_reads: bool) -> Result<(Vec<Finding>, Counts), String> {
+/// Contracts come from classes and interfaces under the own root; uses count from every production file.
+pub fn check(session: &mut Session, sources: &Sources, input: &Input, all_reads: bool) -> Result<(Vec<Finding>, Counts), String> {
+    let own_root = input.own_root.clone().unwrap_or_else(|| session.root.clone());
     let mut counts = Counts { production_files: sources.files.len(), ..Counts::default() };
     let parsing = Instant::now();
     let plans: Vec<FilePlan> = sources.files.par_iter().map(|path| sources::text_of(path).map_or_else(FilePlan::empty, |text| plan::plan_of(path, &text))).collect();
     counts.parse_ms = parsing.elapsed().as_millis();
 
     let collecting = Instant::now();
-    let Found { methods, contracts } = collect(session, sources, &plans)?;
+    let Found { methods, contracts } = collect(session, sources, &own_root, &plans)?;
     counts.contracts = contracts.len();
     counts.methods = methods.len();
     counts.contracts_ms = collecting.elapsed().as_millis();

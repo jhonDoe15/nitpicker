@@ -1,9 +1,20 @@
+import { writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { resolvedRulesets } from './pmd-catalog.mts';
-import { onlyFiles, renderedRuleset } from './pmd-render.mts';
-import { engineRule, portablePattern, ruleLevel, runsOnEngine } from './pmd-rule-parts.mts';
+import { zipOf } from '../../../../../shared/test-support/archives/zip-writer.mts';
+import { useTempProjects } from '../../../../../shared/test-support/temp-projects.mts';
+import { resolvedRulesets, rulesetReader } from './pmd-catalog.mts';
+import { onlyFiles, renderedRuleset, sarifOf } from './pmd-render.mts';
+import {
+  engineRule,
+  portablePattern,
+  ruleLevel,
+  runsOnEngine,
+  runsOnPmd,
+} from './pmd-rule-parts.mts';
 
 const XPATH = 'net.sourceforge.pmd.lang.rule.xpath.XPathRule';
+const PORTED = 'net.sourceforge.pmd.lang.java.rule.bestpractices.MissingOverrideRule';
 const HEAD = '<ruleset name="demo" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">';
 
 function query(name: string, xpath: string, extra = ''): string {
@@ -39,6 +50,14 @@ const FILES: Readonly<Record<string, string>> = {
     String.raw`<exclude-pattern>\Q/project/src/test/\E.*</exclude-pattern>`,
     '<rule ref="/rules/own.xml"><exclude name="Own"/></rule>',
     '<rule ref="/rules/own.xml/Own"><properties><property name="limit"><value>9</value></property></properties></rule>',
+    '</ruleset>',
+  ].join(''),
+  'category/java/ported.xml': `${HEAD}<rule name="Ported" language="java" class="${PORTED}" message="ported {0}"/></ruleset>`,
+  '/rules/ported.xml': `${HEAD}<rule ref="category/java/ported.xml"/><rule ref="category/java/demo.xml/Coded"/></ruleset>`,
+  '/rules/odd.xml': [
+    HEAD,
+    `<rule name="Blank" language="java" class="${XPATH}" message="blank"/>`,
+    '<rule name="Classless" language="java" message="classless"/>',
     '</ruleset>',
   ].join(''),
   '/rules/renaming.xml': `${HEAD}<rule ref="/rules/own.xml/Own" name="Mine"/></ruleset>`,
@@ -96,10 +115,32 @@ describe('engine rules', () => {
     expect(main.rules.filter(runsOnEngine).map(({ name }) => name)).toEqual(['Shipped', 'Own']);
   });
 
+  it('leaves out of PMD a rule capped below the Java version PMD reads by default', () => {
+    expect(main.rules.filter(runsOnPmd).map(({ name }) => name)).toEqual(['Coded']);
+  });
+
+  it('sends a rule written in Java to its port on the engine by its PMD class', () => {
+    const ported = resolved('/rules/ported.xml');
+    expect(ported.rules.filter(runsOnEngine).map((rule) => engineRule(rule, ported))).toEqual([
+      {
+        name: 'Ported',
+        xpath: '',
+        port: PORTED,
+        message: 'ported {0}',
+        exclude: [],
+        include: [],
+        properties: {},
+        suppress: '',
+      },
+    ]);
+    expect(engineRule(named('Shipped'), main).port).toBe('');
+  });
+
   it('writes a rule with the outermost message, level and property values', () => {
     expect(engineRule(named('Shipped'), main)).toEqual({
       name: 'Shipped',
       xpath: '//A',
+      port: '',
       message: 'shipped, reworded',
       suppress: '',
       properties: { limit: { type: 'Integer', value: '7' } },
@@ -175,5 +216,59 @@ describe('renderedRuleset', () => {
         '',
       ].join('\n'),
     );
+  });
+});
+
+describe('rulesetReader', () => {
+  const projectWith = useTempProjects('nitpicker-pmd-rulesets-');
+
+  it('reads a ruleset file, a ruleset shipped in the PMD jar, and refuses one it cannot find', () => {
+    const root = projectWith({ 'own.xml': HEAD });
+    const jar = path.join(root, 'pmd-java.jar');
+    writeFileSync(jar, zipOf({ 'category/java/demo.xml': FILES['category/java/demo.xml'] ?? '' }));
+    const read = rulesetReader(jar);
+
+    expect(read(path.join(root, 'own.xml'))).toBe(HEAD);
+    expect(read('category/java/demo.xml')).toBe(FILES['category/java/demo.xml']);
+    expect(() => read('category/java/missing.xml')).toThrow(`${jar} has no ruleset`);
+    expect(() => read('elsewhere/rules.xml')).toThrow('cannot tell where the PMD ruleset');
+  });
+});
+
+describe('rule placement', () => {
+  it('keeps an XPath rule without a query and a rule without a class off the engine', () => {
+    const odd = resolved('/rules/odd.xml');
+
+    expect(odd.rules.filter(runsOnEngine)).toEqual([]);
+    expect(odd.rules.map((rule) => engineRule(rule, odd).port)).toEqual(['', '']);
+  });
+
+  it('writes a finding of a rule without a level as a warning', () => {
+    const row = { file: '/p/A.java', rule: 'Other', line: 2, column: 3, message: 'm' };
+    const sarif: unknown = JSON.parse(sarifOf([row], new Map()));
+
+    expect(sarif).toEqual({
+      version: '2.1.0',
+      runs: [
+        {
+          tool: { driver: { name: 'PMD', rules: [] } },
+          results: [
+            {
+              ruleId: 'Other',
+              message: { text: 'm' },
+              level: 'warning',
+              locations: [
+                {
+                  physicalLocation: {
+                    artifactLocation: { uri: 'file:///p/A.java' },
+                    region: { startLine: 2, startColumn: 3 },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
   });
 });

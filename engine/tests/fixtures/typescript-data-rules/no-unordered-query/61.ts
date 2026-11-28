@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely";import { jsonArrayFrom } from "kysely/helpers/postgres"; export const f = (eb) => jsonArrayFrom(eb.selectFrom("tag").selectAll().whereRef("tag.assetId", "=", "asset.id"));

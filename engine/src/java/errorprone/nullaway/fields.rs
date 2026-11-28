@@ -91,6 +91,10 @@ fn rooted(name: &str, root: &str) -> bool {
     name.strip_prefix(root).is_some_and(|rest| rest.is_empty() || rest.starts_with(['.', '[']))
 }
 
+pub(super) fn excluded(context: &Context, declaration: Node) -> bool {
+    qualified(context, declaration, EXCLUDED)
+}
+
 fn qualified(context: &Context, declaration: Node, listed: &[&str]) -> bool {
     hierarchy::annotation_names(context, declaration).into_iter().any(|written| {
         let name = context.resolver.class_name(declaration, written).unwrap_or_else(|| written.to_string());

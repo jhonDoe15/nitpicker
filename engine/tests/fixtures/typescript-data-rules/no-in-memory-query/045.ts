@@ -1,0 +1,1 @@
+import { PrismaClient } from "@prisma/client"; export async function run(repo, prisma, db, em, Order, id, ids) { return (await prisma.order.findMany({ where: { id } })).filter((row) => row.items.length === 1); }

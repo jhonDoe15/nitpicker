@@ -1,0 +1,1 @@
+package org.springframework.security.crypto.encrypt; public class Encryptors { public static Object text(CharSequence p, CharSequence s) { return null; } public static Object standard(CharSequence p, CharSequence s) { return null; } }

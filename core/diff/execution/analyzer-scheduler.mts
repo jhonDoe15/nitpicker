@@ -2,6 +2,7 @@ import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { FORCE_KILL_DELAY_MS, installShutdownHandlers } from './process.mts';
 import { runTaskGraph } from './graph/task-graph.mts';
+import { sharedMemoryOf } from './memory/memory-lease.mts';
 import { resolveMaxParallel } from '../../../shared/processes/machine-capacity.mts';
 import { readStandardInput } from '../../../shared/processes/standard-input.mts';
 import { fieldOf, fieldsOf } from '../../../shared/values/readers.mts';
@@ -11,10 +12,6 @@ import {
 } from '../../../shared/report-output/pieces/json-pieces.mts';
 import { withInternalFrames } from '../../../shared/messages/crashes/internal-error.mts';
 
-async function readInput(): Promise<unknown> {
-  return JSON.parse((await readStandardInput()).toString('utf8'));
-}
-
 function applyEnvironment(settings: unknown): void {
   for (const [name, value] of Object.entries(fieldsOf(settings))) {
     if (typeof value === 'string') {
@@ -23,15 +20,19 @@ function applyEnvironment(settings: unknown): void {
   }
 }
 
-async function schedule(): Promise<void> {
-  const shutdownController = new AbortController();
-  installShutdownHandlers(shutdownController, { forceKillDelayMs: FORCE_KILL_DELAY_MS });
+export type ScheduleInput = {
+  readonly read: () => Promise<Buffer>;
+  readonly signal: AbortSignal;
+};
+
+export async function schedule({ read, signal }: ScheduleInput): Promise<void> {
   try {
-    const input = await readInput();
+    const input: unknown = JSON.parse((await read()).toString('utf8'));
     applyEnvironment(fieldOf(input, 'environment'));
     const result = await runTaskGraph(fieldOf(input, 'tasks'), {
       maxParallel: resolveMaxParallel(process.env),
-      signal: shutdownController.signal,
+      sharedMemory: sharedMemoryOf(process.env),
+      signal,
     });
     writePieces(compactJsonLines(result), (text) => process.stdout.write(text));
     process.stdout.write('\n');
@@ -49,5 +50,7 @@ if (
   invokedPath !== undefined &&
   import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
 ) {
-  await schedule();
+  const shutdownController = new AbortController();
+  installShutdownHandlers(shutdownController, { forceKillDelayMs: FORCE_KILL_DELAY_MS });
+  await schedule({ read: readStandardInput, signal: shutdownController.signal });
 }

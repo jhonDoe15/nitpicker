@@ -1,0 +1,1 @@
+async function f() { const r = await client.send(new ListObjectsV2Command({ Bucket, Prefix })); return r.Contents; }

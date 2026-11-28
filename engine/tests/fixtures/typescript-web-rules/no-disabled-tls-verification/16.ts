@@ -1,0 +1,1 @@
+import { createSecureServer } from "node:http2"; export const s = (key, cert, ca) => createSecureServer({ key, cert, ca, requestCert: true, rejectUnauthorized: false });

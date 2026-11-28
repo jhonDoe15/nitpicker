@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../git/test-support/git-repository.mts';
 import { writeFiles } from '../../git/test-support/fixture-files.mts';
@@ -108,6 +111,21 @@ describe('analyzer budgets scaled with project size', () => {
     expect(deadlineScaleOf({ timeoutScale: { perThousandFilesMs: 0 } })).toBeUndefined();
   });
 
+  it('scales the default deadline of an analyzer that sets neither a timeout nor a scale', () => {
+    const { root } = git.createGitRepository(
+      { ...sources(1_001), 'README.md': '' },
+      { prefix: 'nitpicker-deadline-' },
+    );
+    const unset = { timeoutMs: undefined, timeoutScale: undefined };
+    const memoryScale = { perThousandFilesMegabytes: 100, extensions: ['md'] };
+
+    expect(preparedTimeout(analyzer(unset), root)).toBe(7 * MINUTE_MS);
+    expect(preparedTimeout(analyzer({ ...unset, memoryScale }), root)).toBe(6 * MINUTE_MS);
+    expect(
+      preparedTimeout(analyzer({ ...unset, timeoutMs: MINUTE_MS, configuredTimeout: true }), root),
+    ).toBe(MINUTE_MS);
+  });
+
   it('adds a per-module allowance for each build file of the project', () => {
     const { root } = git.createGitRepository(
       {
@@ -155,5 +173,43 @@ describe('analyzer budgets scaled with project size', () => {
     expect(memoryEstimateMegabytes({ memoryScale }, root)).toBe(900);
     expect(memoryEstimateMegabytes({}, root)).toBe(0);
     expect(preparedMemory(analyzer({ memoryScale }), root)).toBe(900);
+  });
+
+  it('adds the process base, and the program floor only where the project holds a program', () => {
+    const { root } = git.createGitRepository(sources(500), { prefix: 'nitpicker-memory-' });
+    const memoryScale = {
+      perThousandFilesMegabytes: 1000,
+      baseMegabytes: 150,
+      programMegabytes: 2000,
+      extensions: ['ts'],
+    };
+
+    expect(memoryEstimateMegabytes({ memoryScale }, root)).toBe(650);
+    expect(
+      memoryEstimateMegabytes({ memoryScale: { ...memoryScale, holdsProgram: () => true } }, root),
+    ).toBe(2650);
+    expect(
+      memoryEstimateMegabytes({ memoryScale: { ...memoryScale, holdsProgram: () => false } }, root),
+    ).toBe(650);
+  });
+
+  it('counts the files of a package with its code at the root when git lists none', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-root-layout-'));
+    try {
+      writeFiles(root, {
+        'index.tsx': '',
+        'components/button.tsx': '',
+        'views/page.ts': '',
+        'node_modules/lib/index.ts': '',
+        '.cache/old.ts': '',
+        'package.json': '{}',
+      });
+
+      expect(projectFileCount(root, ['ts', 'tsx'])).toBe(3);
+      expect(projectModuleCount(root, ['package.json'])).toBe(1);
+      expect(preparedAllowance(analyzer({}), root)).toBe(2 * MINUTE_MS);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

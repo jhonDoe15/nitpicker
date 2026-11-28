@@ -1,0 +1,1 @@
+export const a = new TextDecoder(opts).decode(bytes) === other;

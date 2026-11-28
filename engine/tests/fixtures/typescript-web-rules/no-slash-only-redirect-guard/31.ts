@@ -1,0 +1,1 @@
+function go(raw) { const target = new URL(raw, origin); if (target.origin !== origin) { return; } router.push(target.pathname + target.search + target.hash); }

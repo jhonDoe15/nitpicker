@@ -1,0 +1,1 @@
+if (outDir === options.rootDir) {}

@@ -1,0 +1,1 @@
+export const a = (n: string) => { const term = `${n}%`; return prisma.user.findMany({ where: { email: { startsWith: term } } }); };

@@ -1,0 +1,1 @@
+export const a = (n: string) => other`select * from t where name like ${n}`;

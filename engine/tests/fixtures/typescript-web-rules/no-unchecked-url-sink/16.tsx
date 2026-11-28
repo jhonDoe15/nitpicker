@@ -1,0 +1,1 @@
+function F({ item }) { return <a href={item.href}>x</a>; }

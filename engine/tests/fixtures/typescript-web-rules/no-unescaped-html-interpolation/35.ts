@@ -1,0 +1,1 @@
+export const a = (n: string) => `<li><Link to="${n}">${n}</Link></li>`;

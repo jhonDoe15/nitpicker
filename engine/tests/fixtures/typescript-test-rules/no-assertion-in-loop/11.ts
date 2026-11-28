@@ -1,0 +1,1 @@
+function check(o) { for (const p of o.parts) { expect(p).toBe(1); } } it('x', () => { check(order); });

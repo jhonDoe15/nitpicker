@@ -1,0 +1,1 @@
+import { graphql } from 'graphql'; import { NextResponse } from 'next/server'; export async function POST(req: Request) { try { await run(); return NextResponse.json({ sent: true }); } catch (error) { return NextResponse.json({ errors: [{ message: "failed" }] }, { headers }); } }

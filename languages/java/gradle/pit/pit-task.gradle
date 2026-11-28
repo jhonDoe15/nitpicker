@@ -149,7 +149,7 @@ project.ext.nitpickerRegisterPit = { Map spec ->
             def sameDrive = historyFile.toPath().root == context.analysisRoot.toPath().root
             def recorded = baseRoot == null || !sameDrive ? null
                 : new File(baseRoot, context.relativeToRoot(historyFile)).canonicalFile
-            if (recorded?.isFile() && recorded.path.startsWith(baseRoot.path + File.separator)) {
+            if (recorded != null && recorded.isFile() && recorded.path.startsWith(baseRoot.path + File.separator)) {
                 args '--historyInputLocation', recorded.absolutePath
             }
             def testJvmArgs = (source.jvmArgs ?: []) +

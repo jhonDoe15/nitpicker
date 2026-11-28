@@ -1,0 +1,1 @@
+if (!next.startsWith("/")) { throw new Error("x"); } redirect(next);

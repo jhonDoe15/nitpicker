@@ -1,0 +1,2250 @@
+[
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-parameter-mutation",
+  4,
+  3,
+  "`seen.add` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  4,
+  14
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  4,
+  3,
+  "domain/ code does not mutate values, and Set.add changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  4,
+  11
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-parameter-mutation",
+  5,
+  3,
+  "`when.setTime` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  5,
+  18
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  5,
+  3,
+  "domain/ code does not mutate values, and Date.setTime changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  5,
+  15
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  6,
+  3,
+  "domain/ code does not mutate values, and Date.setUTCHours changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  6,
+  19
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-parameter-mutation",
+  7,
+  3,
+  "`items.push` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  7,
+  16
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  9,
+  16,
+  "domain/ code does not mutate values, and Array.push changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  9,
+  26
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  11,
+  3,
+  "domain/ code does not mutate values, and Set.delete changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  11,
+  17
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-parameter-mutation",
+  12,
+  3,
+  "`keys.delete` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  12,
+  19
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  12,
+  3,
+  "domain/ code does not mutate values, and Map.delete changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  12,
+  14
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  13,
+  3,
+  "domain/ code does not mutate values, and Uint8Array.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  13,
+  24
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  14,
+  3,
+  "domain/ code does not mutate values, and URLSearchParams.append changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  14,
+  31
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  15,
+  3,
+  "domain/ code does not mutate values, and Map.clear changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  15,
+  34
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-parameter-mutation",
+  21,
+  58,
+  "`seen.add` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  21,
+  71
+ ],
+ [
+  "src/domain/record.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  21,
+  58,
+  "domain/ code does not mutate values, and Set.add changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  21,
+  68
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  18,
+  5,
+  "`record.id` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  18,
+  20
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  27,
+  3,
+  "`items.push` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  27,
+  19
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  32,
+  3,
+  "`table[…]` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  32,
+  17
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  34,
+  3,
+  "`counts[…]` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  34,
+  14
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  52,
+  3,
+  "`options.length` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  52,
+  23
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  53,
+  3,
+  "`nested.retry.count` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  53,
+  25
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  54,
+  3,
+  "`(o as { a: number }).a` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  54,
+  29
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  58,
+  3,
+  "`Object.assign(o, …)` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  58,
+  32
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  59,
+  3,
+  "`Object.assign(inner.box, …)` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  59,
+  40
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  64,
+  3,
+  "`o.size` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  64,
+  13
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  66,
+  3,
+  "`next.push` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  66,
+  18
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  70,
+  3,
+  "`options.size` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  70,
+  19
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  71,
+  3,
+  "`partial.size` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  71,
+  19
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  79,
+  3,
+  "`items` is passed to `collect`, which changes it in place, so the caller's value changes. Pass a copy (`[...items]` or `{ ...items }`), or make `collect` return a new value.",
+  79,
+  22
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  84,
+  3,
+  "`copy.inner.size` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  84,
+  22
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  90,
+  3,
+  "domain/ code does not mutate values, and Map.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  90,
+  12
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  114,
+  3,
+  "`rows[0]!.push` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  114,
+  21
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  115,
+  3,
+  "`bytes[…]` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  115,
+  15
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-parameter-mutation",
+  116,
+  3,
+  "`set.add` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  116,
+  15
+ ],
+ [
+  "src/signatures/parameters.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  116,
+  3,
+  "domain/ code does not mutate values, and Set.add changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  116,
+  10
+ ],
+ [
+  "src/defaults/fallbacks.ts",
+  "nitpicker/no-falsy-default",
+  4,
+  10,
+  "`limit` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`.",
+  4,
+  15
+ ],
+ [
+  "src/defaults/fallbacks.ts",
+  "nitpicker/no-falsy-default",
+  8,
+  10,
+  "`name` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`.",
+  8,
+  14
+ ],
+ [
+  "src/defaults/fallbacks.ts",
+  "nitpicker/no-falsy-default",
+  13,
+  5,
+  "`options.limit` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`.",
+  13,
+  18
+ ],
+ [
+  "src/defaults/fallbacks.ts",
+  "nitpicker/no-falsy-default",
+  14,
+  5,
+  "`options.enabled` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`.",
+  14,
+  20
+ ],
+ [
+  "src/defaults/fallbacks.ts",
+  "nitpicker/no-falsy-default",
+  16,
+  5,
+  "`options.ratio` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`.",
+  16,
+  18
+ ],
+ [
+  "src/defaults/fallbacks.ts",
+  "nitpicker/no-falsy-default",
+  30,
+  35,
+  "`count` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`.",
+  30,
+  40
+ ],
+ [
+  "src/arguments/calls.ts",
+  "nitpicker/no-swapped-arguments",
+  16,
+  12,
+  "`target` is passed as `source` and `source` as `target`; did you swap them? Pass the arguments in the order of the parameters.",
+  16,
+  54
+ ],
+ [
+  "src/arguments/calls.ts",
+  "nitpicker/no-swapped-arguments",
+  22,
+  5,
+  "`target` is passed as `source` and `source` as `target`; did you swap them? Pass the arguments in the order of the parameters.",
+  22,
+  37
+ ],
+ [
+  "src/arguments/calls.ts",
+  "nitpicker/no-swapped-arguments",
+  25,
+  5,
+  "`target` is passed as `source` and `source` as `target`; did you swap them? Pass the arguments in the order of the parameters.",
+  25,
+  31
+ ],
+ [
+  "outside.ts",
+  "!types",
+  1,
+  1,
+  ""
+ ],
+ [
+  "src/promises/detached.ts",
+  "nitpicker/no-unhandled-void-promise",
+  10,
+  3,
+  "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`.",
+  10,
+  20
+ ],
+ [
+  "src/promises/detached.ts",
+  "nitpicker/no-unhandled-void-promise",
+  11,
+  3,
+  "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`.",
+  11,
+  25
+ ],
+ [
+  "src/promises/detached.ts",
+  "nitpicker/no-unhandled-void-promise",
+  12,
+  3,
+  "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`.",
+  12,
+  38
+ ],
+ [
+  "src/promises/detached.ts",
+  "nitpicker/no-unhandled-void-promise",
+  13,
+  3,
+  "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`.",
+  13,
+  19
+ ],
+ [
+  "src/promises/detached.ts",
+  "nitpicker/no-unhandled-void-promise",
+  14,
+  3,
+  "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`.",
+  14,
+  11
+ ],
+ [
+  "src/promises/detached.ts",
+  "nitpicker/no-unhandled-void-promise",
+  16,
+  3,
+  "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`.",
+  18,
+  7
+ ],
+ [
+  "src/spreads/keys.ts",
+  "nitpicker/no-shadowed-spread-key",
+  11,
+  12,
+  "`id` is written before a spread whose type can carry `id`, so the spread value replaces this one. Write the spread first (`{ ...data, id }`).",
+  11,
+  14
+ ],
+ [
+  "src/spreads/keys.ts",
+  "nitpicker/no-shadowed-spread-key",
+  15,
+  34,
+  "`mode` is set after a spread of caller options whose type allows `mode`, so the caller value is ignored. Put the default before the spread, or use `options.mode ?? value`.",
+  15,
+  50
+ ],
+ [
+  "src/spreads/keys.ts",
+  "nitpicker/no-shadowed-spread-key",
+  19,
+  24,
+  "`retries` is set after a spread of caller options whose type allows `retries`, so the caller value is ignored. Put the default before the spread, or use `options.retries ?? value`.",
+  19,
+  34
+ ],
+ [
+  "src/spreads/keys.ts",
+  "nitpicker/no-shadowed-spread-key",
+  23,
+  24,
+  "`mode` is set after a spread of caller options whose type allows `mode`, so the caller value is ignored. Put the default before the spread, or use `options.mode ?? value`.",
+  23,
+  36
+ ],
+ [
+  "src/spreads/lists.ts",
+  "nitpicker/no-parameter-mutation",
+  2,
+  3,
+  "`target.push` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  2,
+  24
+ ],
+ [
+  "src/spreads/lists.ts",
+  "nitpicker/no-array-spread-arguments",
+  2,
+  15,
+  "Spreading a list into `push`, `unshift`, `splice`, `Math.max`, `Math.min` or `String.fromCharCode` passes each item as an argument, and the call throws `RangeError: Maximum call stack size exceeded` once the list reaches about 125,000 items. Append with a loop (`for (const item of items) target.push(item)`), use `concat`, or compare item by item for a largest or smallest value. An exception fits only when the list is always short.",
+  2,
+  23
+ ],
+ [
+  "src/spreads/lists.ts",
+  "nitpicker/no-array-spread-arguments",
+  3,
+  19,
+  "Spreading a list into `push`, `unshift`, `splice`, `Math.max`, `Math.min` or `String.fromCharCode` passes each item as an argument, and the call throws `RangeError: Maximum call stack size exceeded` once the list reaches about 125,000 items. Append with a loop (`for (const item of items) target.push(item)`), use `concat`, or compare item by item for a largest or smallest value. An exception fits only when the list is always short.",
+  3,
+  26
+ ],
+ [
+  "src/spreads/lists.ts",
+  "nitpicker/no-array-spread-arguments",
+  4,
+  24,
+  "Spreading a list into `push`, `unshift`, `splice`, `Math.max`, `Math.min` or `String.fromCharCode` passes each item as an argument, and the call throws `RangeError: Maximum call stack size exceeded` once the list reaches about 125,000 items. Append with a loop (`for (const item of items) target.push(item)`), use `concat`, or compare item by item for a largest or smallest value. An exception fits only when the list is always short.",
+  4,
+  32
+ ],
+ [
+  "src/spreads/lists.ts",
+  "nitpicker/no-array-spread-arguments",
+  8,
+  19,
+  "Spreading a list into `push`, `unshift`, `splice`, `Math.max`, `Math.min` or `String.fromCharCode` passes each item as an argument, and the call throws `RangeError: Maximum call stack size exceeded` once the list reaches about 125,000 items. Append with a loop (`for (const item of items) target.push(item)`), use `concat`, or compare item by item for a largest or smallest value. An exception fits only when the list is always short.",
+  8,
+  28
+ ],
+ [
+  "src/spreads/lists.ts",
+  "nitpicker/no-array-spread-arguments",
+  13,
+  30,
+  "Spreading a list into `push`, `unshift`, `splice`, `Math.max`, `Math.min` or `String.fromCharCode` passes each item as an argument, and the call throws `RangeError: Maximum call stack size exceeded` once the list reaches about 125,000 items. Append with a loop (`for (const item of items) target.push(item)`), use `concat`, or compare item by item for a largest or smallest value. An exception fits only when the list is always short.",
+  13,
+  39
+ ],
+ [
+  "src/spreads/lists.ts",
+  "nitpicker/no-array-spread-arguments",
+  13,
+  52,
+  "Spreading a list into `push`, `unshift`, `splice`, `Math.max`, `Math.min` or `String.fromCharCode` passes each item as an argument, and the call throws `RangeError: Maximum call stack size exceeded` once the list reaches about 125,000 items. Append with a loop (`for (const item of items) target.push(item)`), use `concat`, or compare item by item for a largest or smallest value. An exception fits only when the list is always short.",
+  13,
+  60
+ ],
+ [
+  "src/spreads/lists.ts",
+  "nitpicker/no-array-spread-arguments",
+  13,
+  73,
+  "Spreading a list into `push`, `unshift`, `splice`, `Math.max`, `Math.min` or `String.fromCharCode` passes each item as an argument, and the call throws `RangeError: Maximum call stack size exceeded` once the list reaches about 125,000 items. Append with a loop (`for (const item of items) target.push(item)`), use `concat`, or compare item by item for a largest or smallest value. An exception fits only when the list is always short.",
+  13,
+  81
+ ],
+ [
+  "src/delegation/methods.ts",
+  "nitpicker/no-dropped-delegate-result",
+  25,
+  5,
+  "`update` delegates to `queries.update` but drops its result; return it.",
+  25,
+  23
+ ],
+ [
+  "src/delegation/methods.ts",
+  "nitpicker/no-dropped-delegate-result",
+  37,
+  5,
+  "`load` delegates to `queries.load` but drops its result; return it.",
+  37,
+  20
+ ],
+ [
+  "src/delegation/methods.ts",
+  "nitpicker/no-dropped-delegate-result",
+  45,
+  5,
+  "`either` delegates to `queries.either` but drops its result; return it.",
+  45,
+  22
+ ],
+ [
+  "src/delegation/methods.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  57,
+  5,
+  "domain/ code does not mutate values, and Map.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  57,
+  19
+ ],
+ [
+  "src/delegation/methods.ts",
+  "nitpicker/no-dropped-delegate-result",
+  73,
+  5,
+  "`loadAll` delegates to `unions.loadAll` but drops its result; return it.",
+  73,
+  28
+ ],
+ [
+  "src/delegation/methods.ts",
+  "nitpicker/no-dropped-delegate-result",
+  93,
+  5,
+  "`update` delegates to `queries.update` but drops its result; return it.",
+  93,
+  22
+ ],
+ [
+  "src/forwarding/aliases.ts",
+  "nitpicker/no-forwarding-method-alias",
+  15,
+  3,
+  "`total` only forwards its parameters to `sum` and has the same parameter and return types. Call `sum` directly and delete `total`.",
+  15,
+  8
+ ],
+ [
+  "src/forwarding/aliases.ts",
+  "nitpicker/no-forwarding-method-alias",
+  21,
+  3,
+  "`size` only forwards its parameters to `count` and has the same parameter and return types. Rename `count` to `size` and delete the alias.",
+  21,
+  7
+ ],
+ [
+  "src/forwarding/aliases.ts",
+  "nitpicker/no-forwarding-wrapper",
+  35,
+  8,
+  "`loadUser` only forwards its parameters to `fetchUser` and has the same parameter and return types. Delete it and export `fetchUser` in its place with `export { fetchUser as loadUser }`, or call `fetchUser` directly.",
+  37,
+  2
+ ],
+ [
+  "src/forwarding/aliases.ts",
+  "nitpicker/no-forwarding-wrapper",
+  39,
+  14,
+  "`loadWith` only forwards its parameters to `fetchWith` and has the same parameter and return types. Delete it and export `fetchWith` in its place with `export { fetchWith as loadWith }`, or call `fetchWith` directly.",
+  39,
+  77
+ ],
+ [
+  "src/forwarding/aliases.ts",
+  "nitpicker/no-forwarding-wrapper",
+  41,
+  7,
+  "`loadLocal` only forwards its parameters to `loadRemote` and has the same parameter and return types. Call `loadRemote` directly where `loadLocal` is used and delete the wrapper.",
+  41,
+  61
+ ],
+ [
+  "src/forwarding/aliases.ts",
+  "nitpicker/no-forwarding-wrapper",
+  43,
+  8,
+  "`loadAsync` only forwards its parameters to `loadLocal` and has the same parameter and return types. Delete it and export `loadLocal` in its place with `export { loadLocal as loadAsync }`, or call `loadLocal` directly.",
+  45,
+  2
+ ],
+ [
+  "src/edges/globals.ts",
+  "nitpicker/no-forwarding-method-alias",
+  18,
+  3,
+  "`2` only forwards its parameters to `total` and has the same parameter and return types. Call `total` directly and delete `2`.",
+  18,
+  5
+ ],
+ [
+  "src/numbers/blank.ts",
+  "nitpicker/no-blank-number-coercion",
+  5,
+  17,
+  "`Number(\"\")` is 0, not NaN, so a blank `process.env.TRIAL_DAYS` passes this check as the number 0. Reject blank text first (`if (!process.env.TRIAL_DAYS?.trim())`), or use `Number.parseInt(..., 10)`, which gives NaN for an empty string.",
+  5,
+  47
+ ],
+ [
+  "src/numbers/blank.ts",
+  "nitpicker/no-blank-number-coercion",
+  13,
+  17,
+  "`Number(\"\")` is 0, not NaN, so a blank `text` passes this check as the number 0. Reject blank text first (`if (!text?.trim())`), or use `Number.parseInt(..., 10)`, which gives NaN for an empty string.",
+  13,
+  29
+ ],
+ [
+  "src/numbers/blank.ts",
+  "nitpicker/no-blank-number-coercion",
+  18,
+  17,
+  "`Number(\"\")` is 0, not NaN, so a blank `fixed` passes this check as the number 0. Reject blank text first (`if (!fixed?.trim())`), or use `Number.parseInt(..., 10)`, which gives NaN for an empty string.",
+  18,
+  30
+ ],
+ [
+  "src/numbers/blank.ts",
+  "nitpicker/no-blank-number-coercion",
+  19,
+  27,
+  "`Number(\"\")` is 0, not NaN, so a blank `maybe` passes this check as the number 0. Reject blank text first (`if (!maybe?.trim())`), or use `Number.parseInt(..., 10)`, which gives NaN for an empty string.",
+  19,
+  40
+ ],
+ [
+  "src/numbers/blank.ts",
+  "nitpicker/no-blank-number-coercion",
+  28,
+  13,
+  "`Number(\"\")` is 0, not NaN, so a blank `query.get(\"page\")` passes this check as the number 0. Reject blank text first (`if (!query.get(\"page\")?.trim())`), or use `Number.parseInt(..., 10)`, which gives NaN for an empty string.",
+  28,
+  38
+ ],
+ [
+  "src/lists/signals.ts",
+  "nitpicker/no-empty-every-signal",
+  7,
+  22,
+  "`readonlyTools.every(...)` is true when `readonlyTools` is empty, so this all-done signal fires when there are no items. Guard it with `readonlyTools.length > 0 && readonlyTools.every(...)`.",
+  7,
+  67
+ ],
+ [
+  "src/lists/signals.ts",
+  "nitpicker/no-empty-every-signal",
+  15,
+  10,
+  "`tools.filter((tool) => tool.id).every(...)` is true when `tools.filter((tool) => tool.id)` is empty, so this all-done signal fires when there are no items. Guard it with `tools.filter((tool) => tool.id).length > 0 && tools.filter((tool) => tool.id).every(...)`.",
+  15,
+  78
+ ],
+ [
+  "src/lists/signals.ts",
+  "nitpicker/no-empty-every-signal",
+  19,
+  36,
+  "`state.items.every(...)` is true when `state.items` is empty, so this all-done signal fires when there are no items. Guard it with `state.items.length > 0 && state.items.every(...)`.",
+  19,
+  79
+ ],
+ [
+  "src/lists/signals.ts",
+  "nitpicker/no-empty-every-signal",
+  20,
+  7,
+  "`state.items.every(...)` is true when `state.items` is empty, so this all-done signal fires when there are no items. Guard it with `state.items.length > 0 && state.items.every(...)`.",
+  20,
+  50
+ ],
+ [
+  "src/presence/in_checks.ts",
+  "nitpicker/no-in-presence-check",
+  6,
+  10,
+  "`'targetUID' in data` is true when the key exists with the value `undefined`, and this type allows that. Test `data.targetUID !== undefined` (or `!= null`), or add `Object.hasOwn(data, 'targetUID') && ...` when both are meant.",
+  6,
+  29
+ ],
+ [
+  "src/presence/in_checks.ts",
+  "nitpicker/no-in-presence-check",
+  21,
+  10,
+  "`'x' in data` is true when the key exists with the value `undefined`, and this type allows that. Test `data.x !== undefined` (or `!= null`), or add `Object.hasOwn(data, 'x') && ...` when both are meant.",
+  21,
+  21
+ ],
+ [
+  "src/presence/in_checks.ts",
+  "nitpicker/no-in-presence-check",
+  29,
+  9,
+  "`'targetUID' in data` is true when the key exists with the value `undefined`, and this type allows that. Test `data.targetUID !== undefined` (or `!= null`), or add `Object.hasOwn(data, 'targetUID') && ...` when both are meant.",
+  29,
+  28
+ ],
+ [
+  "src/presence/in_checks.ts",
+  "nitpicker/no-in-presence-check",
+  57,
+  33,
+  "`'targetUID' in item` is true when the key exists with the value `undefined`, and this type allows that. Test `item.targetUID !== undefined` (or `!= null`), or add `Object.hasOwn(item, 'targetUID') && ...` when both are meant.",
+  57,
+  52
+ ],
+ [
+  "src/presence/in_checks.ts",
+  "nitpicker/no-in-presence-check",
+  61,
+  18,
+  "`'targetUID' in data` is true when the key exists with the value `undefined`, and this type allows that. Test `data.targetUID !== undefined` (or `!= null`), or add `Object.hasOwn(data, 'targetUID') && ...` when both are meant.",
+  61,
+  37
+ ],
+ [
+  "src/presence/in_checks.ts",
+  "nitpicker/no-in-presence-check",
+  69,
+  10,
+  "`'targetUID' in data` is true when the key exists with the value `undefined`, and this type allows that. Test `data.targetUID !== undefined` (or `!= null`), or add `Object.hasOwn(data, 'targetUID') && ...` when both are meant.",
+  69,
+  29
+ ],
+ [
+  "src/presence/in_checks.ts",
+  "nitpicker/no-in-presence-check",
+  73,
+  7,
+  "`'targetUID' in data.inner` is true when the key exists with the value `undefined`, and this type allows that. Test `data.inner.targetUID !== undefined` (or `!= null`), or add `Object.hasOwn(data.inner, 'targetUID') && ...` when both are meant.",
+  73,
+  33
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-lookup-as-presence",
+  8,
+  7,
+  "`cache.get(key)` is tested by its value to decide whether the key is stored, but this map can hold an empty value, which reads as missing and is computed again. Test the key with `has`, then store with `set` when it is missing.",
+  8,
+  13
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-lookup-as-presence",
+  17,
+  7,
+  "`map.get(key)` is tested by its value to decide whether the key is stored, but this map can hold an empty value, which reads as missing and is computed again. Test the key with `has`, then store with `set` when it is missing.",
+  17,
+  26
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-lookup-as-presence",
+  35,
+  7,
+  "`names.get(key)` is tested by its value to decide whether the key is stored, but this map can hold an empty value, which reads as missing and is computed again. Test the key with `has`, then store with `set` when it is missing.",
+  35,
+  13
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-lookup-as-presence",
+  42,
+  17,
+  "`cache.get(key)` is tested by its value to decide whether the key is stored, but this map can hold an empty value, which reads as missing and is computed again. Test the key with `has`, then store with `set` when it is missing.",
+  42,
+  36
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-lookup-as-presence",
+  48,
+  17,
+  "`map.get(key)` is tested by its value to decide whether the key is stored, but this map can hold an empty value, which reads as missing and is computed again. Test the key with `has`, then store with `set` when it is missing.",
+  48,
+  34
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-lookup-as-presence",
+  60,
+  7,
+  "`cache.get(key)` is tested by its value to decide whether the key is stored, but this map can hold an empty value, which reads as missing and is computed again. Test the key with `has`, then store with `set` when it is missing.",
+  60,
+  21
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-lookup-as-presence",
+  76,
+  10,
+  "`flags.get(key)` is tested by its value to decide whether the key is stored, but this map can hold an empty value, which reads as missing and is computed again. Test the key with `has`, then store with `set` when it is missing.",
+  76,
+  24
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-lookup-as-presence",
+  89,
+  7,
+  "`map.get(key)` is tested by its value to decide whether the key is stored, but this map can hold an empty value, which reads as missing and is computed again. Test the key with `has`, then store with `set` when it is missing.",
+  89,
+  13
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-lookup-as-presence",
+  96,
+  10,
+  "A record whose values are `unknown` can store `undefined`, so `record[key] !== undefined` cannot tell a missing key from a stored `undefined`. Test the key with `key in record` or `Object.hasOwn(record, key)`.",
+  96,
+  35
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-lookup-as-presence",
+  103,
+  10,
+  "A record whose values are `unknown` can store `undefined`, so `record[key] !== undefined` cannot tell a missing key from a stored `undefined`. Test the key with `key in record` or `Object.hasOwn(record, key)`.",
+  103,
+  35
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-lookup-as-presence",
+  121,
+  17,
+  "A record whose values are `unknown` can store `undefined`, so `record[key] !== undefined` cannot tell a missing key from a stored `undefined`. Test the key with `key in record` or `Object.hasOwn(record, key)`.",
+  121,
+  42
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  10,
+  5,
+  "domain/ code does not mutate values, and Map.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  10,
+  14
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-parameter-mutation",
+  19,
+  5,
+  "`map.set` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  19,
+  24
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  19,
+  5,
+  "domain/ code does not mutate values, and Map.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  19,
+  12
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  28,
+  5,
+  "domain/ code does not mutate values, and Map.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  28,
+  14
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  36,
+  5,
+  "domain/ code does not mutate values, and Map.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  36,
+  14
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  43,
+  3,
+  "domain/ code does not mutate values, and Map.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  43,
+  12
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-parameter-mutation",
+  49,
+  3,
+  "`map.set` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  49,
+  22
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  49,
+  3,
+  "domain/ code does not mutate values, and Map.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  49,
+  10
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  55,
+  3,
+  "domain/ code does not mutate values, and Map.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  55,
+  12
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  63,
+  3,
+  "domain/ code does not mutate values, and Map.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  63,
+  12
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  70,
+  5,
+  "domain/ code does not mutate values, and Map.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  70,
+  14
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  76,
+  32,
+  "domain/ code does not mutate values, and WeakMap.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  76,
+  41
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-parameter-mutation",
+  90,
+  5,
+  "`map!.set` changes the value the caller passed in. Build and return a new value (`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+  90,
+  21
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  90,
+  5,
+  "domain/ code does not mutate values, and Map.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  90,
+  13
+ ],
+ [
+  "src/patterns/strings.ts",
+  "nitpicker/no-string-as-regex",
+  6,
+  21,
+  "Use `includes`, `startsWith`, `indexOf` or `===` for plain text, or pass a RegExp (`/…/` or `new RegExp(pattern)`) when the string is meant as a pattern. `match()` compiles a string argument as a regex, so `.`, `*`, `?`, `(` and the other metacharacters in it change what matches.",
+  6,
+  28
+ ],
+ [
+  "src/patterns/strings.ts",
+  "nitpicker/no-string-as-regex",
+  16,
+  26,
+  "Escape `term` with the project's escape helper (`escapeRegExp(term)`, or `RegExp.escape` on a runtime that has it), interpolate a RegExp's `.source` when the value is meant as a pattern, or compare plain text with `includes` or `startsWith`. Built into this regex unescaped, the metacharacters in it change the pattern.",
+  16,
+  30
+ ],
+ [
+  "src/patterns/strings.ts",
+  "nitpicker/no-string-as-regex",
+  16,
+  66,
+  "Escape `other` with the project's escape helper (`escapeRegExp(other)`, or `RegExp.escape` on a runtime that has it), interpolate a RegExp's `.source` when the value is meant as a pattern, or compare plain text with `includes` or `startsWith`. Built into this regex unescaped, the metacharacters in it change the pattern.",
+  16,
+  71
+ ],
+ [
+  "src/patterns/strings.ts",
+  "nitpicker/no-string-as-regex",
+  20,
+  41,
+  "Escape `term` with the project's escape helper (`escapeRegExp(term)`, or `RegExp.escape` on a runtime that has it), interpolate a RegExp's `.source` when the value is meant as a pattern, or compare plain text with `includes` or `startsWith`. Built into this regex unescaped, the metacharacters in it change the pattern.",
+  20,
+  45
+ ],
+ [
+  "src/patterns/strings.ts",
+  "nitpicker/no-expanding-replacement-string",
+  24,
+  36,
+  "`replace` reads `$&`, `$1`, `$$` and similar sequences in a replacement string, so a `$` in `name` is expanded instead of inserted. Pass a function (`replace(pattern, () => name)`), or escape the dollars (`value.replace(/\\$/g, '$$$$')`). A constant replacement that uses `$1` on purpose is fine.",
+  24,
+  40
+ ],
+ [
+  "src/time/zones.ts",
+  "nitpicker/no-local-time-zone",
+  5,
+  37,
+  "`getFullYear()` uses the server's local time zone, so the result changes with the server's `TZ`. Use `getUTCFullYear()`, or compute in an explicit zone (luxon `DateTime.fromJSDate(date, { zone })`).",
+  5,
+  55
+ ],
+ [
+  "src/time/zones.ts",
+  "nitpicker/no-local-time-zone",
+  7,
+  48,
+  "`getHours()` uses the server's local time zone, so the result changes with the server's `TZ`. Use `getUTCHours()`, or compute in an explicit zone (luxon `DateTime.fromJSDate(date, { zone })`).",
+  7,
+  64
+ ],
+ [
+  "src/time/zones.ts",
+  "nitpicker/no-local-time-zone",
+  8,
+  39,
+  "`getTimezoneOffset()` is the offset of the server's local time zone, so the result changes with the server's `TZ`. Take the offset of an explicit zone (luxon `DateTime.now().setZone(zone).offset`).",
+  8,
+  63
+ ],
+ [
+  "src/time/zones.ts",
+  "nitpicker/no-local-time-zone",
+  9,
+  38,
+  "`toLocaleDateString` without a `timeZone` option formats in the server's local time zone, so the result changes with the server's `TZ`. Pass the zone: `date.toLocaleDateString('en-US', { timeZone: 'UTC' })`, or the user's zone.",
+  9,
+  70
+ ],
+ [
+  "src/time/zones.ts",
+  "nitpicker/no-local-time-zone",
+  11,
+  37,
+  "`toString()` prints the date in the server's local time zone, so the result changes with the server's `TZ`. Use `toISOString()`, or `Intl.DateTimeFormat` with a `timeZone`.",
+  11,
+  52
+ ],
+ [
+  "src/time/zones.ts",
+  "nitpicker/no-local-time-zone",
+  21,
+  26,
+  "`Intl.DateTimeFormat` without a `timeZone` option formats in the server's local time zone, so the result changes with the server's `TZ`. Pass the zone: `new Intl.DateTimeFormat('en-US', { timeZone: 'UTC' })`, or the user's zone.",
+  21,
+  58
+ ],
+ [
+  "src/time/zones.ts",
+  "nitpicker/no-local-time-zone",
+  23,
+  27,
+  "`Intl.DateTimeFormat().resolvedOptions().timeZone` is the server's own zone, so the result changes with the server's `TZ`. Use a configured zone name or `'UTC'`.",
+  23,
+  48
+ ],
+ [
+  "src/time/zones.ts",
+  "nitpicker/no-local-time-zone",
+  25,
+  22,
+  "`new Date(year, month, ...)` builds the date in the server's local time zone, so the result changes with the server's `TZ`. Use `new Date(Date.UTC(year, month, ...))`.",
+  25,
+  42
+ ],
+ [
+  "src/time/zones.ts",
+  "nitpicker/no-local-time-zone",
+  26,
+  23,
+  "This date-time text has no offset, so it is read in the server's local time zone and the result changes with the server's `TZ`. Add `Z` or an offset (`'2024-01-01T10:00:00Z'`), or parse it in an explicit zone (luxon `DateTime.fromISO(text, { zone })`).",
+  26,
+  51
+ ],
+ [
+  "src/time/zones.ts",
+  "nitpicker/no-local-time-zone",
+  28,
+  22,
+  "This date-time text has no offset, so it is read in the server's local time zone and the result changes with the server's `TZ`. Add `Z` or an offset (`'2024-01-01T10:00:00Z'`), or parse it in an explicit zone (luxon `DateTime.fromISO(text, { zone })`).",
+  28,
+  55
+ ],
+ [
+  "src/time/zones.ts",
+  "nitpicker/no-local-time-zone",
+  30,
+  26,
+  "luxon `DateTime.now` without a `zone` option uses the server's local time zone, so the result changes with the server's `TZ`. Pass `{ zone: 'utc' }` (or the user's zone), chain `.setZone(zone)`, or use `DateTime.utc()`.",
+  30,
+  40
+ ],
+ [
+  "src/time/zones.ts",
+  "nitpicker/no-local-time-zone",
+  32,
+  36,
+  "date-fns `format` works in the server's local time zone, so the result changes with the server's `TZ`. Pass the zone with `{ in: tz('UTC') }` from `@date-fns/tz`, or use `formatInTimeZone` from `date-fns-tz`.",
+  32,
+  62
+ ],
+ [
+  "src/time/zones.ts",
+  "nitpicker/no-local-time-zone",
+  33,
+  38,
+  "date-fns `startOfDay` works in the server's local time zone, so the result changes with the server's `TZ`. Pass the zone with `{ in: tz('UTC') }` from `@date-fns/tz`, or use `formatInTimeZone` from `date-fns-tz`.",
+  33,
+  54
+ ],
+ [
+  "src/time/zones.ts",
+  "nitpicker/no-local-time-zone",
+  34,
+  28,
+  "`dayjs()` builds a date in the server's local time zone, so the result changes with the server's `TZ`. Chain `.utc()` or `.tz(zone)` before calendar methods like `format`, `startOf` or `add`, or start from `.utc(...)`.",
+  34,
+  35
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  26,
+  5,
+  "`out` collects stream chunks as text one at a time, so a multibyte character split across two chunks is corrupted. Keep the chunks (`parts.push(chunk)`) and decode once at the end (`Buffer.concat(parts).toString(\"utf8\")`), or call `setEncoding(\"utf8\")` on the stream first.",
+  26,
+  17
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  32,
+  5,
+  "`out` collects stream chunks as text one at a time, so a multibyte character split across two chunks is corrupted. Keep the chunks (`parts.push(chunk)`) and decode once at the end (`Buffer.concat(parts).toString(\"utf8\")`), or call `setEncoding(\"utf8\")` on the stream first.",
+  32,
+  25
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  33,
+  5,
+  "`out` collects stream chunks as text one at a time, so a multibyte character split across two chunks is corrupted. Keep the chunks (`parts.push(chunk)`) and decode once at the end (`Buffer.concat(parts).toString(\"utf8\")`), or call `setEncoding(\"utf8\")` on the stream first.",
+  33,
+  34
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  37,
+  7,
+  "`out` collects stream chunks as text one at a time, so a multibyte character split across two chunks is corrupted. Keep the chunks (`parts.push(chunk)`) and decode once at the end (`Buffer.concat(parts).toString(\"utf8\")`), or call `setEncoding(\"utf8\")` on the stream first.",
+  37,
+  19
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  40,
+  7,
+  "`out` collects stream chunks as text one at a time, so a multibyte character split across two chunks is corrupted. Keep the chunks (`parts.push(chunk)`) and decode once at the end (`Buffer.concat(parts).toString(\"utf8\")`), or call `setEncoding(\"utf8\")` on the stream first.",
+  40,
+  20
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  51,
+  18,
+  "This `decode` call decodes one chunk on its own, so a multibyte character split across two chunks is corrupted. Pass `{ stream: true }` as the second argument for every chunk and call `decode()` once more at the end, or collect the chunks and decode them together.",
+  51,
+  39
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  53,
+  18,
+  "This `decode` call decodes one chunk on its own, so a multibyte character split across two chunks is corrupted. Pass `{ stream: true }` as the second argument for every chunk and call `decode()` once more at the end, or collect the chunks and decode them together.",
+  53,
+  43
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  57,
+  5,
+  "This `decode` call decodes one chunk on its own, so a multibyte character split across two chunks is corrupted. Pass `{ stream: true }` as the second argument for every chunk and call `decode()` once more at the end, or collect the chunks and decode them together.",
+  57,
+  26
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  64,
+  9,
+  "`includes` looks for text inside a single chunk, so a match split across two chunks is missed. Append the chunk to an accumulated string or buffer and search that, or call `setEncoding(\"utf8\")` and keep a rolling tail.",
+  64,
+  31
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  65,
+  9,
+  "`indexOf` looks for text inside a single chunk, so a match split across two chunks is missed. Append the chunk to an accumulated string or buffer and search that, or call `setEncoding(\"utf8\")` and keep a rolling tail.",
+  65,
+  33
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  66,
+  9,
+  "`test` looks for text inside a single chunk, so a match split across two chunks is missed. Append the chunk to an accumulated string or buffer and search that, or call `setEncoding(\"utf8\")` and keep a rolling tail.",
+  66,
+  39
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  69,
+  9,
+  "`includes` looks for text inside a single chunk, so a match split across two chunks is missed. Append the chunk to an accumulated string or buffer and search that, or call `setEncoding(\"utf8\")` and keep a rolling tail.",
+  69,
+  23
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  73,
+  9,
+  "`indexOf` looks for text inside a single chunk, so a match split across two chunks is missed. Append the chunk to an accumulated string or buffer and search that, or call `setEncoding(\"utf8\")` and keep a rolling tail.",
+  73,
+  20
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  116,
+  5,
+  "`box.text` collects stream chunks as text one at a time, so a multibyte character split across two chunks is corrupted. Keep the chunks (`parts.push(chunk)`) and decode once at the end (`Buffer.concat(parts).toString(\"utf8\")`), or call `setEncoding(\"utf8\")` on the stream first.",
+  116,
+  22
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-parameter-mutation",
+  116,
+  5,
+  "`box.text` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  116,
+  22
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  121,
+  5,
+  "`undeclared` collects stream chunks as text one at a time, so a multibyte character split across two chunks is corrupted. Keep the chunks (`parts.push(chunk)`) and decode once at the end (`Buffer.concat(parts).toString(\"utf8\")`), or call `setEncoding(\"utf8\")` on the stream first.",
+  121,
+  24
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  127,
+  5,
+  "`out` collects stream chunks as text one at a time, so a multibyte character split across two chunks is corrupted. Keep the chunks (`parts.push(chunk)`) and decode once at the end (`Buffer.concat(parts).toString(\"utf8\")`), or call `setEncoding(\"utf8\")` on the stream first.",
+  127,
+  17
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  130,
+  5,
+  "`out` collects stream chunks as text one at a time, so a multibyte character split across two chunks is corrupted. Keep the chunks (`parts.push(chunk)`) and decode once at the end (`Buffer.concat(parts).toString(\"utf8\")`), or call `setEncoding(\"utf8\")` on the stream first.",
+  130,
+  17
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-chunkwise-stream-text",
+  135,
+  43,
+  "`out` collects stream chunks as text one at a time, so a multibyte character split across two chunks is corrupted. Keep the chunks (`parts.push(chunk)`) and decode once at the end (`Buffer.concat(parts).toString(\"utf8\")`), or call `setEncoding(\"utf8\")` on the stream first.",
+  135,
+  55
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-accumulator-concat",
+  2,
+  53,
+  "Concatenating onto the accumulator copies it on every step, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`, `Object.groupBy`), or push into an array created before the loop. An exception fits only when the list is always tiny.",
+  2,
+  74
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-accumulator-concat",
+  4,
+  12,
+  "Concatenating onto the accumulator copies it on every step, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`, `Object.groupBy`), or push into an array created before the loop. An exception fits only when the list is always tiny.",
+  4,
+  33
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-accumulator-concat",
+  14,
+  5,
+  "This loop copies `all` with `concat` on every pass, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`), or push into an array created before the loop. An exception fits only when the list is always tiny.",
+  14,
+  28
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-accumulator-concat",
+  18,
+  5,
+  "This loop copies `each` with `concat` on every pass, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`), or push into an array created before the loop. An exception fits only when the list is always tiny.",
+  18,
+  30
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-accumulator-concat",
+  32,
+  5,
+  "This loop copies `made` with `concat` on every pass, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`), or push into an array created before the loop. An exception fits only when the list is always tiny.",
+  32,
+  29
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-mutating-method-in-domain",
+  46,
+  5,
+  "domain/ code does not mutate values, and Map.set changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).",
+  46,
+  15
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-accumulator-concat",
+  57,
+  5,
+  "This loop copies `seed` with `concat` on every pass, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`), or push into an array created before the loop. An exception fits only when the list is always tiny.",
+  57,
+  30
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-accumulator-concat",
+  61,
+  5,
+  "This loop copies `seed` with `concat` on every pass, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`), or push into an array created before the loop. An exception fits only when the list is always tiny.",
+  61,
+  30
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-accumulator-concat",
+  69,
+  38,
+  "This loop copies `a` with `concat` on every pass, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`), or push into an array created before the loop. An exception fits only when the list is always tiny.",
+  69,
+  61
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-accumulator-concat",
+  70,
+  5,
+  "This loop copies `a` with `concat` on every pass, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`), or push into an array created before the loop. An exception fits only when the list is always tiny.",
+  70,
+  28
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-accumulator-concat",
+  74,
+  5,
+  "This loop copies `b` with `concat` on every pass, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`), or push into an array created before the loop. An exception fits only when the list is always tiny.",
+  74,
+  30
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-accumulator-concat",
+  78,
+  5,
+  "This loop copies `c` with `concat` on every pass, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`), or push into an array created before the loop. An exception fits only when the list is always tiny.",
+  78,
+  28
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-accumulator-concat",
+  82,
+  5,
+  "This loop copies `d` with `concat` on every pass, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`), or push into an array created before the loop. An exception fits only when the list is always tiny.",
+  82,
+  32
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-accumulator-concat",
+  84,
+  37,
+  "Concatenating onto the accumulator copies it on every step, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`, `Object.groupBy`), or push into an array created before the loop. An exception fits only when the list is always tiny.",
+  84,
+  54
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-accumulator-concat",
+  85,
+  14,
+  "Concatenating onto the accumulator copies it on every step, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`, `Object.groupBy`), or push into an array created before the loop. An exception fits only when the list is always tiny.",
+  85,
+  45
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-accumulator-concat",
+  90,
+  5,
+  "This loop copies `f` with `concat` on every pass, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`), or push into an array created before the loop. An exception fits only when the list is always tiny.",
+  90,
+  24
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-accumulator-concat",
+  92,
+  43,
+  "Concatenating onto the accumulator copies it on every step, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`, `Object.groupBy`), or push into an array created before the loop. An exception fits only when the list is always tiny.",
+  92,
+  60
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-accumulator-concat",
+  93,
+  43,
+  "Concatenating onto the accumulator copies it on every step, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`, `Object.groupBy`), or push into an array created before the loop. An exception fits only when the list is always tiny.",
+  93,
+  61
+ ],
+ [
+  "src/unions/members.ts",
+  "nitpicker/no-union-order-dependence",
+  9,
+  10,
+  "`.types[0]` picks a union or intersection member by its place in the list (for a map, the last entry with the same key wins), and the compiler does not promise that order: TypeScript 6 lists members in the order their types were created, TypeScript 7 sorts them, so the same source gives a different result. Choose by something the source decides (the declaration's file and position, or a name), or compare all members. An exception fits only when every member that can be picked gives the same result.",
+  9,
+  24
+ ],
+ [
+  "src/unions/members.ts",
+  "nitpicker/no-union-order-dependence",
+  13,
+  10,
+  "`.types.find(...)` picks a union or intersection member by its place in the list (for a map, the last entry with the same key wins), and the compiler does not promise that order: TypeScript 6 lists members in the order their types were created, TypeScript 7 sorts them, so the same source gives a different result. Choose by something the source decides (the declaration's file and position, or a name), or compare all members. An exception fits only when every member that can be picked gives the same result.",
+  13,
+  67
+ ],
+ [
+  "src/unions/members.ts",
+  "nitpicker/no-union-order-dependence",
+  17,
+  10,
+  "`.types.find(...)` picks a union or intersection member by its place in the list (for a map, the last entry with the same key wins), and the compiler does not promise that order: TypeScript 6 lists members in the order their types were created, TypeScript 7 sorts them, so the same source gives a different result. Choose by something the source decides (the declaration's file and position, or a name), or compare all members. An exception fits only when every member that can be picked gives the same result.",
+  17,
+  80
+ ],
+ [
+  "src/unions/members.ts",
+  "nitpicker/no-union-order-dependence",
+  21,
+  10,
+  "`.types[0]` picks a union or intersection member by its place in the list (for a map, the last entry with the same key wins), and the compiler does not promise that order: TypeScript 6 lists members in the order their types were created, TypeScript 7 sorts them, so the same source gives a different result. Choose by something the source decides (the declaration's file and position, or a name), or compare all members. An exception fits only when every member that can be picked gives the same result.",
+  21,
+  72
+ ],
+ [
+  "src/unions/members.ts",
+  "nitpicker/no-union-order-dependence",
+  25,
+  27,
+  "`.types[0]` picks a union or intersection member by its place in the list (for a map, the last entry with the same key wins), and the compiler does not promise that order: TypeScript 6 lists members in the order their types were created, TypeScript 7 sorts them, so the same source gives a different result. Choose by something the source decides (the declaration's file and position, or a name), or compare all members. An exception fits only when every member that can be picked gives the same result.",
+  25,
+  40
+ ],
+ [
+  "src/unions/members.ts",
+  "nitpicker/no-union-order-dependence",
+  29,
+  18,
+  "`new Map(...)` over `.types.flatMap(...)` picks a union or intersection member by its place in the list (for a map, the last entry with the same key wins), and the compiler does not promise that order: TypeScript 6 lists members in the order their types were created, TypeScript 7 sorts them, so the same source gives a different result. Choose by something the source decides (the declaration's file and position, or a name), or compare all members. An exception fits only when every member that can be picked gives the same result.",
+  29,
+  119
+ ],
+ [
+  "src/unions/members.ts",
+  "nitpicker/no-union-order-dependence",
+  33,
+  10,
+  "Comparing `typeToString` text with union text depends on the order the compiler prints union members in, which differs between compiler versions (`A | B` or `B | A`). Compare the types with `checker.isTypeAssignableTo` or by symbol instead.",
+  33,
+  61
+ ],
+ [
+  "src/unions/predicates.ts",
+  "nitpicker/exhaustive-union-predicate",
+  4,
+  40,
+  "These comparisons list only some members of `Kind`, so a member added later is silently classified as the default. Classify every member with a `switch` that has no `default`, or a `Record<Union, boolean>` lookup, so adding a member fails to compile.",
+  4,
+  68
+ ],
+ [
+  "src/unions/predicates.ts",
+  "nitpicker/exhaustive-union-predicate",
+  6,
+  43,
+  "These comparisons list only some members of `Kind`, so a member added later is silently classified as the default. Classify every member with a `switch` that has no `default`, or a `Record<Union, boolean>` lookup, so adding a member fails to compile.",
+  6,
+  71
+ ],
+ [
+  "src/unions/predicates.ts",
+  "nitpicker/exhaustive-union-predicate",
+  8,
+  39,
+  "These comparisons list only some members of `Kind`, so a member added later is silently classified as the default. Classify every member with a `switch` that has no `default`, or a `Record<Union, boolean>` lookup, so adding a member fails to compile.",
+  8,
+  64
+ ],
+ [
+  "src/unions/predicates.ts",
+  "nitpicker/exhaustive-union-predicate",
+  10,
+  38,
+  "These comparisons list only some members of `Kind`, so a member added later is silently classified as the default. Classify every member with a `switch` that has no `default`, or a `Record<Union, boolean>` lookup, so adding a member fails to compile.",
+  10,
+  67
+ ],
+ [
+  "src/unions/predicates.ts",
+  "nitpicker/exhaustive-union-predicate",
+  12,
+  51,
+  "These comparisons list only some members of the union, so a member added later is silently classified as the default. Classify every member with a `switch` that has no `default`, or a `Record<Union, boolean>` lookup, so adding a member fails to compile.",
+  12,
+  81
+ ],
+ [
+  "src/unions/predicates.ts",
+  "nitpicker/exhaustive-union-predicate",
+  15,
+  3,
+  "These comparisons list only some members of `Kind`, so a member added later is silently classified as the default. Classify every member with a `switch` that has no `default`, or a `Record<Union, boolean>` lookup, so adding a member fails to compile.",
+  21,
+  4
+ ],
+ [
+  "src/unions/members.ts",
+  "nitpicker/no-union-order-dependence",
+  55,
+  10,
+  "`.types[0]` picks a union or intersection member by its place in the list (for a map, the last entry with the same key wins), and the compiler does not promise that order: TypeScript 6 lists members in the order their types were created, TypeScript 7 sorts them, so the same source gives a different result. Choose by something the source decides (the declaration's file and position, or a name), or compare all members. An exception fits only when every member that can be picked gives the same result.",
+  55,
+  22
+ ],
+ [
+  "src/versions/usage.ts",
+  "nitpicker/no-unversioned-orm-entity",
+  33,
+  9,
+  "`Plain` is loaded and saved again without a version column, so two requests that update the same row both succeed and the later one silently overwrites the earlier one. Add `@VersionColumn() version!: number` to the entity: TypeORM then fails the stale save with an error. An exception fits only when concurrent writers of the table are ruled out another way, such as a pessimistic lock or a single writer.",
+  33,
+  45
+ ],
+ [
+  "src/versions/usage.ts",
+  "nitpicker/no-unversioned-orm-entity",
+  38,
+  9,
+  "`Plain` is loaded and saved again without a version column, so two requests that update the same row both succeed and the later one silently overwrites the earlier one. Add `@VersionColumn() version!: number` to the entity: TypeORM then fails the stale save with an error. An exception fits only when concurrent writers of the table are ruled out another way, such as a pessimistic lock or a single writer.",
+  38,
+  42
+ ],
+ [
+  "src/versions/usage.ts",
+  "nitpicker/no-unversioned-orm-entity",
+  45,
+  9,
+  "`Ledger` is loaded and saved again without a version property, so two requests that update the same row both succeed and the later one silently overwrites the earlier one. Add `@Property({ version: true }) version!: number` to the entity: MikroORM then fails the stale flush with an OptimisticLockError. An exception fits only when concurrent writers of the table are ruled out another way, such as a pessimistic lock or a single writer.",
+  45,
+  42
+ ],
+ [
+  "src/versions/usage.ts",
+  "nitpicker/no-unversioned-orm-entity",
+  50,
+  9,
+  "`Invoice` is loaded and saved again without a version column, so two requests that update the same row both succeed and the later one silently overwrites the earlier one. Set `version: true` in the model options (`Model.init(attributes, { sequelize, version: true })`, or `@Table({ version: true })`): Sequelize then fails the stale save with an OptimisticLockError. An exception fits only when concurrent writers of the table are ruled out another way, such as a pessimistic lock or a single writer.",
+  50,
+  47
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-unknown-in-domain",
+  95,
+  48,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  95,
+  55
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-unknown-in-domain",
+  99,
+  55,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  99,
+  62
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-unknown-in-domain",
+  106,
+  55,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  106,
+  62
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-unknown-in-domain",
+  113,
+  54,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  113,
+  61
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-unknown-in-domain",
+  120,
+  53,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  120,
+  60
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-unknown-in-domain",
+  125,
+  55,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  125,
+  62
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-unknown-in-domain",
+  19,
+  39,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  19,
+  46
+ ],
+ [
+  "src/chunks/guarded.ts",
+  "nitpicker/no-unknown-in-domain",
+  20,
+  39,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  20,
+  46
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-unknown-in-domain",
+  98,
+  126,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  98,
+  133
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  7,
+  51,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  7,
+  54
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  9,
+  34,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  9,
+  37
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  13,
+  36,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  13,
+  41
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  15,
+  37,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  15,
+  47
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  15,
+  56,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  15,
+  75
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  17,
+  29,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  17,
+  32
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  19,
+  33,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  19,
+  38
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  21,
+  37,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  21,
+  44
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  21,
+  54,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  21,
+  60
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  21,
+  68,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  21,
+  72
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  25,
+  35,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  25,
+  41
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  25,
+  53,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  25,
+  61
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  27,
+  33,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  27,
+  38
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  27,
+  45,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  27,
+  53
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  27,
+  79,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  27,
+  84
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  30,
+  17,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  30,
+  20
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  31,
+  17,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  31,
+  20
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  39,
+  16,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  39,
+  19
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  41,
+  28,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  41,
+  31
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  42,
+  18,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  42,
+  21
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  46,
+  37,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  46,
+  40
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  47,
+  17,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  47,
+  20
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  47,
+  36,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  47,
+  39
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  51,
+  30,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  51,
+  33
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  51,
+  56,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  51,
+  59
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  57,
+  21,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  57,
+  27
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  58,
+  42,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  58,
+  52
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  61,
+  56,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  61,
+  59
+ ],
+ [
+  "src/unknown/shapes.ts",
+  "nitpicker/no-unknown-in-domain",
+  6,
+  39,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  6,
+  44
+ ],
+ [
+  "src/unknown/shapes.ts",
+  "nitpicker/no-unknown-in-domain",
+  12,
+  31,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  12,
+  38
+ ],
+ [
+  "src/unknown/shapes.ts",
+  "nitpicker/no-unknown-in-domain",
+  15,
+  42,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  15,
+  49
+ ],
+ [
+  "src/unknown/shapes.ts",
+  "nitpicker/no-unknown-in-domain",
+  16,
+  54,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  16,
+  61
+ ],
+ [
+  "src/unknown/shapes.ts",
+  "nitpicker/no-unknown-in-domain",
+  22,
+  19,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  22,
+  22
+ ],
+ [
+  "src/versions/usage.ts",
+  "nitpicker/no-unknown-in-domain",
+  5,
+  103,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  5,
+  110
+ ],
+ [
+  "src/versions/usage.ts",
+  "nitpicker/no-unknown-in-domain",
+  6,
+  88,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  6,
+  95
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  1,
+  59,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  1,
+  66
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  5,
+  27,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  5,
+  29
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  5,
+  82,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  5,
+  89
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  5,
+  106,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  5,
+  109
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  5,
+  116,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  5,
+  123
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  12,
+  27,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  12,
+  28
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  24,
+  12,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  24,
+  13
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  31,
+  29,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  31,
+  30
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  31,
+  44,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  31,
+  45
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  31,
+  57,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  31,
+  58
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  35,
+  27,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  35,
+  28
+ ],
+ [
+  "src/edges/underscores.ts",
+  "nitpicker/no-forwarding-method-alias",
+  22,
+  3,
+  "`__total` only forwards its parameters to `sum` and has the same parameter and return types. Call `sum` directly and delete `__total`.",
+  22,
+  10
+ ],
+ [
+  "src/edges/underscores.ts",
+  "nitpicker/no-parameter-mutation",
+  41,
+  3,
+  "`o.__count` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  41,
+  16
+ ],
+ [
+  "src/edges/underscores.ts",
+  "nitpicker/no-parameter-mutation",
+  43,
+  3,
+  "`(r as { __id: string }).__id` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  43,
+  37
+ ],
+ [
+  "src/edges/underscores.ts",
+  "nitpicker/no-parameter-mutation",
+  47,
+  3,
+  "`o.__count` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`).",
+  47,
+  16
+ ]
+]

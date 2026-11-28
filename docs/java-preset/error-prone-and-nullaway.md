@@ -212,22 +212,19 @@ Part of the [Java preset guide](../java-preset.md).
 - **Lombok.** Lombok runs as an annotation processor of the second compile (Gradle's
   `annotationProcessor` path, Maven's `annotationProcessorPaths` or classpath), so `@Data`,
   `@Builder`, `@RequiredArgsConstructor`, `@Slf4j` and the rest compile. Lombok gives generated
-  members the position of the annotation that asked for them, and Error Prone 2.50.0 reports one
-  position per diagnostic (its start; javac's end position is the same point, so there is no span
-  to compare with the annotation's). `languages/java/adapters/errorprone/lombok/` therefore drops a
-  diagnostic only when both hold: its position is exactly the `@` of an annotation Lombok
-  processes (an explicit list of Lombok's annotations, resolved as javac does: a single-type
-  import, then a type of that name declared in the file or its package, then `import lombok.*;`, so
-  a project's own `Data` annotation is not Lombok's; never inside a comment; the offset is counted
-  in the source decoded with the compile's `-encoding`), and its check is one whose own findings in written code can never sit at an
-  annotation, because it reports an expression or statement (`UnnecessarySemicolon`,
-  `UnnecessarilyFullyQualified`, `CheckReturnValue`, `PatternMatchingInstanceof`,
-  `RedundantNullCheck`, `ExtendsObject`, `UnrecognisedJavadocTag`,
-  `SuppressWarningsWithoutExplanation`, and NullAway's passed or returned `@Nullable`), plus
-  `PrivateConstructorForUtilityClass` at `@FieldNameConstants` (the generated `Fields` class).
-  Declaration checks such as `FieldCanBeLocal` are kept even when the
-  declaration starts with a Lombok annotation, and so is NullAway's uninitialized-field finding at
-  `@Data` or `@NoArgsConstructor`, which NullAway reports for the same field without Lombok.
+  members the position of the annotation that asked for them. With Lombok on the processor path,
+  `ErrorProneReport.java` parses each file once more without processors and leaves out every Error Prone
+  finding whose position only trees the plain parse does not give hold (the trees Lombok added); a
+  position a written tree shares, such as a class annotation, keeps its findings. Over Lombok 1.18.46's
+  own transformation tests this drops 536 findings of 10 checks and none on written code: the 533 the
+  parity runner marks generated, and 3 `ReturnValueIgnored` on the calls `@Cleanup` and `@ExtensionMethod`
+  write.
+  NullAway's findings stay, since a field a generated constructor leaves uninitialized is fixed in the
+  written code; `languages/java/adapters/errorprone/lombok/` drops only NullAway's passed or returned
+  `@Nullable` exactly at the `@` of an annotation Lombok processes (an explicit list of Lombok's
+  annotations, resolved as javac does: a single-type import, then a type of that name declared in the
+  file or its package, then `import lombok.*;`, so a project's own `Data` annotation is not Lombok's;
+  never inside a comment; the offset is counted in the source decoded with the compile's `-encoding`).
   The sources whose nearest `lombok.config` (walking up from each source's directory until
   `config.stopBubbling = true`) sets `lombok.addSuppressWarnings = false` are compiled in a pass of
   their own, against the build's classes, with the checks listed under `lombokUnsuppressedOff` in
@@ -279,7 +276,7 @@ Part of the [Java preset guide](../java-preset.md).
   lines left on the probe, the partial-coverage cases kept, the order with policy, the docs list),
   `java-spans.test.mts` (classes, members and fields at a line), `ingest/errorprone/messages.test.mjs`
   (message rewrites, Guava suggestions without Guava), `adapters/errorprone/lombok/lombok-generated.test.mts`
-  (which positions and checks count as generated),
+  (which NullAway findings count as generated),
   `adapters/errorprone/checks/checks-policy.test.mts` (reviewed versions equal the pinned ones on
   Gradle and Maven, every list names reviewed checks, sorted, and every check turned off, kept on
   the exceptions route or spared in annotated classes is documented below),
@@ -358,10 +355,11 @@ checks `ArrayRecordComponent`, `EmptyCatch`, `EnumOrdinal`, `EscapedEntity`, `In
 The findings are the same: file, line, column and message. The engine writes them to `errorprone-engine.json`
 in the report folder, in the shape of `errorprone.json`, and they are read together. A source set whose
 compile runs an annotation processor, or for which the project passes Error Prone options other than check
-levels, stays with Error Prone as a whole, and so does every source set with `NITPICKER_ENGINE=off`. NullAway
-alone stays with Error Prone for test sources (where it is off), for a source set compiled with a module path,
-and for a source set that uses a null-marked library whose `@Nullable` is written on types, as Spring Framework
-7 does with JSpecify.
+levels, stays with Error Prone as a whole, and so does every source set with `NITPICKER_ENGINE=off`. Test
+sources run on the engine as Error Prone runs them there (`-XepCompilingTestOnlyCode`), and sources in another
+encoding than UTF-8 are read in it, unless the engine cannot decode that encoding as the JDK does. NullAway is
+off for test sources, and it stays with Error Prone for a source set that uses a null-marked library whose
+`@Nullable` is written on types, as Spring Framework 7 does with JSpecify.
 
 ## Checks that are off
 
@@ -743,6 +741,8 @@ The pairs:
 - variable: `pmd/UnusedLocalVariable` over `pmd/UnusedAssignment`
 - line: `checkstyle/FileTabCharacter` over `checkstyle/Indentation`
 - line: `pmd/InlineSuppression` over `pmd/UnnecessaryWarningSuppression`
+- line: `pmd/ParallelStreamSharedMutation` over `pmd/ForEachSideEffect`
+- line: `pmd/ScheduledTaskStopsOnFailure` over `errorprone/FutureReturnValueIgnored`
 
 ## Standard streams and the `main` method
 

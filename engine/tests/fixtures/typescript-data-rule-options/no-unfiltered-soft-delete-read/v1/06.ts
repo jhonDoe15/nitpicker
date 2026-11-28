@@ -1,0 +1,1 @@
+class S { find() { return this.assetRepository.createQueryBuilder('a').where('a.deletedAt IS NULL').getMany(); } }

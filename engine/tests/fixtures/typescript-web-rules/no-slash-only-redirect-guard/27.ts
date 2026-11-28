@@ -1,0 +1,1 @@
+function go(next) { if (next.charAt(0) === "/") { router.push(next); } }

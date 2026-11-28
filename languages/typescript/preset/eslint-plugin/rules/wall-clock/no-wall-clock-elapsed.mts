@@ -18,7 +18,15 @@ function isDateNew(node: TSESTree.Node): boolean {
   );
 }
 
-function isWallRead(node: TSESTree.Node): boolean {
+function isDateNow(object: TSESTree.Node, method: string): boolean {
+  return object.type === AST_NODE_TYPES.Identifier && object.name === 'Date' && method === 'now';
+}
+
+function isDateTime(object: TSESTree.Node, method: string): boolean {
+  return isDateNew(object) && (method === 'getTime' || method === 'valueOf');
+}
+
+export function isWallRead(node: TSESTree.Node): boolean {
   if (node.type === AST_NODE_TYPES.UnaryExpression) {
     return node.operator === '+' && isDateNew(node.argument);
   }
@@ -29,13 +37,9 @@ function isWallRead(node: TSESTree.Node): boolean {
     return false;
   }
   const { object, property } = node.callee;
-  if (property.type !== AST_NODE_TYPES.Identifier) {
-    return false;
-  }
-  const nowCall =
-    object.type === AST_NODE_TYPES.Identifier && object.name === 'Date' && property.name === 'now';
   return (
-    nowCall || (isDateNew(object) && (property.name === 'getTime' || property.name === 'valueOf'))
+    property.type === AST_NODE_TYPES.Identifier &&
+    (isDateNow(object, property.name) || isDateTime(object, property.name))
   );
 }
 
@@ -49,6 +53,13 @@ function variableOf(
   );
 }
 
+function initializerOf(context: Context, node: TSESTree.Identifier): TSESTree.Node | undefined {
+  const [definition] = variableOf(context, node)?.defs ?? [];
+  return definition?.node.type === AST_NODE_TYPES.VariableDeclarator
+    ? (definition.node.init ?? undefined)
+    : undefined;
+}
+
 function isWallValue(context: Context, node: TSESTree.Node): boolean {
   if (isWallRead(node)) {
     return true;
@@ -56,11 +67,7 @@ function isWallValue(context: Context, node: TSESTree.Node): boolean {
   if (node.type !== AST_NODE_TYPES.Identifier) {
     return false;
   }
-  const [definition] = variableOf(context, node)?.defs ?? [];
-  const init =
-    definition?.node.type === AST_NODE_TYPES.VariableDeclarator
-      ? (definition.node.init ?? undefined)
-      : undefined;
+  const init = initializerOf(context, node);
   return init !== undefined && isWallRead(init);
 }
 
@@ -139,6 +146,19 @@ function isInsideFunction(context: Context, node: TSESTree.Node): boolean {
     );
 }
 
+function isPureSunk(
+  context: Context,
+  differences: readonly (TSESTree.BinaryExpression | undefined)[],
+): boolean {
+  const pure = differences.every(
+    (difference) => difference !== undefined && isWallValue(context, difference.left),
+  );
+  return (
+    pure &&
+    differences.some((difference) => difference !== undefined && reachesSink(context, difference))
+  );
+}
+
 function checkLocal(context: Context, node: TSESTree.VariableDeclarator): void {
   if (node.id.type !== AST_NODE_TYPES.Identifier || node.init === null || !isWallRead(node.init)) {
     return;
@@ -146,13 +166,7 @@ function checkLocal(context: Context, node: TSESTree.VariableDeclarator): void {
   const variable = context.sourceCode.getDeclaredVariables(node)[0];
   const reads = variable?.references.filter((reference) => reference.isRead()) ?? [];
   const differences = reads.map(({ identifier }) => differenceOf(identifier));
-  const pure = differences.every(
-    (difference) => difference !== undefined && isWallValue(context, difference.left),
-  );
-  const sunk = differences.some(
-    (difference) => difference !== undefined && reachesSink(context, difference),
-  );
-  if (reads.length > 0 && pure && sunk && isInsideFunction(context, node)) {
+  if (isPureSunk(context, differences) && isInsideFunction(context, node)) {
     context.report({ node, messageId: 'wallClockElapsed', data: { name: node.id.name } });
   }
 }

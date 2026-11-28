@@ -11,6 +11,8 @@ pub enum Type {
     Variable(String),
     /// An unbounded wildcard argument: stands for the bound of the parameter it fills.
     Wildcard,
+    /// A bounded wildcard argument, kept only where types are printed: `true` for `? super`.
+    Bounded(bool, Box<Type>),
     Null,
 }
 
@@ -25,6 +27,7 @@ impl Type {
             Type::Array(element) => format!("{}[]", element.name()),
             Type::Null => "null".to_string(),
             Type::Wildcard => OBJECT.to_string(),
+            Type::Bounded(_, bound) => bound.name(),
         }
     }
     /// The same type without type arguments. Variables are expected to be replaced before this.
@@ -33,6 +36,7 @@ impl Type {
             Type::Class(name, _) => Type::class(name.split('&').next().unwrap_or(name)),
             Type::Array(element) => Type::Array(Box::new(element.erased())),
             Type::Variable(_) | Type::Wildcard => Type::class(OBJECT),
+            Type::Bounded(_, bound) => bound.erased(),
             other => other.clone(),
         }
     }
@@ -43,6 +47,7 @@ impl Type {
                 Type::Class(name.clone(), arguments.iter().map(|argument| argument.substitute(map)).collect())
             }
             Type::Array(element) => Type::Array(Box::new(element.substitute(map))),
+            Type::Bounded(lower, bound) => Type::Bounded(*lower, Box::new(bound.substitute(map))),
             other => other.clone(),
         }
     }
@@ -58,7 +63,7 @@ impl Type {
         match self {
             Type::Variable(_) => true,
             Type::Class(_, arguments) => arguments.iter().any(Type::mentions_variable),
-            Type::Array(element) => element.mentions_variable(),
+            Type::Array(element) | Type::Bounded(_, element) => element.mentions_variable(),
             _ => false,
         }
     }
@@ -145,17 +150,38 @@ pub mod flag {
     pub const NULL_MARKED: u32 = 1 << 24;
     /// A class or a package carries an annotation named `NullUnmarked`.
     pub const NULL_UNMARKED: u32 = 1 << 25;
-    /// A class file with type annotations on the class or a member: nullness written that way is not read.
-    pub const TYPE_MARKS: u32 = 1 << 26;
+    /// A variable arity method whose array itself may be null (`Object @Nullable ...`).
+    pub const NULLABLE_VARARGS: u32 = 1 << 26;
+    /// An annotation type that is itself a scope annotation (`@Scope`, `@ScopeAnnotation`).
+    pub const SCOPE_ANNOTATION: u32 = 1 << 27;
+    /// An annotation type that is itself a qualifier (`@Qualifier`, `@BindingAnnotation`).
+    pub const QUALIFIER_ANNOTATION: u32 = 1 << 28;
+    /// An annotation type with `@Retention(RUNTIME)`.
+    pub const RUNTIME_RETENTION: u32 = 1 << 29;
+    /// An annotation type with `@Retention(SOURCE)`.
+    pub const SOURCE_RETENTION: u32 = 1 << 30;
+    /// A field or parameter with `@CompileTimeConstant`.
+    pub const COMPILE_TIME_CONSTANT: u32 = 1 << 31;
 
     pub const IMMUTABLE_NAME: &str = "com.google.errorprone.annotations.Immutable";
     pub const IMMUTABLE_PARAMETER_NAME: &str = "com.google.errorprone.annotations.ImmutableTypeParameter";
+
+    /// The bits `@Retention` gives for the constant it names.
+    pub fn of_retention(constant: &str) -> u32 {
+        match constant {
+            "RUNTIME" => RUNTIME_RETENTION,
+            "SOURCE" => SOURCE_RETENTION,
+            _ => 0,
+        }
+    }
 
     /// The bits an annotation gives, by its full name with `.` between a class and its member class.
     pub fn of_annotation(name: &str) -> u32 {
         match name {
             "com.google.auto.value.AutoValue" => return AUTO_VALUE,
             "com.google.auto.value.AutoValue.Builder" | "com.google.auto.value.AutoBuilder" => return AUTO_BUILDER,
+            "javax.inject.Scope" | "jakarta.inject.Scope" | "com.google.inject.ScopeAnnotation" => return SCOPE_ANNOTATION,
+            "javax.inject.Qualifier" | "jakarta.inject.Qualifier" | "com.google.inject.BindingAnnotation" => return QUALIFIER_ANNOTATION,
             "dagger.Component.Builder"
             | "dagger.Subcomponent.Builder"
             | "dagger.producers.ProductionComponent.Builder"
@@ -165,6 +191,7 @@ pub mod flag {
         let exact = match name {
             "com.google.errorprone.annotations.CanIgnoreReturnValue" => MAY_IGNORE,
             IMMUTABLE_NAME => IMMUTABLE,
+            "com.google.errorprone.annotations.CompileTimeConstant" => COMPILE_TIME_CONSTANT,
             _ => 0,
         };
         exact | match name.rsplit('.').next().unwrap_or(name) {
@@ -185,6 +212,9 @@ pub struct Field {
     pub kind: Type,
     pub generic: Type,
     pub constant: Option<String>,
+    /// The value of a final `int` field set from a literal or read from the class file; for a `float` or `double`
+    /// constant from a class file, its IEEE bits.
+    pub number: Option<i64>,
     /// Set for a final field whose initializer is a constant expression as long as each listed field
     /// (owner class, name; an empty owner means the classes around the field) is a constant too.
     pub fixed: Option<Vec<(String, String)>>,
@@ -192,6 +222,14 @@ pub struct Field {
     pub strict: bool,
     /// Not seen from subclasses.
     pub is_private: bool,
+    /// Annotated with `@org.mockito.Mock` and no explicit `answer`.
+    pub mock: bool,
+    /// Full names of the annotations on the field.
+    pub annotations: Vec<String>,
+    /// The lock expressions the field's `@GuardedBy` annotations name, in order.
+    pub guards: Vec<super::guards::Expr>,
+    /// The value of a final field of a source file whose initializer is made of literals, `+` and names.
+    pub folded: Option<super::guards::Expr>,
     pub flags: u32,
 }
 
@@ -238,6 +276,14 @@ pub struct Detail {
     /// Full names of the annotations on the method, and on each parameter, with `.` before a member class.
     pub annotations: Vec<String>,
     pub parameter_annotations: Vec<Vec<String>>,
+    /// The lock expressions the method's `@GuardedBy` annotations name, in order.
+    pub guards: Vec<super::guards::Expr>,
+    /// The parameter types as javac prints them when they carry type annotations from a class file; empty otherwise.
+    pub marked: String,
+    /// Each parameter position and type path that carries a type-use annotation named `Nullable`, from a class file.
+    pub nullable_types: Vec<(u8, Vec<(u8, u8)>)>,
+    /// The annotations of `annotation_values::KEPT` on the method, with their element values.
+    pub kept: Vec<super::annotation_values::Kept>,
 }
 
 /// Where an annotation type may be used, as bits of `ClassInfo::targets`, from its `@Target`.
@@ -269,6 +315,8 @@ pub struct ClassInfo {
     pub superclass: Option<String>,
     pub interfaces: Vec<String>,
     pub generic_supers: Vec<Type>,
+    /// `generic_supers` with bounded wildcards in their type arguments kept, when any has one; empty otherwise.
+    pub bounded_supers: Vec<Type>,
     /// Name and erased bound of each type parameter.
     pub type_parameters: Vec<(String, Type)>,
     /// The first bound of each type parameter with its type arguments, when a class file gives it.
@@ -295,6 +343,30 @@ pub struct ClassInfo {
     /// For a class read from a class file: the annotation classes on its members that may be nicknames for
     /// `@CheckForNull`.
     pub null_nicknames: Vec<String>,
+    /// For an annotation type read from source: the modifiers its `@IncompatibleModifiers` lists, as constant names.
+    pub incompatible: Vec<String>,
+    /// For an annotation type: the modifiers its `@RequiredModifiers` lists, as constant names, those of `value` first.
+    pub required: Vec<String>,
+    /// Full names of the annotations on the class itself, with `.` before a member class.
+    pub class_annotations: Vec<String>,
+    /// The reason a `@DoNotMock` on the class gives: its value, or the annotation's default.
+    pub do_not_mock: Option<String>,
+    /// For a class read from a class file: whether it has an enclosing instance.
+    pub outer_instance: Option<bool>,
+    /// For a class read from a class file: its private members, which a `@GuardedBy` string may still name.
+    pub hidden: Vec<Hidden>,
+}
+
+/// A private field or method of a class file.
+#[derive(Clone, Debug)]
+pub struct Hidden {
+    pub name: String,
+    /// The type descriptor of a field, the method descriptor of a method.
+    pub descriptor: String,
+    pub is_static: bool,
+    pub is_method: bool,
+    /// For a method: how many methods that are not private were declared before it.
+    pub before: usize,
 }
 
 const SETTER_STARTS: &[&str] =

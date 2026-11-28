@@ -1,5 +1,6 @@
 //! MixedMutabilityReturnType: a method gives back a mutable collection on one path and an immutable one on another.
 use super::Context;
+use super::mutability_fix;
 use super::vars::{Named, named};
 use crate::engine::source::{children, named_children};
 use crate::java::types::model::Type;
@@ -72,25 +73,29 @@ pub fn mixed_mutability_return_type(context: &Context, node: Node) {
     }
     let mut found = Vec::new();
     returns(body, &mut found);
-    let (mut immutable, mut mutable) = (false, false);
+    let (mut immutable, mut mutable) = (Vec::new(), Vec::new());
     for statement in found {
         let Some(value) = named_children(statement).into_iter().find(|part| !part.kind().ends_with("comment")) else { continue };
         if value.kind() == "identifier" {
             if let Some(Named::Variable(declarator)) = named(context, value) {
                 let (fixed, open) = variable_sides(context, declarator);
                 if open || fixed {
-                    mutable |= open;
-                    immutable |= fixed && !open;
+                    if open { mutable.push(value) } else { immutable.push(value) }
                     continue;
                 }
             }
         }
         let (fixed, open) = sides(context, value);
-        immutable |= fixed;
-        mutable |= open;
+        if fixed {
+            immutable.push(value);
+        }
+        if open {
+            mutable.push(value);
+        }
     }
-    if immutable && mutable {
+    if !immutable.is_empty() && !mutable.is_empty() {
         let at = node.child_by_field_name("name").map_or(node.start_byte(), |name| name.start_byte());
-        context.report(NAME, node, at, SUMMARY);
+        mutable.extend(immutable);
+        context.report_fixed(NAME, node, at, SUMMARY, &mutability_fix::fixes(context, node, &mutable));
     }
 }

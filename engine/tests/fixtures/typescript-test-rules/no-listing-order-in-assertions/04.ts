@@ -1,0 +1,1 @@
+import { glob } from "glob"; import fg from "fast-glob"; import { globby } from "globby"; it("lists", async () => { expect(await globby("**/*.ts")).toEqual(["a.ts", "b.ts"]); });

@@ -1,0 +1,1 @@
+import { In, Repository } from "typeorm"; export const f = (repo, rows: Row[]) => repo.insert(rows);

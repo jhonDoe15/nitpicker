@@ -19,18 +19,24 @@
 //! - Results of one method dereferenced on one line make one finding.
 //! - What is known about a field of `this` ends at a call on `this` (written with or without `this.`, or with
 //!   `super.`), a call or constructor handed `this`, `this(...)` or `super(...)`, and a `synchronized` block. A `volatile` field is read anew each time. Static fields and fields of other objects are kept.
-//! - Lambda bodies are not looked at; an anonymous class inside one is.
+//! - In a lambda body only the redundant tests and reads of known nulls are reported; an anonymous class inside one
+//!   is looked at as any class.
 //! - A `switch` statement of the old form without `default`: the way past every case counts as not taken.
+mod copies;
 mod effects;
+mod elsewhere;
 mod forward;
+mod jdk;
 mod marks;
 mod must;
 mod paths;
+pub(super) mod redundant;
 
 use super::{Context, names};
-use crate::engine::source::{children, parent, walk};
+use crate::engine::source::{children, parent};
 use crate::java::helpers::has_modifier;
-use effects::{How, Shared, Unit};
+use effects::{How, Mode, Shared, Unit};
+pub use elsewhere::Elsewhere;
 use forward::{Flow, Kind, NULL, Site};
 use paths::strip;
 use std::collections::BTreeMap;
@@ -122,6 +128,7 @@ fn report(context: &Context, unit: &Unit, flow: &Flow, label: &str) {
         grouped.entry(site.origin).or_default().push(site);
     }
     let mut returned = std::collections::HashSet::new();
+    let mut dereferenced = std::collections::HashSet::new();
     for (origin, mut sites) in grouped {
         let origin = &flow.origins[origin as usize];
         sites.sort_by_key(|site| site.at.start_byte());
@@ -145,10 +152,24 @@ fn report(context: &Context, unit: &Unit, flow: &Flow, label: &str) {
         let certain = first.tag == NULL && origin.kind == Kind::Unnamed;
         let name = origin.name.clone().filter(|_| !certain).or(variable).unwrap_or_else(|| "null".to_string());
         if first.tag == NULL {
-            context.report(ALWAYS, first.at, at, format!("Null pointer dereference of {name} in {label}"));
+            let place = place_of(unit, label, &name);
+            // SpotBugs keeps one of the findings that name the same place on the same line.
+            if !dereferenced.insert((at, place.clone())) {
+                continue;
+            }
+            let message = format!("Null pointer dereference of {name} in {label}");
+            context.report_listed(ALWAYS, first.at, at, message, place, 1, vec![name, label.to_string()]);
         } else {
             context.report(SOME_PATH, first.at, at, format!("Possible null pointer dereference of {name} in {label}"));
         }
+    }
+}
+
+/// The place SpotBugs' SARIF names for a dereferenced value: the field it was read from, or the local variable.
+fn place_of(unit: &Unit, label: &str, name: &str) -> String {
+    match unit.finder.all.iter().find(|path| path.shown == name) {
+        Some(path) if path.field => format!("member:{}", path.full),
+        _ => super::place::variable(label, name),
     }
 }
 
@@ -157,20 +178,85 @@ fn class<'a>(shared: &Shared<'_, 'a>, class: Node<'a>, own: &str) {
     let labels = Labels { context, own, class };
     for member in members(class) {
         for (body, parameters, label) in labels.units(member) {
-            let unit = Unit::build(shared, own, body, parameters);
+            if !effects::may_hold_null(shared, own, body) {
+                continue;
+            }
+            let unit = Unit::build(shared, own, body, parameters, Mode::Report);
             let (starts, ends) = must::run(&unit);
             let mut flow = Flow::new(&unit, &starts, &ends);
             flow.run();
             report(context, &unit, &flow, &label);
+            redundant::report(context, &unit, &flow, &label);
+            for lambda in lambdas(body) {
+                lambda_body(shared, own, lambda);
+            }
         }
     }
 }
 
-/// Reports where a value that may be null is dereferenced in the methods, constructors and initializers of a class.
-pub fn null_dereference<'a>(context: &Context<'a>, declaration: Node<'a>) {
-    if !context.wants(&[FROM_RETURN, SOME_PATH, ALWAYS]) {
+/// The lambdas inside a body, those inside other lambdas too, but not those of anonymous classes.
+fn lambdas(body: Node) -> Vec<Node> {
+    let mut found = Vec::new();
+    let mut pending = vec![body];
+    while let Some(node) = pending.pop() {
+        match node.kind() {
+            "class_body" => continue,
+            "lambda_expression" => found.push(node),
+            _ => {}
+        }
+        pending.extend(children(node));
+    }
+    found
+}
+
+/// The body of a lambda is a method of its own: only the redundant tests and known-null reads are reported in it.
+fn lambda_body<'a>(shared: &Shared<'_, 'a>, own: &str, lambda: Node<'a>) {
+    let context = shared.context;
+    let (Some(body), Some(label)) = (lambda.child_by_field_name("body"), names::lambda(context, lambda)) else { return };
+    let parameters = lambda.child_by_field_name("parameters").filter(|parameters| parameters.kind() == "formal_parameters");
+    let unit = Unit::build(shared, own, body, parameters, Mode::Report);
+    let (starts, ends) = must::run(&unit);
+    let mut flow = Flow::new(&unit, &starts, &ends);
+    flow.run();
+    redundant::report(context, &unit, &flow, &label);
+}
+
+/// Reports where a value that may be null is dereferenced in the methods, constructors and initializers of the
+/// classes of a file. Callee summaries are shared by the classes of the file.
+pub fn null_dereference<'a>(context: &Context<'a>, declared: &[Node<'a>]) {
+    if !context.wants(&[FROM_RETURN, SOME_PATH, ALWAYS, redundant::NONNULL_CHECK, redundant::NULL_CHECK, redundant::WOULD_THROW, redundant::KNOWN_NULL]) {
         return;
     }
-    let Some(own) = context.resolver.scope.names.get(&declaration.id()) else { return };
-    class(&Shared::new(context), declaration, own);
+    let shared = Shared::new(context);
+    for declaration in declared {
+        let Some(own) = context.resolver.scope.names.get(&declaration.id()) else { continue };
+        shared.next_class();
+        class(&shared, *declaration, own);
+    }
+}
+
+/// A bit per parameter that a method or constructor of the file dereferences on every path that leaves it
+/// normally, as the null patterns work it out for calls; with `locks` off, locking on a parameter does not count.
+pub fn dereferenced_parameters<'a>(context: &Context<'a>, own: &str, declaration: Node<'a>, locks: bool) -> u64 {
+    let Some(body) = declaration.child_by_field_name("body") else { return 0 };
+    let shared = Shared::new(context);
+    let unit = Unit::build_with(&shared, own, body, declaration.child_by_field_name("parameters"), Mode::Dereferences, locks);
+    let (entry, _) = must::run(&unit);
+    unit.parameters.iter().enumerate().take(64).filter(|(_, path)| must::has(&entry[0], **path)).fold(0, |bits, (position, _)| bits | 1 << position)
+}
+
+/// Whether SpotBugs takes the result of a method declared in the file as possibly null on purpose: marked
+/// `@CheckForNull` (or a nickname, also on a method it overrides) or JSR-305 or SpotBugs `@Nullable` on itself.
+pub fn declared_nullable(context: &Context, own: &str, declaration: Node) -> bool {
+    const NULLABLE: &[&str] = &["javax.annotation.Nullable", "edu.umd.cs.findbugs.annotations.Nullable"];
+    let resolver = context.resolver;
+    let written = crate::java::helpers::annotation_names(context.file, declaration);
+    if written.iter().any(|name| resolver.class_name(declaration, name).is_some_and(|full| NULLABLE.contains(&full.as_str()))) {
+        return true;
+    }
+    let name = declaration.child_by_field_name("name").map(|name| context.text(name)).unwrap_or_default();
+    let parameters = resolver.parameters(declaration.child_by_field_name("parameters")).0;
+    let index = resolver.index;
+    let found = index.get(own).and_then(|info| info.methods.iter().find(|method| method.name == name && method.parameters == parameters));
+    found.is_some_and(|method| marks::method(index, own, method))
 }

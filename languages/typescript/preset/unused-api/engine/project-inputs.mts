@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fieldOf, optionalText } from '../../../../../shared/values/readers.mts';
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
+import { optionOverrides } from '../../../typescript-api/typescript7-options.mts';
 import type { ProgramInputs } from '../program.mts';
 import type { ContextLayout, FileInfo } from '../typed/context-types.mts';
 import type { PackagesInfo } from '../workspace/workspace-types.mts';
@@ -37,14 +38,26 @@ function absolutePaths(
   );
 }
 
+function pathsBaseOf(options: ProgramInputs['options'], projectRoot: string): string {
+  return (
+    optionalText(fieldOf(options, 'baseUrl')) ??
+    optionalText(fieldOf(options, 'pathsBasePath')) ??
+    projectRoot
+  );
+}
+
+function typescript7Options(options: ProgramInputs['options']): Readonly<Record<string, unknown>> {
+  const overrides = optionOverrides(options);
+  return {
+    ...overrides?.set,
+    ...Object.fromEntries((overrides?.unset ?? []).map((option) => [option, null])),
+  };
+}
+
 export function engineProjectConfig(
   { parsed, options, rootNames }: ProgramInputs,
   { configPath, projectRoot }: { readonly configPath: string; readonly projectRoot: string },
 ): unknown {
-  const pathsBase =
-    optionalText(fieldOf(options, 'baseUrl')) ??
-    optionalText(fieldOf(options, 'pathsBasePath')) ??
-    projectRoot;
   return {
     extends: path.resolve(configPath),
     compilerOptions: {
@@ -55,7 +68,8 @@ export function engineProjectConfig(
       types: [],
       typeRoots: ts.getEffectiveTypeRoots(options, ts.sys) ?? [],
       ...(parsed.options.jsx === undefined ? { jsx: 'react-jsx' } : {}),
-      paths: absolutePaths(options.paths ?? {}, pathsBase),
+      paths: absolutePaths(options.paths ?? {}, pathsBaseOf(options, projectRoot)),
+      ...typescript7Options(options),
     },
     files: rootNames,
     include: [],

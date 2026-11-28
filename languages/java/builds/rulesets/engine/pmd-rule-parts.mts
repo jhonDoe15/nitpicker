@@ -4,6 +4,7 @@ import type { ResolvedRule } from './pmd-catalog.mts';
 export type EngineRule = {
   readonly name: string;
   readonly xpath: string;
+  readonly port: string;
   readonly message: string;
   readonly suppress: string;
   readonly properties: Readonly<Record<string, { readonly type: string; readonly value: string }>>;
@@ -13,6 +14,88 @@ export type EngineRule = {
 type RuleProperty = { readonly type: string; readonly value: string };
 
 const XPATH_RULE = 'net.sourceforge.pmd.lang.rule.xpath.XPathRule';
+const UNUSED_SUPPRESSION_RULE = 'net.sourceforge.pmd.lang.rule.impl.UnnecessaryPmdSuppressionRule';
+const RULE_PACKAGE = 'net.sourceforge.pmd.lang.java.rule';
+const PORTED_RULES: ReadonlySet<string> = new Set(
+  [
+    'bestpractices.AbstractClassWithoutAbstractMethodRule',
+    'bestpractices.ArrayIsStoredDirectlyRule',
+    'bestpractices.AvoidReassigningCatchVariablesRule',
+    'bestpractices.AvoidReassigningLoopVariablesRule',
+    'bestpractices.AvoidReassigningParametersRule',
+    'bestpractices.AvoidUsingHardCodedIPRule',
+    'bestpractices.CheckResultSetRule',
+    'bestpractices.ForLoopCanBeForeachRule',
+    'bestpractices.GuardLogStatementRule',
+    'bestpractices.JUnitUseExpectedRule',
+    'bestpractices.LiteralsFirstInComparisonsRule',
+    'bestpractices.LooseCouplingRule',
+    'bestpractices.MethodReturnsInternalArrayRule',
+    'bestpractices.MissingOverrideRule',
+    'bestpractices.PreserveStackTraceRule',
+    'bestpractices.PrimitiveWrapperInstantiationRule',
+    'bestpractices.SimplifiableTestAssertionRule',
+    'bestpractices.UnitTestShouldIncludeAssertRule',
+    'bestpractices.UnnecessaryVarargsArrayCreationRule',
+    'bestpractices.UnusedAssignmentRule',
+    'bestpractices.UnusedFormalParameterRule',
+    'bestpractices.UnusedLocalVariableRule',
+    'bestpractices.UnusedPrivateFieldRule',
+    'bestpractices.UnusedPrivateMethodRule',
+    'bestpractices.UseCollectionIsEmptyRule',
+    'bestpractices.UseEnumCollectionsRule',
+    'bestpractices.UseTryWithResourcesRule',
+    'codestyle.ConfusingTernaryRule',
+    'design.SimplifyBooleanReturnsRule',
+    'design.SimplifyConditionalRule',
+    'errorprone.AssignmentInOperandRule',
+    'errorprone.AssignmentToNonFinalStaticRule',
+    'errorprone.AvoidBranchingStatementAsLastInLoopRule',
+    'errorprone.AvoidDuplicateLiteralsRule',
+    'errorprone.AvoidUsingOctalValuesRule',
+    'errorprone.BrokenNullCheckRule',
+    'errorprone.CheckSkipResultRule',
+    'errorprone.CloneMethodMustImplementCloneableRule',
+    'errorprone.CloseResourceRule',
+    'errorprone.ConfusingArgumentToVarargsMethodRule',
+    'errorprone.ConstructorCallsOverridableMethodRule',
+    'errorprone.DetachedTestCaseRule',
+    'errorprone.IdempotentOperationsRule',
+    'errorprone.ImplicitSwitchFallThroughRule',
+    'errorprone.InvalidLogMessageFormatRule',
+    'errorprone.JUnitSpellingRule',
+    'errorprone.JUnitStaticSuiteRule',
+    'errorprone.NonSerializableClassRule',
+    'errorprone.NullAssignmentRule',
+    'errorprone.OverrideBothEqualsAndHashcodeRule',
+    'errorprone.ProperCloneImplementationRule',
+    'errorprone.SingleMethodSingletonRule',
+    'errorprone.SingletonClassReturningNewInstanceRule',
+    'errorprone.SuspiciousOctalEscapeRule',
+    'errorprone.TestClassWithoutTestCasesRule',
+    'errorprone.UnnecessaryCaseChangeRule',
+    'errorprone.UselessOperationOnImmutableRule',
+    'multithreading.DoubleCheckedLockingRule',
+    'multithreading.NonThreadSafeSingletonRule',
+    'multithreading.UnsynchronizedStaticFormatterRule',
+    'performance.AddEmptyStringRule',
+    'performance.AppendCharacterWithCharRule',
+    'performance.BigIntegerInstantiationRule',
+    'performance.ConsecutiveAppendsShouldReuseRule',
+    'performance.ConsecutiveLiteralAppendsRule',
+    'performance.InefficientEmptyStringCheckRule',
+    'performance.InefficientStringBufferingRule',
+    'performance.RedundantFieldInitializerRule',
+    'performance.StringInstantiationRule',
+    'performance.UseIndexOfCharRule',
+    'performance.UseStringBufferForStringAppendsRule',
+    'performance.UselessStringValueOfRule',
+    'security.HardCodedCryptoKeyRule',
+    'security.InsecureCryptoIvRule',
+  ]
+    .map((rule) => `${RULE_PACKAGE}.${rule}`)
+    .concat(UNUSED_SUPPRESSION_RULE),
+);
 const QUERY = 'xpath';
 const SUPPRESS_QUERY = 'violationSuppressXPath';
 const SUPPRESS_REGEX = 'violationSuppressRegex';
@@ -77,14 +160,36 @@ export function ruleLevel(rule: ResolvedRule): 'error' | 'warning' | 'note' {
   return priority === WARNING_PRIORITY ? 'warning' : 'note';
 }
 
+function portOf(rule: ResolvedRule): string {
+  const name = rule.definition.attrs['class'];
+  return name !== undefined && PORTED_RULES.has(name) ? name : '';
+}
+
+export function needsWholeRun(rule: ResolvedRule): boolean {
+  return rule.definition.attrs['class'] === UNUSED_SUPPRESSION_RULE;
+}
+
+export function runsOnPmd(rule: ResolvedRule): boolean {
+  return !runsOnEngine(rule) && rule.definition.attrs['maximumLanguageVersion'] === undefined;
+}
+
+function isWrittenQuery(
+  rule: ResolvedRule,
+  properties: ReturnType<typeof ruleProperties>,
+): boolean {
+  const xpath = properties.get(QUERY)?.value;
+  return (
+    rule.definition.attrs['class'] === XPATH_RULE && xpath !== undefined && xpath.trim() !== ''
+  );
+}
+
 export function runsOnEngine(rule: ResolvedRule): boolean {
   const { attrs } = rule.definition;
   const properties = ruleProperties(rule);
   return (
-    attrs['class'] === XPATH_RULE &&
+    (isWrittenQuery(rule, properties) || portOf(rule) !== '') &&
     attrs['language'] === 'java' &&
     attrs['maximumLanguageVersion'] === undefined &&
-    (properties.get(QUERY)?.value ?? '').trim() !== '' &&
     (properties.get(SUPPRESS_REGEX)?.value ?? '') === ''
   );
 }
@@ -106,6 +211,7 @@ export function engineRule(
   return {
     name: rule.name,
     xpath: properties.get(QUERY)?.value ?? '',
+    port: portOf(rule),
     message: ruleMessage(rule),
     suppress: properties.get(SUPPRESS_QUERY)?.value ?? '',
     properties: Object.fromEntries(

@@ -38,19 +38,27 @@ describe('withEslintHeap', () => {
   const budget = { memory: 15 * GIB, defaultLimit: DEFAULT_LIMIT };
 
   it('adds the heap flag to the options the run already passes', () => {
-    expect(withEslintHeap({ NODE_OPTIONS: '--enable-source-maps' }, budget)).toEqual({
-      NODE_OPTIONS: '--enable-source-maps --max-old-space-size=6912',
+    expect(withEslintHeap({ NODE_OPTIONS: '--enable-source-maps' }, { budget })).toEqual({
+      NODE_OPTIONS: '--enable-source-maps --max-old-space-size=6912 --max-semi-space-size=64',
     });
-    expect(withEslintHeap({ NITPICKER_MAX_PARALLEL: '2' }, budget)).toEqual({
+    expect(withEslintHeap({ NITPICKER_MAX_PARALLEL: '2' }, { budget })).toEqual({
       NITPICKER_MAX_PARALLEL: '2',
-      NODE_OPTIONS: '--max-old-space-size=9984',
+      NODE_OPTIONS: '--max-old-space-size=9984 --max-semi-space-size=64',
+    });
+  });
+
+  it('keeps a young generation size the user set', () => {
+    expect(withEslintHeap({ NODE_OPTIONS: '--max_semi_space_size=16' }, { budget })).toEqual({
+      NODE_OPTIONS: '--max_semi_space_size=16 --max-old-space-size=6912',
     });
   });
 
   it('keeps a heap size the user set', () => {
     const environment = { NODE_OPTIONS: '--max_old_space_size=3000' };
 
-    expect(withEslintHeap(environment, budget)).toBe(environment);
+    expect(withEslintHeap(environment, { budget })).toEqual({
+      NODE_OPTIONS: '--max_old_space_size=3000 --max-semi-space-size=64',
+    });
     expect(heapMegabytesOf(environment.NODE_OPTIONS)).toBe(3000);
   });
 });

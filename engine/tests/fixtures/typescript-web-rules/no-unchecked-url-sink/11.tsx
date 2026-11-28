@@ -1,0 +1,1 @@
+function F({ model }) { if (!isSafeUrl(model.url)) { return null; } return <a href={model.url}>x</a>; }

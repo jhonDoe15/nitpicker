@@ -180,6 +180,32 @@ impl View {
         }
     }
 
+    /// A string as UTF-16 code units, which keeps the lone surrogates `text` cannot hold.
+    pub fn utf16(&self, value: Value) -> Option<Vec<u16>> {
+        let Value::Text(start, end, _) = value else { return None };
+        let raw = self.slice(start, end);
+        let mut units = Vec::with_capacity(raw.len());
+        let mut characters = raw.chars();
+        while let Some(character) = characters.next() {
+            if character != '\\' {
+                let mut buffer = [0; 2];
+                units.extend_from_slice(character.encode_utf16(&mut buffer));
+                continue;
+            }
+            let unit = match characters.next()? {
+                'n' => 0x0a,
+                't' => 0x09,
+                'r' => 0x0d,
+                'b' => 0x08,
+                'f' => 0x0c,
+                'u' => u16::from_str_radix(&characters.by_ref().take(4).collect::<String>(), 16).ok()?,
+                other => other as u16,
+            };
+            units.push(unit);
+        }
+        Some(units)
+    }
+
     pub fn items(&self, value: Value) -> &[Value] {
         match value {
             Value::List(start, end) => &self.items[start as usize..end as usize],
@@ -274,9 +300,22 @@ impl<'v> Node<'v> {
 
     /// `nodeChildren` of the ESLint helpers: every field that is a node, and the nodes of every list field.
     pub fn children(&self) -> Vec<Node<'v>> {
+        self.children_in(false)
+    }
+
+    /// The children in the key order of typescript-estree's nodes (fields sorted by name, lists in order).
+    pub fn estree_children(&self) -> Vec<Node<'v>> {
+        self.children_in(true)
+    }
+
+    fn children_in(&self, by_key: bool) -> Vec<Node<'v>> {
         let (start, end) = self.data().fields;
+        let mut fields: Vec<&Field> = self.view.fields[start as usize..end as usize].iter().collect();
+        if by_key {
+            fields.sort_by_key(|field| self.view.slice(field.key.0, field.key.1));
+        }
         let mut found = Vec::new();
-        for field in &self.view.fields[start as usize..end as usize] {
+        for field in fields {
             match field.value {
                 Value::Node(index) => found.push(self.view.at(index)),
                 Value::List(..) => found.extend(self.view.items(field.value).iter().filter_map(|item| match item {
@@ -292,10 +331,19 @@ impl<'v> Node<'v> {
 
     /// The node and everything under it, parents before children.
     pub fn descendants(&self) -> Vec<Node<'v>> {
+        self.descendants_in(false)
+    }
+
+    /// `descendants` in the key order of typescript-estree's nodes.
+    pub fn estree_descendants(&self) -> Vec<Node<'v>> {
+        self.descendants_in(true)
+    }
+
+    fn descendants_in(&self, by_key: bool) -> Vec<Node<'v>> {
         let mut found = vec![*self];
         let mut index = 0;
         while index < found.len() {
-            let children = found[index].children();
+            let children = found[index].children_in(by_key);
             found.splice(index + 1..index + 1, children);
             index += 1;
         }

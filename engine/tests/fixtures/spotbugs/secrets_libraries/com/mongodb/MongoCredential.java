@@ -1,0 +1,1 @@
+package com.mongodb; public class MongoCredential { public static MongoCredential createCredential(String u, String d, char[] p) { return null; } public static MongoCredential createScramSha256Credential(String u, String d, char[] p) { return null; } }

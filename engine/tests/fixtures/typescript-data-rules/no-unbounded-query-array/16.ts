@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export async function f(db, items) { if (items.length === 0) { return; } const ids = items.map((item) => item.id); await db.deleteFrom("asset").where("id", "in", ids).execute(); }

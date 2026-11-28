@@ -22,6 +22,10 @@ exception route in the message: write that form, don't work around the rule.
 - Render starts nothing: `navigate(...)`, `router.push(...)`, `document.addEventListener(...)` and
   `document.title = ...` go in a handler or an effect, and a redirect is rendered (`<Navigate to="/login" />`)
   (`nitpicker/react-no-render-side-effect`; timers, `fetch` and `window` listeners: `react-x/purity`).
+- In a server-rendered app (Next.js, Remix, Gatsby, Vike, Astro), render the same markup on the server and the
+  first client render: never `{typeof window !== 'undefined' && <Wide />}` or
+  `useState(() => typeof window !== 'undefined' && window.innerWidth > 600)`; read the browser value with
+  `useSyncExternalStore(subscribe, getSnapshot, () => serverValue)` (`nitpicker/react-no-hydration-mismatch`).
 - A prop or state array is never sorted, reversed or spliced in place: `players.toSorted(byScore)`, not
   `players.sort(byScore)` (`react-x/immutability`).
 - With react-i18next, set `interpolation: { escapeValue: false }` at init (or per call) when `t()` values are
@@ -40,6 +44,9 @@ exception route in the message: write that form, don't work around the rule.
   returns a value the store keeps, not a new object or array (`nitpicker/react-no-unstable-store-subscribe`).
 - An effect that opens a `WebSocket`, `EventSource`, `BroadcastChannel`, worker, observer, `watchPosition` or a
   `requestAnimationFrame` loop returns a cleanup that closes it (`nitpicker/react-no-leaked-effect-resource`).
+- An effect that subscribes returns the unsubscribe function as its cleanup:
+  `useEffect(() => store.subscribe(onChange), [store, onChange])`, never a bare `store.subscribe(onChange);`
+  (`nitpicker/react-no-dropped-effect-handle`).
 - Component tests query through `screen` and assert what the user sees (text, roles, focus), never
   component state, instances or hook internals. Keep `fireEvent`, `user` calls and `render` out of
   `waitFor` callbacks, do not wait for a snapshot, and do not use a regex with the `g` flag in a query.

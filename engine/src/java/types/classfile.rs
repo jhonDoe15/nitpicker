@@ -1,5 +1,7 @@
 //! A minimal class-file reader: name, supertypes, fields and method descriptors. Nothing else is read.
-use super::model::{ClassInfo, Detail, Field, Method, OBJECT, Type, flag};
+use super::annotation_values::{Element, KEPT, Kept, modified_utf8};
+use super::model::{ClassInfo, Detail, Field, Hidden, Method, OBJECT, Type, flag};
+use super::typemarks::{self, Mark};
 
 struct Reader<'a> {
     data: &'a [u8],
@@ -32,6 +34,8 @@ enum Constant<'a> {
     Utf8(&'a [u8]),
     Class(u16),
     Text(u16),
+    Int(i32),
+    Wide(i64),
     Other,
 }
 
@@ -52,6 +56,8 @@ struct Signature<'a> {
     at: usize,
     /// The first bound of each type parameter read last, type arguments kept.
     written_bounds: Vec<Type>,
+    /// Bounded wildcards keep their kind, for the supertypes kept in `ClassInfo::bounded_supers`.
+    bounded: bool,
 }
 
 impl<'a> Signature<'a> {
@@ -76,9 +82,10 @@ impl<'a> Signature<'a> {
                     self.at += 1;
                     arguments.push(Type::Wildcard);
                 }
-                b'+' | b'-' => {
+                tag @ (b'+' | b'-') => {
                     self.at += 1;
-                    arguments.push(self.kind()?);
+                    let bound = self.kind()?;
+                    arguments.push(if self.bounded { Type::Bounded(tag == b'-', Box::new(bound)) } else { bound });
                 }
                 _ => arguments.push(self.kind()?),
             }
@@ -196,25 +203,46 @@ struct Attributes<'a> {
     inner: Vec<(u16, u16)>,
     exceptions: Vec<u16>,
     names: Vec<u16>,
+    /// From the code of a method: the name of each local variable that lives from the first instruction, by slot.
+    locals: Vec<(u16, u16)>,
     marks: u32,
     /// Constant pool entries of the strings in `containerOf` of `@Immutable`.
     held: Vec<u16>,
+    /// Constant names listed by `@IncompatibleModifiers`.
+    incompatible: Vec<&'a [u8]>,
+    /// Constant names listed by `@RequiredModifiers`: those of `value`, then those of `modifier`.
+    required: [Vec<&'a [u8]>; 2],
     /// Positions of the type parameters with `@ImmutableTypeParameter`.
     strict: Vec<u8>,
     annotations: Vec<&'a [u8]>,
+    /// Constant pool entries of the strings in the `value` of the `@GuardedBy` annotations.
+    guards: Vec<u16>,
+    /// Constant pool index of the value of `optional` on `@Inject`.
+    optional: Option<u16>,
     parameter_annotations: Vec<Vec<&'a [u8]>>,
     targets: Option<u16>,
     annotated_parameters: usize,
     nullable_parameters: u64,
     contract: Option<u16>,
     starts: bool,
-    /// Carries type annotations, which this reader takes no nullness from.
-    typed: bool,
+    /// `@DoNotMock` on the class: the constant pool index of its value, when it has one.
+    do_not_mock: Option<Option<u16>>,
+    type_marks: Vec<Mark>,
+    /// `@org.mockito.Mock` without an explicit `answer`.
+    mock: bool,
+    /// The annotations of `annotation_values::KEPT`, with their element values.
+    kept: Vec<Kept>,
 }
 
 fn starter(descriptor: &[u8]) -> bool {
     let named = descriptor.strip_prefix(b"L").and_then(|rest| rest.strip_suffix(b";"));
     named.is_some_and(|named| super::model::STARTERS.iter().any(|known| known.len() == named.len() && known.bytes().zip(named).all(|(a, b)| a == *b || a == b'.' && *b == b'/')))
+}
+
+/// Whether an annotation descriptor names one of `annotation_values::KEPT`.
+fn kept_kind(descriptor: &[u8]) -> bool {
+    let named = descriptor.strip_prefix(b"L").and_then(|rest| rest.strip_suffix(b";"));
+    named.is_some_and(|named| KEPT.iter().any(|known| known.len() == named.len() && known.bytes().zip(named).all(|(a, b)| a == *b || a == b'.' && *b == b'/')))
 }
 
 fn skip_element(reader: &mut Reader) -> Option<()> {
@@ -229,6 +257,47 @@ fn skip_element(reader: &mut Reader) -> Option<()> {
         }
         _ => reader.skip(2),
     }
+}
+
+/// Reads one element value whole.
+fn element_value<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<Element> {
+    let text = |index: u16| utf8(index).and_then(modified_utf8);
+    Some(match reader.u1()? {
+        b's' => text(reader.u2()?).map_or(Element::Other, Element::Text),
+        b'c' => utf8(reader.u2()?).and_then(annotation_name).map_or(Element::Other, Element::Class),
+        b'e' => {
+            let kind = utf8(reader.u2()?).and_then(annotation_name);
+            let name = text(reader.u2()?);
+            match (kind, name) {
+                (Some(kind), Some(name)) => Element::Enum(kind, name),
+                _ => Element::Other,
+            }
+        }
+        b'[' => {
+            let mut values = Vec::new();
+            for _ in 0..reader.u2()? {
+                values.push(element_value(reader, utf8)?);
+            }
+            Element::Array(values)
+        }
+        b'@' => kept_annotation(reader, utf8).map_or(Element::Other, |kept| Element::Annotation(Box::new(kept))),
+        _ => {
+            reader.skip(2)?;
+            Element::Other
+        }
+    })
+}
+
+/// Reads one annotation with its element values.
+fn kept_annotation<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<Kept> {
+    let name = utf8(reader.u2()?).and_then(annotation_name);
+    let mut elements = Vec::new();
+    for _ in 0..reader.u2()? {
+        let key = utf8(reader.u2()?).and_then(modified_utf8);
+        let value = element_value(reader, utf8)?;
+        elements.extend(key.map(|key| (key, value)));
+    }
+    name.map(|name| Kept { name, elements })
 }
 
 /// Reads one element value and adds the constant names of the enum values in it.
@@ -251,12 +320,17 @@ fn enum_names<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u8]>, 
 }
 
 /// Reads one annotation: its type descriptor, and for `@Target` the element types it lists.
-fn annotation<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u8]>, targets: &mut Option<u16>) -> Option<&'a [u8]> {
+fn annotation<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u8]>, targets: &mut Option<u16>, retention: &mut u32) -> Option<&'a [u8]> {
     let kind = utf8(reader.u2()?)?;
     let target = kind == b"Ljava/lang/annotation/Target;";
+    let retained = kind == b"Ljava/lang/annotation/Retention;";
     for _ in 0..reader.u2()? {
         reader.skip(2)?;
-        if target {
+        if retained {
+            let mut names = Vec::new();
+            enum_names(reader, utf8, &mut names)?;
+            *retention |= names.iter().filter_map(|name| std::str::from_utf8(name).ok()).fold(0, |bits, name| bits | flag::of_retention(name));
+        } else if target {
             let mut names = Vec::new();
             enum_names(reader, utf8, &mut names)?;
             let bits = names.iter().filter_map(|name| std::str::from_utf8(name).ok()).fold(0, |bits, name| bits | super::model::target::bit(name));
@@ -278,7 +352,12 @@ fn annotation_name(descriptor: &[u8]) -> Option<String> {
 
 /// Skips one annotation and gives the index of its type descriptor.
 fn skip_annotation(reader: &mut Reader) -> Option<u16> {
-    read_annotation(reader).map(|(kind, _)| kind)
+    let kind = reader.u2()?;
+    for _ in 0..reader.u2()? {
+        reader.skip(2)?;
+        skip_element(reader)?;
+    }
+    Some(kind)
 }
 
 /// Reads one annotation: the index of its type descriptor and, when its first element is a string, that string's index.
@@ -316,18 +395,49 @@ fn element_strings(reader: &mut Reader, into: &mut Vec<u16>) -> Option<()> {
     Some(())
 }
 
-/// One entry of a type annotations attribute on a class: the type parameter it sits on, if it sits on one, and
-/// the index of its type descriptor. Gives nothing for a target this reader does not know.
-fn type_annotation(reader: &mut Reader) -> Option<(Option<u8>, u16)> {
-    let parameter = match reader.u1()? {
-        0x00 => Some(reader.u1()?),
-        0x10 => reader.skip(2).map(|_| None)?,
-        0x11 => reader.skip(2).map(|_| None)?,
+/// One entry of a type annotations attribute. Gives nothing for a target that only code attributes hold.
+fn type_annotation<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<Mark> {
+    let target = reader.u1()?;
+    let index = match target {
+        0x00 | 0x01 | 0x16 => reader.u1()?,
+        0x10 | 0x17 => reader.skip(2).map(|_| 0)?,
+        0x11 | 0x12 => reader.skip(2).map(|_| 0)?,
+        0x13..=0x15 => 0,
         _ => return None,
     };
-    let steps = reader.u1()? as usize;
-    reader.skip(steps * 2)?;
-    Some((parameter, skip_annotation(reader)?))
+    let steps = reader.u1()?;
+    let path = (0..steps).map(|_| Some((reader.u1()?, reader.u1()?))).collect::<Option<Vec<_>>>()?;
+    let name = annotation_name(utf8(skip_annotation(reader)?)?)?;
+    Some(Mark { target, index, path, name })
+}
+
+/// The parameter names javac reads from the local variable table of a method's code: one per parameter, `arg<n>`
+/// for a parameter the table does not name; empty without a table.
+fn local_names<'a>(locals: &[(u16, u16)], descriptor: &[u8], is_static: bool, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Vec<String> {
+    if locals.is_empty() {
+        return Vec::new();
+    }
+    let mut names = Vec::new();
+    let mut slot = u16::from(!is_static);
+    let mut at = 1;
+    while at < descriptor.len() && descriptor[at] != b')' {
+        let mut array = false;
+        while descriptor[at] == b'[' {
+            array = true;
+            at += 1;
+        }
+        let wide = !array && matches!(descriptor[at], b'J' | b'D');
+        if descriptor[at] == b'L' {
+            while at < descriptor.len() && descriptor[at] != b';' {
+                at += 1;
+            }
+        }
+        at += 1;
+        let found = locals.iter().find(|(register, _)| *register == slot).and_then(|(_, name)| utf8(*name));
+        names.push(found.map_or_else(|| format!("arg{}", names.len()), |name| String::from_utf8_lossy(name).into_owned()));
+        slot += if wide { 2 } else { 1 };
+    }
+    names
 }
 
 fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<Attributes<'a>> {
@@ -336,7 +446,6 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
         let name = utf8(reader.u2()?)?;
         let length = reader.u4()? as usize;
         let end = reader.at + length;
-        found.typed |= name == b"RuntimeVisibleTypeAnnotations" || name == b"RuntimeInvisibleTypeAnnotations";
         if name == b"Signature" && length == 2 {
             found.signature = utf8(reader.u2()?);
         } else if name == b"ConstantValue" && length == 2 {
@@ -346,7 +455,7 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                 let begin = reader.at;
                 let (_, text) = read_annotation(reader)?;
                 reader.at = begin;
-                let kind = annotation(reader, utf8, &mut found.targets)?;
+                let kind = annotation(reader, utf8, &mut found.targets, &mut found.marks)?;
                 if kind == b"Lcom/google/errorprone/annotations/Immutable;" {
                     reader.at = begin + 2;
                     for _ in 0..reader.u2()? {
@@ -357,14 +466,81 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                         }
                     }
                 }
+                if kind == b"Lcom/google/errorprone/annotations/IncompatibleModifiers;" {
+                    reader.at = begin + 2;
+                    for _ in 0..reader.u2()? {
+                        reader.skip(2)?;
+                        enum_names(reader, utf8, &mut found.incompatible)?;
+                    }
+                }
+                if kind == b"Lcom/google/errorprone/annotations/RequiredModifiers;" {
+                    reader.at = begin + 2;
+                    for _ in 0..reader.u2()? {
+                        match utf8(reader.u2()?) {
+                            Some(b"value") => enum_names(reader, utf8, &mut found.required[0])?,
+                            Some(b"modifier") => enum_names(reader, utf8, &mut found.required[1])?,
+                            _ => skip_element(reader)?,
+                        }
+                    }
+                }
+                if annotation_name(kind).is_some_and(|name| super::guards::GUARDED_BY.contains(&name.as_str())) {
+                    reader.at = begin + 2;
+                    for _ in 0..reader.u2()? {
+                        if utf8(reader.u2()?) == Some(b"value") {
+                            element_strings(reader, &mut found.guards)?;
+                        } else {
+                            skip_element(reader)?;
+                        }
+                    }
+                }
+                if kind == b"Lcom/google/inject/Inject;" {
+                    reader.at = begin + 2;
+                    for _ in 0..reader.u2()? {
+                        let key = utf8(reader.u2()?);
+                        if key == Some(b"optional") && reader.data.get(reader.at) == Some(&b'Z') {
+                            reader.skip(1)?;
+                            found.optional = Some(reader.u2()?);
+                        } else {
+                            skip_element(reader)?;
+                        }
+                    }
+                }
+                if kind == b"Lorg/mockito/Mock;" {
+                    reader.at = begin + 2;
+                    let mut answered = false;
+                    for _ in 0..reader.u2()? {
+                        answered |= utf8(reader.u2()?) == Some(b"answer");
+                        skip_element(reader)?;
+                    }
+                    found.mock = !answered;
+                }
+                if kept_kind(kind) {
+                    reader.at = begin;
+                    found.kept.extend(kept_annotation(reader, utf8));
+                }
+                if kind == b"Lcom/google/errorprone/annotations/DoNotMock;" {
+                    found.do_not_mock = Some(text);
+                }
                 found.deprecated |= kind == b"Ljava/lang/Deprecated;";
                 found.marks |= annotation_name(kind).map_or(0, |name| flag::of_annotation(&name));
                 if kind.ends_with(b"/Contract;") {
-                    found.contract = text;
+                    let after = reader.at;
+                    reader.at = begin + 2;
+                    for _ in 0..reader.u2()? {
+                        let element = utf8(reader.u2()?);
+                        let start = reader.at;
+                        if element == Some(b"value") && reader.u1()? == b's' {
+                            found.contract = Some(reader.u2()?);
+                        } else {
+                            reader.at = start;
+                            skip_element(reader)?;
+                        }
+                    }
+                    reader.at = after;
                 }
                 found.starts |= kind.ends_with(b"/Initializer;") || starter(kind);
                 found.nullable |= kind.ends_with(b"/Nullable;") || kind.ends_with(b"/CheckForNull;") || kind.ends_with(b"/ParametricNullness;");
-                found.check_for_null |= kind.ends_with(b"/CheckForNull;");
+                found.check_for_null |= matches!(kind, b"Ljavax/annotation/CheckForNull;" | b"Ledu/umd/cs/findbugs/annotations/CheckForNull;");
                 if kind.windows(4).any(|part| part == b"Null") && kind != b"Ljavax/annotation/Nullable;" {
                     found.nickname = Some(kind);
                 }
@@ -385,12 +561,13 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                     found.parameter_annotations[at].push(kind);
                 }
             }
-        } else if name == b"RuntimeVisibleTypeAnnotations" {
+        } else if name == b"RuntimeVisibleTypeAnnotations" || name == b"RuntimeInvisibleTypeAnnotations" {
             for _ in 0..reader.u2()? {
-                let Some((parameter, kind)) = type_annotation(reader) else { break };
-                if utf8(kind) == Some(b"Lcom/google/errorprone/annotations/ImmutableTypeParameter;") {
-                    found.strict.extend(parameter);
+                let Some(mark) = type_annotation(reader, utf8) else { break };
+                if mark.target == 0x00 && mark.name == flag::IMMUTABLE_PARAMETER_NAME && name == b"RuntimeVisibleTypeAnnotations" {
+                    found.strict.push(mark.index);
                 }
+                found.type_marks.push(mark);
             }
         } else if name == b"PermittedSubclasses" {
             found.permitted = Some((0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?);
@@ -405,6 +582,30 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                 found.names.push(reader.u2()?);
                 reader.skip(2)?;
             }
+        } else if name == b"Code" {
+            reader.skip(4)?;
+            let code = reader.u4()? as usize;
+            reader.skip(code)?;
+            let handlers = reader.u2()? as usize;
+            reader.skip(handlers * 8)?;
+            for _ in 0..reader.u2()? {
+                let inner = utf8(reader.u2()?).unwrap_or_default();
+                let size = reader.u4()? as usize;
+                let finish = reader.at + size;
+                if inner == b"LocalVariableTable" {
+                    for _ in 0..reader.u2()? {
+                        let start = reader.u2()?;
+                        reader.skip(2)?;
+                        let name = reader.u2()?;
+                        reader.skip(2)?;
+                        let slot = reader.u2()?;
+                        if start == 0 {
+                            found.locals.push((slot, name));
+                        }
+                    }
+                }
+                reader.at = finish;
+            }
         } else if name == b"Exceptions" {
             found.exceptions = (0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?;
         } else if name == b"Record" {
@@ -414,7 +615,7 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                 reader.skip(2)?;
                 let descriptor = utf8(reader.u2()?)?;
                 let text = attributes(reader, utf8)?.signature.unwrap_or(descriptor);
-                listed.push(Signature { text, at: 0, written_bounds: Vec::new() }.kind()?);
+                listed.push(Signature { text, at: 0, written_bounds: Vec::new(), bounded: false }.kind()?);
             }
             found.components = Some(listed);
         }
@@ -508,6 +709,18 @@ fn show_parameters(text: &[u8], varargs: bool) -> Option<String> {
     Some(all.join(","))
 }
 
+/// The distinct strings at those constant pool entries.
+fn guard_strings<'a>(entries: &[u16], utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Vec<super::guards::Expr> {
+    let mut found: Vec<super::guards::Expr> = Vec::new();
+    for text in entries.iter().filter_map(|entry| utf8(*entry)).map(|text| String::from_utf8_lossy(text).into_owned()) {
+        let text = super::guards::Expr::Str(text);
+        if !found.contains(&text) {
+            found.push(text);
+        }
+    }
+    found
+}
+
 fn member_flags(access: u16, found: &Attributes) -> u32 {
     let deprecated = found.deprecated;
     let mut bits = found.marks;
@@ -532,6 +745,62 @@ fn member_flags(access: u16, found: &Attributes) -> u32 {
 }
 
 const ACC_ENUM: u16 = 0x4000;
+
+/// Takes the nullness NullAway reads from a method's type annotations, and prints its parameters with them.
+/// A variable arity parameter is marked for its elements, and the array itself gets its own flag.
+fn mark_method(method: &mut Method, marks: &[Mark], (descriptor, written): (&[u8], &[u8]), inner: &typemarks::Inner, shift: usize) {
+    if marks.is_empty() {
+        return;
+    }
+    let (parameters, result) = typemarks::descriptor_parts(descriptor);
+    let shift = if method.name == "<init>" { shift } else { 0 };
+    for mark in marks.iter().filter(|mark| typemarks::nullable(&mark.name)) {
+        let at = usize::from(mark.index) + shift;
+        match mark.target {
+            typemarks::RESULT if typemarks::direct(mark, result, inner) => method.flags |= flag::NULLABLE,
+            typemarks::PARAMETER if at < 64 && at < parameters.len() => {
+                let spread = method.varargs && at + 1 == parameters.len();
+                if spread && typemarks::direct(mark, parameters[at], inner) {
+                    method.flags |= flag::NULLABLE_VARARGS;
+                } else if (spread && typemarks::elements(mark)) || (!spread && typemarks::direct(mark, parameters[at], inner)) {
+                    method.nullable_parameters |= 1 << at;
+                }
+            }
+            _ => {}
+        }
+    }
+    method.detail.nullable_types = marks.iter().filter(|mark| typemarks::shown_nullable(mark)).map(|mark| (mark.index, mark.path.clone())).collect();
+    if method.name != "<init>" && marks.iter().any(|mark| mark.target == typemarks::PARAMETER) {
+        method.detail.marked = typemarks::shown_parameters(written, method.varargs, marks, inner).unwrap_or_default();
+    }
+}
+
+/// A constructor of an inner class takes the enclosing instance first, which the source never writes; its generic
+/// signature, declaration annotations and type annotations already leave it out.
+fn drop_enclosing_instance(method: &mut Method, signature: Option<&[u8]>) {
+    let count = method.parameters.len();
+    method.parameters.remove(0);
+    let generic = signature.and_then(|text| Signature { text, at: 0, written_bounds: Vec::new(), bounded: false }.method()).filter(|(_, listed, _)| listed.len() + 1 == count);
+    match generic {
+        Some((type_parameters, listed, _)) => {
+            method.generic_parameters = listed;
+            method.type_bounds = type_parameters.iter().map(|(_, bound)| bound.clone()).collect();
+            method.type_parameters = type_parameters.into_iter().map(|(name, _)| name).collect();
+            method.shown = signature.and_then(|text| show_parameters(text, method.varargs)).unwrap_or_default();
+        }
+        None => {
+            method.generic_parameters.remove(0);
+            method.shown = method.shown.split_once(',').map_or_else(String::new, |(_, rest)| rest.to_string());
+        }
+    }
+    if method.names.len() == count {
+        method.names.remove(0);
+    }
+    if method.detail.parameter_annotations.len() == count {
+        method.detail.parameter_annotations.remove(0);
+    }
+    method.nullable_parameters >>= 1;
+}
 
 pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     let mut reader = Reader { data, at: 0 };
@@ -559,13 +828,15 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 reader.skip(3)?;
                 pool.push(Constant::Other);
             }
-            3 | 4 | 9 | 10 | 11 | 12 | 17 | 18 => {
+            3 => pool.push(Constant::Int(reader.u4()? as i32)),
+            4 => pool.push(Constant::Wide(i64::from(reader.u4()?))),
+            9 | 10 | 11 | 12 | 17 | 18 => {
                 reader.skip(4)?;
                 pool.push(Constant::Other);
             }
             5 | 6 => {
-                reader.skip(8)?;
-                pool.push(Constant::Other);
+                let high = u64::from(reader.u4()?);
+                pool.push(Constant::Wide(((high << 32) | u64::from(reader.u4()?)) as i64));
                 pool.push(Constant::Other);
             }
             _ => return None,
@@ -590,34 +861,51 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     let superclass = class_name(reader.u2()?);
     let interfaces = (0..reader.u2()?).map(|_| reader.u2().and_then(&class_name)).collect::<Option<Vec<_>>>()?;
     let mut null_nicknames: Vec<String> = Vec::new();
-    let mut typed = false;
     let mut nickname = |found: &Attributes| {
-        typed |= found.typed;
         let name = found.nickname.and_then(|text| std::str::from_utf8(text).ok()).map(|text| dotted(text.trim_start_matches('L').trim_end_matches(';')));
         null_nicknames.extend(name.filter(|name| !null_nicknames.contains(name)));
     };
+    let mut hidden: Vec<Hidden> = Vec::new();
     let mut fields = Vec::new();
+    let mut field_marks = Vec::new();
+    let mut method_marks = Vec::new();
     let mut enum_constants = 0;
     for _ in 0..reader.u2()? {
         let flags = reader.u2()?;
         enum_constants += u32::from(flags & ACC_ENUM != 0);
         let field_name = utf8(reader.u2()?)?;
         let descriptor = utf8(reader.u2()?)?;
-        let found = attributes(&mut reader, &utf8)?;
+        let mut found = attributes(&mut reader, &utf8)?;
         nickname(&found);
         let (signature, constant) = (found.signature, found.constant);
+        let marks = std::mem::take(&mut found.type_marks);
+        let found_number = constant;
         if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == 0 {
             let fixed = constant.filter(|_| flags & ACC_STATIC != 0).map(|_| Vec::new());
             let constant = constant.and_then(|index| match pool.get(index as usize)? {
-                Constant::Text(text) => Some(String::from_utf8_lossy(utf8(*text)?).into_owned()),
+                Constant::Text(text) => modified_utf8(utf8(*text)?),
+                Constant::Int(value) if descriptor == b"Z" => Some((*value != 0).to_string()),
                 _ => None,
             });
-            let kind = Signature { text: descriptor, at: 0, written_bounds: Vec::new() }.kind()?;
-            let generic = signature.and_then(|text| Signature { text, at: 0, written_bounds: Vec::new() }.kind()).unwrap_or_else(|| kind.clone());
-            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, flags: member_flags(flags, &found) | if flags & 0x0040 != 0 { flag::VOLATILE } else { 0 } });
+            let number = found_number.and_then(|index| match pool.get(index as usize)? {
+                Constant::Int(value) => Some(i64::from(*value)),
+                Constant::Wide(value) => Some(*value),
+                _ => None,
+            });
+            let kind = Signature { text: descriptor, at: 0, written_bounds: Vec::new(), bounded: false }.kind()?;
+            let generic = signature.and_then(|text| Signature { text, at: 0, written_bounds: Vec::new(), bounded: false }.kind()).unwrap_or_else(|| kind.clone());
+            field_marks.push((fields.len(), marks, descriptor));
+            let mut annotations: Vec<String> = found.annotations.iter().filter_map(|kind| annotation_name(kind)).collect();
+            if found.optional.is_some_and(|index| matches!(pool.get(index as usize), Some(Constant::Int(value)) if *value != 0)) {
+                annotations.push("com.google.inject.Inject#optional".to_string());
+            }
+            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, number, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, mock: found.mock, annotations, guards: guard_strings(&found.guards, &utf8), folded: None, flags: member_flags(flags, &found) | if flags & 0x0040 != 0 { flag::VOLATILE } else { 0 } | if flags & 0x4000 != 0 { flag::ENUM } else { 0 } });
+        } else if flags & ACC_SYNTHETIC == 0 {
+            hidden.push(Hidden { name: String::from_utf8_lossy(field_name).into_owned(), descriptor: String::from_utf8_lossy(descriptor).into_owned(), is_static: flags & ACC_STATIC != 0, is_method: false, before: 0 });
         }
     }
     let mut methods = Vec::new();
+    let mut constructors = Vec::new();
     let mut setter_like = false;
     let returns_own = format!(")L{internal};");
     for _ in 0..reader.u2()? {
@@ -627,15 +915,19 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         setter_like |= flags & ACC_STATIC == 0
             && std::str::from_utf8(method_name).is_ok_and(super::model::setter_name)
             && !descriptor.ends_with(returns_own.as_bytes());
-        let found = attributes(&mut reader, &utf8)?;
+        let mut found = attributes(&mut reader, &utf8)?;
         nickname(&found);
         let signature = found.signature;
+        let marks = std::mem::take(&mut found.type_marks);
+        if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == ACC_PRIVATE && method_name.first() != Some(&b'<') {
+            hidden.push(Hidden { name: String::from_utf8_lossy(method_name).into_owned(), descriptor: String::from_utf8_lossy(descriptor).into_owned(), is_static: flags & ACC_STATIC != 0, is_method: true, before: methods.len() });
+        }
         if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == 0 && method_name != b"<clinit>" {
-            let (_, parameters, returns) = Signature { text: descriptor, at: 0, written_bounds: Vec::new() }.method()?;
+            let (_, parameters, returns) = Signature { text: descriptor, at: 0, written_bounds: Vec::new(), bounded: false }.method()?;
             let mut throws: Vec<Type> = found.exceptions.iter().filter_map(|class| class_name(*class)).map(|name| Type::class(&name)).collect();
             let generic = signature
                 .and_then(|text| {
-                    let mut reader = Signature { text, at: 0, written_bounds: Vec::new() };
+                    let mut reader = Signature { text, at: 0, written_bounds: Vec::new(), bounded: false };
                     let read = reader.method()?;
                     let listed = reader.throws();
                     if listed.len() == throws.len() {
@@ -647,6 +939,11 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
             let (type_parameters, generic_parameters, generic_returns) =
                 generic.unwrap_or_else(|| (Vec::new(), parameters.clone(), returns.clone()));
             let parameters_count = parameters.len();
+            let written = signature.filter(|text| Signature { text, at: 0, written_bounds: Vec::new(), bounded: false }.method().is_some_and(|(_, listed, _)| listed.len() == parameters_count));
+            if method_name == b"<init>" {
+                constructors.push((methods.len(), descriptor, signature));
+            }
+            method_marks.push((methods.len(), marks, descriptor, written.unwrap_or(descriptor)));
             methods.push(Method {
                 name: String::from_utf8_lossy(method_name).into_owned(),
                 parameters,
@@ -662,20 +959,21 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 varargs: flags & ACC_VARARGS != 0,
                 flags: member_flags(flags, &found),
                 throws,
-                names: found.names.iter().filter_map(|name| utf8(*name)).map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
+                names: if found.names.is_empty() { local_names(&found.locals, descriptor, flags & ACC_STATIC != 0, &utf8) } else { found.names.iter().filter_map(|name| utf8(*name)).map(|name| String::from_utf8_lossy(name).into_owned()).collect() },
                 detail: Detail {
                     access: flags & 0x0d3f,
                     annotations: found.annotations.iter().filter_map(|kind| annotation_name(kind)).collect(),
+                    guards: guard_strings(&found.guards, &utf8),
                     parameter_annotations: found
                         .parameter_annotations
                         .iter()
                         .map(|listed| listed.iter().filter_map(|kind| annotation_name(kind)).collect())
                         .collect(),
+                    marked: String::new(),
+                    nullable_types: Vec::new(),
+                    kept: std::mem::take(&mut found.kept),
                 },
-                shown: {
-                    let written = signature.filter(|text| show_parameters(text, false).is_some_and(|all| all.matches(',').count() + 1 == parameters_count.max(1)));
-                    show_parameters(written.unwrap_or(descriptor), flags & ACC_VARARGS != 0).unwrap_or_default()
-                },
+                shown: show_parameters(written.unwrap_or(descriptor), flags & ACC_VARARGS != 0).unwrap_or_default(),
                 nullable_parameters: {
                     let shift = parameters_count.saturating_sub(found.annotated_parameters.max(1)).min(63);
                     if found.annotated_parameters == 0 { 0 } else { found.nullable_parameters << shift }
@@ -688,8 +986,26 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     let found = attributes(&mut reader, &utf8)?;
     let signature = found.signature;
     let mut class_flags = member_flags(access, &found);
-    if typed || found.typed {
-        class_flags |= flag::TYPE_MARKS;
+    let inner: typemarks::Inner = found.inner.iter().filter(|(_, access)| access & ACC_STATIC == 0).filter_map(|(class, _)| match pool.get(*class as usize)? {
+        Constant::Class(index) => std::str::from_utf8(utf8(*index)?).ok().map(str::to_string),
+        _ => None,
+    }).collect();
+    for (at, marks, descriptor) in field_marks {
+        if marks.iter().any(|mark| mark.target == typemarks::FIELD && typemarks::nullable(&mark.name) && typemarks::direct(mark, descriptor, &inner)) {
+            fields[at].flags |= flag::NULLABLE;
+        }
+    }
+    let shift = if access & 0x4000 != 0 { 2 } else { usize::from(inner.contains(internal)) };
+    for (at, marks, descriptor, written) in method_marks {
+        mark_method(&mut methods[at], &marks, (descriptor, written), &inner, shift);
+    }
+    if access & ACC_ENUM == 0 && inner.contains(internal) && let Some((outer, _)) = internal.rsplit_once('$') {
+        let first = format!("(L{outer};");
+        for (at, descriptor, signature) in constructors {
+            if descriptor.starts_with(first.as_bytes()) {
+                drop_enclosing_instance(&mut methods[at], signature);
+            }
+        }
     }
     for (mask, bit) in [(0x4000, flag::ENUM), (0x2000, flag::ANNOTATION)] {
         if access & mask != 0 {
@@ -699,9 +1015,13 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     if found.record {
         class_flags |= flag::RECORD;
     }
+    let own_inner = found.inner.iter().find(|(class, _)| class_name(*class).as_deref() == Some(name.as_str())).is_some_and(|(_, access)| access & ACC_STATIC == 0);
     let own_private = found.inner.iter().any(|(class, access)| access & ACC_PRIVATE != 0 && class_name(*class).as_deref() == Some(name.as_str()));
     if own_private {
         class_flags |= flag::PRIVATE;
+    }
+    if found.inner.iter().any(|(class, access)| access & 0x0004 != 0 && class_name(*class).as_deref() == Some(name.as_str())) {
+        class_flags = (class_flags & !flag::PUBLIC) | flag::PROTECTED;
     }
     let permitted: Option<Vec<String>> = found.permitted.map(|listed| listed.into_iter().filter_map(&class_name).collect());
     if permitted.is_some() {
@@ -711,12 +1031,20 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     let mut type_parameters = Vec::new();
     let mut written_bounds = Vec::new();
     let mut generic_supers = Vec::new();
+    let mut bounded_supers = Vec::new();
     if let Some(text) = signature {
-        let mut signature = Signature { text, at: 0, written_bounds: Vec::new() };
+        let mut signature = Signature { text, at: 0, written_bounds: Vec::new(), bounded: false };
         type_parameters = signature.type_parameters().unwrap_or_default();
         written_bounds = std::mem::take(&mut signature.written_bounds);
+        let supers = signature.at;
         while let Some(kind) = signature.kind() {
             generic_supers.push(kind);
+        }
+        if text[supers..].iter().any(|byte| matches!(byte, b'+' | b'-')) {
+            let mut again = Signature { text, at: supers, written_bounds: Vec::new(), bounded: true };
+            while let Some(kind) = again.kind() {
+                bounded_supers.push(kind);
+            }
         }
     } else {
         generic_supers.extend(superclass.iter().chain(&interfaces).map(|name| Type::class(name)));
@@ -728,6 +1056,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         superclass,
         interfaces,
         generic_supers,
+        bounded_supers,
         type_parameters,
         written_bounds,
         fields,
@@ -742,5 +1071,22 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         targets: found.targets,
         setter_like,
         null_nicknames,
+        incompatible: found.incompatible.iter().map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
+        required: found.required.iter().flatten().map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
+        class_annotations: found.annotations.iter().filter_map(|kind| annotation_name(kind)).collect(),
+        outer_instance: Some(own_inner),
+        hidden,
+        do_not_mock: found.do_not_mock.map(|text| text.and_then(utf8).map_or_else(|| "Create a real instance instead".to_string(), |text| String::from_utf8_lossy(text).into_owned())),
     })
+}
+
+/// The erased type a field descriptor stands for.
+pub fn descriptor_type(descriptor: &str) -> Option<Type> {
+    Signature { text: descriptor.as_bytes(), at: 0, written_bounds: Vec::new(), bounded: false }.kind()
+}
+
+/// The parameter types and the return type a method descriptor stands for.
+pub fn descriptor_method(descriptor: &str) -> Option<(Vec<Type>, Type)> {
+    let (_, parameters, returns) = Signature { text: descriptor.as_bytes(), at: 0, written_bounds: Vec::new(), bounded: false }.method()?;
+    Some((parameters, returns))
 }

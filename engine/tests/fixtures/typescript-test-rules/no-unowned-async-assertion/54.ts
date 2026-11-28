@@ -1,0 +1,1 @@
+it('x', async () => { const waits = { ready: new Promise((r) => bus.once('x', (v) => { expect(v).toBe(1); r(); })) }; start(); await waits.ready; });

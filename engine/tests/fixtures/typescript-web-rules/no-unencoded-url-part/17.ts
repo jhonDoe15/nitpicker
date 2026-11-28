@@ -1,0 +1,1 @@
+const message = `Searching ?q=${query} for you`;

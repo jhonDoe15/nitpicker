@@ -1,0 +1,1 @@
+import { Response } from './http'; function f() { try { run(); } catch { return Response.json({ error: 'x' }); } }

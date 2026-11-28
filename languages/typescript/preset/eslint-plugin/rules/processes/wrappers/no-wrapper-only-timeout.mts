@@ -5,6 +5,7 @@ import {
   type SourceContext,
 } from '../../analysis/constant-resolution.mts';
 import { describeSubprocess, type ModuleBindings } from '../../analysis/subprocess-calls.mts';
+import { staticText } from '../../child-heaps/child-calls.mts';
 import { enclosingFunction } from '../../typed/syntax-views.mts';
 import { calleeMethod, trackedBindings } from '../process-callees.mts';
 import { optionsArgument } from '../process-timeout-options.mts';
@@ -103,16 +104,6 @@ function hasDeadline(context: SourceContext, options: TSESTree.Node | undefined)
   return timed || given(signal.value) || given(cancel.value);
 }
 
-function shellText(context: SourceContext, node: TSESTree.Node | undefined): string | undefined {
-  const value = resolveConstant(context, node);
-  if (value?.type === AST_NODE_TYPES.Literal && typeof value.value === 'string') {
-    return value.value;
-  }
-  return value?.type === AST_NODE_TYPES.TemplateLiteral
-    ? value.quasis.map((quasi) => quasi.value.cooked ?? '').join(' X ')
-    : undefined;
-}
-
 const POSIX_SHELLS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh']);
 const SHORT_FLAGS = /^-[a-z]+$/u;
 const VALUE_FLAGS = new Set([
@@ -172,13 +163,23 @@ function shellWrapper(text: string | undefined): string | undefined {
   return fileWrapper(first, rest);
 }
 
+function shellOptionWrapper(
+  context: SourceContext,
+  call: TSESTree.CallExpression,
+  options: TSESTree.Node | undefined,
+): string | undefined {
+  const shell = literalOption(context, options, 'shell');
+  const text = staticText(context, call.arguments[0], ' X ') ?? '';
+  return shell !== undefined && shell !== false && isCompound(text) ? 'a shell' : undefined;
+}
+
 function wrapperOf(
   context: SourceContext,
   call: TSESTree.CallExpression,
   { method, bindings, options }: Wrapping,
 ): string | undefined {
   if (SHELL_FORMS.has(method)) {
-    return shellWrapper(shellText(context, call.arguments[0]));
+    return shellWrapper(staticText(context, call.arguments[0], ' X '));
   }
   if (!FILE_FORMS.has(method)) {
     return undefined;
@@ -188,12 +189,7 @@ function wrapperOf(
   if (wrapper !== undefined) {
     return wrapper;
   }
-  const shell = literalOption(context, options, 'shell');
-  return shell !== undefined &&
-    shell !== false &&
-    isCompound(shellText(context, call.arguments[0]) ?? '')
-    ? 'a shell'
-    : undefined;
+  return shellOptionWrapper(context, call, options);
 }
 
 function killsGroup(

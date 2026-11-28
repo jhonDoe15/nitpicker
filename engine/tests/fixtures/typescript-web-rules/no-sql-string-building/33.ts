@@ -1,0 +1,1 @@
+export const find = (id) => knex.raw(`select * from users where id = ${id}`);

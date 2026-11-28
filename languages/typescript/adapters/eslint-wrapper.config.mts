@@ -10,11 +10,16 @@ import {
 import type { AnswerStore } from '../../../shared/logic/typed/solver-types.mts';
 import { fieldOf, fieldsOf, listOf, parseJson, textsOf } from '../../../shared/values/readers.mts';
 import type { Environment } from '../../../shared/processes/environment.mts';
+import { isParser, releasingChildren } from './lint-engine/memory/released-children.mts';
 import { guardedEntries } from '../preset/eslint-config/fix-guards/guarded-plugins.mts';
 import {
   ENGINE_FINDINGS_FILE,
   replayEngineFindingsFrom,
-} from '../preset/eslint-config/react/engine-replay.mts';
+} from '../../../shared/engine/engine-findings-file.mts';
+import {
+  SEEDED_TREE_VARIABLE,
+  seedTreesFrom,
+} from '../../../shared/project-files/seeded/seeded-trees.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
@@ -54,6 +59,8 @@ const selectedRules = selectedRuleIds(process.env['NITPICKER_DIFF_ESLINT_ONLY_RU
 shareSolverAnswers(answerStore(optionalEnvironmentPath(SOLVER_ANSWERS_ENVIRONMENT)));
 
 replayEngineFindingsFrom(optionalEnvironmentPath(ENGINE_FINDINGS_FILE));
+
+seedTreesFrom(optionalEnvironmentPath(SEEDED_TREE_VARIABLE));
 
 export default guardedEntries(
   (
@@ -117,6 +124,7 @@ function rebaseTypeScriptProject(
     ...entry,
     languageOptions: {
       ...languageOptions,
+      ...(parserOptions['project'] ? releasedParser(languageOptions['parser']) : {}),
       parserOptions: {
         ...parserOptions,
         project: parserOptions['project']
@@ -126,6 +134,10 @@ function rebaseTypeScriptProject(
       },
     },
   };
+}
+
+function releasedParser(parser: unknown) {
+  return isParser(parser) ? { parser: releasingChildren(parser) } : {};
 }
 
 function requiredEnvironmentPath(name: string) {

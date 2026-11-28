@@ -38,6 +38,8 @@ pub struct Reference<'v> {
     pub identifier: Node<'v>,
     pub read: bool,
     pub write: bool,
+    /// A use in a type, as in `typeof value`: a read for the ESLint scope manager.
+    pub as_type: bool,
 }
 
 enum Use {
@@ -51,6 +53,10 @@ pub struct Scopes<'a, 's> {
     identifiers: HashMap<u32, u32>,
     blocks: HashMap<(u32, u32), u32>,
     uses: HashMap<u32, Use>,
+    spans: Vec<(u32, u32, ScopeId)>,
+    /// For each of `spans`, the closest span that holds it: scopes nested as the text nests them, which is how
+    /// ESLint scopes a function written inside a parameter decorator.
+    holders: Vec<usize>,
 }
 
 const FUNCTIONS: [&str; 5] = ["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression", "TSDeclareFunction", "TSEmptyBodyFunctionExpression"];
@@ -82,25 +88,44 @@ impl<'a, 's> Scopes<'a, 's> {
                 _ => None,
             };
         }
-        Scopes { semantic, view, identifiers, blocks, uses }
+        let scoping = semantic.scoping();
+        let mut spans: Vec<(u32, u32, ScopeId)> = scoping
+            .scope_descendants_from_root()
+            .map(|scope| {
+                let span = semantic.nodes().kind(scoping.get_node_id(scope)).span();
+                (span.start, span.end, scope)
+            })
+            .collect();
+        spans.sort_by_key(|(start, end, scope)| (*start, std::cmp::Reverse(*end), scoping.scope_ancestors(*scope).count()));
+        let holders = Self::holders(&spans);
+        Scopes { semantic, view, identifiers, blocks, uses, spans, holders }
+    }
+
+    fn holders(spans: &[(u32, u32, ScopeId)]) -> Vec<usize> {
+        let mut holders = Vec::with_capacity(spans.len());
+        let mut open: Vec<usize> = Vec::new();
+        for (index, (start, end, _)) in spans.iter().enumerate() {
+            while open.last().is_some_and(|last| !(spans[*last].0 <= *start && *end <= spans[*last].1)) {
+                open.pop();
+            }
+            holders.push(open.last().copied().unwrap_or(usize::MAX));
+            open.push(index);
+        }
+        holders
     }
 
     fn scope_at(&self, offset: u32) -> ScopeId {
         let scoping = self.semantic.scoping();
-        let nodes = self.semantic.nodes();
-        let mut best = scoping.root_scope_id();
-        let mut width = u32::MAX;
-        for scope in scoping.scope_descendants_from_root() {
-            let span = nodes.kind(scoping.get_node_id(scope)).span();
-            if span.start <= offset && offset < span.end && span.end - span.start <= width {
-                best = scope;
-                width = span.end - span.start;
+        let mut at = self.spans.partition_point(|(start, _, _)| *start <= offset).wrapping_sub(1);
+        while let Some(&(start, end, scope)) = self.spans.get(at) {
+            if start <= offset && offset < end {
+                return scope;
             }
+            at = self.holders[at];
         }
-        best
+        scoping.root_scope_id()
     }
 
-    /// `variableNamed` / `findVariable`: the variable an identifier names, looked up from where it stands.
     pub fn variable_named(&self, identifier: Node) -> Option<SymbolId> {
         let scoping = self.semantic.scoping();
         match self.uses.get(&identifier.start()) {
@@ -113,6 +138,14 @@ impl<'a, 's> Scopes<'a, 's> {
                 })
             }
         }
+    }
+
+    /// The variable a name has in the scope at an offset, as `scope.set` looked up along the chain.
+    pub fn variable_by_name(&self, name: &str, offset: u32) -> Option<SymbolId> {
+        let scoping = self.semantic.scoping();
+        scoping.scope_ancestors(self.scope_at(offset)).find_map(|scope| {
+            scoping.get_bindings(scope).iter().find(|(bound, _)| bound.as_str() == name).map(|(_, symbol)| *symbol)
+        })
     }
 
     pub fn name(&self, symbol: SymbolId) -> &str {
@@ -149,10 +182,15 @@ impl<'a, 's> Scopes<'a, 's> {
                     AstKind::TSInterfaceDeclaration(_) => (DefKind::Type, &["TSInterfaceDeclaration"]),
                     AstKind::TSTypeParameter(_) => (DefKind::Type, &["TSTypeParameter"]),
                     AstKind::TSEnumDeclaration(_) => (DefKind::Other, &["TSEnumDeclaration"]),
+                    AstKind::TSNamespaceDeclaration(_) => (DefKind::Other, &["TSModuleDeclaration"]),
+                    AstKind::TSEnumMember(_) => (DefKind::Other, &["TSEnumMember"]),
                     AstKind::TSImportEqualsDeclaration(_) => (DefKind::ImportBinding, &["TSImportEqualsDeclaration"]),
                     _ => return None,
                 };
                 let node = std::iter::once(name).chain(name.ancestors()).find(|candidate| wanted.contains(&candidate.kind()))?;
+                if node.is("TSModuleDeclaration") && node.node("id") != Some(name) {
+                    return None;
+                }
                 Some(Def { kind, node, name })
             })
             .collect()
@@ -177,11 +215,37 @@ impl<'a, 's> Scopes<'a, 's> {
             .get_resolved_references(symbol)
             .filter_map(|reference| {
                 let identifier = self.identifier_at(nodes.kind(reference.node_id()).span().start)?;
-                Some(Reference { identifier, read: reference.is_read(), write: reference.is_write() })
+                Some(Reference { identifier, read: reference.is_read(), write: reference.is_write(), as_type: reference.flags().is_type() })
             })
             .collect();
         let written = self.defs(symbol).into_iter().filter(Self::initialized);
-        found.extend(written.map(|definition| Reference { identifier: definition.name, read: false, write: true }));
+        found.extend(written.map(|definition| Reference { identifier: definition.name, read: false, write: true, as_type: false }));
+        found.sort_by_key(|reference| reference.identifier.start());
+        found
+    }
+
+    /// `variable.references` as the ESLint scope manager lists them: also the names oxc leaves without a reference,
+    /// the entity of `import x = name` and the parameter name of a type predicate, as reads in a type.
+    pub fn references_with_types(&self, symbol: SymbolId) -> Vec<Reference<'s>> {
+        let mut found = self.references(symbol);
+        for node in self.view.nodes() {
+            let named = if node.is("TSImportEqualsDeclaration") {
+                let mut entity = node.node("moduleReference");
+                while let Some(qualified) = entity.filter(|entity| entity.is("TSQualifiedName")) {
+                    entity = qualified.node("left");
+                }
+                entity
+            } else if node.is("TSTypePredicate") {
+                node.node("parameterName")
+            } else {
+                None
+            };
+            let Some(identifier) = named.filter(|named| named.is("Identifier")) else { continue };
+            let resolved = identifier.name().and_then(|name| self.variable_by_name(&name, identifier.start()));
+            if resolved == Some(symbol) {
+                found.push(Reference { identifier, read: false, write: false, as_type: true });
+            }
+        }
         found.sort_by_key(|reference| reference.identifier.start());
         found
     }

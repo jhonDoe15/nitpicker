@@ -23,23 +23,30 @@ pub struct Options {
     pub inputs: std::collections::HashMap<String, String>,
 }
 
+fn read_input<T: serde::de::DeserializeOwned>(path: &str) -> Result<T, String> {
+    let text = std::fs::read_to_string(path).map_err(|error| format!("cannot read {path}: {error}"))?;
+    serde_json::from_str(&text).map_err(|error| format!("cannot read {path}: {error}"))
+}
+
 fn run_check(name: &str, session: &mut Session, sources: &Sources, options: &Options) -> Result<Value, String> {
     match name {
         "public-contracts" => {
-            let (findings, counts) = public_contracts::check(session, sources, options.all_reads)?;
+            let input: public_contracts::Input = match options.inputs.get(name) {
+                Some(path) => read_input(path)?,
+                None => public_contracts::Input::default(),
+            };
+            let (findings, counts) = public_contracts::check(session, sources, &input, options.all_reads)?;
             Ok(json!({ "findings": findings, "counts": counts }))
         }
         "unused-api" => {
             let path = options.inputs.get(name).ok_or("the unused-api check needs --input unused-api=<file>")?;
-            let text = std::fs::read_to_string(path).map_err(|error| format!("cannot read {path}: {error}"))?;
-            let input: unused_api::Input = serde_json::from_str(&text).map_err(|error| format!("cannot read {path}: {error}"))?;
+            let input: unused_api::Input = read_input(path)?;
             let registry = unused_api::check(session, &input)?;
             serde_json::to_value(&registry).map_err(|error| error.to_string())
         }
         "design" => {
             let path = options.inputs.get(name).ok_or("the design check needs --input design=<file>")?;
-            let text = std::fs::read_to_string(path).map_err(|error| format!("cannot read {path}: {error}"))?;
-            let input: design::Input = serde_json::from_str(&text).map_err(|error| format!("cannot read {path}: {error}"))?;
+            let input: design::Input = read_input(path)?;
             design::check(session, &input)
         }
         other => Err(format!("unknown check {other}")),

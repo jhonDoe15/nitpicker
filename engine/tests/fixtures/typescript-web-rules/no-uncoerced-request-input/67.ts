@@ -1,0 +1,37 @@
+import { z } from 'zod';
+import * as v from 'valibot';
+import { zValidator } from '@hono/zod-validator';
+import { vValidator as vv } from '@hono/valibot-validator';
+const Base = z.object({ a: z.number(), b: z.string(), c: z.boolean().optional(), d: z.date().nullable().default(new Date()) });
+const Picked = Base.pick({ a: true });
+const Omitted = Base.omit({ a: true }).extend({ e: z.bigint() });
+const Merged = Base.merge(z.object({ f: z.int32() })).extend(Picked.shape);
+const Wrapped = z.optional(z.object({ g: z.number().or(z.string()), h: z.number().catch(1), i: z.array(z.number()) }));
+const V = v.object({ n: v.number(), p: v.pipe(v.string(), v.transform(Number), v.number()), q: v.optional(v.boolean()), r: v.date() });
+export function handler(req: any, ctx: any, c: any) {
+  Base.parse(req.query);
+  Base.safeParse(req.params);
+  Picked.parse(req.headers);
+  Omitted.parseAsync((req.query as any));
+  Merged.parse(req.query!);
+  Wrapped.parse(ctx.request.query);
+  v.parse(V, req.query);
+  v.safeParse(V, c.req.query());
+  v.parse(V, c.req.param());
+  Base.parse(req.body);
+  Base.parse(req.constructor);
+  (Base).parse(req.query);
+  Base?.parse(req.query);
+  Base['parse'](req.query);
+  z.object({ x: z.number() }).spa(this.req.query);
+  z.object({ y: z.toString(), w: z.constructor() }).parse(req.query);
+}
+app.get('/a', zValidator('query', Base), (c) => c.json(1));
+app.get('/b', zValidator('form', z.object({ k: z.number() })), (c) => 1);
+app.get('/c', vv('param', V));
+app.get('/d', zValidator('json', Base));
+app.get('/e', zValidator('constructor', Base));
+fastify.get('/f', { schema: { querystring: Base, params: Picked, headers: z.object({ hh: z.number() }), body: Base, constructor: Base } }, h);
+fastify.get('/g', { 'schema': { 'querystring': Base } }, h);
+({ schema: { querystring: Base } } = obj);
+const { schema: { params: Picked2 } } = obj;

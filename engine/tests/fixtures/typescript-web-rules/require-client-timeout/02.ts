@@ -1,0 +1,1 @@
+import { S3Client } from "@aws-sdk/client-s3"; import { NodeHttpHandler } from "@smithy/node-http-handler"; export const s3 = new S3Client({ requestHandler: new NodeHttpHandler({ requestTimeout: 30_000 }) });

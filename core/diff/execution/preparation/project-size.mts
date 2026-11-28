@@ -1,4 +1,6 @@
 import { spawnSync } from 'node:child_process';
+import { readdirSync, type Dirent } from 'node:fs';
+import path from 'node:path';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
 import { GIT_OUTPUT_LIMIT_BYTES, GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mts';
 
@@ -61,6 +63,24 @@ export function moduleAllowanceMs(
     : countModules(liveProjectRoot, scale.moduleFiles) * scale.perModuleMs;
 }
 
+type ProgramCheck = (liveProjectRoot: string) => boolean;
+
+function megabytesOf(scale: unknown, key: string): number {
+  const value = fieldOf(scale, key);
+  return typeof value === 'number' && value > 0 ? value : 0;
+}
+
+function isProgramCheck(value: unknown): value is ProgramCheck {
+  return typeof value === 'function';
+}
+
+function programMegabytes(scale: unknown, liveProjectRoot: string): number {
+  const holds = fieldOf(scale, 'holdsProgram');
+  return isProgramCheck(holds) && holds(liveProjectRoot)
+    ? megabytesOf(scale, 'programMegabytes')
+    : 0;
+}
+
 export function memoryEstimateMegabytes(
   analyzer: unknown,
   liveProjectRoot: string,
@@ -70,8 +90,13 @@ export function memoryEstimateMegabytes(
   if (scale === undefined) {
     return 0;
   }
+  const memoryScale = fieldOf(analyzer, 'memoryScale');
   const files = scaledFileCount(scale, liveProjectRoot, countFiles);
-  return Math.round((files / FILES_PER_STEP) * scale.perThousandFiles);
+  return Math.round(
+    megabytesOf(memoryScale, 'baseMegabytes') +
+      programMegabytes(memoryScale, liveProjectRoot) +
+      (files / FILES_PER_STEP) * scale.perThousandFiles,
+  );
 }
 
 export function scaledFileCount(
@@ -108,16 +133,56 @@ function listedFileCount(root: string, patterns: readonly string[]): number {
     : 0;
 }
 
+type FolderEntries = { readonly entries: Dirent[]; readonly error?: unknown };
+
+function entriesOf(folder: string): FolderEntries {
+  try {
+    return { entries: readdirSync(folder, { withFileTypes: true }) };
+  } catch (error) {
+    return { entries: [], error };
+  }
+}
+
+function isWalkable(entry: Dirent): boolean {
+  return entry.isDirectory() && entry.name !== 'node_modules' && !entry.name.startsWith('.');
+}
+
+function walkedFileCount(root: string, matches: (name: string) => boolean): number {
+  let count = 0;
+  const folders = [root];
+  for (const folder of folders) {
+    const { entries } = entriesOf(folder);
+    for (const entry of entries.filter(isWalkable)) {
+      folders.push(path.join(folder, entry.name));
+    }
+    count += entries.filter(
+      (entry) => !isWalkable(entry) && entry.isFile() && matches(entry.name),
+    ).length;
+  }
+  return count;
+}
+
+function countedFiles(
+  root: string,
+  patterns: readonly string[],
+  matches: (name: string) => boolean,
+) {
+  const listed = listedFileCount(root, patterns);
+  return listed > 0 ? listed : walkedFileCount(root, matches);
+}
+
 export function projectFileCount(root: string, extensions: readonly string[]): number {
-  return listedFileCount(
+  return countedFiles(
     root,
     extensions.map((extension) => `*.${extension}`),
+    (name) => extensions.some((extension) => name.endsWith(`.${extension}`)),
   );
 }
 
 export function projectModuleCount(root: string, moduleFiles: readonly string[]): number {
-  return listedFileCount(
+  return countedFiles(
     root,
     moduleFiles.map((name) => `:(glob)**/${name}`),
+    (name) => moduleFiles.includes(name),
   );
 }

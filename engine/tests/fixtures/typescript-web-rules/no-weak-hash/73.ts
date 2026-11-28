@@ -1,0 +1,1 @@
+import { createHash } from "node:crypto"; enum Algo { Modern = "sha256" } export const h = (s: string) => createHash(Algo.Modern).update(s).digest("hex");

@@ -1,0 +1,1 @@
+const out = join(tmpdir(), "report.json"); writeFileSync(out, data);

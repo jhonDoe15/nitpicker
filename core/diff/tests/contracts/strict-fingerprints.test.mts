@@ -4,7 +4,10 @@ import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../../../../languages/typescript/adapters/eslint/normalize.mts';
 import { allFailureMessageCases } from '../../../../languages/typescript/preset/failure-messages/test-support/cases.mts';
-import { lintFixture } from '../../../../languages/typescript/preset/failure-messages/test-support/harness.mts';
+import {
+  lintFixture,
+  projectRelative,
+} from '../../../../languages/typescript/preset/failure-messages/test-support/harness.mts';
 import { compareFindings } from '../../comparison/test-support/typed-compare.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 import { fieldAt } from '../../../../scripts/json/fields.mts';
@@ -17,10 +20,6 @@ afterAll(() => {
     rmSync(root, { recursive: true, force: true });
   }
 });
-
-function projectRelative(filename: string) {
-  return path.isAbsolute(filename) ? path.relative(process.cwd(), filename) : filename;
-}
 
 function findingsFor(
   {

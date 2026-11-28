@@ -1,18 +1,20 @@
-import { ownClasses, ownPackages, projectFlags, runsProcessors } from './engine-arguments.mts';
+import PORTED_CHECKS from '../../gradle/errorprone/engine-checks.json' with { type: 'json' };
+import {
+  lombokTested,
+  lombokVersions,
+  ownClasses,
+  ownPackages,
+  TESTED_LOMBOK,
+  type ArgumentSet,
+} from './engine-arguments.mts';
+import { NOT_DISABLEABLE, type CheckLevels } from './options/check-levels.mts';
+import { optionReaders, unsupportedOption } from './options/project-options.mts';
+import { runnerLevels } from './options/runner-levels.mts';
+import { immutableInReach } from './skip/runner-checks.mts';
+import { processorReason } from './processors/processor-sources.mts';
 
 export const NULL_AWAY = 'NullAway';
-export const ENGINE_CHECKS: readonly string[] = [
-  'ArrayRecordComponent',
-  'EmptyCatch',
-  'EnumOrdinal',
-  'EscapedEntity',
-  'InconsistentOverloads',
-  'JavaUtilDate',
-  'SuppressWarningsWithoutExplanation',
-  'SystemOut',
-  'TypeParameterUnusedInFormals',
-  NULL_AWAY,
-];
+export const ENGINE_CHECKS: readonly string[] = [...PORTED_CHECKS, NULL_AWAY];
 
 export type EngineChecks = {
   readonly checks: readonly string[];
@@ -21,40 +23,64 @@ export type EngineChecks = {
 
 const NONE: EngineChecks = { checks: [], packages: [] };
 const TEST_ONLY = '--test-only';
-const MODULE_PATH = '--module-path';
-const CHECK_LEVEL = /^-Xep:(\w+)(?::(\w+))?$/u;
-const OFF = 'OFF';
-const ENCODING = '-encoding';
-const UTF_8 = /^utf-?8$/iu;
 
-function switchedOff(flags: readonly string[]): readonly string[] | undefined {
-  const off: string[] = [];
-  for (const flag of flags) {
-    const [, check, level] = CHECK_LEVEL.exec(flag) ?? [];
-    if (check === undefined || (ENGINE_CHECKS.includes(check) && level !== OFF)) {
-      return undefined;
-    }
-    if (level === OFF) {
-      off.push(check);
-    }
+export function testOnly(head: readonly string[]): boolean {
+  return head.includes(TEST_ONLY);
+}
+
+/** The checks Error Prone's runner runs on the source set outside Lombok groups, undefined if it refuses its flags. */
+export function sourceSetLevels(set: ArgumentSet): CheckLevels | undefined {
+  return runnerLevels(set.head, {
+    lombokUnsuppressed: false,
+    immutableInReach: immutableInReach(set.head, set.sources),
+  });
+}
+
+/** Why the source set stays whole on Error Prone and the engine runs none of its checks there, if it does. */
+export function wholeReason(
+  set: ArgumentSet,
+  levels: CheckLevels | undefined = sourceSetLevels(set),
+): string | undefined {
+  const unsupported = unsupportedOption(set.head);
+  if (unsupported !== undefined) {
+    return `the project sets the Error Prone option ${unsupported}`;
   }
-  return off;
+  if (levels === undefined) {
+    return 'Error Prone refuses the project check levels';
+  }
+  const untested = lombokVersions(set.head).find((version) => !lombokTested(version));
+  if (untested !== undefined) {
+    const { lowest, highest } = TESTED_LOMBOK;
+    return `it runs Lombok ${untested}, outside the versions compared with Error Prone (${lowest} to ${highest})`;
+  }
+  return lombokVersions(set.head).length > 0
+    ? 'it runs Lombok, which rewrites classes'
+    : processorReason(set.head);
 }
 
-function readsAsUtf8(head: readonly string[]): boolean {
-  const at = head.indexOf(ENCODING);
-  return at === -1 || UTF_8.test(head[at + 1] ?? '');
+function runsOnEngine(check: string, levels: CheckLevels): boolean {
+  const level = levels.get(check);
+  return level !== undefined && (level !== 'ERROR' || NOT_DISABLEABLE.has(check));
 }
 
-export function engineChecksFor(head: readonly string[]): EngineChecks {
-  const off = switchedOff(projectFlags(head));
-  if (off === undefined || runsProcessors(head) || !readsAsUtf8(head)) {
+/**
+ * The engine's checks that Error Prone's runner would run on the source set at warning level and without a project
+ * option they read; NullAway only on main sources with own packages.
+ */
+export function engineChecksFor(
+  set: ArgumentSet,
+  levels: CheckLevels | undefined = sourceSetLevels(set),
+): EngineChecks {
+  if (levels === undefined || wholeReason(set, levels) !== undefined) {
     return NONE;
   }
-  const elsewhere = head.includes(TEST_ONLY) || head.includes(MODULE_PATH);
-  const packages = elsewhere ? [] : ownPackages(ownClasses(head));
+  const readers = optionReaders(set.head);
+  const packages = testOnly(set.head) ? [] : ownPackages(ownClasses(set.head));
   const checks = ENGINE_CHECKS.filter(
-    (check) => !off.includes(check) && (check !== NULL_AWAY || packages.length > 0),
+    (check) =>
+      runsOnEngine(check, levels) &&
+      !readers.has(check) &&
+      (check !== NULL_AWAY || packages.length > 0),
   );
   return { checks, packages: checks.includes(NULL_AWAY) ? packages : [] };
 }

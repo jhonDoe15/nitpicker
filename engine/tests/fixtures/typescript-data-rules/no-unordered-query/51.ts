@@ -1,0 +1,1 @@
+export const f = (db) => db.query.users.findMany({ limit: 10, with: { posts: { limit: 3 } } });

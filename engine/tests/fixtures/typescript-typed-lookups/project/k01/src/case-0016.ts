@@ -1,0 +1,1 @@
+from(ids).pipe(mergeMap((id) => owners.findOneBy({ id })));

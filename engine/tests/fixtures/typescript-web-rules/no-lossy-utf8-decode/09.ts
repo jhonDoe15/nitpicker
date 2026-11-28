@@ -1,0 +1,1 @@
+export function f(chunk: Uint8Array) { const d = new TextDecoder(); return JSON.parse(d.decode(chunk, { stream: true })); }

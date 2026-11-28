@@ -123,7 +123,7 @@ public final class Handles {
   }
 
   public static int poolLeak() {
-    ExecutorService executor = Executors.newCachedThreadPool(); // violation: CloseResource
+    ExecutorService executor = Executors.newCachedThreadPool();
     executor.submit(() -> 1);
     return 1;
   }

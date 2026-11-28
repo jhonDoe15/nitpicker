@@ -1,0 +1,1 @@
+export const a = (m: string) => `<div class="msg">${m}</div>`;

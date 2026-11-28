@@ -1,3 +1,4 @@
+import { matchPairs } from '../../../../../shared/lists/match-pairs.mts';
 import { findingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
 import { mainSourceTexts, packageOf } from '../java-sources.mts';
 import { parseSource } from '../max-value-sums/source/source-file.mts';
@@ -31,9 +32,7 @@ function importsOf(text: string): string[] {
 const STATIC_IMPORT = /^\s*import\s+static\s+([\w.]+)\.(\w+)\s*;/gmu;
 
 function staticsOf(text: string): Map<string, string> {
-  return new Map(
-    [...text.matchAll(STATIC_IMPORT)].map((match) => [match[2] ?? '', match[1] ?? '']),
-  );
+  return matchPairs(text, STATIC_IMPORT, { key: 2, value: 1 });
 }
 
 type MessageParts = {

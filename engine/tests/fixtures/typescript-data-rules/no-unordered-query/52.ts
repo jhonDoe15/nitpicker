@@ -1,0 +1,1 @@
+import { Repository } from "typeorm"; export const f = (repo) => repo.findAndCount({ where: { active: true }, skip: 20, take: 10 });

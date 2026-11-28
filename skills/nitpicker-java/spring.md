@@ -68,6 +68,16 @@ class, and annotations of your own that carry one of these or that an `@Aspect` 
 - A public service method that writes more than once (`save`, `delete`, a `@Modifying` query,
   `JdbcTemplate.update`), also through its private helpers, is `@Transactional` or runs the writes in
   `TransactionTemplate.execute`.
+- A `@Cacheable` `key` names every parameter the method reads (`key = "{#customerId, #status}"`), or
+  is left out so all parameters form the key.
+- Never `synchronized` on a `@Transactional` method: the lock is released before the commit. Lock in
+  a caller around the transactional call, or in the database (`@Version`, `@Lock(PESSIMISTIC_WRITE)`).
+- No `@Transactional`, `@Async`, cache, `@Retryable` or `@PreAuthorize` on `@PostConstruct`,
+  `afterPropertiesSet` or a `@Bean` `initMethod`: the proxy does not exist yet. Use
+  `@EventListener(ApplicationReadyEvent.class)`.
+- A `@TransactionalEventListener` (after commit) that writes through JPA or JDBC needs
+  `@Transactional(propagation = Propagation.REQUIRES_NEW)`, the one place `REQUIRES_NEW` fits;
+  otherwise the write is never committed.
 - Write caches after the commit (`TransactionSynchronization.afterCommit`, a
   `@TransactionalEventListener`, or the caller), never inside a writing transaction: no Spring
   `Cache.put`/`evict`, `@CachePut`, Caffeine or Guava `put`/`invalidate`, or a map field filled with a
@@ -134,6 +144,9 @@ JPA and Spring Data:
 - Fetch at most one collection per query (`join fetch`, Criteria `fetch` or an entity graph); load
   the others in their own query or with `@BatchSize` or `@Fetch(FetchMode.SUBSELECT)`
   (`JpaMultipleCollectionFetch`). Two fetched collections return a row for every pair.
+- Never fetch a collection in a paged query (`Pageable`, `Limit`, `Page`, `Slice`, `setMaxResults`):
+  Hibernate pages it in memory. Page the ids, then fetch the collection `where o.id in :ids`
+  (`SpringPagedCollectionFetch`).
 - Native SQL only when JPQL can't express it, marked on that one method with
   `@SuppressWarnings("PMD.SpringDataNativeQuery")`, `EntityManager.createNativeQuery` too.
 

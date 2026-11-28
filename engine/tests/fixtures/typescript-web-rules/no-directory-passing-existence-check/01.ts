@@ -1,0 +1,1 @@
+const st = fs.statSync(p, { throwIfNoEntry: false }); if (st?.isFile()) { fs.readFileSync(p, "utf8"); }

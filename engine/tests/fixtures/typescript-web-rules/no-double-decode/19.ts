@@ -1,0 +1,1 @@
+const m = typeof router.query.error === 'string' ? decodeURIComponent(router.query.error) : null;

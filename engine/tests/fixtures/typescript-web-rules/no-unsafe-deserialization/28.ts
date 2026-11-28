@@ -1,0 +1,1 @@
+import serialize from "serialize-to-js"; export const inline = (s: object) => `<script>window.__STATE__ = ${serialize(s)}</script>`;

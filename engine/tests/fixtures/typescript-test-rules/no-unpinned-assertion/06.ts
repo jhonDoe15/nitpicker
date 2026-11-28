@@ -1,0 +1,1 @@
+assert.strictEqual(result, 3);

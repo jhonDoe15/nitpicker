@@ -1,0 +1,1 @@
+export const find = (id) => { let sql = "SELECT * FROM users WHERE id = " + id; return db.execute(sql); };

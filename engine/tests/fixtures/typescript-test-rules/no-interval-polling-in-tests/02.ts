@@ -1,0 +1,1 @@
+clock.setInterval(tick, 500);

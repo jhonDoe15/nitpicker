@@ -1,0 +1,184 @@
+# What FindSecBugs 1.14.0 makes of the results of JDK and servlet methods, measured by lab runs.
+# owner, method, erased parameter types, result (safe, tainted, or what it comes from: this, argN), flags:
+# mutates (a local the call is made on takes the result), spoils (mutable arguments become unknown).
+# Methods not listed return unknown values and make mutable arguments unknown.
+java.lang.String	toString		this	
+java.lang.String	valueOf	long	safe	
+java.lang.String	valueOf	java.lang.Object	arg0	spoils
+java.lang.String	valueOf	float	safe	
+java.lang.String	valueOf	double	safe	
+java.lang.String	valueOf	char	arg0	
+java.lang.String	valueOf	boolean	safe	
+java.lang.String	valueOf	int	safe	
+java.lang.String	substring	int,int	this	
+java.lang.String	substring	int	this	
+java.lang.String	replace	char,char	this	
+java.lang.String	replace	java.lang.CharSequence,java.lang.CharSequence	this+arg1	
+java.lang.String	replaceFirst	java.lang.String,java.lang.String	this+arg1	
+java.lang.String	replaceAll	java.lang.String,java.lang.String	this+arg1	
+java.lang.String	split	java.lang.String	this	
+java.lang.String	split	java.lang.String,int	this	
+java.lang.String	join	java.lang.CharSequence,java.lang.Iterable	arg0+arg1	
+java.lang.String	join	java.lang.CharSequence,java.lang.CharSequence[]	arg0+arg1	
+java.lang.String	toLowerCase		this	
+java.lang.String	toLowerCase	java.util.Locale	this	
+java.lang.String	toUpperCase		this	
+java.lang.String	toUpperCase	java.util.Locale	this	
+java.lang.String	trim		this	
+java.lang.String	format	java.util.Locale,java.lang.String,java.lang.Object[]	arg2	
+java.lang.String	format	java.lang.String,java.lang.Object[]	arg1	
+java.lang.String	subSequence	int,int	this	
+java.lang.String	concat	java.lang.String	this+arg0	
+java.lang.String	intern		this	
+java.lang.String	<init>	java.lang.StringBuilder	arg0	
+java.lang.String	<init>	java.lang.StringBuffer	arg0	
+java.lang.String	<init>	java.lang.String	arg0	
+java.lang.String	<init>		safe	
+java.lang.StringBuilder	toString		this	
+java.lang.StringBuilder	append	java.lang.StringBuffer	this+arg0	mutates
+java.lang.StringBuilder	append	java.lang.CharSequence	this+arg0	mutates
+java.lang.StringBuilder	append	java.lang.CharSequence,int,int	this+arg0	mutates
+java.lang.StringBuilder	append	java.lang.String	this+arg0	mutates
+java.lang.StringBuilder	append	java.lang.Object	this+arg0	mutates
+java.lang.StringBuilder	append	char	this+arg0	mutates
+java.lang.StringBuilder	append	int	this	mutates
+java.lang.StringBuilder	append	long	this	mutates
+java.lang.StringBuilder	append	float	this	mutates
+java.lang.StringBuilder	append	double	this	mutates
+java.lang.StringBuilder	append	boolean	this	mutates
+java.lang.StringBuilder	reverse		this	mutates
+java.lang.StringBuilder	insert	int,java.lang.CharSequence	this+arg1	mutates
+java.lang.StringBuilder	insert	int,java.lang.String	this+arg1	mutates
+java.lang.StringBuilder	insert	int,java.lang.Object	this+arg1	mutates
+java.lang.StringBuilder	insert	int,int	this	mutates
+java.lang.StringBuilder	insert	int,double	this	mutates
+java.lang.StringBuilder	insert	int,float	this	mutates
+java.lang.StringBuilder	insert	int,long	this	mutates
+java.lang.StringBuilder	insert	int,char	this	mutates
+java.lang.StringBuilder	insert	int,boolean	this	mutates
+java.lang.StringBuilder	insert	int,java.lang.CharSequence,int,int	this+arg1	mutates
+java.lang.StringBuilder	substring	int	this	
+java.lang.StringBuilder	substring	int,int	this	
+java.lang.StringBuilder	replace	int,int,java.lang.String	this+arg2	mutates
+java.lang.StringBuilder	subSequence	int,int	this	
+java.lang.StringBuilder	delete	int,int	this	mutates
+java.lang.StringBuilder	deleteCharAt	int	this	mutates
+java.lang.StringBuilder	<init>	java.lang.CharSequence	arg0	
+java.lang.StringBuilder	<init>	java.lang.String	arg0	
+java.lang.StringBuilder	<init>	int	safe	
+java.lang.StringBuilder	<init>		safe	
+java.lang.StringBuffer	toString		this	
+java.lang.StringBuffer	append	int	this	mutates
+java.lang.StringBuffer	append	long	this	mutates
+java.lang.StringBuffer	append	float	this	mutates
+java.lang.StringBuffer	append	boolean	this	mutates
+java.lang.StringBuffer	append	char	this+arg0	mutates
+java.lang.StringBuffer	append	double	this	mutates
+java.lang.StringBuffer	append	java.lang.String	this+arg0	mutates
+java.lang.StringBuffer	append	java.lang.StringBuffer	this+arg0	mutates
+java.lang.StringBuffer	append	java.lang.CharSequence	this+arg0	mutates
+java.lang.StringBuffer	append	java.lang.CharSequence,int,int	this+arg0	mutates
+java.lang.StringBuffer	append	java.lang.Object	this+arg0	mutates
+java.lang.StringBuffer	reverse		this	mutates
+java.lang.StringBuffer	insert	int,long	this	mutates
+java.lang.StringBuffer	insert	int,int	this	mutates
+java.lang.StringBuffer	insert	int,char	this	mutates
+java.lang.StringBuffer	insert	int,boolean	this	mutates
+java.lang.StringBuffer	insert	int,float	this	mutates
+java.lang.StringBuffer	insert	int,double	this	mutates
+java.lang.StringBuffer	insert	int,java.lang.Object	this+arg1	mutates
+java.lang.StringBuffer	insert	int,java.lang.String	this+arg1	mutates
+java.lang.StringBuffer	insert	int,java.lang.CharSequence	this+arg1	mutates
+java.lang.StringBuffer	insert	int,java.lang.CharSequence,int,int	this+arg1	mutates
+java.lang.StringBuffer	substring	int	this	
+java.lang.StringBuffer	substring	int,int	this	
+java.lang.StringBuffer	replace	int,int,java.lang.String	this+arg2	mutates
+java.lang.StringBuffer	subSequence	int,int	this	
+java.lang.StringBuffer	delete	int,int	this	mutates
+java.lang.StringBuffer	deleteCharAt	int	this	mutates
+java.lang.StringBuffer	<init>	java.lang.CharSequence	arg0	
+java.lang.StringBuffer	<init>	java.lang.String	arg0	
+java.lang.StringBuffer	<init>	int	safe	
+java.lang.StringBuffer	<init>		safe	
+java.lang.Integer	toString	int	safe	
+java.lang.Integer	toString		safe	
+java.lang.Integer	toString	int,int	safe	
+java.lang.Integer	toHexString	int	safe	
+java.lang.Integer	resolveConstantDesc	java.lang.invoke.MethodHandles.Lookup	safe	
+java.lang.Integer	toOctalString	int	safe	
+java.lang.Integer	toBinaryString	int	safe	
+java.lang.Long	toString	long	safe	
+java.lang.Long	toString	long,int	safe	
+java.lang.Long	toString		safe	
+java.lang.Long	toHexString	long	safe	
+java.lang.Long	resolveConstantDesc	java.lang.invoke.MethodHandles.Lookup	safe	
+java.lang.Long	toOctalString	long	safe	
+java.lang.Long	toBinaryString	long	safe	
+java.lang.Boolean	toString		safe	
+java.lang.Character	getName	int	arg0	
+java.lang.Character	toString	char	arg0	
+java.lang.Double	toString	double	safe	
+java.lang.Double	toString		safe	
+java.lang.Double	resolveConstantDesc	java.lang.invoke.MethodHandles.Lookup	safe	
+java.util.Arrays	toString	java.lang.Object[]	arg0	
+java.lang.Enum	name		safe	
+java.lang.Enum	toString		safe	
+java.lang.Class	getName		safe	
+java.lang.Class	toString		safe	
+java.lang.Class	getSimpleName		safe	
+java.lang.Class	getCanonicalName		safe	
+java.lang.Class	toGenericString		safe	
+java.lang.Class	getTypeName		safe	
+java.lang.System	getProperty	java.lang.String	arg0	
+java.lang.System	getProperty	java.lang.String,java.lang.String	arg0	
+java.lang.System	lineSeparator		safe	
+java.lang.System	setProperty	java.lang.String,java.lang.String	safe	
+java.lang.System	getenv	java.lang.String	arg0	
+java.lang.System	clearProperty	java.lang.String	safe	
+java.net.URLEncoder	encode	java.lang.String	arg0	
+java.net.URLEncoder	encode	java.lang.String,java.lang.String	arg0	
+java.net.URLDecoder	decode	java.lang.String	arg0	
+java.net.URLDecoder	decode	java.lang.String,java.lang.String	arg0	
+java.lang.Object	toString		this	
+java.lang.CharSequence	toString		this	
+java.lang.CharSequence	subSequence	int,int	this	
+java.util.List	add	java.lang.Object	this+arg0	mutates
+java.util.List	addAll	java.util.Collection	this+arg0	mutates
+java.util.List	get	int	this	
+java.util.Collection	add	java.lang.Object	this+arg0	mutates
+java.util.Collection	addAll	java.util.Collection	this+arg0	mutates
+java.util.Map	put	java.lang.Object,java.lang.Object	this+arg0+arg1	mutates
+java.util.Map	get	java.lang.Object	this	
+java.util.Collections	sort	java.util.List	safe	
+java.util.Arrays	asList	java.lang.Object[]	arg0	
+java.util.ArrayList	<init>		safe	
+java.util.ArrayList	<init>	java.util.Collection	arg0	
+java.util.HashMap	<init>		safe	
+java.lang.Object	<init>		unknown	
+javax.servlet.ServletRequest	getParameter	java.lang.String	tainted	
+javax.servlet.ServletRequest	getParameterValues	java.lang.String	tainted	
+javax.servlet.ServletRequest	getParameterMap		tainted	
+javax.servlet.ServletRequest	getReader		tainted	
+javax.servlet.http.HttpServletRequest	getHeader	java.lang.String	tainted	
+javax.servlet.http.HttpServletRequest	getCookies		tainted	
+javax.servlet.http.HttpServletRequest	getRequestURI		tainted	
+javax.servlet.http.HttpServletRequest	getPathInfo		tainted	
+javax.servlet.http.HttpServletRequest	getQueryString		tainted	
+javax.servlet.http.HttpServletRequest	getServletPath		tainted	
+javax.servlet.http.HttpServletRequest	getRemoteUser		tainted	
+javax.servlet.http.HttpServletRequest	getContextPath		safe	
+javax.servlet.http.Cookie	getValue		this	
+java.io.BufferedReader	readLine		this	
+org.apache.commons.io.FilenameUtils	getName	java.lang.String	safe	
+java.lang.ClassLoader	getResource	java.lang.String	safe	
+java.lang.ClassLoader	getSystemResource	java.lang.String	safe	
+java.net.URL	getFile		this	
+java.net.URL	getPath		this	
+java.net.URL	<init>	java.lang.String	arg0	
+java.lang.Class	getResource	java.lang.String	safe	
+java.net.URL	<init>	java.net.URL,java.lang.String	arg0+arg1	
+java.net.URL	toURI		this	
+java.net.URI	toURL		this	
+java.net.URI	<init>	java.lang.String	arg0	
+java.net.URI	create	java.lang.String	arg0	
+java.util.Iterator	next		this	

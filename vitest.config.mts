@@ -51,6 +51,12 @@ export default defineConfig({
         : {}),
     },
     include: suite.length === 0 ? TEST_FILES : suite,
+    coverage: {
+      provider: 'custom',
+      customProviderModule: './scripts/test-coverage/coverage-provider.mts',
+      include: ['{core,languages,shared,scripts}/**/*.{ts,mts,cts,js,mjs,cjs}'],
+      exclude: ['**/*.test.*', '**/fixtures/**', '**/*.d.ts'],
+    },
     testTimeout: 30_000,
     hookTimeout: 30_000,
     globalSetup: ['./scripts/reference/global-setup.mts'],

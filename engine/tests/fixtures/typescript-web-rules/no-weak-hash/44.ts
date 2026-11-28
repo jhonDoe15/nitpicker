@@ -1,0 +1,1 @@
+import { createSign } from "node:crypto"; export const sig = () => createSign("RSA-SHA1");

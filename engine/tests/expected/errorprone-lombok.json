@@ -1,0 +1,6 @@
+[
+["shop/Item.java", "UnnecessarilyFullyQualified", 14, 19],
+["shop/Item.java", "UnnecessarilyFullyQualified", 15, 21],
+["shop/Item.java", "UnnecessarySemicolon", 12, 26],
+["shop/Price.java", "MultiVariableDeclaration", 10, 9]
+]

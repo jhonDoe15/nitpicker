@@ -1,0 +1,1 @@
+const SECRET_KEY_NAME = "secret-key-name";

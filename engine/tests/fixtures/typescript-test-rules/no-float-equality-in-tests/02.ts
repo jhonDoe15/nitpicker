@@ -1,0 +1,1 @@
+expect.soft(total).toBe(0.1);

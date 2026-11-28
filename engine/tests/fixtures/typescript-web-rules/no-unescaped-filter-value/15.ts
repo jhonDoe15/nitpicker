@@ -1,0 +1,1 @@
+export const a = (n: string) => sql`select * from t where name = ${n}`;

@@ -148,3 +148,14 @@ export function crossedFetchAt(
     .map((joined): unknown => crossedCollections(joined))
     .find((crossed) => crossed !== undefined);
 }
+
+export function collectionFetchAt(
+  prepared: FetchSource,
+  line: number,
+  relationOf: RelationOf,
+): string | undefined {
+  return sitesAt(prepared, line)
+    .flatMap((site) => joinedAt(prepared, site, relationOf))
+    .flatMap((joined) => [...joined].filter(([, many]) => many).map(([key]) => key))
+    .at(0);
+}

@@ -1,0 +1,1 @@
+const a = <iframe src={resource.url} sandbox="allow-scripts allow-same-origin" />;

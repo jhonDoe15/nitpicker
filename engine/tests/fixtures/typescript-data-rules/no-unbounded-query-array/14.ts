@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export const f = (db, ids) => chunked(ids, (part) => db.deleteFrom("asset").where("id", "in", part).execute());

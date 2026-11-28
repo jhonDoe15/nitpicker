@@ -9,12 +9,15 @@ export const HYGIENE_RULE_IDS = {
   committedBinary: 'committed-binary',
   largeFile: 'large-file',
   committedBuildOutput: 'committed-build-output',
+  committedMinifiedBundle: 'committed-minified-bundle',
   migrationOrder: 'migration-order',
   migrationHardcodedName: 'migration-hardcoded-name',
   startSchemaPush: 'start-schema-push',
   foreignKeyIndex: 'foreign-key-index',
   fieldLimitMismatch: 'field-limit-mismatch',
   muslDefaultAllocator: 'musl-default-allocator',
+  lintCheckSuppressedEverywhere: 'lint-check-suppressed-everywhere',
+  pmdXpathRuleMistake: 'pmd-xpath-rule-mistake',
 };
 
 export const PACKAGE_RULE_IDS = {
@@ -82,6 +85,13 @@ export const HYGIENE_RULES: RuleEntry[] = [
     enforcedBy: EVERY_LANGUAGE,
   },
   {
+    id: HYGIENE_RULE_IDS.committedMinifiedBundle,
+    check: REPOSITORY_HYGIENE,
+    limit:
+      'a tracked `.js`, `.mjs`, `.cjs` or `.ts` file of at least 20 KB that looks minified (an average line over 500 characters, or one line holding over 90% of the bytes), outside build output, `node_modules`, vendored and test folders',
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
     id: HYGIENE_RULE_IDS.migrationOrder,
     check: REPOSITORY_HYGIENE,
     limit:
@@ -121,6 +131,20 @@ export const HYGIENE_RULES: RuleEntry[] = [
     check: REPOSITORY_HYGIENE,
     limit:
       "a Rust binary crate that runs work on several threads (`rayon`, `threadpool`, `tokio` with the multi-thread runtime, or `std::thread` in its own or its path dependencies' sources) and is built for a `*-musl` target (named in a workflow, `.cargo/config.toml`, a Dockerfile or a build script next to a `cargo build`, or an Alpine Rust image) with no `#[global_allocator]` for that target",
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
+    id: HYGIENE_RULE_IDS.lintCheckSuppressedEverywhere,
+    check: REPOSITORY_HYGIENE,
+    limit:
+      "a Checkstyle `<suppress>` that matches every file (`files` of `.`, `.*` or `.+`, no `lines` or `columns`) for a module the project's Checkstyle configuration enables, or a PMD ruleset that includes a rule and excludes every file (`<exclude-pattern>.*</exclude-pattern>`) or sets its `violationSuppressRegex` to `.*`",
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
+    id: HYGIENE_RULE_IDS.pmdXpathRuleMistake,
+    check: REPOSITORY_HYGIENE,
+    limit:
+      'a project-owned PMD XPath rule that scans from the document root inside a predicate (a `//X` path or `ancestor::CompilationUnit//` in `[...]`; a cheap `/CompilationUnit/X` child path is not reported, and node names are not checked against the grammar yet), or applies a single-item function (`string`, `lower-case`, `starts-with`, `contains`, `matches`, `normalize-space`...) or `eq`/`ne` to an unguarded `FormalParameters/FormalParameter`, `ArgumentList/*`, `ClassBody/*` or `Block/*` path',
     enforcedBy: EVERY_LANGUAGE,
   },
   {

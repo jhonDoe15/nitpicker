@@ -21,11 +21,19 @@ fn main() {
         return;
     }
     if args.first().map(String::as_str) == Some("typescript-lint") {
-        typescript_lint(&args[1..]);
+        let args = args[1..].to_vec();
+        let run = std::thread::Builder::new().stack_size(typescript::rules::STACK).spawn(move || typescript_lint(&args));
+        if run.expect("lint thread").join().is_err() {
+            std::process::exit(101);
+        }
         return;
     }
     if args.first().map(String::as_str) == Some("typescript-imports") {
         typescript_imports(&args[1..]);
+        return;
+    }
+    if args.first().map(String::as_str) == Some("typescript-import-extract") {
+        typescript::imports::run(&args[1..]);
         return;
     }
     if args.first().map(String::as_str) == Some("typescript-reuse") {
@@ -42,6 +50,10 @@ fn main() {
     }
     if args.first().map(String::as_str) == Some("near-duplicate-search") {
         near::near_duplicate_search(&args[1..]);
+        return;
+    }
+    if args.first().map(String::as_str) == Some("checkstyle-javadoc-trees") {
+        java::checkstyle::dump(&args[1..]);
         return;
     }
     if args.first().map(String::as_str) == Some("cpd") {
@@ -74,13 +86,28 @@ fn main() {
             }
             "--files" => { index += 1; file_list = Some(value(index)); }
             "--dump" => dump = true,
-            "--classpath" => {
+            "--classpath" | "--module-path" => {
                 index += 1;
                 value(index);
                 let listed = std::fs::read_to_string(&args[index]).unwrap_or_else(|_| args[index].clone());
-                options.classpath.extend(listed.split(['\n', ':']).filter(|entry| !entry.trim().is_empty()).map(|entry| PathBuf::from(entry.trim())));
+                let entries = listed.split(['\n', ':']).filter(|entry| !entry.trim().is_empty()).map(|entry| PathBuf::from(entry.trim()));
+                if args[index - 1] == "--classpath" { options.classpath.extend(entries) } else { options.module_path.extend(entries) }
+            }
+            "--classes" => {
+                index += 1;
+                value(index);
+                let listed = std::fs::read_to_string(&args[index]).unwrap_or_else(|_| args[index].clone());
+                options.classes.extend(listed.split(['\n', ':']).filter(|entry| !entry.trim().is_empty()).map(|entry| PathBuf::from(entry.trim())));
+            }
+            "--lombok" => options.lombok = true,
+            "--android-compatible" => options.android_compatible = true,
+            "--test-only" => options.test_only = true,
+            "--encoding" => {
+                index += 1;
+                options.encoding = engine::encoding::named(&value(index)).unwrap_or_else(|problem| fail(&problem));
             }
             "--release" => { index += 1; options.release = Some(args[index].parse().expect("release number")); }
+            "--source" => { index += 1; options.source = Some(value(index).trim_start_matches("1.").parse().expect("source level")); }
             other => roots.push(PathBuf::from(other)),
         }
         index += 1;
@@ -118,7 +145,6 @@ fn main() {
         "lines": result.lines,
         "filesWithSyntaxErrors": result.parse_errors,
         "syntaxErrorFiles": result.broken_files,
-        "nullAwayUnsure": java::errorprone::unread_marks(),
         "findings": result.findings,
         "functions": result.functions,
         "duplicates": result.duplicates,
@@ -215,19 +241,27 @@ fn typescript_structure(args: &[String]) {
     );
 }
 
-/// `typescript-lint --files <list> [--rules <a,b>] [--out <file>] [--testing-library-utils-module <suffix>]`: each line of
-/// the list is the path to read, the path to report and `key=value` settings for that file, tabs between them. The
+/// `typescript-lint --files <list> [--rules <a,b>] [--out <file>] [--testing-library-utils-module <suffix>]
+/// [--compiler <tsc of TypeScript 7> --project <tsconfig.json>]`: each line of
+/// the list is the path to read, the path to report and `key=value` settings for that file, tabs between them; a
+/// setting `<rule>.<fact>=<answer>` is a fact the caller worked out for that rule and file from its options. The
 /// module suffix is `test-utils` unless given, and empty for none; `testing-library/utils-module=<suffix>` sets it for
 /// one file and `testing-library/scope=off` leaves the file to no testing-library rule.
-/// A row of the output is file, rule, line, column and message, then the end line and column of a reported range.
+/// A row of the output is file, rule, line, column and message, then the end line and column of a reported range (null
+/// for a point), then, when the finding holds only if the caller agrees, the `[kind, value]` questions to ask.
 /// `--testing-library-scope` has the engine decide both for every file without such settings, by following the file's
 /// imports as the preset does; `--end-to-end-root <folder>` names the folder of browser tests for that decision.
+/// Rules that ask about types run only with `--compiler` and `--project`, on the files of that program; every other
+/// file gets a `!types` row, and so does every file when the compiler's types are not available.
 fn typescript_lint(args: &[String]) {
     let (mut list, mut out, mut only) = (None, None, None::<Vec<String>>);
+    let (mut compiler, mut project) = (None, None);
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
             "--files" => { index += 1; list = Some(&args[index]); }
+            "--compiler" => { index += 1; compiler = Some(PathBuf::from(&args[index])); }
+            "--project" => { index += 1; project = Some(args[index].clone()); }
             "--out" => { index += 1; out = Some(&args[index]); }
             "--rules" => { index += 1; only = Some(args[index].split(',').map(String::from).collect()); }
             "--testing-library-utils-module" => {
@@ -253,16 +287,33 @@ fn typescript_lint(args: &[String]) {
             typescript::rules::Listed { path, display, settings: columns.collect() }
         })
         .collect();
+    let unknown = only.as_deref().map(typescript::rules::unknown).unwrap_or_default();
+    if !unknown.is_empty() {
+        eprintln!("unknown rules: {}", unknown.join(", "));
+        std::process::exit(2);
+    }
     let rules = typescript::rules::selected(only.as_deref());
-    let findings = typescript::rules::lint_files(&files, &rules);
+    let types = match (compiler, project) {
+        (Some(compiler), Some(project)) if rules.has_typed() => typescript::rules::typed::types::Types::open(&compiler, &project)
+            .map_err(|reason| eprintln!("types unavailable: {reason}"))
+            .ok(),
+        _ => None,
+    };
+    let findings = typescript::rules::lint_files(&files, &rules, types);
     let rows: Vec<_> = findings
         .iter()
         .map(|reported| {
             let found = &reported.finding;
+            let mut row = vec![found.file.clone().into(), found.rule.clone().into(), found.line.into(), found.column.into(), found.message.clone().into()];
             match reported.end {
-                Some((line, column)) => serde_json::json!([found.file, found.rule, found.line, found.column, found.message, line, column]),
-                None => serde_json::json!([found.file, found.rule, found.line, found.column, found.message]),
+                Some((line, column)) => row.extend([line.into(), column.into()]),
+                None if !reported.conditions.is_empty() => row.extend([serde_json::Value::Null, serde_json::Value::Null]),
+                None => {}
             }
+            if !reported.conditions.is_empty() {
+                row.push(serde_json::json!(reported.conditions.iter().map(|(kind, value)| [kind, value]).collect::<Vec<_>>()));
+            }
+            serde_json::Value::Array(row)
         })
         .collect();
     let text = serde_json::to_string(&rows).expect("json");

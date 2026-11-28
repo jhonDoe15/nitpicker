@@ -94,12 +94,58 @@ describe('a Maven reactor where one module fails', () => {
       {
         tool: 'maven',
         rule: MODULE_BUILD_FAILED_RULE,
-        path: 'app',
-        identity: `${MODULE_BUILD_FAILED_RULE}:app`,
+        path: '.',
+        identity: `${MODULE_BUILD_FAILED_RULE}:dependents`,
         message:
-          'Maven could not build module app, so its checks did not run; the other modules were checked. ' +
-          'Maven: it was not built because a module it depends on failed (ui)',
+          'Maven did not build 1 module (app), so its checks did not run; the other modules were checked. ' +
+          'It was skipped because a module it depends on failed (ui)',
         classification: 'tool-error',
+      },
+    ]);
+  });
+
+  it('names a failed module that nitpicker does not report, and reports its dependents once', () => {
+    const resolution =
+      'Maven failed in /repo:\n' +
+      '[ERROR] Failed to execute goal on project test-tools: Could not resolve dependencies for project ' +
+      'demo:test-tools:jar:1.0 -> [Help 1]';
+    const modules = Array.from({ length: 12 }, (_, index) => module(`m${String(index)}`));
+    const failed = failedModules(new Error(resolution), {
+      work: workWith([CORE]),
+      modules: [CORE, ...modules],
+    });
+
+    expect(failed?.map(({ reason, cause }) => [reason, cause])).toEqual(
+      modules.map(() => [
+        undefined,
+        'Failed to execute goal on project test-tools: Could not resolve dependencies for project ' +
+          'demo:test-tools:jar:1.0',
+      ]),
+    );
+    expect(
+      failedModuleFindings(failed ?? [], ROOT).map(({ path: where, message }) => [where, message]),
+    ).toEqual([
+      [
+        '.',
+        'Maven did not build 12 modules (m0, m1, m2, m3, m4, m5, m6, m7, m8, m9 and 2 more), so their checks ' +
+          'did not run; the other modules were checked. They were skipped because a module they depend on ' +
+          'failed. Maven: Failed to execute goal on project test-tools: Could not resolve dependencies for ' +
+          'project demo:test-tools:jar:1.0',
+      ],
+    ]);
+  });
+
+  it('reads a dependency resolution failure of a reported module without a plugin in the goal', () => {
+    const resolution =
+      '[ERROR] Failed to execute goal on project ui: Could not resolve dependencies for project demo:ui:jar:1.0';
+
+    expect(
+      failedModules(new Error(resolution), { work: workWith([CORE]), modules: [CORE, UI] }),
+    ).toEqual([
+      {
+        module: UI,
+        reason:
+          'Failed to execute goal on project ui: Could not resolve dependencies for project demo:ui:jar:1.0',
       },
     ]);
   });
@@ -131,5 +177,30 @@ describe('a Maven reactor where one module fails', () => {
     );
 
     expect(report.findings).toEqual(findings);
+  });
+
+  it('takes the cause from the error lines when Maven names no failed goal, and says so when it has none', () => {
+    const modules = [CORE, UI];
+    const crashed = failedModules(
+      new Error('Maven failed:\n[ERROR] The JVM crashed\n[INFO] Done'),
+      {
+        work: workWith([CORE]),
+        modules,
+      },
+    );
+    const silent = failedModules(new Error('Maven failed'), { work: workWith([CORE]), modules });
+
+    expect(crashed).toEqual([{ module: UI, reason: undefined, cause: '[ERROR] The JVM crashed' }]);
+    expect(silent).toEqual([{ module: UI, reason: undefined }]);
+    expect(failedModuleFindings(silent ?? [], ROOT).map(({ message }) => message)).toEqual([
+      'Maven did not build 1 module (ui), so its checks did not run; the other modules were checked. ' +
+        'It was skipped because a module it depends on failed. Maven: see the Maven output',
+    ]);
+  });
+
+  it('places a failed root module at the project root', () => {
+    const root = { ...CORE, basedir: ROOT };
+
+    expect(failedModuleFindings([{ module: root, reason: 'broken' }], ROOT)[0]?.path).toBe('.');
   });
 });

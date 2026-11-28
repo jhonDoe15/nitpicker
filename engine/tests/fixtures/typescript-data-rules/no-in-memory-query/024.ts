@@ -1,0 +1,1 @@
+ export async function run(repo, prisma, db, em, Order, id, ids) { return (await prismaCache.findMany()).length; }

@@ -1,0 +1,1 @@
+const { test } = require('node:test'); test('x', (t) => { setTimeout(() => t.assert.equal(a, 1)); });

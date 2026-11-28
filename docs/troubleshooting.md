@@ -241,7 +241,11 @@ findings of their largest rules, report the rest, and add one `output-limit` too
 rules and counts that were left out.
 
 **Fix.** The message ends with the process's own output; start there. For an out-of-memory kill, give the
-job more memory or run fewer analyzers at once with `NITPICKER_MAX_PARALLEL`. Every Node analyzer, ESLint
+job more memory or run fewer analyzers at once with `NITPICKER_MAX_PARALLEL`. When two or more analyzers
+of one run are killed with `SIGKILL`, the run adds one `memory` tool error that names them and gives the
+measured peak and the limit (from the cgroup's `memory.peak` and `memory.max`, or `memory.max_usage_in_bytes`
+and `memory.limit_in_bytes` on cgroup v1, else the machine total); each killed analyzer still has its own
+error, which then points to that report. Every Node analyzer, ESLint
 included, gets a heap of three quarters of the memory less 1.5 GB for each other analyzer that can run beside
 it (never less than Node's default, and at least its own memory estimate on a large project), so `<analyzer> ran out of memory` means that share was too small: lower
 `NITPICKER_MAX_PARALLEL`, or set `NODE_OPTIONS=--max-old-space-size=<MB>`, which nitpicker then leaves as

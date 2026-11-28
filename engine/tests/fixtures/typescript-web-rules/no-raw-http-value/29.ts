@@ -1,0 +1,1 @@
+const out = res.headers['Content-Type'];

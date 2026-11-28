@@ -3,13 +3,14 @@ import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
 import { presetToDeclare as untypedPresetToDeclare } from '../../configuration/project-checks/preset-detection.mts';
 import { parseConfigFile } from '../../configuration/layers/layers.mts';
-import { fieldOf, messageOf } from '../../../shared/values/readers.mts';
+import { fieldOf, isPlainObject, messageOf } from '../../../shared/values/readers.mts';
 import type { PlanContext, PlanProject, ProjectEntry } from '../project-types.mts';
 import type { NitpickerConfig, ProjectOverlay } from '../../../shared/values/config-types.mts';
 import { readLayeredConfig } from '../../configuration/layers/read-layered.mts';
 import { sharedConfigFiles } from '../../configuration/layers/shared-files.mts';
 import { isInside as untypedIsInside } from '../discovery/repository-files.mts';
 import { containedPath as untypedContainedPath } from '../../../shared/paths/contained-path.mts';
+import { derivedSourceRoots } from './layout/derived-roots.mts';
 
 const presetToDeclare: (
   config: NitpickerConfig,
@@ -68,7 +69,8 @@ function nestedExcludes(entry: ProjectEntry, allPaths: readonly string[]): strin
     });
 }
 
-const SCRIPT_PRESETS = new Set(['typescript', 'javascript']);
+const DEFAULT_PRESET = 'typescript';
+const SCRIPT_PRESETS = new Set([DEFAULT_PRESET, 'javascript']);
 export const WEB_SOURCE_FOLDERS = ['src/main/webapp', 'src/main/frontend', 'frontend'];
 
 function companionSettings(
@@ -147,6 +149,59 @@ function loadSettings(
   }
 }
 
+type Loaded = { readonly config?: NitpickerConfig; readonly configError?: string };
+type Derived = {
+  readonly overlay: ProjectOverlay | undefined;
+  readonly loaded: Loaded;
+  readonly derivedSourceRoots?: readonly string[];
+};
+
+function presetOf(loaded: Loaded, overlay: ProjectOverlay | undefined): string {
+  return loaded.config?.preset ?? overlay?.preset ?? DEFAULT_PRESET;
+}
+
+function rootsToDerive(
+  entry: ProjectEntry,
+  { absolute, overlay }: { absolute: string; overlay: ProjectOverlay | undefined },
+  loaded: Loaded,
+): readonly string[] | undefined {
+  const unset = loaded.config !== undefined && loaded.config.layout?.sourceRoots === undefined;
+  return entry.path !== '.' && unset && SCRIPT_PRESETS.has(presetOf(loaded, overlay))
+    ? derivedSourceRoots(absolute)
+    : undefined;
+}
+
+function withSourceRoots(
+  overlay: ProjectOverlay | undefined,
+  roots: readonly string[],
+): ProjectOverlay {
+  const settings = overlay?.settings ?? {};
+  const declared = fieldOf(settings, 'layout');
+  const layout = { ...(isPlainObject(declared) ? declared : undefined), sourceRoots: roots };
+  return { ...overlay, settings: { ...settings, layout } };
+}
+
+function withDerivedRoots(
+  entry: ProjectEntry,
+  {
+    absolute,
+    overlay,
+    repositoryRoot,
+  }: { absolute: string; overlay: ProjectOverlay | undefined; repositoryRoot: string },
+  loaded: Loaded,
+): Derived {
+  const roots = rootsToDerive(entry, { absolute, overlay }, loaded);
+  if (roots === undefined) {
+    return { overlay, loaded };
+  }
+  const derived = withSourceRoots(overlay, roots);
+  return {
+    overlay: derived,
+    loaded: loadSettings(absolute, derived, repositoryRoot),
+    derivedSourceRoots: roots,
+  };
+}
+
 function rejectOtherBase(
   entry: ProjectEntry,
   config: NitpickerConfig | undefined,
@@ -169,13 +224,22 @@ export function describeProject(entry: ProjectEntry, context: PlanContext): Plan
   const located = { ...entry, path: folder };
   rejectNestedProjects(located, root);
   const absolute = folder === '.' ? root : path.join(root, folder);
-  const overlay = overlayOf(located, {
+  const firstOverlay = overlayOf(located, {
     absolute,
     root,
     excludes: nestedExcludes(located, allPaths),
     companion: entry.folder !== undefined,
   });
-  const loaded = loadSettings(absolute, overlay, repositoryRoot);
+  const {
+    loaded,
+    derivedSourceRoots: derived,
+    ...planned
+  } = withDerivedRoots(
+    located,
+    { absolute, overlay: firstOverlay, repositoryRoot },
+    loadSettings(absolute, firstOverlay, repositoryRoot),
+  );
+  const { overlay } = planned;
   rejectOtherBase(located, loaded.config, rootConfig);
   return {
     path: entry.path,
@@ -184,10 +248,28 @@ export function describeProject(entry: ProjectEntry, context: PlanContext): Plan
     repoPath: path.posix.normalize(path.posix.join(prefix, folder)),
     origin: entry.origin,
     overlay,
-    preset: loaded.config?.preset ?? overlay?.preset ?? 'typescript',
+    ...plannedSettings(entry, { prefix, absolute, repositoryRoot }, { overlay, loaded, derived }),
+  };
+}
+
+function plannedSettings(
+  entry: ProjectEntry,
+  {
+    prefix,
+    absolute,
+    repositoryRoot,
+  }: { prefix: string; absolute: string; repositoryRoot: string },
+  { overlay, loaded, derived }: Derived & { readonly derived: readonly string[] | undefined },
+): Pick<
+  PlanProject,
+  'preset' | 'toolchainRoot' | 'derivedSourceRoots' | 'sharedFiles' | 'configError'
+> {
+  return {
+    preset: presetOf(loaded, overlay),
     ...(entry.workspace === undefined
       ? {}
       : { toolchainRoot: path.posix.normalize(path.posix.join(prefix, entry.workspace)) }),
+    ...(derived === undefined ? {} : { derivedSourceRoots: derived }),
     sharedFiles: loaded.configError === undefined ? sharedFilesOf(absolute, repositoryRoot) : [],
     ...(loaded.configError === undefined ? {} : { configError: loaded.configError }),
   };

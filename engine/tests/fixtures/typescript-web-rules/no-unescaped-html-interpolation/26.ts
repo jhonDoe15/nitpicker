@@ -1,0 +1,1 @@
+export const a = (name: string) => `<p>${name ? escapeHtml(name) : ""}</p>`;

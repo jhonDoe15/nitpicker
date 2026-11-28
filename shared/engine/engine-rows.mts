@@ -16,9 +16,11 @@ export type EngineFinding = {
   readonly column: number;
   readonly message: string;
   readonly end?: { readonly line: number; readonly column: number };
+  readonly conditions?: readonly (readonly [string, string])[];
 };
 
 const PARSE_FAILURE_RULE = '!parse';
+const NO_TYPES_RULE = '!types';
 
 function endOf(line: unknown, column: unknown): Pick<EngineFinding, 'end'> {
   return typeof line === 'number' && typeof column === 'number' ? { end: { line, column } } : {};
@@ -28,8 +30,15 @@ function cellsOf(row: unknown): readonly unknown[] {
   return Array.isArray(row) ? row : [];
 }
 
+function conditionsOf(cell: unknown): Pick<EngineFinding, 'conditions'> {
+  const conditions = cellsOf(cell).map((pair) => cellsOf(pair).map(String));
+  return conditions.length === 0
+    ? {}
+    : { conditions: conditions.map(([kind = '', value = '']) => [kind, value] as const) };
+}
+
 function findingOf(row: unknown): EngineFinding {
-  const [file, rule, line, column, message, endLine, endColumn] = cellsOf(row);
+  const [file, rule, line, column, message, endLine, endColumn, conditions] = cellsOf(row);
   if (
     typeof file !== 'string' ||
     typeof rule !== 'string' ||
@@ -41,7 +50,15 @@ function findingOf(row: unknown): EngineFinding {
       `nitpicker-engine wrote a row that is not a finding: ${JSON.stringify(row)}`,
     );
   }
-  return { file, rule, line, column, message, ...endOf(endLine, endColumn) };
+  return {
+    file,
+    rule,
+    line,
+    column,
+    message,
+    ...endOf(endLine, endColumn),
+    ...conditionsOf(conditions),
+  };
 }
 
 export function engineFindingOf(finding: unknown): EngineFinding {
@@ -68,17 +85,29 @@ export function readEngineFindings(file: string): EngineFinding[] {
   return engineFindings(parsed(readFileSync(file, 'utf8')));
 }
 
+function filesWithout(
+  files: readonly string[],
+  findings: readonly EngineFinding[],
+  markers: readonly string[],
+): string[] {
+  const marked = new Set<string>();
+  for (const { rule, file } of findings) {
+    if (markers.includes(rule)) {
+      marked.add(file);
+    }
+  }
+  return files.filter((file) => !marked.has(file));
+}
+
 export function parsedFiles(
   files: readonly string[],
   findings: readonly EngineFinding[],
 ): string[] {
-  const unparsed = new Set<string>();
-  for (const { rule, file } of findings) {
-    if (rule === PARSE_FAILURE_RULE) {
-      unparsed.add(file);
-    }
-  }
-  return files.filter((file) => !unparsed.has(file));
+  return filesWithout(files, findings, [PARSE_FAILURE_RULE]);
+}
+
+export function typedFiles(files: readonly string[], findings: readonly EngineFinding[]): string[] {
+  return filesWithout(files, findings, [PARSE_FAILURE_RULE, NO_TYPES_RULE]);
 }
 
 export async function* readEngineLines(file: string): AsyncGenerator<unknown, void> {

@@ -1,0 +1,1 @@
+import { setTimeout as later } from 'node:timers'; it('x', () => { later(() => expect(a).toBe(1)); });

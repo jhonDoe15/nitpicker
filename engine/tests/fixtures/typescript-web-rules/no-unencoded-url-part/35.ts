@@ -1,0 +1,1 @@
+const link = `https://gitea.test/api/v1/repos/${o}/${r}/archive/${ref}.tar.gz`;

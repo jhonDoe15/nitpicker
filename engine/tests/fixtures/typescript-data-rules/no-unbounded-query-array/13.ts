@@ -1,0 +1,1 @@
+import { Kysely, sql } from "kysely"; export async function f(db, ids) { for (const part of chunk(ids, 1000)) { await db.deleteFrom("asset").where("id", "in", part).execute(); } }

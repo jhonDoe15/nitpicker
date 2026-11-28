@@ -5,6 +5,7 @@ import path from 'node:path';
 import { runJavaDiff } from '../../java-diff.mts';
 import { sourceTextReader } from '../../reporting/function-locator.mts';
 import { withoutUnconstrainedBodies } from '../web/request-body-constraints.mts';
+import { withCrossedFetches } from '../../jpa/fetches/fetch-filter.mts';
 import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mts';
 import { commitBranch, runGitIn } from '../../test-support/gradle-e2e.mts';
 import type { JavaFinding } from '../../typed/java-values.mts';
@@ -91,14 +92,17 @@ function reportedViolations(sarifFile: string, projectRoot: string): string[] {
         },
       };
     });
-  return withoutUnconstrainedBodies(findings, {
-    projectRoot,
-    roots: [SOURCE_ROOT],
-    readText: readSourceText(projectRoot),
-  })
+  return withCrossedFetches(
+    withoutUnconstrainedBodies(findings, {
+      projectRoot,
+      roots: [SOURCE_ROOT],
+      readText: readSourceText(projectRoot),
+    }),
+    { projectRoot, sourceRoots: [SOURCE_ROOT] },
+  )
     .map(
       ({ rule, path: file, location }) =>
-        `${path.posix.relative(SOURCE_ROOT, file)}:${String(location.line)} ${rule}`,
+        `${path.posix.relative(SOURCE_ROOT, file)}:${String(location?.line ?? 0)} ${rule}`,
     )
     .sort();
 }
@@ -160,8 +164,15 @@ const REVIEW_RULES = new Set([
   'ProcessWaitWithoutTimeout',
   'UnguardedOptionList',
   'GrowingProcessArguments',
+  'OperandDepthRecursion',
+  'UnguardedCyclicRecursion',
+  'UnguardedRecursionEntry',
+  'ShrinkingWorklistJoin',
+  'CacheAfterGuardFallback',
+  'DepthOnlyWorklist',
   'DestroyLeavesDescendants',
   'HeadCutErrorOutput',
+  'KeywordRegexOverSource',
   'StderrAsFailure',
   'FutureWithoutException',
   'LogFormatArguments',
@@ -236,6 +247,16 @@ const REVIEW_RULES = new Set([
   'PlainCollectionInConcurrentMap',
   'UnsynchronizedSharedCollection',
   'ConcurrentMapCheckThenAct',
+  'AtomicGetThenSet',
+  'EagerFallbackDoesIo',
+  'PeekSkippedByCount',
+  'RegexCompiledInLoop',
+  'BigDecimalExactDivide',
+  'ScheduledTaskStopsOnFailure',
+  'RequestThreadLocalNotCleared',
+  'FutureJoinedWhereStarted',
+  'LocalExecutorNeverShutDown',
+  'ParallelStreamSharedMutation',
   'SharedStatefulHelperField',
   'CallValueStoredInSharedField',
   'BufferNeverReleased',
@@ -249,6 +270,22 @@ const REVIEW_RULES = new Set([
   'CopyConstructorSharesCollection',
   'ToMapDuplicateKey',
   'HashOrderInOrderedOutput',
+  'SortedRangeScan',
+  'LoopInvariantCopy',
+  'RepeatedKeyedScan',
+  'ReplacingCollectionMerge',
+  'FilteredPositionalPairing',
+  'StatPerListedEntry',
+  'ReadAllBeforePass',
+  'WorkBeforeEarlyExit',
+  'RepeatedCall',
+  'SubtreeSearchPerAncestor',
+  'ConstantLookupInLoop',
+  'PerItemCacheGrowth',
+  'JvmHeapWithoutGoal',
+  'WholeListJsonText',
+  'ScanPerCallOverFixedCollection',
+  'CachePerInnerUnit',
   'UnboundedCollectionField',
   'OptionalOrElseGetNull',
   'NullableLibraryResult',

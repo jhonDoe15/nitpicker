@@ -1,0 +1,1 @@
+const table = [[1, 2], [3, 4]]; it('x', () => { for (const [a, b] of table) { expect(add(a, a)).toBe(b); } });

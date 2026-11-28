@@ -1,0 +1,1 @@
+const callbackUrl = "https://app.test/cb"; const link = `${callbackUrl}?error=1`;

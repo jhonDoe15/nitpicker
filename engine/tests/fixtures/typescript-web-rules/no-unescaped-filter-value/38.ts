@@ -1,0 +1,1 @@
+export const a = (n: string) => prisma.$queryRaw`select 1 where name not like ${n}`;

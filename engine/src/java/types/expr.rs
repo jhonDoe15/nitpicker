@@ -1,6 +1,7 @@
 //! Static types of expressions, as far as declarations, the index and erased signatures give them.
 use crate::java::fields::Fields;
 use std::rc::Rc;
+use super::constant::{Constant, cast, char_value, infix, literal, unary};
 use super::model::{ClassInfo, Field, Method, OBJECT, Type};
 use std::collections::HashMap;
 use super::scope::{Resolver, class_at, enclosing_type, enclosing_types};
@@ -51,8 +52,15 @@ fn numeric_rank(kind: &Type) -> Option<u8> {
 /// The value of a string literal with its escapes decoded. Text blocks are left out.
 pub fn literal_text(file: &crate::engine::source::SourceFile, literal: Node) -> Option<String> {
     let literal = unwrap(literal);
-    let text = file.text_of(literal);
-    if literal.kind() != "string_literal" || text.len() < 2 {
+    if literal.kind() != "string_literal" {
+        return None;
+    }
+    string_value(file.text_of(literal))
+}
+
+/// The value of a string literal or text block as written in source, quotes included.
+pub fn string_value(text: &str) -> Option<String> {
+    if text.len() < 2 {
         return None;
     }
     let block = text.starts_with("\"\"\"");
@@ -77,7 +85,28 @@ pub fn literal_text(file: &crate::engine::source::SourceFile, literal: Node) -> 
                     chars.next();
                 }
                 let code: String = chars.by_ref().take(4).collect();
-                value.push(char::from_u32(u32::from_str_radix(&code, 16).ok()?)?);
+                let unit = u32::from_str_radix(&code, 16).ok()?;
+                if !(0xD800..0xE000).contains(&unit) {
+                    value.push(char::from_u32(unit)?);
+                    continue;
+                }
+                let mut ahead = chars.clone();
+                let low = (ahead.next() == Some('\\') && ahead.next() == Some('u'))
+                    .then(|| {
+                        while ahead.peek() == Some(&'u') {
+                            ahead.next();
+                        }
+                        u32::from_str_radix(&ahead.by_ref().take(4).collect::<String>(), 16).ok()
+                    })
+                    .flatten()
+                    .filter(|low| unit < 0xDC00 && (0xDC00..0xE000).contains(low));
+                match low {
+                    Some(low) => {
+                        value.push(char::from_u32(0x10000 + ((unit - 0xD800) << 10) + (low - 0xDC00))?);
+                        chars = ahead;
+                    }
+                    None => value.push(char::REPLACEMENT_CHARACTER),
+                }
             }
             digit @ '0'..='7' => {
                 let mut code = digit.to_digit(8)?;
@@ -109,6 +138,17 @@ fn text_block(text: &str) -> Option<String> {
         .unwrap_or(0);
     let cut: Vec<&str> = lines.iter().map(|line| if blank(line) { "" } else { line[indent.min(line.len())..].trim_end() }).collect();
     Some(cut.join("\n"))
+}
+
+/// JLS 15.25: an `int` constant that the type `small` (`byte`, `short` or `char`) can hold.
+fn fits(value: &Constant, small: &str) -> bool {
+    let Constant::Int(value) = *value else { return false };
+    match small {
+        "byte" => i8::try_from(value).is_ok(),
+        "short" => i16::try_from(value).is_ok(),
+        "char" => u16::try_from(value).is_ok(),
+        _ => false,
+    }
 }
 
 fn widens(from: &str, to: &str) -> bool {
@@ -182,8 +222,29 @@ fn lambda_results(lambda: Node) -> (bool, bool) {
         }
     }
     let last = crate::engine::source::named_children(body).into_iter().filter(|kid| !kid.kind().ends_with("comment")).last();
-    let ends = last.is_some_and(|last| matches!(last.kind(), "throw_statement" | "while_statement" | "for_statement" | "do_statement"));
+    let ends = last.is_some_and(|last| last.kind() == "throw_statement" || endless(last));
     (!valued, !bare && (valued || ends))
+}
+
+/// Whether a loop cannot complete normally: its condition is missing or `true` and no `break` leaves it.
+fn endless(statement: Node) -> bool {
+    if !matches!(statement.kind(), "while_statement" | "for_statement" | "do_statement") {
+        return false;
+    }
+    let forever = statement.field("condition").is_none_or(|condition| unwrap(condition).kind() == "true");
+    forever && !leaves(statement, false, false)
+}
+
+/// Whether a `break` inside `node` jumps out of the loop around it: one without a label outside any inner loop or
+/// switch, or one with a label outside any labeled statement inside the loop.
+fn leaves(node: Node, nested: bool, labeled: bool) -> bool {
+    children(node).into_iter().any(|kid| match kid.kind() {
+        "lambda_expression" | "class_body" => false,
+        "break_statement" => if kid.named_child(0).is_some() { !labeled } else { !nested },
+        "while_statement" | "for_statement" | "do_statement" | "enhanced_for_statement" | "switch_statement" | "switch_expression" => leaves(kid, true, labeled),
+        "labeled_statement" => leaves(kid, nested, true),
+        _ => leaves(kid, nested, labeled),
+    })
 }
 
 fn mentions(kind: &Type, variable: &str) -> bool {
@@ -266,7 +327,7 @@ impl<'a> Resolver<'a> {
         while let Some(node) = scope {
             let typed = |declaration: Node, declarator: Option<Node>| -> Option<Type> {
                 let written = declaration.field("type")?;
-                if self.file.text_of(written) == "var" {
+                if self.inferred_local(self.file.text_of(written)) {
                     let value = declarator.unwrap_or(declaration).field("value")?;
                     return self.type_of(value);
                 }
@@ -275,12 +336,17 @@ impl<'a> Resolver<'a> {
             let named = |holder: Node| holder.field("name").is_some_and(|n| self.file.text_of(n) == name);
             match node.kind() {
                 "block" | "constructor_body" | "switch_block_statement_group" | "program" => {
-                    let declared = self.locals_of(node);
-                    let found = declared.iter().find(|local| local.0 == name).filter(|local| local.1 < inner.start_byte());
-                    if let Some((_, _, statement, declarator)) = found {
-                        let statement = node.child(*statement)?;
-                        let declarator = statement.child(*declarator)?;
-                        return Some(Binding::Local(typed(statement, Some(declarator))));
+                    // Finding a sibling walks down from the root in tree-sitter, so only switch groups ask for one.
+                    let first = if node.kind() == "switch_block_statement_group" { node.prev_named_sibling() } else { None };
+                    let earlier = std::iter::successors(first, |group| group.prev_named_sibling()).take_while(|group| group.kind() == node.kind());
+                    for holder in std::iter::once(node).chain(earlier) {
+                        let declared = self.locals_of(holder);
+                        let found = declared.iter().find(|local| local.0 == name).filter(|local| local.1 < inner.start_byte());
+                        if let Some((_, _, statement, declarator)) = found {
+                            let statement = holder.child(*statement)?;
+                            let declarator = statement.child(*declarator)?;
+                            return Some(Binding::Local(typed(statement, Some(declarator))));
+                        }
                     }
                 }
                 "for_statement" => {
@@ -294,7 +360,7 @@ impl<'a> Resolver<'a> {
                 }
                 "enhanced_for_statement" => {
                     if named(node) && node.field("value") != Some(inner) {
-                        let inferred = node.field("type").is_none_or(|kind| self.file.text_of(kind) == "var");
+                        let inferred = node.field("type").is_none_or(|kind| self.inferred_local(self.file.text_of(kind)));
                         let kind = if inferred {
                             node.field("value").and_then(|value| self.type_of(value)).and_then(|kind| self.element(kind))
                         } else {
@@ -439,10 +505,15 @@ impl<'a> Resolver<'a> {
 
     /// Whether a name or field access reads a compile-time constant field.
     pub fn constant_field(&self, expression: Node) -> bool {
+        self.constant_field_as(expression, false)
+    }
+
+    /// `constant_field`, with `strict` asking for what the compiler itself takes for a constant.
+    pub fn constant_field_as(&self, expression: Node, strict: bool) -> bool {
         let near = |class: &str| self.scope.names.values().any(|known| known == class);
         match expression.kind() {
             "identifier" => match self.binding(expression, self.file.text_of(expression)) {
-                Some(Binding::Field(_, info, field)) => self.index.constant_field(&info.name, &field.name, &near, false, 0),
+                Some(Binding::Field(_, info, field)) => self.index.constant_field(&info.name, &field.name, &near, strict, 0),
                 _ => false,
             },
             "field_access" | "scoped_identifier" => {
@@ -454,7 +525,7 @@ impl<'a> Resolver<'a> {
                 };
                 match self.receiver(object) {
                     Some(Receiver::Static(owner)) | Some(Receiver::Value(Type::Class(owner, _))) => {
-                        self.index.constant_field(&owner, self.file.text_of(field), &near, false, 0)
+                        self.index.constant_field(&owner, self.file.text_of(field), &near, strict, 0)
                     }
                     _ => false,
                 }
@@ -483,8 +554,135 @@ impl<'a> Resolver<'a> {
                     _ => None,
                 }
             }
+            "ternary_expression" => {
+                let holds = self.constant_boolean(expression.field("condition")?)?;
+                let consequence = self.constant_string(expression.field("consequence")?)?;
+                let alternative = self.constant_string(expression.field("alternative")?)?;
+                Some(if holds { consequence } else { alternative })
+            }
             _ => None,
         }
+    }
+
+    /// The value of a constant `boolean` expression made of literals, constant fields and the boolean operators.
+    pub fn constant_boolean(&self, expression: Node) -> Option<bool> {
+        let expression = unwrap(expression);
+        let read = |field: &Field| (field.kind == Type::Primitive("boolean")).then(|| field.constant.as_deref().map(|value| value == "true")).flatten();
+        match expression.kind() {
+            "true" => Some(true),
+            "false" => Some(false),
+            "unary_expression" if self.file.text_of(expression.field("operator")?) == "!" => {
+                self.constant_boolean(expression.field("operand")?).map(|value| !value)
+            }
+            "binary_expression" => {
+                let operator = self.file.text_of(expression.field("operator")?);
+                let (left, right) = (expression.field("left")?, expression.field("right")?);
+                if let (Some(left), Some(right)) = (self.constant_boolean(left), self.constant_boolean(right)) {
+                    return match operator {
+                        "&&" | "&" => Some(left && right),
+                        "||" | "|" => Some(left || right),
+                        "^" | "!=" => Some(left != right),
+                        "==" => Some(left == right),
+                        _ => None,
+                    };
+                }
+                if !matches!(operator, "<" | "<=" | ">" | ">=" | "==" | "!=") {
+                    return None;
+                }
+                match infix(operator, self.constant_number(left)?, self.constant_number(right)?) {
+                    Ok(Some(Constant::Bool(value))) => Some(value),
+                    _ => None,
+                }
+            }
+            "identifier" | "field_access" => read(self.constant_field_of(expression)?),
+            _ => None,
+        }
+    }
+
+    /// The field a name or field access reads, when it is a field.
+    fn constant_field_of(&self, expression: Node) -> Option<&Field> {
+        match expression.kind() {
+            "identifier" => match self.binding(expression, self.file.text_of(expression))? {
+                Binding::Field(_, _, field) => Some(field),
+                Binding::Local(_) => None,
+            },
+            "field_access" => {
+                let name = self.file.text_of(expression.field("field")?);
+                match self.receiver(expression.field("object")?)? {
+                    Receiver::Static(owner) | Receiver::Value(Type::Class(owner, _)) => Some(self.index.field(&owner, name)?.1),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+
+    /// The value of a constant numeric or `char` expression made of literals, constant fields, casts to primitive
+    /// types and the numeric operators.
+    pub fn constant_number(&self, expression: Node) -> Option<Constant> {
+        let expression = unwrap(expression);
+        let operand = |name| expression.field(name).and_then(|operand| self.constant_number(operand));
+        match expression.kind() {
+            "decimal_integer_literal" | "hex_integer_literal" | "octal_integer_literal" | "binary_integer_literal" => {
+                Some(literal(self.file.text_of(expression), true).constant())
+            }
+            "decimal_floating_point_literal" | "hex_floating_point_literal" => Some(literal(self.file.text_of(expression), false).constant()),
+            "character_literal" => {
+                let image = self.file.text_of(expression);
+                (!image.contains("\\u")).then(|| char_value(image)).flatten().map(|code| Constant::Char(code as u16))
+            }
+            "unary_expression" => unary(self.file.text_of(expression.field("operator")?), operand("operand")?).filter(|value| !matches!(value, Constant::Bool(_))),
+            "binary_expression" => match infix(self.file.text_of(expression.field("operator")?), operand("left")?, operand("right")?) {
+                Ok(Some(Constant::Bool(_))) | Ok(None) | Err(_) => None,
+                Ok(Some(value)) => Some(value),
+            },
+            "ternary_expression" => {
+                let (first, second) = (operand("consequence")?, operand("alternative")?);
+                let same = std::mem::discriminant(&first) == std::mem::discriminant(&second);
+                same.then_some(())?;
+                Some(if self.constant_boolean(expression.field("condition")?)? { first } else { second })
+            }
+            "cast_expression" => {
+                let kind = expression.field("type").filter(|kind| kind.kind() == "integral_type" || kind.kind() == "floating_point_type")?;
+                cast(self.file.text_of(kind), operand("value")?)
+            }
+            "identifier" | "field_access" => {
+                let field = self.constant_field_of(expression)?;
+                let number = field.number?;
+                Some(match &field.kind {
+                    Type::Primitive("int" | "short" | "byte") => Constant::Int(number as i32),
+                    Type::Primitive("char") => Constant::Char(number as u16),
+                    Type::Primitive("long") => Constant::Long(number),
+                    Type::Primitive("float") => Constant::Float(f32::from_bits(number as u32)),
+                    Type::Primitive("double") => Constant::Double(f64::from_bits(number as u64)),
+                    _ => return None,
+                })
+            }
+            _ => None,
+        }
+    }
+
+    /// The `String` constants of final fields of a class that read other constants or choose between constants:
+    /// the values `members` could not see while the classes they read were still being filled in.
+    pub fn later_constants(&self, declaration: Node, info: &ClassInfo) -> Vec<(String, String)> {
+        let Some(body) = declaration.field("body") else { return Vec::new() };
+        let mut members = children(body);
+        members.extend(children(body).into_iter().filter(|child| child.kind() == "enum_body_declarations").flat_map(children));
+        let mut found = Vec::new();
+        for member in members.into_iter().filter(|member| matches!(member.kind(), "field_declaration" | "constant_declaration")) {
+            if !(info.is_interface || super::super::helpers::has_modifier(member, "final")) {
+                continue;
+            }
+            for declarator in super::super::helpers::declarators(member) {
+                let (Some(name), Some(value)) = (declarator.field("name"), declarator.field("value")) else { continue };
+                let name = self.file.text_of(name);
+                let open = info.fields.iter().any(|field| field.name == name && field.constant.is_none() && field.kind.name() == "java.lang.String");
+                if let Some(constant) = open.then(|| self.constant_string(value)).flatten() {
+                    found.push((name.to_string(), constant));
+                }
+            }
+        }
+        found
     }
 
     pub fn pattern_variable(&self, usage: Node, name: &str) -> Option<Type> {
@@ -699,6 +897,9 @@ impl<'a> Resolver<'a> {
     /// The class a call gives whatever its type variables stand for: enough to pick among overloads while the
     /// type arguments still wait for the context.
     fn erased_result(&self, argument: Node) -> Option<Type> {
+        if argument.kind() == "object_creation_expression" {
+            return self.written_creation(argument).map(|written| written.erased());
+        }
         if argument.kind() != "method_invocation" {
             return None;
         }
@@ -754,15 +955,35 @@ impl<'a> Resolver<'a> {
         if self.spent() {
             return None;
         }
-        self.in_turn(call, || self.pick_call(call))
+        self.in_turn(call, || self.pick_call(call, Self::select))
     }
 
-    fn pick_call(&self, call: Node) -> Option<Call> {
+    /// `resolve_call`, and when the arguments of unknown type leave several candidates, the one PMD takes: the first
+    /// of the most specific ones, which PMD keeps as a failed choice.
+    pub fn resolve_call_as_pmd(&self, call: Node) -> Option<Call> {
+        if let Some(found) = self.resolve_call(call) {
+            return Some(found);
+        }
+        if self.depth.get() == 0 && self.resolving.borrow().is_empty() && self.busy.borrow().is_empty() {
+            self.work.set(0);
+        }
+        if self.spent() {
+            return None;
+        }
+        self.in_turn(call, || self.pick_call(call, Self::select_as_pmd))
+    }
+
+    fn pick_call(&self, call: Node, select: fn(&Self, Type, &[(&ClassInfo, &Method)], &[Shape]) -> Option<Call>) -> Option<Call> {
         let name = self.file.text_of(call.field("name")?);
         let shapes = self.shapes(call);
         let mut raw = false;
+        let qualified_super = children(call).iter().any(|part| part.kind() == "super");
         let owners: Vec<Type> = match call.field("object") {
             Some(object) => match self.receiver(object)? {
+                Receiver::Static(owner) if qualified_super => match self.index.get(&owner) {
+                    Some(info) if info.is_interface => vec![Type::class(&owner)],
+                    _ => vec![self.type_of_super(&owner)?],
+                },
                 Receiver::Value(owner @ Type::Class(..)) => {
                     raw = self.raw(&owner);
                     vec![owner]
@@ -789,11 +1010,11 @@ impl<'a> Resolver<'a> {
             }
             if imported && self.scope.static_single[name].contains(&owner.name()) {
                 candidates = self.scope.static_single[name].iter().flat_map(|from| self.index.methods(from, name)).collect();
-                let chosen = self.select(owner, &candidates, &shapes)?;
+                let chosen = select(self, owner, &candidates, &shapes)?;
                 return Some(Call { receiver: Type::class(&chosen.declaring), ..chosen });
             }
-            let strict = self.select(owner.clone(), &candidates, &shapes);
-            let found = strict.or_else(|| self.loosened(call, &shapes).and_then(|loose| self.select(owner.clone(), &candidates, &loose)));
+            let strict = select(self, owner.clone(), &candidates, &shapes);
+            let found = strict.or_else(|| self.loosened(call, &shapes).and_then(|loose| select(self, owner.clone(), &candidates, &loose)));
             return found.map(|call| Call { raw: raw || (!call.method.is_static && self.index.seen_raw(&owner, &call.declaring)), ..call });
         }
         None
@@ -880,6 +1101,100 @@ impl<'a> Resolver<'a> {
         listed.collect()
     }
 
+    /// `select`, and when arguments of unknown type leave several candidates, PMD's choice: candidates are added in
+    /// order, one that a kept candidate beats is dropped, one that beats kept candidates drops them, and the first
+    /// one left is taken.
+    fn select_as_pmd(&self, owner: Type, candidates: &[(&ClassInfo, &Method)], shapes: &[Shape]) -> Option<Call> {
+        if let Some(found) = self.select(owner.clone(), candidates, shapes) {
+            return Some(found);
+        }
+        if !shapes.iter().any(|shape| matches!(shape, Shape::Unknown)) {
+            return None;
+        }
+        let visible: Vec<(&ClassInfo, &Method)> =
+            candidates.iter().filter(|(class, method)| !method.package_private || class.package == self.scope.package).copied().collect();
+        for phase in 0..3 {
+            let mut kept: Vec<(&ClassInfo, &Method)> = Vec::new();
+            for (class, method) in visible.iter().copied() {
+                let map = self.index.member_map(&owner, &class.name);
+                let formals: Vec<Type> = if method.type_parameters.is_empty() {
+                    method.generic_parameters.iter().map(|generic| generic.substitute(&map)).collect()
+                } else {
+                    method.parameters.clone()
+                };
+                if !self.applicable(method, &formals, shapes, phase) {
+                    continue;
+                }
+                let beats = |first: &Method, second: &Method| {
+                    self.more_specific(first, second, shapes, phase) && !self.more_specific(second, first, shapes, phase)
+                };
+                if kept.iter().any(|(_, existing)| beats(existing, method)) {
+                    continue;
+                }
+                kept.retain(|(_, existing)| !beats(method, existing));
+                kept.push((class, method));
+            }
+            if let Some((class, method)) = kept.first() {
+                return Some(Call { raw: false, receiver: owner, declaring: class.name.clone(), method: (*method).clone() });
+            }
+        }
+        None
+    }
+
+    /// PMD's test of whether `first` is more specific than `second` for the arguments: the first argument whose formal
+    /// types are subtypes decides; with boxing, a formal that is the boxed or unboxed type of a typed argument wins;
+    /// otherwise each formal of `first` has to convert to the one of `second`.
+    fn more_specific(&self, first: &Method, second: &Method, shapes: &[Shape], phase: u8) -> bool {
+        let spread = phase == 2;
+        let at = |method: &Method, place: usize| -> Option<Type> {
+            let last = method.parameters.len().checked_sub(1)?;
+            match method.parameters.get(place.min(last)) {
+                Some(Type::Array(element)) if spread && method.varargs && place >= last => Some((**element).clone()),
+                _ if place > last => None,
+                found => found.cloned(),
+            }
+        };
+        for (place, shape) in shapes.iter().enumerate() {
+            let (Some(si), Some(ti)) = (at(first, place), at(second, place)) else { return false };
+            if si == ti {
+                continue;
+            }
+            if self.assignable(&si, &ti, true) {
+                return true;
+            }
+            if self.assignable(&ti, &si, true) {
+                return false;
+            }
+            if matches!(shape, Shape::Function(..)) {
+                return false;
+            }
+            if let (true, Shape::Typed(argument)) = (phase > 0, shape) {
+                let unboxed = |kind: &Type| match kind {
+                    Type::Primitive(name) => Some(*name),
+                    Type::Class(name, _) => boxed(name),
+                    _ => None,
+                };
+                let primitive = matches!(argument, Type::Primitive(_));
+                if primitive != matches!(si, Type::Primitive(_)) && primitive != matches!(ti, Type::Primitive(_)) && unboxed(argument).is_some() {
+                    if unboxed(argument) == unboxed(&si) {
+                        return true;
+                    }
+                    if unboxed(argument) == unboxed(&ti) {
+                        return false;
+                    }
+                }
+            }
+            if !self.assignable(&si, &ti, phase == 0) {
+                return false;
+            }
+        }
+        if spread && second.parameters.len() == shapes.len() + 1 {
+            let (Some(si), Some(ti)) = (at(first, shapes.len()), at(second, shapes.len())) else { return false };
+            return self.assignable(&si, &ti, false);
+        }
+        true
+    }
+
     fn select(&self, owner: Type, candidates: &[(&ClassInfo, &Method)], shapes: &[Shape]) -> Option<Call> {
         let visible: Vec<(&ClassInfo, &Method)> = candidates
             .iter()
@@ -936,18 +1251,24 @@ impl<'a> Resolver<'a> {
                 }
                 several => {
                     let exact = typed.as_ref().and_then(|actual| several.iter().find(|(_, method)| method.parameters == *actual));
-                    let spread = |method: &Method, other: &Method| {
-                        let width = method.parameters.len().max(other.parameters.len());
-                        let at = |method: &Method, place: usize| match method.parameters.get(place.min(method.parameters.len() - 1)) {
-                            Some(Type::Array(element)) if place + 1 >= method.parameters.len() => Some((**element).clone()),
-                            other => other.cloned(),
+                    let spread = || {
+                        let beats = |first: &Method, second: &Method| {
+                            self.more_specific(first, second, shapes, phase) && !self.more_specific(second, first, shapes, phase)
                         };
-                        (0..width).all(|place| matches!((at(method, place), at(other, place)), (Some(a), Some(b)) if self.assignable(&a, &b, true)))
+                        let mut kept: Vec<&&(&ClassInfo, &Method)> = Vec::new();
+                        for candidate in several.iter() {
+                            if kept.iter().any(|existing| beats(existing.1, candidate.1)) {
+                                continue;
+                            }
+                            kept.retain(|existing| !beats(candidate.1, existing.1));
+                            kept.push(candidate);
+                        }
+                        kept.first().copied()
                     };
                     let all_spread = phase == 2 && several.iter().all(|(_, method)| method.varargs && !method.parameters.is_empty());
                     exact
                         .or_else(|| several.iter().find(|(_, method)| several.iter().all(|(_, other)| narrower(method, other))))
-                        .or_else(|| several.iter().filter(|_| all_spread).find(|(_, method)| several.iter().all(|(_, other)| spread(method, other))))
+                        .or_else(|| if all_spread { spread() } else { None })
                         .copied()
                 }
             };
@@ -957,7 +1278,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// The constructor a `new` expression calls. With a diamond, the class's type parameters are inferred like a method's.
-    fn resolve_constructor(&self, creation: Node) -> Option<Call> {
+    pub fn resolve_constructor(&self, creation: Node) -> Option<Call> {
         if let Some(known) = self.calls.borrow().get(&creation.id()) {
             return known.as_deref().cloned();
         }
@@ -981,7 +1302,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn pick_constructor(&self, creation: Node) -> Option<Call> {
-        let owner = self.type_node(creation.child_by_field_name("type")?)?;
+        let owner = self.written_creation(creation)?;
         let info = self.index.get(&owner.name())?;
         if info.is_interface && children(creation).iter().any(|part| part.kind() == "class_body") {
             let void = Type::Primitive("void");
@@ -1019,8 +1340,27 @@ impl<'a> Resolver<'a> {
         Some(call)
     }
 
+    /// The class a creation names. `outer.new Inner()` looks `Inner` up among the member classes of the type of
+    /// `outer` and its supertypes.
+    fn written_creation(&self, creation: Node) -> Option<Type> {
+        let kind = creation.field("type")?;
+        let before_new = children(creation).into_iter().take_while(|part| part.kind() != "new");
+        let outer = before_new.filter(|part| part.is_named() && !part.kind().ends_with("comment") && !part.kind().ends_with("annotation")).last();
+        let Some(outer) = outer else { return self.type_node(kind) };
+        let base = if kind.kind() == "generic_type" { *crate::engine::source::named_children(kind).first()? } else { kind };
+        let simple = self.file.text_of(base);
+        let Some(owner) = self.type_of(outer).map(|kind| kind.name()) else { return self.type_node(kind) };
+        let found = self.index.lineage(&owner).iter().map(|class| format!("{class}.{simple}")).find(|name| self.index.has(name));
+        let Some(name) = found else { return self.type_node(kind) };
+        let given = match children(kind).into_iter().find(|part| part.kind() == "type_arguments") {
+            Some(list) => crate::engine::source::named_children(list).into_iter().map(|argument| self.type_node(argument).unwrap_or(Type::class("?"))).collect(),
+            None => Vec::new(),
+        };
+        Some(Type::Class(name, given))
+    }
+
     fn created_type(&self, creation: Node) -> Option<Type> {
-        let written = self.type_node(creation.field("type")?)?;
+        let written = self.written_creation(creation)?;
         let Some(info) = self.index.get(&written.name()).filter(|info| !info.type_parameters.is_empty()) else { return Some(written) };
         if !matches!(&written, Type::Class(_, given) if given.is_empty()) {
             return Some(written);
@@ -1029,12 +1369,50 @@ impl<'a> Resolver<'a> {
         if creation.field("type").is_none_or(|kind| kind.kind() != "generic_type") {
             return Some(written);
         }
-        let Some(call) = self.resolve_constructor(creation) else { return Some(written) };
+        let Some(call) = self.resolve_constructor(creation) else { return Some(self.diamond_from_target(creation, info).unwrap_or(written)) };
         let map = self.call_map(&call, creation, true);
         let inferred: Vec<Type> = info.type_parameters.iter().map(|(name, _)| Type::Variable(name.clone()).substitute(&map)).collect();
         // PMD leaves the type raw when a type parameter bounded by the class itself, `B extends X<B>`, stays undecided.
         let circular = info.type_parameters.iter().zip(&inferred).any(|((_, bound), found)| bound.name() == written.name() && found == bound);
         if circular || inferred.iter().any(Type::open) { Some(written) } else { Some(Type::Class(written.name(), inferred)) }
+    }
+
+    /// The type of a diamond whose constructor is not known, an argument's type being unknown: the type the place
+    /// asks for decides the type arguments, as PMD infers them.
+    fn diamond_from_target(&self, creation: Node, info: &ClassInfo) -> Option<Type> {
+        if !call_arguments(creation).into_iter().any(|argument| self.is_busy(unwrap(argument)) || self.type_of(argument).is_none()) {
+            return None;
+        }
+        if !self.busy.borrow_mut().insert(creation.id()) {
+            return None;
+        }
+        let wanted = self.target(creation, true);
+        // The second resolver keeps bounded wildcards; it starts with what this one is already working on, so that
+        // it does not come back to this creation.
+        let wildcards = self.wildcards();
+        wildcards.busy.borrow_mut().extend(self.busy.borrow().iter().copied());
+        self.busy.borrow_mut().remove(&creation.id());
+        let Some(wanted @ Type::Class(..)) = wanted else { return None };
+        // PMD leaves the type arguments open when the place asks for a wildcard.
+        fn wild(kind: &Type) -> bool {
+            match kind {
+                Type::Wildcard | Type::Bounded(..) => true,
+                Type::Class(_, parts) => parts.iter().any(wild),
+                Type::Array(element) => wild(element),
+                _ => false,
+            }
+        }
+        if wildcards.target(creation, true).is_none_or(|written| wild(&written)) {
+            return None;
+        }
+        let to = wanted.name();
+        let variables: Vec<String> = info.type_parameters.iter().map(|(name, _)| name.clone()).collect();
+        let made = Type::Class(info.name.clone(), variables.iter().cloned().map(Type::Variable).collect());
+        let parts = self.index.arguments_as(&made, &to)?;
+        let mut map = HashMap::new();
+        self.unify(&Type::Class(to.clone(), parts), &wanted, &variables, &mut map);
+        let inferred: Option<Vec<Type>> = variables.iter().map(|name| map.get(name).cloned()).collect();
+        inferred.filter(|inferred| !inferred.iter().any(Type::open)).map(|inferred| Type::Class(info.name.clone(), inferred))
     }
 
     fn unify(&self, pattern: &Type, actual: &Type, variables: &[String], map: &mut HashMap<String, Type>) {
@@ -1068,7 +1446,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// The function type of a functional interface type: parameter types and return type.
-    fn function_type(&self, target: &Type) -> Option<(Vec<Type>, Type)> {
+    pub fn function_type(&self, target: &Type) -> Option<(Vec<Type>, Type)> {
         let (declaring, method) = self.index.functional_method(&target.name())?;
         let map = self.index.member_map(target, &declaring.name);
         Some((method.generic_parameters.iter().map(|kind| kind.substitute(&map)).collect(), method.generic_returns.substitute(&map)))
@@ -1105,12 +1483,13 @@ impl<'a> Resolver<'a> {
             self.index.methods(&owner.name(), name)
         };
         let offset = |method: &Method| usize::from(!created && !value && method.parameters.len() + 1 == taken.len());
-        let fits = |method: &Method| {
+        let fits = |method: &Method, strict: bool| {
             let given = &taken[offset(method).min(taken.len())..];
             given.len() == method.parameters.len()
-                && given.iter().zip(&method.parameters).all(|(actual, formal)| actual.open() || self.assignable(actual, formal, false))
+                && given.iter().zip(&method.parameters).all(|(actual, formal)| actual.open() || self.assignable(actual, formal, strict))
         };
-        let fitting: Vec<&(&ClassInfo, &Method)> = methods.iter().filter(|(_, method)| fits(method)).collect();
+        let strictly: Vec<&(&ClassInfo, &Method)> = methods.iter().filter(|(_, method)| fits(method, true)).collect();
+        let fitting = if strictly.is_empty() { methods.iter().filter(|(_, method)| fits(method, false)).collect() } else { strictly };
         let narrower = |method: &Method, other: &Method| {
             method.parameters.len() == other.parameters.len()
                 && method.parameters.iter().zip(&other.parameters).all(|(a, b)| self.assignable(a, b, true))
@@ -1130,7 +1509,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// The type a method reference looks its method up in, and whether that is a value's type.
-    fn reference_owner(&self, reference: Node) -> Option<(Type, bool)> {
+    pub fn reference_owner(&self, reference: Node) -> Option<(Type, bool)> {
         Some(match self.receiver(*children(reference).first()?) {
             Some(Receiver::Value(kind)) => (kind, true),
             Some(Receiver::Static(owner)) => (Type::class(&owner), false),
@@ -1201,17 +1580,22 @@ impl<'a> Resolver<'a> {
     }
 
     /// The parameter types of the one method that `value::name` can mean.
-    fn reference_parameters(&self, reference: Node) -> Option<Vec<Type>> {
+    fn reference_parameters(&self, reference: Node) -> Option<(Vec<Type>, bool)> {
         let parts = children(reference);
         let name = self.file.text_of(*parts.last()?);
-        let Receiver::Value(owner) = self.receiver(*parts.first()?)? else { return None };
+        let (owner, unbound) = match self.receiver(*parts.first()?)? {
+            Receiver::Value(owner) => (owner, false),
+            Receiver::Static(class) if !self.index.generic(&class) => (Type::class(&class), true),
+            Receiver::Static(_) => return None,
+        };
         let methods = self.index.methods(&owner.name(), name);
         let [(declaring, method)] = methods.as_slice() else { return None };
         if !method.type_parameters.is_empty() {
             return None;
         }
         let map = self.index.member_map(&owner, &declaring.name);
-        Some(method.generic_parameters.iter().map(|kind| kind.substitute(&map)).collect())
+        let receiver = (unbound && !method.is_static).then(|| owner.clone());
+        Some((receiver.into_iter().chain(method.generic_parameters.iter().map(|kind| kind.substitute(&map))).collect(), unbound))
     }
 
     fn is_busy(&self, node: Node) -> bool {
@@ -1323,8 +1707,15 @@ impl<'a> Resolver<'a> {
                 }
             }
             if argument.kind() == "method_reference" {
-                for (wanted, declared) in taken.iter().zip(self.reference_parameters(argument).unwrap_or_default()) {
-                    self.unify(wanted, &declared, &method.type_parameters, &mut inferred);
+                let (declared, unbound) = self.reference_parameters(argument).unwrap_or_default();
+                let mut bounded = HashMap::new();
+                for (wanted, declared) in taken.iter().zip(declared) {
+                    self.unify(wanted, &declared, &method.type_parameters, if unbound { &mut bounded } else { &mut inferred });
+                }
+                if !matches!(call.parent().map(|parent| parent.kind()), Some("argument_list")) {
+                    for (name, kind) in bounded {
+                        inferred.entry(name).or_insert(kind);
+                    }
                 }
             }
             if !method.type_parameters.iter().any(|name| mentions(&returned, name)) {
@@ -1453,7 +1844,7 @@ impl<'a> Resolver<'a> {
         self.target(lambda, true)
     }
 
-    fn returned_type(&self, at: Node) -> Option<Type> {
+    pub fn returned_type(&self, at: Node) -> Option<Type> {
         let scope = crate::engine::source::ancestor(at, &["lambda_expression", "method_declaration", "class_body"])?;
         match scope.kind() {
             "method_declaration" => {
@@ -1521,7 +1912,7 @@ impl<'a> Resolver<'a> {
             }
             "variable_declarator" => {
                 let declaration = crate::engine::source::parent(holder)?;
-                declaration.field("type").filter(|kind| self.file.text_of(*kind) != "var")?;
+                declaration.field("type").filter(|kind| !self.inferred_local(self.file.text_of(*kind)))?;
                 self.declared_type(declaration, Some(holder))
             }
             "assignment_expression" if holder.field("right") == Some(inner) => {
@@ -1535,6 +1926,13 @@ impl<'a> Resolver<'a> {
                 (!returned.open() && returned != Type::Primitive("void")).then_some(returned)
             }
             "ternary_expression" if holder.field("condition") != Some(inner) => self.target(holder, arguments),
+            // An arm of a switch expression, `case 1 -> value;` or `yield value;`, is typed like the whole switch.
+            "expression_statement" => {
+                let rule = crate::engine::source::parent(holder).filter(|rule| rule.kind() == "switch_rule")?;
+                let switch = crate::engine::source::parent(crate::engine::source::parent(rule)?)?;
+                (switch.kind() == "switch_expression").then(|| self.target(switch, arguments)).flatten()
+            }
+            "yield_statement" => self.target(crate::engine::source::ancestor(holder, &["switch_expression"])?, arguments),
             "array_initializer" => match self.type_of(holder)? {
                 Type::Array(element) => Some(*element),
                 _ => None,
@@ -1561,7 +1959,7 @@ impl<'a> Resolver<'a> {
         found
     }
 
-    fn resolve_delegation(&self, call: Node) -> Option<Call> {
+    pub fn resolve_delegation(&self, call: Node) -> Option<Call> {
         if self.spent() {
             return None;
         }
@@ -1576,6 +1974,30 @@ impl<'a> Resolver<'a> {
         let candidates: Vec<(&ClassInfo, &Method)> =
             info.methods.iter().filter(|method| method.name == "<init>").map(|method| (info, method)).collect();
         self.select(owner, &candidates, &self.shapes(call))
+    }
+
+    /// The constructor an enum constant calls, with the constant's arguments.
+    pub fn resolve_enum_constant(&self, constant: Node) -> Option<Call> {
+        let own = enclosing_type(self.file, self.scope, constant)?;
+        self.constructor_of(constant, self.own_type(&own))
+    }
+
+    /// The constructor of the superclass that a constructor without `this(...)` or `super(...)` calls.
+    pub fn resolve_implicit_super(&self, constructor: Node) -> Option<Call> {
+        let own = enclosing_type(self.file, self.scope, constructor)?;
+        self.constructor_of(constructor, self.type_of_super(&own)?)
+    }
+
+    fn constructor_of(&self, node: Node, owner: Type) -> Option<Call> {
+        if self.spent() {
+            return None;
+        }
+        self.in_turn(node, || {
+            let info = self.index.get(&owner.name())?;
+            let candidates: Vec<(&ClassInfo, &Method)> =
+                info.methods.iter().filter(|method| method.name == "<init>").map(|method| (info, method)).collect();
+            self.select(owner.clone(), &candidates, &self.shapes(node))
+        })
     }
 
     fn type_of_super(&self, own: &str) -> Option<Type> {
@@ -1594,16 +2016,30 @@ impl<'a> Resolver<'a> {
         if self.index.is_subtype(&right, &left) {
             return a.clone();
         }
-        let class = self.index.superclasses(&left).into_iter().find(|ancestor| ancestor != OBJECT && self.index.is_subtype(&right, ancestor));
-        let found = class.or_else(|| {
-            self.index.lineage(&left).iter().find(|ancestor| *ancestor != OBJECT && self.index.is_subtype(&right, ancestor)).cloned()
-        });
+        let lineage = self.index.lineage(&left);
+        let common: Vec<&String> = lineage.iter().filter(|ancestor| *ancestor != OBJECT && !ancestor.contains('&') && self.index.is_subtype(&right, ancestor)).collect();
+        let mut lowest: Vec<&str> = common.iter().filter(|one| !common.iter().any(|other| other != *one && self.index.is_subtype(other, one))).map(|one| one.as_str()).collect();
+        lowest.dedup();
+        if lowest.len() > 1 {
+            let interface = |name: &str| self.index.get(name).is_some_and(|info| info.is_interface);
+            lowest.sort_by(|x, y| interface(x).cmp(&interface(y)).then(self.rank(y, 0).cmp(&self.rank(x, 0))).then(x.cmp(y)));
+            return Type::class(&lowest.join("&"));
+        }
+        let found = lowest.first().map(|only| only.to_string());
         // What two types with type arguments share has type arguments too: it is not a raw type.
         let written = |kind: &Type| matches!(kind, Type::Class(_, given) if !given.is_empty());
         match found.as_deref() {
             Some(found) if written(a) && written(b) => self.index.declared(found),
             found => Type::class(found.unwrap_or(OBJECT)),
         }
+    }
+
+    /// The length of the longest chain of supertypes from a class up to `Object`, which orders the parts of an
+    /// intersection: the deepest first.
+    fn rank(&self, name: &str, depth: usize) -> usize {
+        let Some(info) = self.index.get(name).filter(|_| depth < 64 && name != OBJECT) else { return 0 };
+        let above = info.superclass.iter().chain(&info.interfaces).map(|parent| self.rank(parent, depth + 1)).max().unwrap_or(0);
+        above + 1
     }
 
     fn conditional(&self, expression: Node) -> Option<Type> {
@@ -1626,6 +2062,18 @@ impl<'a> Resolver<'a> {
                 }
                 (Some("boolean"), Some(_)) | (Some(_), Some("boolean")) => return None,
                 (Some(x), Some(y)) => {
+                    let narrow = |small: &str, other: &Type, field: &'static str| {
+                        *other == Type::Primitive("int") && expression.field(field).and_then(|node| self.constant_number(node)).is_some_and(|value| fits(&value, small))
+                    };
+                    if narrow(x, b, "alternative") {
+                        return Some(Type::Primitive(x));
+                    }
+                    if narrow(y, a, "consequence") {
+                        return Some(Type::Primitive(y));
+                    }
+                    if matches!((x, y), ("byte", "short") | ("short", "byte")) {
+                        return Some(Type::Primitive("short"));
+                    }
                     let wide = if widens(x, y) { y } else { x };
                     return Some(Type::Primitive(if matches!(wide, "byte" | "short" | "char") && x != y { "int" } else { wide }));
                 }
@@ -1703,6 +2151,11 @@ impl<'a> Resolver<'a> {
             },
             _ => None,
         }
+    }
+
+    /// The type javac infers for a lambda parameter written without one.
+    pub fn inferred_parameter(&self, lambda: Node, position: usize) -> Option<Type> {
+        self.lambda_parameter(lambda, position)
     }
 
     fn lambda_parameter(&self, lambda: Node, position: usize) -> Option<Type> {
@@ -1899,3 +2352,4 @@ impl<'a> Resolver<'a> {
             && wanted.iter().zip(&method.parameters).all(|(want, formal)| *want == "_" || formal.name() == *want)
     }
 }
+

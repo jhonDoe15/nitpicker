@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
-import { compilerOf } from '../errorprone/compiler-types.mts';
+import { compilerOf } from '../compile-sets/compiler-types.mts';
 import { spotbugsEngineArguments, spotbugsEnginePlan } from './spotbugs-engine-plan.mts';
 
 const projectWith = useTempProjects('nitpicker-spotbugs-maven-');
@@ -49,6 +49,7 @@ describe('spotbugsEnginePlan', () => {
         path.join(root, `src/main/java/p/${name}.java`),
       ),
       classpath: ['/build/other/classes'],
+      classes: [module.outputDirectory],
       processorPath: ['/lib/a.jar'],
       javaHome: '/jdk',
     });
@@ -61,13 +62,6 @@ describe('spotbugsEnginePlan', () => {
 
     expect(
       spotbugsEnginePlan({ ...options, module: skipped.module, compiler: compilerOf({}) }),
-    ).toBeUndefined();
-    expect(
-      spotbugsEnginePlan({
-        ...options,
-        module: compiled.module,
-        compiler: compilerOf({ processorPaths: ['org.example:processor:1'] }),
-      }),
     ).toBeUndefined();
     expect(
       spotbugsEnginePlan({
@@ -86,6 +80,41 @@ describe('spotbugsEnginePlan', () => {
     ).toStrictEqual([]);
   });
 
+  it('reads declared processor paths as javac uses them, in place of the classpath', () => {
+    const options = {
+      reportDir: '/r',
+      compileClasspath: ['/lib/a.jar'],
+      auxiliary: [],
+      javaHome: '/jdk',
+    };
+    const { root, module } = moduleIn('p/A', 'p/B');
+    const declared = (...paths: string[]) =>
+      spotbugsEnginePlan({ ...options, module, compiler: compilerOf({ processorPaths: paths }) });
+    const planned = (fields: object) => ({
+      reportDir: '/r',
+      sources: ['A', 'B', 'package-info'].map((name) =>
+        path.join(root, `src/main/java/p/${name}.java`),
+      ),
+      classpath: [],
+      classes: [module.outputDirectory],
+      processorPath: [],
+      javaHome: '/jdk',
+      ...fields,
+    });
+
+    expect(declared('org.projectlombok:lombok:1.18.36')).toStrictEqual(
+      planned({ processors: 'lombok', lombokVersion: '1.18.36' }),
+    );
+    expect(
+      declared('org.projectlombok:lombok:1.18.30', 'org.mapstruct:mapstruct-processor:1.6.3'),
+    ).toStrictEqual(planned({ processors: 'lombok', lombokVersion: '1.18.30' }));
+    expect(declared('com.google.auto.service:auto-service:1.1.1')).toStrictEqual(
+      planned({ processors: 'none' }),
+    );
+    expect(declared('org.example:processor:1')).toStrictEqual(planned({ processors: 'other' }));
+    expect(declared()).toStrictEqual(planned({ processorPath: ['/lib/a.jar'] }));
+  });
+
   it('runs the engine past an empty processor folder but not past generated sources', () => {
     const options = { reportDir: '/r', compileClasspath: [], auxiliary: [], javaHome: '/jdk' };
     const { root, module } = moduleIn('p/A', 'p/B');
@@ -98,6 +127,7 @@ describe('spotbugsEnginePlan', () => {
         path.join(root, `src/main/java/p/${name}.java`),
       ),
       classpath: [],
+      classes: [module.outputDirectory],
       processorPath: [],
       javaHome: '/jdk',
     });

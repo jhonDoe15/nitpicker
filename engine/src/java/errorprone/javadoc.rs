@@ -1,5 +1,6 @@
 //! The checks that read doc comments: EmptyBlockTag, MissingSummary, InvalidBlockTag, UnescapedEntity; more in `doctagged`.
 use super::Context;
+use super::fixes::Fix;
 use super::doc::{Comment, DocComment, Kind, Tree, parse};
 use super::hierarchy::{annotation_names, declared_method, super_method};
 use crate::engine::source::{children, parent};
@@ -36,14 +37,31 @@ impl Documented<'_, '_, '_> {
     pub fn report(&self, check: &'static str, pos: usize, message: &str) {
         self.context.report(check, self.node, self.source(pos), message);
     }
+    pub fn report_fixed(&self, check: &'static str, pos: usize, message: &str, fixes: &[Fix]) {
+        self.context.report_fixed(check, self.node, self.source(pos), message, fixes);
+    }
+    /// Error Prone's `Utils.replace`: the tag's range replaced, no fix when javac gives it no end.
+    pub fn replace(&self, tree: &Tree, text: &str) -> Fix {
+        match (self.comment.source_pos(tree.pos), self.comment.source_pos(tree.end)) {
+            (Some(start), Some(end)) => Fix::replace(start, end, text),
+            _ => Fix::new(),
+        }
+    }
+    /// The comment text between two positions, as the doc trees print it.
+    pub fn printed(&self, from: usize, to: usize) -> String {
+        self.comment.text.get(from..to).unwrap_or_default().iter().collect()
+    }
     /// Reports where javac says the comment itself is; an empty comment has no place, so its declaration stands in.
     pub fn report_comment(&self, check: &'static str, message: &str) {
-        self.context.report(check, self.node, self.doc.start.unwrap_or(self.start), message);
+        self.report_comment_fixed(check, message, &[]);
+    }
+    pub fn report_comment_fixed(&self, check: &'static str, message: &str, fixes: &[Fix]) {
+        self.context.report_fixed(check, self.node, self.doc.start.unwrap_or(self.start), message, fixes);
     }
 }
 
 /// The doc comment javac attaches to a declaration: the nearest one before its first token.
-fn comment_before<'t>(context: &Context, declaration: Node<'t>) -> Option<Node<'t>> {
+pub(super) fn comment_before<'t>(context: &Context, declaration: Node<'t>) -> Option<Node<'t>> {
     let mut current = declaration.prev_sibling();
     while let Some(at) = current {
         match at.kind() {
@@ -53,6 +71,14 @@ fn comment_before<'t>(context: &Context, declaration: Node<'t>) -> Option<Node<'
         }
     }
     None
+}
+
+/// The doc comment javac attaches to a declaration, read.
+pub(super) fn doc_of(context: &Context, declaration: Node) -> Option<(Comment, DocComment)> {
+    let written = comment_before(context, declaration)?;
+    let comment = Comment::of(context.text(written), written.start_byte())?;
+    let doc = parse(&comment);
+    Some((comment, doc))
 }
 
 pub fn javadoc(context: &Context, node: Node) {
@@ -76,6 +102,16 @@ pub fn javadoc(context: &Context, node: Node) {
     unescaped_entity(&documented);
     super::doctagged::escaped_entity(&documented);
     super::doctagged::invalid_inline_tag(&documented, declaration);
+    super::doc_throws::invalid_throws(&documented, declaration);
+    super::docparams::invalid_param(&documented, declaration);
+    super::doclinks::invalid_link(&documented, declaration);
+    super::docinline::malformed_inline_tag(&documented);
+    super::docinline::prefer_throws_tag(&documented);
+    super::doc_misc::invalid_snippet(&documented);
+    super::doc_misc::invalid_throws_link(&documented);
+    super::doc_misc::unrecognised_javadoc_tag(&documented);
+    super::doc_misc::url_in_see(&documented);
+    super::doc_misc::inherit_doc(&documented, declaration);
 }
 
 fn empty_block_tag(documented: &Documented) {
@@ -88,7 +124,8 @@ fn empty_block_tag(documented: &Documented) {
             _ => false,
         };
         if described && tree.description().is_empty() {
-            documented.report("EmptyBlockTag", tree.pos, TEXT);
+            let fix = if tree.name == "deprecated" { Fix::new() } else { documented.replace(tree, "") };
+            documented.report_fixed("EmptyBlockTag", tree.pos, TEXT, &[fix]);
         }
     });
 }
@@ -116,6 +153,60 @@ fn last_scanned<'t>(doc: &'t DocComment, wanted: &dyn Fn(&Tree) -> bool) -> Opti
     None
 }
 
+/// Error Prone's fix for a lone `@return`: its text moves to the front as a sentence.
+fn returns_summary(documented: &Documented, tree: &Tree) -> Fix {
+    let description = if tree.kind == Kind::Inline { documented.printed(tree.pos, tree.end) } else { printed_description(documented, tree, tree.children[0].pos) };
+    let Some(first) = description.chars().next() else { return Fix::new() };
+    let lowered: String = first.to_lowercase().chain(description.chars().skip(1)).collect();
+    let stop = if description.ends_with('.') { "" } else { "." };
+    summary_fix(documented, tree, &format!("Returns {lowered}{stop}\n"), false)
+}
+
+fn sees_summary(documented: &Documented, tree: &Tree) -> Fix {
+    let reference: Vec<String> = tree.children[..tree.described].iter().map(|part| documented.printed(part.pos, part.end)).collect();
+    summary_fix(documented, tree, &format!("See {{@link {}}}.\n", reference.join(" ")), true)
+}
+
+/// Where javac puts the start of the comment text: a text that starts with a line break starts after it.
+fn summary_place(documented: &Documented) -> Option<usize> {
+    let at = documented.comment.source_pos(0)?;
+    if documented.comment.text.first() != Some(&'\n') {
+        return Some(at);
+    }
+    let file = documented.context.file.text.as_bytes();
+    Some(at + if file.get(at) == Some(&b'\r') && file.get(at + 1) == Some(&b'\n') { 2 } else { 1 })
+}
+
+/// How doc trees print what follows a block tag: `{@code x}` has one space after the name, whatever was written.
+fn printed_description(documented: &Documented, tree: &Tree, from: usize) -> String {
+    let mut out = String::new();
+    let mut at = from;
+    for part in tree.children.iter().filter(|part| part.pos >= from) {
+        out.push_str(&documented.printed(at, part.pos));
+        match (part.kind, part.children.first()) {
+            (Kind::Inline, Some(body)) if matches!(part.name.as_str(), "code" | "literal") => {
+                out.push_str(&format!("{{@{} {}}}", part.name, documented.printed(body.pos, body.end).trim_start_matches([' ', '\t'])));
+            }
+            (Kind::Inline, Some(reference)) if matches!(part.name.as_str(), "link" | "linkplain") => {
+                let label = part.children.get(1).map(|label| format!(" {}", documented.printed(label.pos, part.children.last().map_or(label.end, |last| last.end)))).unwrap_or_default();
+                out.push_str(&format!("{{@{} {}{label}}}", part.name, documented.printed(reference.pos, reference.end)));
+            }
+            _ => out.push_str(&documented.printed(part.pos, part.end)),
+        }
+        at = part.end;
+    }
+    out.push_str(&documented.printed(at, tree.end));
+    out
+}
+
+fn summary_fix(documented: &Documented, tree: &Tree, text: &str, guarded: bool) -> Fix {
+    let removal = documented.replace(tree, "");
+    match summary_place(documented) {
+        Some(at) if !(guarded && removal == Fix::new()) => removal.insert(at, text),
+        _ => removal,
+    }
+}
+
 fn missing_summary(documented: &Documented, declaration: Node) {
     const CHECK: &str = "MissingSummary";
     let context = documented.context;
@@ -134,11 +225,11 @@ fn missing_summary(documented: &Documented, declaration: Node) {
     let returned = last_scanned(&documented.doc, &|tree| matches!(tree.kind, Kind::Block | Kind::Inline) && tree.name == "return");
     let seen = last_scanned(&documented.doc, &|tree| tree.kind == Kind::Block && tree.name == "see");
     let instead = |tag: &str| format!("A summary fragment is required; consider using the value of the @{tag} block as a summary fragment instead.");
-    if returned.is_some_and(|tree| tree.kind == Kind::Inline || !tree.children.is_empty()) {
-        return documented.report_comment(CHECK, &instead("return"));
+    if let Some(tree) = returned.filter(|tree| tree.kind == Kind::Inline || !tree.children.is_empty()) {
+        return documented.report_comment_fixed(CHECK, &instead("return"), &[returns_summary(documented, tree)]);
     }
-    if seen.is_some() {
-        return documented.report_comment(CHECK, &instead("see"));
+    if let Some(tree) = seen {
+        return documented.report_comment_fixed(CHECK, &instead("see"), &[sees_summary(documented, tree)]);
     }
     let marked = annotation_names(context, declaration).into_iter().any(|name| matches!(name, "Override" | "java.lang.Override" | "Deprecated" | "java.lang.Deprecated"));
     if exposed(declaration, documented.node) && !marked {
@@ -150,6 +241,7 @@ const COMMON_BLOCKS: &[&str] = &["deprecated", "see", "since"];
 const CLASS_BLOCKS: &[&str] = &["author", "param", "version"];
 const VARIABLE_BLOCKS: &[&str] = &["serial", "serialData", "serialField"];
 const METHOD_BLOCKS: &[&str] = &["author", "exception", "param", "return", "serial", "throws", "serialData", "serialField", "version"];
+const INLINE_COMMON: &[&str] = &["code", "docRoot", "link", "linkplain", "literal", "snippet"];
 const OTHER_BLOCKS: &[&str] = &["apiNote", "attr", "contact", "fails", "hide", "implNote", "implSpec", "removed", "required", "team"];
 
 pub(super) fn edit_distance(from: &str, to: &str) -> usize {
@@ -196,7 +288,10 @@ fn invalid_block_tag(documented: &Documented, declaration: Node) {
             Kind::StartElement if matches!(name, "code" | "pre") => depth += 1,
             Kind::EndElement if matches!(name, "code" | "pre") => depth -= 1,
             Kind::Erroneous if tree.code == "dc.bad.inline.tag" => {
-                documented.report(CHECK, tree.pos, &format!("{name} is not a valid block tag. Should it be an inline tag instead?"));
+                let inline = name.trim_start_matches('@');
+                let fixed = INLINE_COMMON.contains(&inline) || (inline == "value") || (inline == "inheritDoc" && documented.element != Element::Variable);
+                let fix = if fixed { documented.replace(tree, &format!("{{{name}}}")) } else { Fix::new() };
+                documented.report_fixed(CHECK, tree.pos, &format!("{name} is not a valid block tag. Should it be an inline tag instead?"), &[fix]);
             }
             Kind::UnknownBlock if OTHER_BLOCKS.contains(&name) => {}
             Kind::UnknownBlock if depth > 0 && broken_code => {
@@ -207,11 +302,13 @@ fn invalid_block_tag(documented: &Documented, declaration: Node) {
                     "@{name} is not a valid block tag. Did you mean to escape it? Annotations must be escaped even within <pre> and <code>, \
                      but will be rendered correctly inside {{@code blocks."
                 );
-                documented.report(CHECK, tree.pos, &text);
+                let fix = documented.source(tree.pos);
+                documented.report_fixed(CHECK, tree.pos, &text, &[Fix::replace(fix, fix + 1, "{@literal @}")]);
             }
             Kind::UnknownBlock if parameters.contains(&name) => {
                 let text = format!("@{name} is not a valid tag, but is a parameter name. Use {{@code {name}}} to refer to parameter names inline.");
-                documented.report(CHECK, tree.pos, &text);
+                let fix = documented.source(tree.pos);
+                documented.report_fixed(CHECK, tree.pos, &text, &[Fix::replace(fix, fix + 1, "@param ")]);
             }
             Kind::UnknownBlock => {
                 let mut best: Option<(&str, usize)> = None;
@@ -221,17 +318,19 @@ fn invalid_block_tag(documented: &Documented, declaration: Node) {
                         best = Some((choice, distance));
                     }
                 }
-                let hint = match best {
-                    Some((choice, _)) => format!(" Did you mean tag `{choice}`?"),
-                    None => " If this is a commonly-used custom tag, please click 'not useful' and file a bug.".to_string(),
+                let at = documented.source(tree.pos) + 1;
+                let (hint, fixes) = match best {
+                    Some((choice, _)) => (format!(" Did you mean tag `{choice}`?"), vec![Fix::replace(at, at + name.len(), choice)]),
+                    None => (" If this is a commonly-used custom tag, please click 'not useful' and file a bug.".to_string(), Vec::new()),
                 };
-                documented.report(CHECK, tree.pos, &format!("Tag name `{name}` is unknown.{hint}"));
+                documented.report_fixed(CHECK, tree.pos, &format!("Tag name `{name}` is unknown.{hint}"), &fixes);
             }
             Kind::Block | Kind::Inline if tree.is_block_tag() && !valid.contains(&name) && !OTHER_BLOCKS.contains(&name) => {
                 let message = format!("The tag @{name} is not allowed on this type of element.");
+                let fixes = [documented.replace(tree, "")];
                 match parent {
-                    Some(parent) => documented.report(CHECK, parent.pos, &message),
-                    None => documented.report_comment(CHECK, &message),
+                    Some(parent) => documented.report_fixed(CHECK, parent.pos, &message, &fixes),
+                    None => documented.report_comment_fixed(CHECK, &message, &fixes),
                 }
             }
             _ => {}
@@ -264,6 +363,10 @@ impl Range {
         let to = self.to.min(other.to);
         from < to || (from == to && [self, other].iter().all(|range| range.to != to || range.closed))
     }
+}
+
+fn wrap_in_code(region: Range) -> Fix {
+    Fix::new().insert(region.from, "{@code ").insert(region.to, "}")
 }
 
 fn unescaped_entity(documented: &Documented) {
@@ -317,10 +420,11 @@ fn unescaped_entity(documented: &Documented) {
         if emitted.iter().chain(&no_fix).any(|other| other.intersects(range)) {
             continue;
         }
-        emitted.push(pre.iter().find(|around| around.contains(range.from)).copied().unwrap_or(*range));
+        let region = pre.iter().find(|around| around.contains(range.from)).copied().unwrap_or(*range);
+        emitted.push(region);
         let text = "This looks like a type with type parameters. The < and > characters here will be interpreted as HTML, which can be \
                     avoided by wrapping it in a {@code } tag.";
-        documented.context.report(CHECK, documented.node, range.from, text);
+        documented.context.report_fixed(CHECK, documented.node, range.from, text, &[wrap_in_code(region)]);
     }
     documented.doc.visit(&mut |tree, _| {
         if tree.kind != Kind::Erroneous || !matches!(tree.name.as_str(), "&" | "<" | ">") {
@@ -336,7 +440,12 @@ fn unescaped_entity(documented: &Documented) {
                     let text = "Javadoc is interpreted as HTML, so HTML entities such as &, <, > must be escaped. If this finding seems wrong \
                                 (e.g. is within a @code or @literal tag), check whether the tag could be malformed and not recognised by the \
                                 compiler.";
-                    documented.context.report(CHECK, documented.node, start, text);
+                    let entity = match tree.name.as_str() {
+                        "&" => "&amp;",
+                        "<" => "&lt;",
+                        _ => "&gt;",
+                    };
+                    documented.context.report_fixed(CHECK, documented.node, start, text, &[documented.replace(tree, entity)]);
                 }
             }
             Some(around) => {
@@ -344,7 +453,7 @@ fn unescaped_entity(documented: &Documented) {
                     emitted.push(around);
                     let text = "This HTML entity is invalid. Enclosing the code in this <pre>/<code> tag with a {@code } block will force \
                                 Javadoc to interpret HTML literally.";
-                    documented.context.report(CHECK, documented.node, start, text);
+                    documented.context.report_fixed(CHECK, documented.node, start, text, &[wrap_in_code(around)]);
                 }
             }
         }

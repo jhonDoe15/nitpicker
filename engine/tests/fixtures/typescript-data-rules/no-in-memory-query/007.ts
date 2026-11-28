@@ -1,0 +1,1 @@
+import { Repository } from "typeorm"; export async function run(repo, prisma, db, em, Order, id, ids) { const rows = await repo.find(); for (const s of ids) { use(rows.filter((r) => r.status === s)); } }

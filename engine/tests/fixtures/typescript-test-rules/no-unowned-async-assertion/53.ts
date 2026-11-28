@@ -1,0 +1,1 @@
+it('x', async () => { let ready; ready = new Promise((r) => setTimeout(() => { expect(a).toBe(1); r(); })); await ready; });

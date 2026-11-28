@@ -1,0 +1,1 @@
+import { createHash } from "node:crypto"; export class H2 { constructor(private readonly algorithm = "md5") {} run(s: string) { return createHash(this.algorithm).update(s).digest("hex"); } }

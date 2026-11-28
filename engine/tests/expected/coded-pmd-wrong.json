@@ -1,0 +1,4 @@
+[
+["c/StaticLabel.java", "MissingOverride", 10, 19, "The method 'label()' is missing an @Override annotation."],
+["j/Overrides.java", "UnusedFormalParameter", 57, 20, "Avoid unused method parameters such as 'values'."]
+]

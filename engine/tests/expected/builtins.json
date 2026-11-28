@@ -1,5 +1,4 @@
 [
-["Rare.java", "!InvertedEqualsCheck", 0, 0],
 ["Rare.java", "AvoidCallingFinalize", 20, 5],
 ["Rare.java", "AvoidDecimalLiteralsInBigDecimalConstructor", 26, 24],
 ["Rare.java", "AvoidDecimalLiteralsInBigDecimalConstructor", 26, 46],

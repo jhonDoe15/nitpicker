@@ -28,7 +28,7 @@ export function unknownOnBaseOf({
 }: {
   readonly name: string;
   readonly baseRun: ReportsRun;
-  readonly touchedCode?: Pick<TouchedCode, 'testsRemoved'> | undefined;
+  readonly touchedCode?: Pick<TouchedCode, 'testsRemoved' | 'removedTestTargets'> | undefined;
   readonly unknownFailures: readonly Finding[] | undefined;
 }): FindingTest | undefined {
   return eitherOf(

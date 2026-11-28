@@ -1,0 +1,1 @@
+export const sign = (key: string, data: string) => hmacDigest("sha1", key, data);

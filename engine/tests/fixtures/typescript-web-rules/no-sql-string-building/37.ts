@@ -1,0 +1,1 @@
+export const add = (name) => db.run(`INSERT INTO users (name) VALUES ('${name}')`);

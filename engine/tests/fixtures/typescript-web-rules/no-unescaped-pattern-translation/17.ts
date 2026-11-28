@@ -1,0 +1,1 @@
+export function allow(value: string) { return picomatch(value); }

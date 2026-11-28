@@ -4,10 +4,18 @@ import {
   childrenAt,
   childrenNamed,
 } from '../../../../shared/ingest/report-records.mts';
-import type { CompilerLevel, CompilerSettings } from './compiler-types.mts';
-import { textAt } from '../configuration/pom-elements.mts';
+import type {
+  CompilerLevel,
+  CompilerSettings,
+  ExtraCompile,
+  SourcePatterns,
+} from '../compile-sets/compiler-types.mts';
+import { executionsWithGoal, textAt } from '../configuration/pom-elements.mts';
+import { escapeXml } from '../../builds/typed/xml-views.mts';
 
 const COMPILER = 'maven-compiler-plugin';
+const CENTRAL = 'central';
+const CONFIGURATION = 'configuration';
 const PLACEHOLDER_OPEN = ['$', '{'].join('');
 
 type Setting = (name: string, property: string) => string | undefined;
@@ -26,7 +34,7 @@ function compilerConfigurations(plugin: XmlElement | undefined, executionId: str
   const execution = childrenAt(plugin, 'executions', 'execution').find(
     (candidate) => textAt(candidate, 'id') === executionId,
   );
-  return [childAt(execution, 'configuration'), childAt(plugin, 'configuration')].filter(
+  return [childAt(execution, CONFIGURATION), childAt(plugin, CONFIGURATION)].filter(
     (configuration) => configuration !== undefined,
   );
 }
@@ -131,6 +139,107 @@ function levelOf(
   return { release: undefined, source: fallback, target: fallback };
 }
 
+function patternsAt(configurations: readonly XmlElement[], list: string, item: string): string[] {
+  const element = configurations
+    .map((configuration) => childAt(configuration, list))
+    .find((found) => found !== undefined);
+  return (element === undefined ? [] : childrenNamed(element, item))
+    .map((entry) => entry.text?.trim())
+    .filter(isArgument);
+}
+
+function sourcePatterns(configurations: readonly XmlElement[], test: boolean): SourcePatterns {
+  return test
+    ? {
+        includes: patternsAt(configurations, 'testIncludes', 'testInclude'),
+        excludes: patternsAt(configurations, 'testExcludes', 'testExclude'),
+      }
+    : {
+        includes: patternsAt(configurations, 'includes', 'include'),
+        excludes: patternsAt(configurations, 'excludes', 'exclude'),
+      };
+}
+
+function isExtraCompile(execution: XmlElement): boolean {
+  return (
+    textAt(execution, 'id') !== 'default-compile' &&
+    textAt(execution, 'phase') !== 'none' &&
+    textAt(execution, CONFIGURATION, 'skipMain') !== 'true' &&
+    childAt(execution, CONFIGURATION, 'compileSourceRoots') === undefined
+  );
+}
+
+function extraCompiles(
+  project: XmlElement,
+  plugin: XmlElement | undefined,
+  pluginVersion: string | undefined,
+): ExtraCompile[] {
+  return executionsWithGoal(plugin, 'compile')
+    .filter(isExtraCompile)
+    .map((execution) => {
+      const configurations = [
+        childAt(execution, CONFIGURATION),
+        childAt(plugin, CONFIGURATION),
+      ].filter((configuration) => configuration !== undefined);
+      const setting = settingOf(project, configurations);
+      return {
+        id: textAt(execution, 'id') ?? 'default',
+        ...levelOf(setting, false, pluginVersion),
+        compilerArgs: argumentsOf(configurations, setting),
+        sources: sourcePatterns(configurations, false),
+      };
+    });
+}
+
+function policyXml(repository: XmlElement, name: string): string {
+  const enabled = textAt(repository, name, 'enabled');
+  return enabled === undefined ? '' : `<${name}><enabled>${escapeXml(enabled)}</enabled></${name}>`;
+}
+
+function repositoryXml(repository: XmlElement, url: string): string {
+  const layout = textAt(repository, 'layout');
+  return [
+    `<repository><id>${escapeXml(textAt(repository, 'id') ?? url)}</id><url>${escapeXml(url)}</url>`,
+    layout === undefined ? '' : `<layout>${escapeXml(layout)}</layout>`,
+    policyXml(repository, 'releases'),
+    policyXml(repository, 'snapshots'),
+    '</repository>',
+  ].join('');
+}
+
+function processorRepositories(project: XmlElement): string[] {
+  return childrenAt(project, 'repositories', 'repository').flatMap((repository) => {
+    const url = textAt(repository, 'url');
+    return url === undefined || url === '' || textAt(repository, 'id') === CENTRAL
+      ? []
+      : [repositoryXml(repository, url)];
+  });
+}
+
+function repositoriesField(repositories: string[]): { readonly processorRepositories?: string[] } {
+  return repositories.length === 0 ? {} : { processorRepositories: repositories };
+}
+
+function executionsField(executions: ExtraCompile[]): { readonly executions?: ExtraCompile[] } {
+  return executions.length === 0 ? {} : { executions };
+}
+
+function patternsField(patterns: SourcePatterns): { readonly sources?: SourcePatterns } {
+  return patterns.includes.length === 0 && patterns.excludes.length === 0
+    ? {}
+    : { sources: patterns };
+}
+
+function generatedField(
+  configurations: readonly XmlElement[],
+  name: string,
+): { readonly generatedSources?: string } {
+  const folder = configurations
+    .map((configuration) => textAt(configuration, name)?.trim())
+    .find((value) => isArgument(value) && !value.includes(PLACEHOLDER_OPEN));
+  return folder === undefined ? {} : { generatedSources: folder };
+}
+
 export function compilerSettings(project: XmlElement): CompilerSettings {
   const plugin = compilerPlugin(project);
   const pluginVersion = textAt(plugin, 'version');
@@ -144,12 +253,18 @@ export function compilerSettings(project: XmlElement): CompilerSettings {
       setting('encoding', 'maven.compiler.encoding') ??
       textAt(project, 'properties', 'project.build.sourceEncoding'),
     compilerArgs: argumentsOf(configurations, setting),
+    ...patternsField(sourcePatterns(configurations, false)),
+    ...generatedField(configurations, 'generatedSourcesDirectory'),
     proc: setting('proc', 'maven.compiler.proc'),
     processorPaths: processorPaths(project, configurations),
+    ...repositoriesField(processorRepositories(project)),
     test: {
       ...levelOf(testSetting, true, pluginVersion),
       compilerArgs: argumentsOf(testConfigurations, testSetting),
+      ...patternsField(sourcePatterns(testConfigurations, true)),
+      ...generatedField(testConfigurations, 'generatedTestSourcesDirectory'),
     },
+    ...executionsField(extraCompiles(project, plugin, pluginVersion)),
   };
 }
 

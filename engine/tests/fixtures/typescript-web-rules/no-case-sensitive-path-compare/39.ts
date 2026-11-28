@@ -1,0 +1,1 @@
+if (cwd === other.projectPath) {}

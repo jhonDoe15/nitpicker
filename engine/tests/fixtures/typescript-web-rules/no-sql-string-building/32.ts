@@ -1,0 +1,1 @@
+export const find = (id) => pool.query({ text: `SELECT * FROM users WHERE id = ${id}`, values: [] });

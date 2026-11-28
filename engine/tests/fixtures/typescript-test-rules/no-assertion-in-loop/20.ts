@@ -1,0 +1,1 @@
+it('x', () => { expect.assertions(2); for (const o of [1, 2]) { expect(o).toBeGreaterThan(0); } });

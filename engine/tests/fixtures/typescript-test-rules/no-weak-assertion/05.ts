@@ -1,0 +1,1 @@
+expect(user).not.toBe(void 0);

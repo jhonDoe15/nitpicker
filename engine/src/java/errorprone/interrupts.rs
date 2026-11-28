@@ -1,5 +1,8 @@
 //! InterruptedExceptionSwallowed: an interruption is caught or declared as a plain `Exception` or `Throwable`.
 use super::Context;
+use super::fixes::Fix;
+use super::fix_helpers::qualify_type;
+use super::unused::statements;
 use super::hierarchy::formals;
 use super::throws::{thrown_by, thrown_in_try};
 use crate::engine::source::{children, named_children, parent, walk};
@@ -31,6 +34,9 @@ fn main_method(context: &Context, method: Node) -> bool {
 }
 
 fn method(context: &Context, node: Node) {
+    if context.test_only() {
+        return;
+    }
     let Some(body) = node.child_by_field_name("body") else { return };
     let index = context.resolver.index;
     let under = |name: &str, above: &str| index.is_subtype(name, above);
@@ -51,10 +57,34 @@ fn method(context: &Context, node: Node) {
             all.push(kind);
         }
     }
-    let kept = all.iter().filter(|kind| !all.iter().any(|other| other != *kind && under(kind, other))).count();
-    if kept <= 5 {
+    let kept: Vec<&String> = all.iter().filter(|kind| !all.iter().any(|other| other != *kind && under(kind, other))).collect();
+    if kept.len() <= 5 {
         let at = node.child_by_field_name("name").map_or(node.start_byte(), |name| name.start_byte());
-        context.report(NAME, node, at, DECLARED);
+        let fix = narrowed(context, node, &kept);
+        context.report_fixed(NAME, node, at, DECLARED, &[fix]);
+    }
+}
+
+/// The `throws` clause gives the exceptions the body throws, written the shortest way, in order.
+fn narrowed(context: &Context, method: Node, kept: &[&String]) -> Fix {
+    let mut fix = Fix::new();
+    let mut names: Vec<String> = kept.iter().map(|kind| qualify_type(context, method, kind, &mut fix)).collect();
+    names.sort();
+    let clause = children(method).into_iter().find(|part| part.kind() == "throws");
+    let types = clause.map(named_children).unwrap_or_default();
+    match (types.first(), types.last()) {
+        (Some(first), Some(last)) => fix.and(first.start_byte(), last.end_byte(), names.join(", ")),
+        _ => fix,
+    }
+}
+
+/// Lets the catch clause restore the interrupt when it caught one.
+fn restoring(context: &Context, clause: Node, name: &str) -> Fix {
+    let text = format!("if ({name} instanceof InterruptedException) {{\nThread.currentThread().interrupt();\n}}\n");
+    let Some(block) = clause.child_by_field_name("body") else { return Fix::new() };
+    match statements(block).first() {
+        Some(first) => Fix::new().insert(first.start_byte(), text),
+        None => Fix::replace(block.start_byte(), block.end_byte(), format!("{{{text}}}")),
     }
 }
 
@@ -119,7 +149,7 @@ fn attempt(context: &Context, node: Node) {
             && !(rethrown(context, clause, name) && declares_interruption(context, clause))
             && !context.suppressed(NAME, parameter)
         {
-            context.report(NAME, clause, clause.start_byte(), CAUGHT);
+            context.report_fixed(NAME, clause, clause.start_byte(), CAUGHT, &[restoring(context, clause, name)]);
             return;
         }
     }

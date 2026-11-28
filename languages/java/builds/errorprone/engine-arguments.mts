@@ -13,7 +13,11 @@ const PROJECT_ARG = '--project-arg=';
 const OWN_CLASSES = '--own-classes=';
 const GENERATED_ROOT = '--generated-root=';
 const RELEASE = '--release=';
+const SOURCE = '--source=';
 const PROCESSOR_SERVICE = 'META-INF/services/javax.annotation.processing.Processor';
+const MANIFEST = 'META-INF/MANIFEST.MF';
+const LOMBOK_VERSION = /^Lombok-Version:\s*(\S+)\s*$/mu;
+export const TESTED_LOMBOK = { lowest: '1.18.38', highest: '1.18.48' } as const;
 const JDK_MODULE = /^--(?:add-exports|patch-module)=(?:java|jdk)\./u;
 const PAIRED = ['--add-exports', '--patch-module'];
 
@@ -25,7 +29,7 @@ export function argumentSetOf(text: string): ArgumentSet {
     : { head: lines.slice(0, separator), sources: lines.slice(separator + 1).filter(Boolean) };
 }
 
-function valuesAfter(head: readonly string[], prefix: string): string[] {
+export function valuesAfter(head: readonly string[], prefix: string): string[] {
   return head.filter((line) => line.startsWith(prefix)).map((line) => line.slice(prefix.length));
 }
 
@@ -38,8 +42,17 @@ function optionOf(head: readonly string[], flag: string): string | undefined {
   return at === -1 ? undefined : head[at + 1];
 }
 
+export function encodingOf(head: readonly string[]): string | undefined {
+  return optionOf(head, '-encoding');
+}
+
 export function projectFlags(head: readonly string[]): string[] {
   return valuesAfter(head, PROJECT_FLAG);
+}
+
+/** The project's own compiler arguments, as the build passed them to javac. */
+export function projectArguments(head: readonly string[]): string[] {
+  return valuesAfter(head, PROJECT_ARG);
 }
 
 export function ownClasses(head: readonly string[]): string[] {
@@ -47,11 +60,11 @@ export function ownClasses(head: readonly string[]): string[] {
 }
 
 export function lookupEntries(head: readonly string[]): string[] {
-  return [
-    ...entriesOf(optionOf(head, '--module-path')),
-    ...entriesOf(optionOf(head, '-classpath')),
-    ...ownClasses(head),
-  ];
+  return [...entriesOf(optionOf(head, '-classpath')), ...ownClasses(head)];
+}
+
+export function modulePathEntries(head: readonly string[]): string[] {
+  return entriesOf(optionOf(head, '--module-path'));
 }
 
 export function generatedRoots(head: readonly string[]): string[] {
@@ -69,19 +82,70 @@ export function releaseOf(head: readonly string[]): string | undefined {
   return patchesJdk ? undefined : release;
 }
 
-export function declaresProcessor(entry: string): boolean {
+/** The language level javac reads the sources at when no `--release` reaches the engine: `--release`, else `--source`. */
+export function sourceLevelOf(head: readonly string[]): string | undefined {
+  const [release] = valuesAfter(head, RELEASE);
+  const [source] = valuesAfter(head, SOURCE);
+  return release ?? source;
+}
+
+export function entryHolds(entry: string, name: string): boolean {
   if (!existsSync(entry)) {
     return false;
   }
   if (statSync(entry).isDirectory()) {
-    return existsSync(path.join(entry, PROCESSOR_SERVICE));
+    const base = path.resolve(entry);
+    const full = path.resolve(base, name);
+    if (!full.startsWith(base + path.sep)) {
+      return false;
+    }
+    return existsSync(full);
   }
   const read = readZipOrFailure(entry);
-  return read.kind !== 'zip' || read.zip.names.has(PROCESSOR_SERVICE);
+  return read.kind !== 'zip' || read.zip.names.has(name);
+}
+
+function declaresProcessor(entry: string): boolean {
+  return entryHolds(entry, PROCESSOR_SERVICE);
 }
 
 export function runsProcessors(head: readonly string[]): boolean {
   return entriesOf(optionOf(head, '-processorpath')).some(declaresProcessor);
+}
+
+function lombokVersionIn(entry: string): string | undefined {
+  if (!existsSync(entry) || statSync(entry).isDirectory()) {
+    return undefined;
+  }
+  const read = readZipOrFailure(entry);
+  const manifest = read.kind === 'zip' ? read.zip.text(MANIFEST) : undefined;
+  return LOMBOK_VERSION.exec(manifest ?? '')?.[1];
+}
+
+export function lombokVersions(head: readonly string[]): string[] {
+  return entriesOf(optionOf(head, '-processorpath')).flatMap(
+    (entry) => lombokVersionIn(entry) ?? [],
+  );
+}
+
+function versionParts(version: string): number[] {
+  return version.split(/[.-]/u).map((part) => Number.parseInt(part, 10) || 0);
+}
+
+function compareVersions(left: string, right: string): number {
+  const [a, b] = [versionParts(left), versionParts(right)];
+  const width = Math.max(a.length, b.length);
+  const at = Array.from({ length: width }, (_, index) => index).find(
+    (index) => (a[index] ?? -1) !== (b[index] ?? -1),
+  );
+  return at === undefined ? 0 : (a[at] ?? -1) - (b[at] ?? -1);
+}
+
+export function lombokTested(version: string): boolean {
+  return (
+    compareVersions(version, TESTED_LOMBOK.lowest) >= 0 &&
+    compareVersions(version, TESTED_LOMBOK.highest) <= 0
+  );
 }
 
 function packagesIn(root: string): string[] {

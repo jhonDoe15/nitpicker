@@ -1,0 +1,1 @@
+export function allow(value: string, path: string) { const source = value.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*'); return new RegExp(`^${source}$`).test(path); }

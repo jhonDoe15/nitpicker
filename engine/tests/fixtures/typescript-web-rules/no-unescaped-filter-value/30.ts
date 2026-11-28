@@ -1,0 +1,1 @@
+export const a = (n: string, p: string) => prisma.dataset.findMany({ where: { projectId: p, name: { startsWith: n + " (copy" } } });

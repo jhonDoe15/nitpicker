@@ -1,0 +1,1 @@
+const out = join(tmpdir(), `report-${String(process.pid)}.json`); writeFileSync(out, data);
