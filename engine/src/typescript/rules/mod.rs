@@ -310,27 +310,36 @@ fn lint_file(path: &str, display: &str, settings: &[String], (selected, rules, v
     {
         return unparsed(display, "!types");
     }
-    super::with_parsed(path, &text, |file| {
-        if file.panicked || !file.errors.is_empty() {
-            return unparsed(display, "!parse");
-        }
-        let built = SemanticBuilder::new().with_build_nodes(true).with_check_syntax_error(true).build(file.program);
-        if support::early_errors::refused(&built) {
-            return unparsed(display, "!parse");
-        }
-        let semantic = built.semantic;
-        let view = view.then(|| support::view::View::of(file.program.to_estree_json(true, true)));
-        let scopes = view.as_ref().map(|view| support::scope::Scopes::of(&semantic, view));
-        let estree = view.as_ref().zip(scopes.as_ref());
-        let mut context = Context { file, semantic: &semantic, estree, selected, settings, types, display, scope: Default::default(), findings: Vec::new() };
-        for rule in rules {
-            rule(&mut context);
-        }
-        if types.is_some_and(|types| types.borrow().refused.is_some()) {
-            return unparsed(display, "!types");
-        }
-        context.findings
-    })
+    let lint = |file: &super::ParsedFile| lint_parsed(file, display, settings, (selected, rules, view), types);
+    match super::with_parsed(path, &text, lint) {
+        Some(findings) => findings,
+        None => super::with_parsed_module(path, &text, lint).unwrap_or_else(|| unparsed(display, "!parse")),
+    }
+}
+
+/// The findings on a parsed file, or none when the file is to be parsed again as a module.
+fn lint_parsed(file: &super::ParsedFile, display: &str, settings: &[String], (selected, rules, view): (&[&'static str], &[Rule], bool), types: Option<&std::cell::RefCell<typed::types::Types>>) -> Option<Vec<Reported>> {
+    match support::early_errors::parsed(file) {
+        support::early_errors::Verdict::Refused => return Some(unparsed(display, "!parse")),
+        support::early_errors::Verdict::Module => return None,
+        support::early_errors::Verdict::Linted => {}
+    }
+    let built = SemanticBuilder::new().with_build_nodes(true).with_check_syntax_error(true).build(file.program);
+    if support::early_errors::refused(&built) {
+        return Some(unparsed(display, "!parse"));
+    }
+    let semantic = built.semantic;
+    let view = view.then(|| support::view::View::of(file.program.to_estree_json(true, true)));
+    let scopes = view.as_ref().map(|view| support::scope::Scopes::of(&semantic, view));
+    let estree = view.as_ref().zip(scopes.as_ref());
+    let mut context = Context { file, semantic: &semantic, estree, selected, settings, types, display, scope: Default::default(), findings: Vec::new() };
+    for rule in rules {
+        rule(&mut context);
+    }
+    if types.is_some_and(|types| types.borrow().refused.is_some()) {
+        return Some(unparsed(display, "!types"));
+    }
+    Some(context.findings)
 }
 
 /// A file to lint: the path to read, the path to report, and settings for this file alone.
@@ -340,13 +349,17 @@ pub struct Listed {
     pub settings: Vec<String>,
 }
 
+/// The stack of the threads that lint. `typescript-lint` runs on a thread of this size too, for the typed rules.
+pub const STACK: usize = 512 << 20;
+
 /// Lints every file with the untyped rules, in parallel, then with the typed ones against `types`, one file after
 /// another. Without `types` the typed rules are left to the caller.
 pub fn lint_files(files: &[Listed], rules: &Selection, types: Option<typed::types::Types>) -> Vec<Reported> {
-    let mut findings: Vec<Reported> = files
-        .par_iter()
-        .flat_map_iter(|file| lint_file(&file.path, &file.display, &file.settings, (&rules.names, &rules.rules, rules.view), None))
-        .collect();
+    // Deeply nested files make the parser, the ESTree view and the rule walks recurse once per level, so the workers
+    // get a large stack. Only the part that is used takes memory.
+    let pool = rayon::ThreadPoolBuilder::new().stack_size(STACK).build().expect("threads");
+    let untyped = (&rules.names[..], &rules.rules[..], rules.view);
+    let mut findings: Vec<Reported> = pool.install(|| files.par_iter().flat_map_iter(|file| lint_file(&file.path, &file.display, &file.settings, untyped, None)).collect());
     match types {
         Some(types) if rules.has_typed() => {
             let types = std::cell::RefCell::new(types);
