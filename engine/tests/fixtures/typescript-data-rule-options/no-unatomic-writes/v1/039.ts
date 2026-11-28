@@ -1,0 +1,1 @@
+async function run(o) { await Order.create(o); await Item.destroy({ where: {} }); }

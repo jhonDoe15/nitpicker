@@ -1,0 +1,1 @@
+class S { async run(o) { await this.repo.manager.save(Order, o); await this.repo.manager.save(Item, o.items); } }

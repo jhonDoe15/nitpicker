@@ -1,0 +1,1 @@
+const users = new Map(); await dataSource.transaction(async (manager) => { const saved = await manager.save(user); users.set(saved.id, saved); });

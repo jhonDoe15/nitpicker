@@ -1,0 +1,1 @@
+class S { async rename(id, dto) { const user = await this.prisma.user.findUnique({ where: { id } }); if (!user) throw new NotFoundException(); return this.prisma.user.update({ where: { id }, data: dto }); } }

@@ -58,7 +58,7 @@ fn check(context: &mut Context, kind: ScopeKind) {
         if types.refused.is_some() {
             break;
         }
-        let Some(scope) = held_scope(&mut types, &mut held, kind, node, view.program()) else { continue };
+        let Some(scope) = held_scope(Some(&mut types), &mut held, kind, node, view.program()) else { continue };
         let Some(path) = remote_path(&mut types, &mut state, node) else { continue };
         let skipped = if kind == ScopeKind::Transaction { !proves_connection(&mut types, &mut state, &scope) } else { is_fill_once(source, node, scope.root) };
         if skipped {

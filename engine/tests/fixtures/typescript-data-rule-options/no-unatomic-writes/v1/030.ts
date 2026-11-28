@@ -1,0 +1,1 @@
+class S { run(o) { this.orderRepository.save(o); this.itemRepository.save(o); } }

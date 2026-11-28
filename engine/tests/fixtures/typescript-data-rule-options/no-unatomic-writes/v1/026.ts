@@ -1,0 +1,1 @@
+class S { @Transactional() async run(o) { await this.orderRepository.save(o); await this.itemRepository.save(o); } }

@@ -1,0 +1,1 @@
+async function run(o) { await db.insert(orders).values(o); await db.delete(items).where(eq(items.id, o.id)); }

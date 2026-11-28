@@ -1,0 +1,1 @@
+class S { async run(o) { await this.cache.set("k", o); await this.orderRepository.save(o); } }

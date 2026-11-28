@@ -1,5 +1,131 @@
 [
  [
+  "no-cache-write-in-transaction/016.ts",
+  "nitpicker/no-cache-write-in-transaction",
+  3,
+  81,
+  "This writes the cache with `store.set()` inside the transaction opened by `prisma.$transaction()`: a rollback undoes the database change but not the cache write, so other requests and nodes keep reading a value or an eviction that never happened until it expires. Move the cache write after the transaction commits: after `await prisma.$transaction()` returns (a TypeORM `afterTransactionCommit` subscriber also runs after the commit).",
+  3,
+  98
+ ],
+ [
+  "no-cache-write-in-transaction/017.ts",
+  "nitpicker/no-cache-write-in-transaction",
+  3,
+  81,
+  "This writes the cache with `redis.set()` inside the transaction opened by `prisma.$transaction()`: a rollback undoes the database change but not the cache write, so other requests and nodes keep reading a value or an eviction that never happened until it expires. Move the cache write after the transaction commits: after `await prisma.$transaction()` returns (a TypeORM `afterTransactionCommit` subscriber also runs after the commit).",
+  3,
+  98
+ ],
+ [
+  "no-cache-write-in-transaction/018.ts",
+  "nitpicker/no-cache-write-in-transaction",
+  3,
+  81,
+  "This writes the cache with `redis.del()` inside the transaction opened by `prisma.$transaction()`: a rollback undoes the database change but not the cache write, so other requests and nodes keep reading a value or an eviction that never happened until it expires. Move the cache write after the transaction commits: after `await prisma.$transaction()` returns (a TypeORM `afterTransactionCommit` subscriber also runs after the commit).",
+  3,
+  95
+ ],
+ [
+  "no-cache-write-in-transaction/019.ts",
+  "nitpicker/no-cache-write-in-transaction",
+  3,
+  81,
+  "This writes the cache with `store.del()` inside the transaction opened by `prisma.$transaction()`: a rollback undoes the database change but not the cache write, so other requests and nodes keep reading a value or an eviction that never happened until it expires. Move the cache write after the transaction commits: after `await prisma.$transaction()` returns (a TypeORM `afterTransactionCommit` subscriber also runs after the commit).",
+  3,
+  95
+ ],
+ [
+  "no-cache-write-in-transaction/020.ts",
+  "nitpicker/no-cache-write-in-transaction",
+  1,
+  81,
+  "This writes the cache with `this.cacheManager.set()` inside the transaction opened by `prisma.$transaction()`: a rollback undoes the database change but not the cache write, so other requests and nodes keep reading a value or an eviction that never happened until it expires. Move the cache write after the transaction commits: after `await prisma.$transaction()` returns (a TypeORM `afterTransactionCommit` subscriber also runs after the commit).",
+  1,
+  110
+ ],
+ [
+  "no-cache-write-in-transaction/021.ts",
+  "nitpicker/no-cache-write-in-transaction",
+  1,
+  83,
+  "This writes the cache with `this.redis.setex()` inside the transaction opened by `dataSource.transaction()`: a rollback undoes the database change but not the cache write, so other requests and nodes keep reading a value or an eviction that never happened until it expires. Move the cache write after the transaction commits: after `await dataSource.transaction()` returns (a TypeORM `afterTransactionCommit` subscriber also runs after the commit).",
+  1,
+  111
+ ],
+ [
+  "no-cache-write-in-transaction/022.ts",
+  "nitpicker/no-cache-write-in-transaction",
+  1,
+  96,
+  "This writes the cache with `this.cache.del()` inside the transaction opened by `this.dataSource.manager.transaction()`: a rollback undoes the database change but not the cache write, so other requests and nodes keep reading a value or an eviction that never happened until it expires. Move the cache write after the transaction commits: after `await this.dataSource.manager.transaction()` returns (a TypeORM `afterTransactionCommit` subscriber also runs after the commit).",
+  1,
+  115
+ ],
+ [
+  "no-cache-write-in-transaction/023.ts",
+  "nitpicker/no-cache-write-in-transaction",
+  2,
+  102,
+  "This writes the cache with `redis.hset()` inside the transaction opened by `db.transaction().execute()`: a rollback undoes the database change but not the cache write, so other requests and nodes keep reading a value or an eviction that never happened until it expires. Move the cache write after the transaction commits: after `await db.transaction().execute()` returns (a TypeORM `afterTransactionCommit` subscriber also runs after the commit).",
+  2,
+  125
+ ],
+ [
+  "no-cache-write-in-transaction/024.ts",
+  "nitpicker/no-cache-write-in-transaction",
+  3,
+  120,
+  "This writes the cache with `redis.expire()` inside the transaction opened by `runner.startTransaction()`: a rollback undoes the database change but not the cache write, so other requests and nodes keep reading a value or an eviction that never happened until it expires. Move the cache write after the transaction commits: after `await runner.startTransaction()` returns (a TypeORM `afterTransactionCommit` subscriber also runs after the commit).",
+  3,
+  140
+ ],
+ [
+  "no-cache-write-in-transaction/026.ts",
+  "nitpicker/no-cache-write-in-transaction",
+  1,
+  147,
+  "This stores a value written by `tx.user.create()` in the in-memory `this.cache.set()` inside the transaction opened by `prisma.$transaction()`: a rollback undoes the database change but not the cache write, so the map keeps a row or generated id that was never committed. Fill the map after the transaction commits (after `await prisma.$transaction()` returns) from the returned value.",
+  1,
+  176
+ ],
+ [
+  "no-cache-write-in-transaction/027.ts",
+  "nitpicker/no-cache-write-in-transaction",
+  1,
+  116,
+  "This stores a value written by `manager.save()` in the in-memory `users.set()` inside the transaction opened by `dataSource.transaction()`: a rollback undoes the database change but not the cache write, so the map keeps a row or generated id that was never committed. Fill the map after the transaction commits (after `await dataSource.transaction()` returns) from the returned value.",
+  1,
+  142
+ ],
+ [
+  "no-cache-write-in-transaction/028.ts",
+  "nitpicker/no-cache-write-in-transaction",
+  1,
+  163,
+  "This stores a value written by `trx.insertInto().values().returningAll().executeTakeFirstOrThrow()` in the in-memory `byId.set()` inside the transaction opened by `db.transaction().execute()`: a rollback undoes the database change but not the cache write, so the map keeps a row or generated id that was never committed. Fill the map after the transaction commits (after `await db.transaction().execute()` returns) from the returned value.",
+  1,
+  184
+ ],
+ [
+  "no-cache-write-in-transaction/030.ts",
+  "nitpicker/no-cache-write-in-transaction",
+  3,
+  3,
+  "This writes the cache with `cache.set()` inside the transaction opened by `db.query()`: a rollback undoes the database change but not the cache write, so other requests and nodes keep reading a value or an eviction that never happened until it expires. Move the cache write after the transaction commits: after `await db.query()` returns (a TypeORM `afterTransactionCommit` subscriber also runs after the commit).",
+  3,
+  18
+ ],
+ [
+  "no-cache-write-in-transaction/031.ts",
+  "nitpicker/no-cache-write-in-transaction",
+  8,
+  3,
+  "This writes the cache with `cache.set()` inside the transaction opened by `db.query()`: a rollback undoes the database change but not the cache write, so other requests and nodes keep reading a value or an eviction that never happened until it expires. Move the cache write after the transaction commits: after `await db.query()` returns (a TypeORM `afterTransactionCommit` subscriber also runs after the commit).",
+  8,
+  18
+ ],
+ [
   "no-eager-relation/17.ts",
   "nitpicker/no-eager-relation",
   3,

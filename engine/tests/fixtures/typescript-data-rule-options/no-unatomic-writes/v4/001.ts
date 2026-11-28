@@ -1,0 +1,1 @@
+class S { async run(o) { await this.dataSource.transaction(async (manager) => { const repo = this.orderRepository; await repo.save(o); }); } }

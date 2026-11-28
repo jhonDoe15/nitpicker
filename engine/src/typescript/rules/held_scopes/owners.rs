@@ -59,8 +59,9 @@ fn typed_lock(scopes: &Scopes, origin: &CalleeOrigin, opener: &Opener) -> bool {
     }
 }
 
-pub fn is_owned(types: &mut Types, scopes: &Scopes, kind: ScopeKind, opener: &Opener) -> bool {
-    let origin = compiler_call(types, opener.call).and_then(|call| callee_origin(types, &call));
+/// Without types (`services === undefined`) every transaction opener is owned and locks go by name.
+pub fn is_owned(types: Option<&mut Types>, scopes: &Scopes, kind: ScopeKind, opener: &Opener) -> bool {
+    let origin = types.and_then(|types| compiler_call(types, opener.call).and_then(|call| callee_origin(types, &call)));
     match (kind, origin) {
         (ScopeKind::Transaction, None) => true,
         (ScopeKind::Transaction, Some(origin)) => {

@@ -1,0 +1,1 @@
+class S { async run(o) { await this.dataSource.transaction(async (manager) => { await manager.save(Order, o); await this.roleRepository.save(o.role); }); } }

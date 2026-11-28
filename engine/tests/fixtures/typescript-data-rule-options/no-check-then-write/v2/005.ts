@@ -1,0 +1,1 @@
+class S { async add(o) { const row = await this.projectRepository.findOne({ where: { id: o.id } }); if (row) { await this.itemRepository.save(o); } } }

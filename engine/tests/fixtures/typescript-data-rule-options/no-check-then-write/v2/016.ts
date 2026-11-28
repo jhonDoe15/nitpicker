@@ -1,0 +1,1 @@
+async function add(o) { if ((await knex("projects").count()) > 3) { return; } await knex("projects").insert(o); }

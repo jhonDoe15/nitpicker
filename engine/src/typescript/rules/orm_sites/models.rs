@@ -68,22 +68,22 @@ fn prisma(chain: &CallChain, method: &ChainStep, kind: OrmKind, orms: &[String])
     let is_model = model.is_none_or(|model| model.args.is_none()) && model_name.is_some_and(|name| !name.starts_with('$'));
     let matches = has(orms, "prisma") && step_in(methods_of("prisma", kind), Some(method));
     let found = matches && method.args.is_some() && is_model && is_client_name(client) && !model_name.is_some_and(starts_upper);
-    found.then(|| OrmSite { table: table_key(model_name) })
+    found.then(|| OrmSite { orm: "prisma", table: table_key(model_name) })
 }
 
 fn repository(chain: &CallChain, method: &ChainStep, kind: OrmKind, orms: &[String]) -> Option<OrmSite> {
     let receiver = receiver_of(chain);
-    ["typeorm", "mikro"].into_iter().find(|each| has(orms, each) && step_in(methods_of(each, kind), Some(method)))?;
+    let orm = ["typeorm", "mikro"].into_iter().find(|each| has(orms, each) && step_in(methods_of(each, kind), Some(method)))?;
     let (Some(args), Some(name)) = (method.args.as_ref(), receiver.name) else { return None };
     if let Some(receiver_args) = receiver.args {
-        return REPOSITORY_GETTERS.contains(&name).then(|| OrmSite { table: argument_table(receiver_args.first().copied()) });
+        return REPOSITORY_GETTERS.contains(&name).then(|| OrmSite { orm, table: argument_table(receiver_args.first().copied()) });
     }
     let words = words_of(name);
     let last = words.last().map(String::as_str)?;
     if REPOSITORY_WORDS.contains(&last) {
-        return Some(OrmSite { table: table_key(Some(name)) });
+        return Some(OrmSite { orm, table: table_key(Some(name)) });
     }
-    MANAGER_WORDS.contains(&last).then(|| OrmSite { table: argument_table(args.first().copied()) })
+    MANAGER_WORDS.contains(&last).then(|| OrmSite { orm, table: argument_table(args.first().copied()) })
 }
 
 fn sequelize(chain: &CallChain, method: &ChainStep, kind: OrmKind, orms: &[String]) -> Option<OrmSite> {
@@ -91,7 +91,7 @@ fn sequelize(chain: &CallChain, method: &ChainStep, kind: OrmKind, orms: &[Strin
     let name = receiver.name.unwrap_or_default();
     let is_model = (starts_upper(name) && !GLOBAL_OBJECTS.contains(&name)) || name.ends_with("Model");
     let matches = has(orms, "sequelize") && step_in(methods_of("sequelize", kind), Some(method));
-    (matches && method.args.is_some() && receiver.args.is_none() && is_model).then(|| OrmSite { table: table_key(Some(name)) })
+    (matches && method.args.is_some() && receiver.args.is_none() && is_model).then(|| OrmSite { orm: "sequelize", table: table_key(Some(name)) })
 }
 
 /// `modelSite`.

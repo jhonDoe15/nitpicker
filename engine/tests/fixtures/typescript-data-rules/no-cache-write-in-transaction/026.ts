@@ -1,0 +1,1 @@
+class Users { private cache = new Map(); async add(data) { await prisma.$transaction(async (tx) => { const user = await tx.user.create({ data }); this.cache.set(user.id, user); }); } }

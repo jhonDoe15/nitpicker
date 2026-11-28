@@ -1,0 +1,1 @@
+class S { async run(o) { await this.em.nativeInsert(Order, o); await this.em.nativeDelete(Item, {}); } }

@@ -1,0 +1,1 @@
+class S { async run(o) { await this.em.transactional(async (em) => { await this.orderRepository.nativeInsert(o); }); } }

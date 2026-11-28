@@ -1,0 +1,1 @@
+await dataSource.transaction(async (manager) => { await manager.save(user); await this.redis.setex('u', 60, 1); });

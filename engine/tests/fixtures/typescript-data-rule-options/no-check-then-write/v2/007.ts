@@ -1,0 +1,1 @@
+class S { async add(o) { const n = await this.prisma.project.count(); if (n >= 3) { return; } await this.prisma.$transaction(async (tx) => { await tx.project.create({ data: o }); }); } }

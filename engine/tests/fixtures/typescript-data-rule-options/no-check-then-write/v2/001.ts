@@ -1,0 +1,1 @@
+class S { async add(o) { const n = await this.projectRepository.count({ lock: { mode: "pessimistic_write" } }); if (n >= 3) throw new Error("limit"); await this.projectRepository.insert(o); } }

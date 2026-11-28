@@ -1,0 +1,1 @@
+await prisma.$transaction(async (tx) => { await tx.user.create({ data }); const cacheKey = new URLSearchParams(); cacheKey.set('a', 'b'); });

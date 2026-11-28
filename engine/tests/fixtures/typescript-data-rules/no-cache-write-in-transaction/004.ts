@@ -1,0 +1,1 @@
+await prisma.$transaction(async (tx) => { await tx.user.create({ data }); cachedHeaders.set('a', 'b'); cacheConfig.reset(); form.cacheBuster.set(1); });

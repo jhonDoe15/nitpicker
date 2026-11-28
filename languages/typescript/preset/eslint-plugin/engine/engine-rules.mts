@@ -95,8 +95,10 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-assertion-in-loop', { facts: jsonFacts('assertionFunctionNames') }],
   ['no-blank-number-coercion', TYPED],
   ['no-btoa-on-runtime-text', {}],
+  ['no-cache-write-in-transaction', {}],
   ['no-case-mixed-header-merge', {}],
   ['no-case-sensitive-path-compare', {}],
+  ['no-check-then-write', { facts: jsonFacts('orms', 'opensTransactions') }],
   ['no-chunkwise-stream-text', TYPED],
   [
     'no-copied-constant',
@@ -218,6 +220,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
       }),
     },
   ],
+  ['no-unatomic-writes', { facts: jsonFacts('orms', 'opensTransactions') }],
   ['no-unbounded-query-array', {}],
   ['no-unordered-query', {}],
   ['no-unowned-async-assertion', {}],

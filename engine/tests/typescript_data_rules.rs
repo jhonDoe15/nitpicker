@@ -7,8 +7,9 @@ use std::process::Command;
 
 type Row = Vec<serde_json::Value>;
 
-const OPTION_RULES: [&str; 1] = ["no-unfiltered-soft-delete-read"];
-const RULES: [&str; 8] = [
+const OPTION_RULES: [&str; 3] = ["no-check-then-write", "no-unatomic-writes", "no-unfiltered-soft-delete-read"];
+const RULES: [&str; 9] = [
+    "no-cache-write-in-transaction",
     "no-eager-relation",
     "no-in-memory-query",
     "no-many-to-many-cascade-remove",

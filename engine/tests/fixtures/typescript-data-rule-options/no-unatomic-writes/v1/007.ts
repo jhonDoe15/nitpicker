@@ -1,0 +1,1 @@
+async function run(sequelize, o) { await sequelize.transaction(async (t) => { await Order.create(o, { transaction: t }); await Item.update(o, { where: {}, transaction: t }); }); }

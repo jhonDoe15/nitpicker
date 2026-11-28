@@ -1,0 +1,1 @@
+class S { async run(o) { await Promise.all([this.orderRepository.save(o), this.itemRepository.save(o)]); } }

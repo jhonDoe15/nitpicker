@@ -1,0 +1,1 @@
+class S { async run(o) { await this.orderRepository.createQueryBuilder().insert().into(Order).values(o).execute(); await this.itemRepository.save(o); } }

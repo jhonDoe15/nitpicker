@@ -1,0 +1,1 @@
+class S { async run(o, manager) { await manager.save(Order, o); await manager.save(Item, o); } }

@@ -1,0 +1,1 @@
+class S { async run(o) { await this.prisma.$transaction(async (tx) => { await this.prisma.order.create({ data: o }); }); } }
