@@ -1,0 +1,1 @@
+class S { async run(o) { if (o.a) { await this.orderRepository.save(o); return; } await this.itemRepository.save(o); } }

@@ -1,0 +1,1 @@
+async function run(db, o) { await db.insert(orders).values(o); await db.insert(orders).values(o); }

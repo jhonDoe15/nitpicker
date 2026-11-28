@@ -1,0 +1,1 @@
+class Users { private cache = new Map(); async add(data) { await this.cache.set("x", data); await prisma.$transaction(async (tx) => { const rows = await tx.user.findMany(); this.cache.set("all", rows); }); } }

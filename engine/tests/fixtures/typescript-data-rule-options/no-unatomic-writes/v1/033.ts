@@ -1,0 +1,1 @@
+class S { async run(o) { const em = this.orm.em.fork(); await em.begin(); await em.persistAndFlush(o); await em.nativeInsert(Item, o); await em.commit(); } }

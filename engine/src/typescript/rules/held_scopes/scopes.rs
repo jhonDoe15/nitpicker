@@ -6,6 +6,7 @@ use super::owners::{Opener, is_owned};
 use crate::typescript::rules::support::scope::Scopes;
 use crate::typescript::rules::support::view::Node;
 use crate::typescript::rules::typed::types::Types;
+use crate::typescript::rules::queries::js_patterns::{Folded, js_pattern};
 use regex::Regex;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -49,14 +50,20 @@ impl<'a, 'v> Held<'a, 'v> {
 
 pub struct HeldScope<'v> {
     pub opener: Node<'v>,
+    /// The callback's first parameter, or the root of the call that begins the range.
+    pub param: Option<Node<'v>>,
     pub calls: Vec<Node<'v>>,
     pub root: Node<'v>,
 }
 
-const SPACE: &str = r"[\t\n\x0B\x0C\r\p{Z}\x{FEFF}]";
 const SQL_METHODS: [&str; 5] = ["query", "execute", "exec", "raw", "run"];
-static BEGIN_TEXT: LazyLock<Regex> = LazyLock::new(|| Regex::new(&format!(r"(?i)^{SPACE}*(?:BEGIN|START{SPACE}+TRANSACTION)(?-u:\b)")).unwrap());
-static END_TEXT: LazyLock<Regex> = LazyLock::new(|| Regex::new(&format!(r"(?i)^{SPACE}*(?:COMMIT|ROLLBACK)(?-u:\b)")).unwrap());
+static BEGIN_TEXT: LazyLock<Regex> = LazyLock::new(|| js_pattern(r"^\s*(?:BEGIN|START\s+TRANSACTION)\b", true));
+static END_TEXT: LazyLock<Regex> = LazyLock::new(|| js_pattern(r"^\s*(?:COMMIT|ROLLBACK)\b", true));
+
+/// An `iu` pattern tested the way JavaScript does: U+017F and U+212A are word characters.
+fn is_js_match(pattern: &Regex, text: &str) -> bool {
+    pattern.is_match(&Folded::of(text).text)
+}
 
 impl ScopeKind {
     pub fn callbacks(self) -> &'static [&'static str] {
@@ -100,7 +107,7 @@ fn statement_text(kind: ScopeKind, call: Node) -> String {
     }
 }
 
-fn marker_role(types: &mut Types, scopes: &Scopes, kind: ScopeKind, call: Node) -> Option<Role> {
+fn marker_role(types: Option<&mut Types>, scopes: &Scopes, kind: ScopeKind, call: Node) -> Option<Role> {
     if !call.is("CallExpression") || call.nodes("arguments").into_iter().any(is_function) {
         return None;
     }
@@ -111,10 +118,10 @@ fn marker_role(types: &mut Types, scopes: &Scopes, kind: ScopeKind, call: Node) 
     }
     let view = call_view(call)?;
     let text = statement_text(kind, call);
-    if has(kind.ends(), view.method.as_deref()) || END_TEXT.is_match(&text) {
+    if has(kind.ends(), view.method.as_deref()) || is_js_match(&END_TEXT, &text) {
         return Some(Role::Ends);
     }
-    let begins = has(kind.begins(), view.method.as_deref()) || BEGIN_TEXT.is_match(&text);
+    let begins = has(kind.begins(), view.method.as_deref()) || is_js_match(&BEGIN_TEXT, &text);
     (begins && is_owned(types, scopes, kind, &Opener { call, view: &view, callbacks: false })).then_some(Role::Begins)
 }
 
@@ -190,7 +197,7 @@ fn ends_after(markers: &[Marker], marker: &Marker, node: Node) -> bool {
     !construct.is("CatchClause") && construct.end() <= node.start() && alternatives(construct).into_iter().all(|part| ends_alternative(markers, part))
 }
 
-pub fn body_index<'v>(types: &mut Types, held: &mut Held<'_, 'v>, kind: ScopeKind, body: Node<'v>) -> Rc<BodyIndex<'v>> {
+pub fn body_index<'v>(mut types: Option<&mut Types>, held: &mut Held<'_, 'v>, kind: ScopeKind, body: Node<'v>) -> Rc<BodyIndex<'v>> {
     let key = (body.start(), body.end(), kind == ScopeKind::Lock);
     if let Some(known) = held.bodies.get(&key) {
         return Rc::clone(known);
@@ -198,7 +205,7 @@ pub fn body_index<'v>(types: &mut Types, held: &mut Held<'_, 'v>, kind: ScopeKin
     let calls = calls_within(body);
     let mut markers = Vec::new();
     for call in &calls {
-        if let Some(role) = marker_role(types, held.scopes, kind, *call) {
+        if let Some(role) = marker_role(types.as_deref_mut(), held.scopes, kind, *call) {
             markers.push(Marker { call: *call, role, branch: branch_of(*call, body) });
         }
     }
@@ -207,7 +214,7 @@ pub fn body_index<'v>(types: &mut Types, held: &mut Held<'_, 'v>, kind: ScopeKin
     index
 }
 
-fn range_scope<'v>(types: &mut Types, held: &mut Held<'_, 'v>, kind: ScopeKind, body: Node<'v>, node: Node) -> Option<HeldScope<'v>> {
+fn range_scope<'v>(types: Option<&mut Types>, held: &mut Held<'_, 'v>, kind: ScopeKind, body: Node<'v>, node: Node) -> Option<HeldScope<'v>> {
     let index = body_index(types, held, kind, body);
     let markers = &index.markers;
     let last = markers
@@ -221,10 +228,11 @@ fn range_scope<'v>(types: &mut Types, held: &mut Held<'_, 'v>, kind: ScopeKind, 
     let begin = last.call;
     let end = markers.iter().find(|marker| marker.role == Role::Ends && marker.call.start() >= begin.end() && closes(marker, begin)).map(|marker| marker.call);
     let calls = index.calls.iter().copied().filter(|call| call.start() >= begin.end() && end.is_none_or(|end| call.end() <= end.start())).collect();
-    Some(HeldScope { opener: begin, calls, root: body })
+    let param = call_view(begin).and_then(|view| view.root);
+    Some(HeldScope { opener: begin, param, calls, root: body })
 }
 
-fn is_callback_opener(types: &mut Types, scopes: &Scopes, kind: ScopeKind, function: Node) -> bool {
+fn is_callback_opener(types: Option<&mut Types>, scopes: &Scopes, kind: ScopeKind, function: Node) -> bool {
     let Some(call) = function.parent().filter(|call| call.is("CallExpression")) else { return false };
     if !(call.nodes("arguments").contains(&function) && has(kind.callbacks(), callee_method(call).as_deref())) {
         return false;
@@ -233,11 +241,12 @@ fn is_callback_opener(types: &mut Types, scopes: &Scopes, kind: ScopeKind, funct
     is_owned(types, scopes, kind, &Opener { call, view: &view, callbacks: true })
 }
 
-fn callback_scope<'v>(types: &mut Types, scopes: &Scopes, kind: ScopeKind, node: Node<'v>) -> Option<HeldScope<'v>> {
+fn callback_scope<'v>(mut types: Option<&mut Types>, scopes: &Scopes, kind: ScopeKind, node: Node<'v>) -> Option<HeldScope<'v>> {
     for function in node.ancestors().filter(|ancestor| is_function(*ancestor)) {
-        if is_callback_opener(types, scopes, kind, function) {
+        if is_callback_opener(types.as_deref_mut(), scopes, kind, function) {
             let body = function.node("body")?;
-            return Some(HeldScope { opener: function.parent()?, calls: calls_within(body), root: body });
+            let param = function.nodes("params").first().copied();
+            return Some(HeldScope { opener: function.parent()?, param, calls: calls_within(body), root: body });
         }
         if !runs_with_caller(function) {
             return None;
@@ -247,8 +256,8 @@ fn callback_scope<'v>(types: &mut Types, scopes: &Scopes, kind: ScopeKind, node:
 }
 
 /// `heldScope`.
-pub fn held_scope<'v>(types: &mut Types, held: &mut Held<'_, 'v>, kind: ScopeKind, node: Node<'v>, program: Node<'v>) -> Option<HeldScope<'v>> {
-    if let Some(callback) = callback_scope(types, held.scopes, kind, node) {
+pub fn held_scope<'v>(mut types: Option<&mut Types>, held: &mut Held<'_, 'v>, kind: ScopeKind, node: Node<'v>, program: Node<'v>) -> Option<HeldScope<'v>> {
+    if let Some(callback) = callback_scope(types.as_deref_mut(), held.scopes, kind, node) {
         return Some(callback);
     }
     let unit = node.ancestors().filter(|ancestor| is_function(*ancestor)).find(|function| !runs_with_caller(*function));

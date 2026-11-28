@@ -1,0 +1,1 @@
+async function add(o) { const row = await Project.findOne({ where: { id: o.id } }); if (row) { await Project.update({ name: o.name }, { where: { id: o.id } }); } }

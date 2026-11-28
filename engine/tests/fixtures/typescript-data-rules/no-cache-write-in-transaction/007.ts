@@ -1,0 +1,1 @@
+await prisma.$transaction(async (tx) => { await tx.user.create({ data }); logger.set('a', 1); });

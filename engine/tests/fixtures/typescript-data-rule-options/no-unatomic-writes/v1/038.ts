@@ -1,0 +1,1 @@
+async function run(o) { await knex("orders").insert(o); await knex("items").where({ id: 1 }).del(); }

@@ -1,0 +1,1 @@
+class S { async add(o) { const row = await this.prisma.project.findFirst({ where: { name: o.name } }); if (!row) { await this.prisma.project.create({ data: o }); } } }

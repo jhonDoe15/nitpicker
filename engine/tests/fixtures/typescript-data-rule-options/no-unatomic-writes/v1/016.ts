@@ -1,0 +1,1 @@
+async function run(o) { await db.transaction().execute(async (trx) => { await db.insertInto("items").values(o).execute(); }); }

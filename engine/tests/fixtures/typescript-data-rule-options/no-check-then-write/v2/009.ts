@@ -1,0 +1,1 @@
+class S { async rename(id, dto) { const user = await this.userRepository.findOne({ where: { id } }); if (!user) throw new NotFoundException(); user.name = dto.name; return this.userRepository.save(user); } }

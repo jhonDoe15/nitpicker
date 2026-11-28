@@ -1,0 +1,1 @@
+class S { async run(o) { try { await this.orderRepository.save(o); } catch (e) { await this.errorRepository.save(e); } } }

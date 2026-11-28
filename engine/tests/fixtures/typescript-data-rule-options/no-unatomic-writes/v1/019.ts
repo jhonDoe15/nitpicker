@@ -1,0 +1,1 @@
+async function run(sequelize, o) { await sequelize.transaction(async (t) => { await Item.destroy({ where: {} }); }); }

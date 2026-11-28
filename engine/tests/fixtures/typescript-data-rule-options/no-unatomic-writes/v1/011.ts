@@ -1,0 +1,1 @@
+class S { async run(o) { await this.orderRepository.manager.transaction(async (manager) => { await this.orderRepository.save(o, { transaction: manager }); }); } }

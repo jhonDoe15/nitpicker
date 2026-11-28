@@ -1,0 +1,1 @@
+class S { async run(o) { await this.txHost.withTransaction(async () => { await this.orderRepository.save(o); await this.itemRepository.save(o); }); } }

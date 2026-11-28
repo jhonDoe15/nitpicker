@@ -1,0 +1,1 @@
+async function add(o) { const row = await db.selectFrom("projects").selectAll().executeTakeFirst(); if (!row) { await db.insertInto("projects").values(o).execute(); } }

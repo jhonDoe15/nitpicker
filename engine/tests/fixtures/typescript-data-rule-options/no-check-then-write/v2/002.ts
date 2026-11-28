@@ -1,0 +1,1 @@
+class S { async add(o) { await this.dataSource.transaction(async (m) => { const n = await m.count(Project); if (n >= 3) throw new Error("limit"); await m.insert(Project, o); }); } }

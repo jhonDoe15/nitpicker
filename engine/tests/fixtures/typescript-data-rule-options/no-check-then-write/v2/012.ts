@@ -1,0 +1,1 @@
+class S { async remove(id, me) { const post = await this.postRepository.findOneBy({ id }); if (post.ownerId !== me) throw new ForbiddenException(); await this.postRepository.delete(id); } }

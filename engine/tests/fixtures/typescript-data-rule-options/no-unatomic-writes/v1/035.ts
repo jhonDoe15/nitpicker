@@ -1,0 +1,1 @@
+class S { async run(o) { await this.prisma.order.create({ data: o }); await this.prisma.item.deleteMany({}); } }

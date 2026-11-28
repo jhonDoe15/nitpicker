@@ -1,0 +1,1 @@
+async function run(knex, o) { await knex.transaction(async (trx) => { await trx("orders").insert(o); await trx("items").insert(o); }); }

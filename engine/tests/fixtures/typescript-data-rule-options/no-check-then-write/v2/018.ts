@@ -1,0 +1,1 @@
+class S { async register(dto) { const existing = await this.userRepository.findOneBy({ email: dto.email }); if (existing) throw new ConflictException(); return this.userRepository.save(this.userRepository.create(dto)); } }

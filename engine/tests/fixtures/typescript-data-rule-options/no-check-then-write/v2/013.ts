@@ -1,0 +1,1 @@
+class S { async close(id) { const order = await this.orderRepository.findOneByOrFail({ id }); if (order.status !== "open") throw new Error("closed"); order.status = "closed"; await this.orderRepository.save(order); } }

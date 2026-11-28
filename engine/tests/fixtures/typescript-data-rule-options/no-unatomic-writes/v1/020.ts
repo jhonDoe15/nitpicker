@@ -1,0 +1,1 @@
+class S { async run(o) { await this.orderRepository.save(o); await this.orderRepository.update(o.id, o); } }

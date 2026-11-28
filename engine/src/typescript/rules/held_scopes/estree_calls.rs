@@ -38,12 +38,20 @@ fn step<'v>(node: &Node<'v>) -> Step<Node<'v>, Node<'v>> {
     step
 }
 
+/// `TemplateElement.value.raw`: the value is an object without a node type, so `Node::node` skips it.
+fn raw_text(quasi: Node) -> Option<String> {
+    match quasi.get("value") {
+        crate::typescript::rules::support::view::Value::Node(index) => quasi.view.at(index).text("raw").map(|raw| raw.into_owned()),
+        _ => None,
+    }
+}
+
 fn text_of(node: Node) -> Option<String> {
     if node.is("Literal") && matches!(node.get("value"), crate::typescript::rules::support::view::Value::Text(..)) {
         return node.text("value").map(|text| text.into_owned());
     }
     if node.is("TemplateLiteral") {
-        let parts: Vec<String> = node.nodes("quasis").iter().map(|quasi| quasi.node("value").and_then(|value| value.text("raw")).map(|raw| raw.into_owned()).unwrap_or_default()).collect();
+        let parts: Vec<String> = node.nodes("quasis").iter().map(|quasi| raw_text(*quasi).unwrap_or_default()).collect();
         return Some(parts.join("?"));
     }
     None

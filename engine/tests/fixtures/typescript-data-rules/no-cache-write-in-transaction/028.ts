@@ -1,0 +1,1 @@
+const byId = new Map(); await db.transaction().execute(async (trx) => { const row = await trx.insertInto('u').values(v).returningAll().executeTakeFirstOrThrow(); byId.set(row.id, row); });

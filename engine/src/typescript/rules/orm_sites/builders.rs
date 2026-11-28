@@ -54,7 +54,7 @@ fn kysely(chain: &CallChain, kind: OrmKind) -> Option<OrmSite> {
     } else {
         chain.steps.iter().find(|step| step.args.is_some() && step.name.as_deref() == Some("selectFrom"))
     }?;
-    Some(OrmSite { table: table_key(first_string(step.args.as_ref()).as_deref()) })
+    Some(OrmSite { orm: "kysely", table: table_key(first_string(step.args.as_ref()).as_deref()) })
 }
 
 fn drizzle(chain: &CallChain, kind: OrmKind) -> Option<OrmSite> {
@@ -67,17 +67,17 @@ fn drizzle(chain: &CallChain, kind: OrmKind) -> Option<OrmSite> {
     }
     if kind == OrmKind::Write {
         let table = chain.steps[index].args.as_ref().and_then(|args| args.first().copied());
-        return is_table_argument(table).then(|| OrmSite { table: table_of_argument(table) });
+        return is_table_argument(table).then(|| OrmSite { orm: "drizzle", table: table_of_argument(table) });
     }
     let from = chain.steps[index..].iter().find(|step| step.name.as_deref() == Some("from") && args_len(step) > 0)?;
-    Some(OrmSite { table: table_of_argument(from.args.as_ref().and_then(|args| args.first().copied())) })
+    Some(OrmSite { orm: "drizzle", table: table_of_argument(from.args.as_ref().and_then(|args| args.first().copied())) })
 }
 
 fn drizzle_find(chain: &CallChain, _kind: OrmKind) -> Option<OrmSite> {
     let index = chain.steps.iter().position(|step| step.name.as_deref() == Some("query") && step.args.is_none())?;
     let method = chain.steps.get(index + 2);
     let is_find = step_in(&DRIZZLE_FIND, method) && method.is_some_and(|method| method.args.is_some());
-    is_find.then(|| OrmSite { table: table_key(chain.steps.get(index + 1).and_then(|step| step.name.as_deref())) })
+    is_find.then(|| OrmSite { orm: "drizzle", table: table_key(chain.steps.get(index + 1).and_then(|step| step.name.as_deref())) })
 }
 
 fn knex_table(steps: &[ChainStep]) -> Option<String> {
@@ -91,7 +91,7 @@ fn knex(chain: &CallChain, kind: OrmKind) -> Option<OrmSite> {
     let writes = chain.steps.iter().any(|step| step.args.is_some() && step_in(&KNEX_WRITES, Some(step)));
     let table = knex_table(&chain.steps)?;
     let matches = if kind == OrmKind::Write { writes } else { !writes };
-    matches.then_some(OrmSite { table: Some(table) })
+    matches.then_some(OrmSite { orm: "knex", table: Some(table) })
 }
 
 fn builder_owner_table(steps: &[ChainStep], index: usize) -> Option<String> {
@@ -119,10 +119,10 @@ fn query_builder(chain: &CallChain, kind: OrmKind) -> Option<OrmSite> {
     if kind == OrmKind::Read {
         let is_read = last.is_some_and(|last| QUERY_BUILDER_READS.contains(&last)) && write.is_none();
         let table = if is_read { query_builder_table(steps, index, &QUERY_BUILDER_FROM) } else { None }?;
-        return Some(OrmSite { table: Some(table) });
+        return Some(OrmSite { orm: "typeorm", table: Some(table) });
     }
     let executes = last == Some("execute");
-    (write.is_some_and(|write| write > index) && executes).then(|| OrmSite { table: query_builder_table(steps, index, &QUERY_BUILDER_TABLES) })
+    (write.is_some_and(|write| write > index) && executes).then(|| OrmSite { orm: "typeorm", table: query_builder_table(steps, index, &QUERY_BUILDER_TABLES) })
 }
 
 type Recognizer = fn(&CallChain, OrmKind) -> Option<OrmSite>;

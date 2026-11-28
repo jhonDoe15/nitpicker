@@ -33,12 +33,12 @@ impl<'a, 'v> Check<'a, 'v> {
     /// `heldScope('transaction', write.call).closing`.
     fn closing(&mut self, write: Node<'v>) -> Option<Node<'v>> {
         let mut types = self.types.borrow_mut();
-        let scope = held_scope(&mut types, &mut self.held, ScopeKind::Transaction, write, self.program)?;
+        let scope = held_scope(Some(&mut types), &mut self.held, ScopeKind::Transaction, write, self.program)?;
         let callback = scope.opener.nodes("arguments").into_iter().any(|argument| is_function(argument) && argument.node("body") == Some(scope.root));
         if callback {
             return scope.opener.parent().filter(|parent| parent.is("AwaitExpression")).map(|_| scope.opener);
         }
-        let index = body_index(&mut types, &mut self.held, ScopeKind::Transaction, scope.root);
+        let index = body_index(Some(&mut types), &mut self.held, ScopeKind::Transaction, scope.root);
         index.markers.iter().find(|marker| marker.role == Role::Ends && marker.call.start() >= scope.opener.end() && closes(marker, scope.opener)).map(|marker| marker.call)
     }
 

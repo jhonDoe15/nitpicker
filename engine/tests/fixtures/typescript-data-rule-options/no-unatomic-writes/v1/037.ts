@@ -1,0 +1,1 @@
+async function run(o) { await db.insertInto("orders").values(o).execute(); await db.deleteFrom("items").execute(); }

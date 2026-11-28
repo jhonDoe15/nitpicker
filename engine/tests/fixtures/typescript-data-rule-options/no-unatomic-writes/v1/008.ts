@@ -1,0 +1,1 @@
+async function run(sequelize, o) { await sequelize.transaction(async (t) => { await Order.create(o, opts(t)); }); }

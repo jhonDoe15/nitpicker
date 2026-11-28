@@ -15,6 +15,7 @@ pub enum OrmKind {
 }
 
 pub struct OrmSite {
+    pub orm: &'static str,
     pub table: Option<String>,
 }
 

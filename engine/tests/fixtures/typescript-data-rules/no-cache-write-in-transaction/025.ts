@@ -1,0 +1,1 @@
+class Users { private byId; async add(data) { await prisma.$transaction(async (tx) => { const user = await tx.user.create({ data }); this.byId.set(user.id, user); }); } }

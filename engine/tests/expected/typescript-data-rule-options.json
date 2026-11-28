@@ -151,5 +151,230 @@
   "This reads `album` without the soft-delete or visibility filter that most reads of that table apply (`deletedAt`), so trashed or hidden rows can reach the result. Add the filter, or call the project helper that adds it. An exception fits a trash, restore, purge or admin query that reads those rows on purpose.",
   1,
   93
+ ],
+ [
+  "no-unatomic-writes/v1/013.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  117,
+  "This writes through `this.roleRepository.save()` inside the transaction opened by `this.dataSource.transaction()`, so the write runs outside that transaction and is not rolled back with the others. Write through the callback parameter (or pass it down), not a client or repository from outside. An exception fits only when the write must survive a rollback.",
+  1,
+  149
+ ],
+ [
+  "no-unatomic-writes/v1/014.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  115,
+  "This writes through `this.prisma.item.create()` inside the transaction opened by `this.prisma.$transaction()`, so the write runs outside that transaction and is not rolled back with the others. Write through the callback parameter (or pass it down), not a client or repository from outside. An exception fits only when the write must survive a rollback.",
+  1,
+  151
+ ],
+ [
+  "no-unatomic-writes/v1/015.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  103,
+  "This writes through `db.update().set()` inside the transaction opened by `db.transaction()`, so the write runs outside that transaction and is not rolled back with the others. Write through the callback parameter (or pass it down), not a client or repository from outside. An exception fits only when the write must survive a rollback.",
+  1,
+  126
+ ],
+ [
+  "no-unatomic-writes/v1/016.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  79,
+  "This writes through `db.insertInto().values().execute()` inside the transaction opened by `db.transaction().execute()`, so the write runs outside that transaction and is not rolled back with the others. Write through the callback parameter (or pass it down), not a client or repository from outside. An exception fits only when the write must survive a rollback.",
+  1,
+  121
+ ],
+ [
+  "no-unatomic-writes/v1/017.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  71,
+  "This writes through `knex().insert()` inside the transaction opened by `knex.transaction()`, so the write runs outside that transaction and is not rolled back with the others. Write through the callback parameter (or pass it down), not a client or repository from outside. An exception fits only when the write must survive a rollback.",
+  1,
+  94
+ ],
+ [
+  "no-unatomic-writes/v1/018.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  85,
+  "This writes through `Order.create()` inside the transaction opened by `sequelize.transaction()`, so the write runs outside that transaction and is not rolled back with the others. Write through the callback parameter (or pass it down), not a client or repository from outside. An exception fits only when the write must survive a rollback.",
+  1,
+  100
+ ],
+ [
+  "no-unatomic-writes/v1/019.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  85,
+  "This writes through `Item.destroy()` inside the transaction opened by `sequelize.transaction()`, so the write runs outside that transaction and is not rolled back with the others. Write through the callback parameter (or pass it down), not a client or repository from outside. An exception fits only when the write must survive a rollback.",
+  1,
+  112
+ ],
+ [
+  "no-unatomic-writes/v1/034.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  68,
+  "This function awaits writes to `this.orderRepository.save()` and `this.itemRepository.save()` with no transaction, so a crash or a concurrent request between them leaves half-written state. Run the writes in one transaction and pass its manager down, or use one atomic statement (`upsert`, `insert ... on conflict`). An exception fits only when the writes are independent (an audit log, a best-effort cleanup).",
+  1,
+  101
+ ],
+ [
+  "no-unatomic-writes/v1/035.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  77,
+  "This function awaits writes to `this.prisma.order.create()` and `this.prisma.item.deleteMany()` with no transaction, so a crash or a concurrent request between them leaves half-written state. Run the writes in one transaction and pass its manager down, or use one atomic statement (`upsert`, `insert ... on conflict`). An exception fits only when the writes are independent (an audit log, a best-effort cleanup).",
+  1,
+  108
+ ],
+ [
+  "no-unatomic-writes/v1/036.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  66,
+  "This function awaits writes to `db.insert().values()` and `db.delete().where()` with no transaction, so a crash or a concurrent request between them leaves half-written state. Run the writes in one transaction and pass its manager down, or use one atomic statement (`upsert`, `insert ... on conflict`). An exception fits only when the writes are independent (an audit log, a best-effort cleanup).",
+  1,
+  108
+ ],
+ [
+  "no-unatomic-writes/v1/037.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  82,
+  "This function awaits writes to `db.insertInto().values().execute()` and `db.deleteFrom().execute()` with no transaction, so a crash or a concurrent request between them leaves half-written state. Run the writes in one transaction and pass its manager down, or use one atomic statement (`upsert`, `insert ... on conflict`). An exception fits only when the writes are independent (an audit log, a best-effort cleanup).",
+  1,
+  114
+ ],
+ [
+  "no-unatomic-writes/v1/038.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  63,
+  "This function awaits writes to `knex().insert()` and `knex().where().del()` with no transaction, so a crash or a concurrent request between them leaves half-written state. Run the writes in one transaction and pass its manager down, or use one atomic statement (`upsert`, `insert ... on conflict`). An exception fits only when the writes are independent (an audit log, a best-effort cleanup).",
+  1,
+  99
+ ],
+ [
+  "no-unatomic-writes/v1/039.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  54,
+  "This function awaits writes to `Order.create()` and `Item.destroy()` with no transaction, so a crash or a concurrent request between them leaves half-written state. Run the writes in one transaction and pass its manager down, or use one atomic statement (`upsert`, `insert ... on conflict`). An exception fits only when the writes are independent (an audit log, a best-effort cleanup).",
+  1,
+  81
+ ],
+ [
+  "no-unatomic-writes/v1/040.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  70,
+  "This function awaits writes to `this.em.nativeInsert()` and `this.em.nativeDelete()` with no transaction, so a crash or a concurrent request between them leaves half-written state. Run the writes in one transaction and pass its manager down, or use one atomic statement (`upsert`, `insert ... on conflict`). An exception fits only when the writes are independent (an audit log, a best-effort cleanup).",
+  1,
+  100
+ ],
+ [
+  "no-unatomic-writes/v1/041.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  72,
+  "This function awaits writes to `this.repo.manager.save()` and `this.repo.manager.save()` with no transaction, so a crash or a concurrent request between them leaves half-written state. Run the writes in one transaction and pass its manager down, or use one atomic statement (`upsert`, `insert ... on conflict`). An exception fits only when the writes are independent (an audit log, a best-effort cleanup).",
+  1,
+  109
+ ],
+ [
+  "no-unatomic-writes/v1/042.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  122,
+  "This function awaits writes to `this.orderRepository.createQueryBuilder().insert().into().values().execute()` and `this.itemRepository.save()` with no transaction, so a crash or a concurrent request between them leaves half-written state. Run the writes in one transaction and pass its manager down, or use one atomic statement (`upsert`, `insert ... on conflict`). An exception fits only when the writes are independent (an audit log, a best-effort cleanup).",
+  1,
+  149
+ ],
+ [
+  "no-unatomic-writes/v1/043.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  75,
+  "This function awaits writes to `this.orderRepository.save()` and `this.itemRepository.save()` with no transaction, so a crash or a concurrent request between them leaves half-written state. Run the writes in one transaction and pass its manager down, or use one atomic statement (`upsert`, `insert ... on conflict`). An exception fits only when the writes are independent (an audit log, a best-effort cleanup).",
+  1,
+  102
+ ],
+ [
+  "no-unatomic-writes/v1/044.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  145,
+  "This function awaits writes to `this.orderRepository.save()` and `this.itemRepository.save()` with no transaction, so a crash or a concurrent request between them leaves half-written state. Run the writes in one transaction and pass its manager down, or use one atomic statement (`upsert`, `insert ... on conflict`). An exception fits only when the writes are independent (an audit log, a best-effort cleanup).",
+  1,
+  172
+ ],
+ [
+  "no-unatomic-writes/v1/045.ts",
+  "nitpicker/no-unatomic-writes",
+  4,
+  9,
+  "This function awaits writes to `prisma.user.create()` and `prisma.order.create()` with no transaction, so a crash or a concurrent request between them leaves half-written state. Run the writes in one transaction and pass its manager down, or use one atomic statement (`upsert`, `insert ... on conflict`). An exception fits only when the writes are independent (an audit log, a best-effort cleanup).",
+  4,
+  42
+ ],
+ [
+  "no-unatomic-writes/v4/001.ts",
+  "nitpicker/no-unatomic-writes",
+  1,
+  122,
+  "This writes through `repo.save()` inside the transaction opened by `this.dataSource.transaction()`, so the write runs outside that transaction and is not rolled back with the others. Write through the callback parameter (or pass it down), not a client or repository from outside. An exception fits only when the write must survive a rollback.",
+  1,
+  134
+ ],
+ [
+  "no-check-then-write/v2/014.ts",
+  "nitpicker/no-check-then-write",
+  1,
+  118,
+  "This writes after `this.projectRepository.count()` decided it with no transaction or lock, so two concurrent callers can both pass the check (a limit is exceeded, a version is overwritten). Take a row lock inside a transaction (`FOR UPDATE`, a pessimistic lock option), or use an atomic statement (`upsert`, `insert ... on conflict`, `update ... where version = ?`). An exception fits only when a concurrent caller cannot reach this code.",
+  1,
+  150
+ ],
+ [
+  "no-check-then-write/v2/015.ts",
+  "nitpicker/no-check-then-write",
+  1,
+  122,
+  "This writes after `this.prisma.project.findFirst()` decided it with no transaction or lock, so two concurrent callers can both pass the check (a limit is exceeded, a version is overwritten). Take a row lock inside a transaction (`FOR UPDATE`, a pessimistic lock option), or use an atomic statement (`upsert`, `insert ... on conflict`, `update ... where version = ?`). An exception fits only when a concurrent caller cannot reach this code.",
+  1,
+  161
+ ],
+ [
+  "no-check-then-write/v2/016.ts",
+  "nitpicker/no-check-then-write",
+  1,
+  85,
+  "This writes after `knex().count()` decided it with no transaction or lock, so two concurrent callers can both pass the check (a limit is exceeded, a version is overwritten). Take a row lock inside a transaction (`FOR UPDATE`, a pessimistic lock option), or use an atomic statement (`upsert`, `insert ... on conflict`, `update ... where version = ?`). An exception fits only when a concurrent caller cannot reach this code.",
+  1,
+  111
+ ],
+ [
+  "no-check-then-write/v2/017.ts",
+  "nitpicker/no-check-then-write",
+  1,
+  119,
+  "This writes after `db.selectFrom().selectAll().executeTakeFirst()` decided it with no transaction or lock, so two concurrent callers can both pass the check (a limit is exceeded, a version is overwritten). Take a row lock inside a transaction (`FOR UPDATE`, a pessimistic lock option), or use an atomic statement (`upsert`, `insert ... on conflict`, `update ... where version = ?`). An exception fits only when a concurrent caller cannot reach this code.",
+  1,
+  164
+ ],
+ [
+  "no-check-then-write/v2/018.ts",
+  "nitpicker/no-check-then-write",
+  1,
+  161,
+  "This writes after `this.userRepository.findOneBy()` decided it with no transaction or lock, so two concurrent callers can both pass the check (a limit is exceeded, a version is overwritten). Take a row lock inside a transaction (`FOR UPDATE`, a pessimistic lock option), or use an atomic statement (`upsert`, `insert ... on conflict`, `update ... where version = ?`). An exception fits only when a concurrent caller cannot reach this code.",
+  1,
+  218
  ]
 ]
