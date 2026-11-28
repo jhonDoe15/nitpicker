@@ -174,9 +174,74 @@ pub struct CallFacts {
     pub exact: bool,
     pub name: String,
     pub formals: Vec<Type>,
+    /// The written qualifier of a method call.
+    pub object: Option<u32>,
+}
+
+/// Whether the type has a canonical name: no local or anonymous class (`Outer.1Local`, `Outer.1`) inside. PMD's
+/// TypeTestUtil answers false for every type without one.
+fn canonical(kind: &Type) -> bool {
+    let mut kind = kind;
+    while let Type::Array(element) = kind {
+        kind = element;
+    }
+    match kind {
+        Type::Class(name, _) if name.contains('&') => true,
+        Type::Class(name, _) => !name.split('.').any(|part| part.starts_with(|c: char| c.is_ascii_digit())),
+        _ => true,
+    }
 }
 
 impl<'a, 't> Machine<'a, 't> {
+    /// For a method call whose result PMD types with a captured wildcard (`list.get(0)` on a
+    /// `List<? extends Closeable>`): the wildcard, and the declared bound of the receiver's type parameter it fills.
+    pub fn captured_result(&self, call: u32) -> Option<(Type, Type)> {
+        let node = &self.tree.nodes[call as usize];
+        if node.name != "MethodCall" {
+            return None;
+        }
+        let source = node.source?;
+        let resolver = self.resolver.wildcards();
+        let resolved = resolver.resolve_call(source);
+        let variable = resolved.as_ref().and_then(|call| match &call.method.generic_returns {
+            Type::Variable(variable) => Some(variable.clone()),
+            _ => None,
+        });
+        let receiver = source.child_by_field_name("object").and_then(|object| resolver.type_of(object));
+        let wild = |kind: Option<&Type>| kind.filter(|kind| matches!(kind, Type::Bounded(..) | Type::Wildcard)).cloned();
+        let parameter_bound = |owner: &str, at: usize| resolver.index.get(owner).and_then(|info| info.type_parameters.get(at)).map(|(_, bound)| bound.clone());
+        let filled = |found: &Type| match &receiver {
+            Some(Type::Class(name, given)) => given.iter().position(|argument| argument == found).and_then(|at| parameter_bound(name, at)),
+            _ => None,
+        };
+        let declared = || {
+            let (call, variable) = (resolved.as_ref()?, variable.as_ref()?);
+            let at = resolver.index.get(&call.declaring)?.type_parameters.iter().position(|(known, _)| known == variable)?;
+            parameter_bound(&call.declaring, at)
+        };
+        let bound = |found: &Type| filled(found).or_else(declared).unwrap_or_else(|| Type::class("java.lang.Object"));
+        if let Some(found @ (Type::Bounded(..) | Type::Wildcard)) = resolver.type_of(source) {
+            let bound = bound(&found);
+            return Some((found, bound));
+        }
+        let (call, variable, receiver_type @ Type::Class(..)) = (resolved.as_ref()?, variable.as_ref()?, receiver.clone()?) else { return None };
+        let found = match &receiver_type {
+            Type::Class(name, given) if *name == call.declaring => {
+                let at = resolver.index.get(&call.declaring)?.type_parameters.iter().position(|(known, _)| known == variable)?;
+                wild(given.get(at))
+            }
+            _ => wild(resolver.index.member_map(&receiver_type, &call.declaring).get(variable)),
+        }?;
+        let bound = bound(&found);
+        Some((found, bound))
+    }
+
+    /// Whether PMD types the node with a type variable or a captured wildcard, which the engine types with its bound:
+    /// PMD then tests the bound, whatever its name.
+    fn bound_typed(&self, id: u32) -> bool {
+        self.names_variable(id) || self.captured_result(id).is_some()
+    }
+
     /// The class PMD makes up for a class type it cannot resolve: the written name, without type arguments.
     fn unresolved_class(&self, id: u32) -> Option<Type> {
         let node = &self.tree.nodes[id as usize];
@@ -378,7 +443,7 @@ impl<'a, 't> Machine<'a, 't> {
             // A type variable is exactly no class, not even the class it erases to.
             return !matches!(kind, Type::Null | Type::Variable(_) | Type::Wildcard) && kind.erased().name() == name && !self.names_variable(*id);
         }
-        self.kind_is(&kind, name)
+        (canonical(&kind) || self.bound_typed(*id)) && self.kind_is(&kind, name)
     }
 
     /// Whether the node has the type of a type variable, alone or as the element of an array. The engine types such a
@@ -445,6 +510,7 @@ impl<'a, 't> Machine<'a, 't> {
         };
         let name = if created { "new" } else { source.field("name").map(|name| self.file.text_of(name)).unwrap_or_default() };
         let (call, formals) = self.resolver.call_formals(source)?;
+        let object = if !created && source.field("object").is_some() { node.children.first().copied() } else { None };
         let qualifier = if created {
             Type::class(&call.declaring)
         } else {
@@ -453,7 +519,7 @@ impl<'a, 't> Machine<'a, 't> {
                 None => self.resolver.index.declared(&call.declaring),
             }
         };
-        Some(CallFacts { qualifier, exact: created || call.method.is_static, name: name.to_string(), formals })
+        Some(CallFacts { qualifier, exact: created || call.method.is_static, name: name.to_string(), formals, object })
     }
 
     fn matches_sig(&self, focus: &Focus, written: &str) -> bool {
@@ -478,7 +544,11 @@ impl<'a, 't> Machine<'a, 't> {
         }
         let Some(call) = self.call_facts(*id) else { return false };
         if wanted.owner != "_" {
-            let fits = if call.exact { call.qualifier.erased().name() == wanted.owner } else { self.kind_is(&call.qualifier, &wanted.owner) };
+            let fits = if call.exact {
+                call.qualifier.erased().name() == wanted.owner
+            } else {
+                (canonical(&call.qualifier) || call.object.is_some_and(|object| self.bound_typed(object))) && self.kind_is(&call.qualifier, &wanted.owner)
+            };
             if !fits {
                 return false;
             }

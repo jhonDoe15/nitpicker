@@ -58,7 +58,7 @@ pub enum Symbol {
 
 pub fn symbol(ctx: &Ctx, id: u32) -> Option<Symbol> {
     let kind = ctx.type_of(id)?;
-    if ctx.is(id, "MethodCall") && captured(ctx, id) {
+    if (ctx.is(id, "MethodCall") && captured(ctx, id)) || super_bound(ctx, id).is_some() {
         return None;
     }
     match &kind {
@@ -73,21 +73,25 @@ pub fn symbol(ctx: &Ctx, id: u32) -> Option<Symbol> {
 /// A call whose result PMD types with a captured wildcard, which has no symbol: `list.get(0)` on a
 /// `List<? extends Closeable>`.
 fn captured(ctx: &Ctx, call: u32) -> bool {
-    let Some(source) = ctx.tree.nodes[call as usize].source else { return false };
-    let resolver = ctx.machine.resolver.wildcards();
-    if matches!(resolver.type_of(source), Some(Type::Bounded(..) | Type::Wildcard)) {
-        return true;
+    capture(ctx, call).is_some()
+}
+
+/// The wildcard a call's result is captured from, with the declared bound of the type parameter it fills.
+fn capture(ctx: &Ctx, call: u32) -> Option<(Type, Type)> {
+    ctx.machine.captured_result(call)
+}
+
+/// For a `? super` capture, which PMD types as a variable with the parameter's declared bound as its upper bound: that
+/// bound. The call itself, or a `var` declared with it.
+fn super_bound(ctx: &Ctx, id: u32) -> Option<Type> {
+    let call = if ctx.is(id, "VariableId") && type_node(ctx, id).is_none() { initializer(ctx, id)? } else { id };
+    if !ctx.is(call, "MethodCall") {
+        return None;
     }
-    let (Some(call), Some(object)) = (resolver.resolve_call(source), source.child_by_field_name("object")) else { return false };
-    let Type::Variable(variable) = &call.method.generic_returns else { return false };
-    let Some(receiver @ Type::Class(..)) = resolver.type_of(object) else { return false };
-    let wild = |kind: Option<&Type>| matches!(kind, Some(Type::Bounded(..) | Type::Wildcard));
-    if let (Type::Class(name, given), Some(info)) = (&receiver, resolver.index.get(&call.declaring)) {
-        if *name == call.declaring {
-            return wild(info.type_parameters.iter().position(|(known, _)| known == variable).and_then(|at| given.get(at)));
-        }
+    match capture(ctx, call)? {
+        (Type::Bounded(true, _), bound) => Some(bound),
+        _ => None,
     }
-    wild(resolver.index.member_map(&receiver, &call.declaring).get(variable))
 }
 
 fn resolved(ctx: &Ctx, id: u32) -> bool {
@@ -96,7 +100,12 @@ fn resolved(ctx: &Ctx, id: u32) -> bool {
 
 /// PMD `isNodeInstanceOfResourceType`.
 pub fn instance_of_resource(ctx: &Ctx, settings: &Settings, id: Option<u32>) -> bool {
-    id.is_some_and(|id| settings.types.iter().any(|kind| ctx.type_is(id, kind)))
+    let Some(id) = id else { return false };
+    if let Some(bound) = super_bound(ctx, id) {
+        let index = &ctx.machine.resolver.index;
+        return settings.types.iter().any(|kind| index.is_subtype(&bound.erased().name(), kind));
+    }
+    settings.types.iter().any(|kind| ctx.type_is(id, kind))
 }
 
 /// PMD `isResourceTypeOrSubtype`.

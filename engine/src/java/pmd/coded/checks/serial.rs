@@ -3,6 +3,7 @@ use crate::java::pmd::coded::constants::{Const, const_value};
 use crate::java::pmd::coded::ctx::{Ctx, Hit};
 use crate::java::pmd::coded::hit_with;
 use crate::java::pmd::coded::message::TypePrinter;
+use crate::java::pmd::coded::written::write_declared;
 use crate::java::types::model::{Type, flag};
 use std::collections::{HashMap, HashSet};
 
@@ -143,7 +144,9 @@ pub fn non_serializable_class(ctx: &Ctx, out: &mut Vec<Hit>) {
         if not_serializable(ctx, field, variable, check_abstract) {
             let mut shown = String::new();
             let written = ctx.kids(field).iter().copied().find(|kid| !matches!(ctx.name(*kid), "ModifierList" | "VariableDeclarator"));
-            if let Some(kind) = written.and_then(|written| ctx.symbolic_type(written)).or_else(|| ctx.type_of(variable)) {
+            let mut printer = TypePrinter::new(ctx.machine.resolver.index, true);
+            let printed = written.is_some_and(|written| write_declared(ctx, &mut printer, field, written, Some(variable), &mut shown));
+            if !printed && let Some(kind) = written.and_then(|written| ctx.symbolic_type(written)).or_else(|| ctx.type_of(variable)) {
                 let mut printer = TypePrinter::new(ctx.machine.resolver.index, true);
                 let qualifier = written.filter(|written| ctx.is(*written, "ClassType")).and_then(|written| ctx.kid(written, "ClassType"));
                 if let Some(Type::Class(_, given)) = qualifier.and_then(|qualifier| ctx.symbolic_type(qualifier)) {

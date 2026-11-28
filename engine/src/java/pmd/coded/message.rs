@@ -217,9 +217,11 @@ impl<'i> TypePrinter<'i> {
         (!implicit).then_some(outer)
     }
 
-    fn simple(name: &str) -> &str {
+    /// The simple name of a class; a local class (`Outer.1Local`) without the number the type model gives it.
+    pub fn simple(name: &str) -> &str {
         let tail = name.rsplit('.').next().unwrap_or(name);
-        tail.rsplit('$').next().unwrap_or(tail)
+        let tail = tail.rsplit('$').next().unwrap_or(tail);
+        Some(tail.trim_start_matches(|c: char| c.is_ascii_digit())).filter(|local| !local.is_empty()).unwrap_or(tail)
     }
 
     pub fn class(&mut self, name: &str, arguments: &[Type], out: &mut String) {
