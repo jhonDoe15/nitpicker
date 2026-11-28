@@ -37,6 +37,7 @@ export const TEST_ENGINE_RULES: readonly (readonly [string, EngineRule])[] = [
     },
   ],
   ['no-first-test-charged-setup', { facts: runnerWords('sharedSetupHook') }],
+  ['no-fixed-port-in-tests', {}],
   ['no-float-equality-in-tests', {}],
   [
     'no-fixed-sleep-synchronization',
@@ -55,7 +56,16 @@ export const TEST_ENGINE_RULES: readonly (readonly [string, EngineRule])[] = [
     },
   ],
   ['no-shared-temp-path-in-tests', {}],
+  ['no-uncleared-shared-mock', {}],
   ['no-uninjectable-delay', {}],
   ['no-unpinned-assertion', {}],
   ['no-weak-assertion', {}],
+  [
+    'no-worker-state-in-concurrent-tests',
+    {
+      facts: (_filename, options) => ({
+        concurrent: String(Reflect.get(Object(options[0]), 'concurrent') === true),
+      }),
+    },
+  ],
 ];

@@ -35,4 +35,12 @@ describe('facts of the test rules on the engine', () => {
       factsOf('no-fixed-sleep-synchronization', '/project/test/a.test.ts', [{ runner: 'node' }]),
     ).toMatchObject({ 'advance-fake-time': 'mock.timers.tick', fixture: 'false' });
   });
+
+  it('passes on whether tests run concurrently by default', () => {
+    const file = '/project/test/a.test.ts';
+    expect(factsOf('no-worker-state-in-concurrent-tests', file, [{ concurrent: true }])).toEqual({
+      concurrent: 'true',
+    });
+    expect(factsOf('no-worker-state-in-concurrent-tests', file)).toEqual({ concurrent: 'false' });
+  });
 });

@@ -86,6 +86,7 @@ describe('facts the engine rules get from the project', () => {
       'no-partial-output-assertion.whole-value=`toEqual`',
       expect.stringMatching(/^no-partial-output-assertion\.partial-forms=`toMatchObject`/u),
       'no-partial-output-assertion.varied-field=Use `expect.any(Type)` for a field that varies.',
+      'no-worker-state-in-concurrent-tests.concurrent=false',
     ]);
   });
 
