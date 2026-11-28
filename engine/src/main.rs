@@ -21,7 +21,11 @@ fn main() {
         return;
     }
     if args.first().map(String::as_str) == Some("typescript-lint") {
-        typescript_lint(&args[1..]);
+        let args = args[1..].to_vec();
+        let run = std::thread::Builder::new().stack_size(typescript::rules::STACK).spawn(move || typescript_lint(&args));
+        if run.expect("lint thread").join().is_err() {
+            std::process::exit(101);
+        }
         return;
     }
     if args.first().map(String::as_str) == Some("typescript-imports") {

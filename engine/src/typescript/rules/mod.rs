@@ -312,13 +312,17 @@ pub struct Listed {
     pub settings: Vec<String>,
 }
 
+/// The stack of the threads that lint. `typescript-lint` runs on a thread of this size too, for the typed rules.
+pub const STACK: usize = 512 << 20;
+
 /// Lints every file with the untyped rules, in parallel, then with the typed ones against `types`, one file after
 /// another. Without `types` the typed rules are left to the caller.
 pub fn lint_files(files: &[Listed], rules: &Selection, types: Option<typed::types::Types>) -> Vec<Reported> {
-    let mut findings: Vec<Reported> = files
-        .par_iter()
-        .flat_map_iter(|file| lint_file(&file.path, &file.display, &file.settings, (&rules.names, &rules.rules, rules.view), None))
-        .collect();
+    // Deeply nested files make the parser, the ESTree view and the rule walks recurse once per level, so the workers
+    // get a large stack. Only the part that is used takes memory.
+    let pool = rayon::ThreadPoolBuilder::new().stack_size(STACK).build().expect("threads");
+    let untyped = (&rules.names[..], &rules.rules[..], rules.view);
+    let mut findings: Vec<Reported> = pool.install(|| files.par_iter().flat_map_iter(|file| lint_file(&file.path, &file.display, &file.settings, untyped, None)).collect());
     match types {
         Some(types) if rules.has_typed() => {
             let types = std::cell::RefCell::new(types);
